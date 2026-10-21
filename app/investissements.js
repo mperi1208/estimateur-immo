@@ -372,12 +372,14 @@ function majAuto(b) {
   else if (!e) h = `<div class="aide">${estimable(b) ? 'Règle les caractéristiques, puis clique sur « Estimer ce bien ».' : 'Renseigne l\'adresse et la surface, règle les caractéristiques, puis clique sur « Estimer ce bien ».'}</div>`;
   else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)}</div>`;
   else {
+    // Bien loué : on met en avant le loyer de sa location (vide ou meublé) ; sinon (habité, vacant…) aucun des deux
     const loue = LOUE.includes(b.location.statut), L = loyersMarche(e), m = meubleBien(b);
-    const ref = m ? L.meuble ?? L.vide : L.vide ?? L.meuble;
+    const ref = m ? L.meuble ?? L.vide : L.vide ?? L.meuble, rdt = v => v != null ? pct(v * 12 / e.prix) : '—';
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
-        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers"><div class="${m ? '' : 'actif'}"><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div class="${m ? 'actif' : ''}"><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div></div><small>hors charges/mois${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : ''}</small></div>
-        <div><span>Rendement brut</span><b>${pct(ref * 12 / e.prix)}</b><small>au loyer ${m ? 'meublé' : 'vide'}, sur la valeur</small></div>` : ''}</div>
+        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers${loue ? '' : ' egaux'}"><div class="${loue && !m ? 'actif' : ''}"><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div class="${loue && m ? 'actif' : ''}"><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div></div><small>hors charges/mois${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : ''}</small></div>
+        ${loue ? `<div><span>Rendement brut</span><b>${pct(ref * 12 / e.prix)}</b><small>loué ${m ? 'meublé' : 'vide'}, sur la valeur</small></div>`
+          : `<div><span>Rendement brut</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${rdt(L.vide)}</b></div><div><small>Meublé</small><b>${rdt(L.meuble)}</b></div></div><small>s'il était loué, sur la valeur</small></div>`}` : ''}</div>
       <div class="aide">${esc(e.fiabilite)} · ${e.ventes} ventes à moins de ${e.rayon < 1000 ? fmt(e.rayon) + ' m' : (e.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}${e.periode ? ` (ventes ${e.periode})` : ''} · estimé le ${new Date(e.le).toLocaleDateString('fr-FR')}${b.geo ? ` · adresse reconnue : ${esc(b.geo.label)}` : ''}
         ${loue && ref && b.location.loyer ? `<br>Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / ref - 1)} par rapport au marché ${m ? 'meublé' : 'vide'}.` : ''}</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
