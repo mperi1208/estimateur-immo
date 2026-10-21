@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estimateur m²</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#f6f5f2;--panel:#ffffff;--ink:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;
+  --accent:#2f6fde;--accent-soft:#e6eefc;--good:#1f8a4c;--warn:#b7791f;--bad:#c0392b;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#161615;--panel:#1f1f1d;--ink:#ecebe7;--muted:#9c9a93;--line:#33322f;
+  --accent:#6c9bf0;--accent-soft:#22304a;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:400px 1fr;height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:20px}
+#map{height:100%;min-height:320px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 4px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;padding:9px;border:0;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.sugg{position:relative}
+.sugg ul{position:absolute;z-index:1000;left:0;right:0;margin:2px 0 0;padding:0;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;max-height:240px;overflow:auto}
+.sugg li{padding:8px 10px;cursor:pointer;font-size:14px}
+.sugg li:hover{background:var(--accent-soft)}
+.sugg li.title{font-size:12px;font-weight:600;color:var(--muted);cursor:default}
+.sugg li.title:hover{background:none}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+.result{margin-top:18px;padding:16px;border-radius:12px;background:var(--accent-soft)}
+.big{font-size:30px;font-weight:700;letter-spacing:-.02em}
+.ppm{font-size:16px;font-weight:600}
+.range{color:var(--muted);font-size:13px;margin-top:4px}
+.conf{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;margin-top:8px;color:#fff}
+h2{font-size:14px;margin:20px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:5px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr[data-k]:hover td{background:var(--accent-soft);cursor:pointer}
+.empty{color:var(--muted);font-size:14px;margin-top:18px}
+.bars{display:flex;gap:6px;align-items:flex-end;height:90px;margin-top:6px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-size:10px;color:var(--muted);height:100%}
+.bars span{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;opacity:.85}
+details{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:4px 12px 12px}
+summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
+.crit{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.crit [hidden]{display:none}
+.checks{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px}
+.checks label{display:flex;align-items:center;gap:6px;margin:0;text-transform:none;letter-spacing:0;font-size:14px;font-weight:400;color:var(--ink)}
+.checks input{width:auto}
+.calc{margin-top:12px;border-top:1px solid color-mix(in srgb,var(--accent) 25%,transparent);padding-top:8px;font-size:13px}
+.calc div{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.calc b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.calc .up{color:var(--good)} .calc .down{color:var(--bad)}
+.search{display:flex;gap:6px}
+.search button{padding:9px 14px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.search button:hover{filter:brightness(1.1)}
+.calc sup{color:var(--muted);font-size:9px;margin-left:2px}
+.srcs{margin:10px 0 0;padding-left:18px;font-size:11px;color:var(--muted)}
+.srcs a{color:var(--muted)}
+.calc small.raw{color:var(--muted);font-weight:400}
+.calc .note{display:block;color:var(--muted);font-size:12px}
+.warnbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--ink)}
+.result.rent{background:color-mix(in srgb,var(--good) 12%,var(--panel))}
+.result h3{margin:0 0 6px;font-size:14px}
+.big small{font-size:14px;font-weight:500;color:var(--muted)}
+.alert{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--bad) 14%,transparent)}
+.okbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--good) 16%,transparent)}
+.calc .tot{border-top:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);margin-top:4px;padding-top:6px}
+@media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside>
+  <h1>Estimateur de prix au m²</h1>
+  <div class="sub">Toute la France · ventes réelles DVF interrogées en direct</div>
+
+  <label>Adresse</label>
+  <div class="sugg">
+    <div class="search">
+      <input id="addr" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off">
+      <button id="go">Rechercher</button>
+    </div>
+    <ul id="sugg" hidden></ul>
+  </div>
+  <div class="hint">…ou clique directement sur la carte.</div>
+
+  <label>Type de bien</label>
+  <div class="seg" id="type">
+    <button data-v="121" class="on">Appartement</button>
+    <button data-v="111">Maison</button>
+  </div>
+
+  <div class="row">
+    <div><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
+    <div><label>Ventes depuis</label>
+      <select id="since"><option value="2">2 ans</option><option value="3" selected>3 ans</option><option value="5">5 ans</option></select>
+    </div>
+  </div>
+
+  <details open>
+    <summary>Caractéristiques du bien</summary>
+    <div class="crit" id="crit"></div>
+    <div class="checks" id="checks"></div>
+  </details>
+
+  <div id="out"><div class="empty">Choisis une adresse pour lancer l'estimation.</div></div>
+</aside>
+<div id="map"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// Source : API Données foncières du Cerema (DVF open data), interrogée à la volée.
+const API = 'https://apidf-preprod.cerema.fr/dvf_opendata/geomutations/';
+const MAX_BOX = 0.02;    // l'API refuse les emprises > 0.02° x 0.02°
+const TARGET = 30;       // nombre de ventes comparables visé
+
+// Décotes / surcotes appliquées au prix médian des ventes comparables, par zone (paris, corse, autre).
+// Chaque critère renvoie à ses sources (liste SOURCES). Les études excluent souvent la Corse faute de
+// volume : on y transpose alors PACA / Marseille-Nice, le marché le plus proche.
+// Une valeur peut dépendre du type de bien ({appart, maison}) et/ou de la zone ({paris, corse, autre}).
+const SOURCES = {
+  vv: ['Notaires de France — valeur verte des logements, ventes 2024 (publiée déc. 2025) — Corse : chiffres PACA', 'https://portail.documentation.developpement-durable.gouv.fr/pub/PACOUV00268611-valeur-verte-des-logements-france-transactions-202.html'],
+  et: ["MeilleursAgents — impact de l'étage, Paris et 10 grandes villes (2017)", 'https://backyard-static.meilleursagents.com/press/270c923805468437e1acc35c1e47266e34f6897f.pdf'],
+  nf: ['Notaires de France — critères de valorisation des logements anciens (2019) — étude hors IdF et Corse, transposée', 'https://www.immobilier.notaires.fr/documents/NotesImmobilieres/Valorisation-biens-immobiliers-Octobre%202019%20-%20Analyse%20detaillee.pdf'],
+  ext: ['MeilleursAgents — balcon, terrasse, jardin, piscine (mai 2023)', 'https://backyard-static.meilleursagents.com/press/7923ef62d4824384d8bcec478ad5fa6142514a96.pdf'],
+  ext20: ["MeilleursAgents — effet de la taille de l'extérieur (2020)", 'https://edito.meilleursagents.com/terrasses-et-balcons-font-ils-grimper-les-prix-des-appartements'],
+  reno: ['MeilleursAgents — prix rénové / à rénover à Paris (2022) + coûts de travaux usuels', 'https://edito.meilleursagents.com/immobilier-si-vous-preniez-la-bonne-resolution-de-renover'],
+  park: ["Notaires du Grand Paris — prix médian d'un parking à Paris : 28 000 € (2024)", 'https://monimmeuble.com/actualite/prix-des-parkings-en-ile-de-france-combien-coute-une-place'],
+  vue: ['BienAvecVue — prime vue mer de +30 à +55 % sur le littoral (retenue ici avec prudence)', 'https://renseignementeconomique.fr/la-vue-mer-peut-doubler-le-prix-d-un-logement-sur-certaines-cotes-francaises'],
+  te: ['MeilleursAgents — vue sur la tour Eiffel : +6 à +9 % dans les arrondissements centraux (2018)', 'https://monimmeuble.com/actualite/la-vue-sur-la-tour-eiffel-fait-senvoler-les-prix-de-limmobilier'],
+  bruit: ['Études hédoniques sur le bruit : environ −0,5 % par décibel au-delà de 60 dB', 'https://www.senat.fr/questions/base/2003/qSEQ030607938.html'],
+  dvf: ['Ventes DVF du secteur (terrain médian des maisons vendues autour)', 'https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres/'],
+  carte: ["ANIL / ministère du Logement — carte des loyers 2025 (loyers d'annonce par commune, charges comprises)", 'https://www.data.gouv.fr/datasets/carte-des-loyers-indicateurs-de-loyers-dannonce-par-commune-en-2025'],
+  apur: ['Apur — écart de loyer meublé / vide à Paris (≈ +14 %, 2025)', 'https://www.apur.org/sites/default/files/2026-04/12p288_Encadrement_Loyers_Paris_2025.pdf'],
+  calib: ['Effet des atouts sur le loyer = effet sur le prix atténué (puissance 0,7), calé sur Homepilot : balcon +5,3 % de loyer, rez-de-chaussée −6,8 %', 'https://www.zonebourse.com/actualite-bourse/Les-facteurs-cles-qui-determinent-le-loyer-d-un-logement-Balcon-orientation-etage-ascenseur-28707958/'],
+  slcorse: ['SeLoger — loyers à Ajaccio (appartements 15,2 €/m², maisons 14,7) et Bastia (14,3 et 15,0), janv. 2026', 'https://www.seloger.com/prix-de-l-immo/location/corse/haute-corse/bastia/202033.htm'],
+  hestia: ['Hestia — baromètre des loyers à Paris, 1 378 annonces actives (mai 2026) : T1 20 m² 48,9 €/m², T2 39 m² 38,3 €/m², T2 par arrondissement', 'https://hestia.software/barometre-loyers/paris'],
+  olap: ["Apur / OLAP — loyers de relocation à Paris : 28,30 €/m² hors charges début 2025, +4,4 % sur un an", 'https://www.apur.org/sites/default/files/2026-04/12p288_Encadrement_Loyers_Paris_2025.pdf'],
+  slstudio: ['SeLoger — loyers Paris 16e par taille (oct. 2026) : 1 pièce 37,0 €/m² vide / 42,0 meublé, 2 pièces 32,1 / 36,9', 'https://www.seloger.com/prix-de-l-immo/location/ile-de-france/paris/paris-16eme/750116.htm'],
+  hp: ['Homepilot — balcon, étage et ascenseur : effet sur les loyers', 'https://www.zonebourse.com/actualite-bourse/Les-facteurs-cles-qui-determinent-le-loyer-d-un-logement-Balcon-orientation-etage-ascenseur-28707958/'],
+  yespark: ['Yespark — location moyenne d\'une place de parking à Paris : 148 €/mois', 'https://www.yespark.fr/prix-parking'],
+  loi: ['Loi Climat et résilience — calendrier DPE pour la location (G 2025, F 2028, E 2034)', 'https://www.pap.fr/actualites/loi-climat-les-proprietaires-bailleurs-face-a-la-lutte-contre-les-passoires-energetiques/a22519'],
+  chambre: ['Estimation : à surface égale, une vraie chambre se loue et se vend mieux qu\'une pièce unique (écart non chiffré par les études, +5 % retenu)', ''],
+  est: ['Estimation : aucune étude chiffrée fiable trouvée, ordre de grandeur prudent', ''],
+};
+
+const DPE = {   // écart vs étiquette D, ventes 2024 (Notaires de France) ; Corse = PACA (Corse exclue de l'étude)
+  appart: {paris: {A: 0, B: 0, C: 0, E: -0.025, F: -0.065, G: -0.10},
+           corse: {A: 0.13, B: 0.13, C: 0.06, E: -0.05, F: -0.105, G: -0.205},
+           autre: {A: 0.16, B: 0.12, C: 0.06, E: -0.04, F: -0.08, G: -0.12}},
+  maison: {paris: {A: 0, B: 0, C: 0, E: -0.035, F: -0.07, G: -0.105},
+           corse: {A: 0.115, B: 0.115, C: 0.045, E: -0.075, F: -0.12, G: -0.195},
+           autre: {A: 0.17, B: 0.13, C: 0.07, E: -0.09, F: -0.18, G: -0.25}},
+};
+
+const ETAGE = {   // écart vs 2e étage (MeilleursAgents 2017/2020) ; index 0 = RDC … 6 = 6e et +
+  paris: {asc: [-0.10, -0.03, 0, 0.02, 0.04, 0.04, 0.06], sans: [-0.10, -0.04, 0, 0.01, 0.01, 0, -0.01]},
+  autre: {asc: [-0.10, -0.04, 0, 0.02, 0.04, 0.04, 0.05], sans: [-0.10, -0.03, 0, -0.01, -0.03, -0.05, -0.07]},
+};
+
+// Options : k = clé, l = libellé, d = défaut, p = % (multiplicatif), abs = montant en €,
+// cout = coût de travaux en €/m² (converti en décote selon le prix du secteur), z = zones où l'option existe.
+const CRITERES = [
+  {id: 'etat', label: 'État général', pour: 'tous', src: 'reno', options: [
+    {k: 'renover', l: 'À rénover entièrement', cout: {paris: 1500, autre: 1200}},
+    {k: 'travaux', l: 'Gros travaux (cuisine, SdB…)', cout: {paris: 800, autre: 600}},
+    {k: 'rafraichir', l: 'À rafraîchir', cout: 300},
+    {k: 'bon', l: 'Bon état', d: 1},
+    {k: 'neuf', l: 'Refait à neuf', p: 0.06},
+    {k: 'luxe', l: 'Prestations haut de gamme', p: 0.10, src: 'est'}]},
+  {id: 'dpe', label: 'DPE (énergie)', pour: 'tous', src: 'vv', special: true, options: [
+    {k: '?', l: 'Inconnu', d: 1}, ...'ABCDEFG'.split('').map(x => ({k: x, l: x}))]},
+  {id: 'epoque', label: 'Construction', pour: 'tous', src: 'nf', special: true, options: [
+    {k: '?', l: 'Je ne sais pas', d: 1},
+    {k: 'av1914', l: 'Avant 1914', p: {appart: {paris: 0, autre: 0.06}, maison: -0.16}},
+    {k: '1914', l: '1914 – 1947', p: {appart: {paris: -0.04, autre: 0.02}, maison: -0.15}},
+    {k: '1948', l: '1948 – 1969', p: {appart: {paris: -0.17, autre: -0.11}, maison: -0.08}},
+    {k: '1970', l: '1970 – 1980', p: {appart: {paris: -0.13, autre: -0.08}, maison: -0.01}},
+    {k: '1981', l: '1981 – 1991', p: {appart: {paris: -0.03, autre: 0.03}, maison: 0.17}},
+    {k: '1992', l: 'Après 1992', p: {appart: {paris: 0.04, autre: 0.11}, maison: 0.17}}]},
+  {id: 'etage', label: 'Étage', pour: 'appart', src: 'et', special: true, options: [
+    {k: 0, l: 'RDC'}, {k: 1, l: '1er'}, {k: 2, l: '2e', d: 1}, {k: 3, l: '3e'}, {k: 4, l: '4e'}, {k: 5, l: '5e'}, {k: 6, l: '6e et +'}]},
+  {id: 'ascenseur', label: 'Ascenseur', pour: 'appart', special: true, options: [{k: 0, l: 'Non', d: 1}, {k: 1, l: 'Oui'}]},
+  {id: 'exterieur', label: 'Extérieur', pour: 'appart', src: 'ext', options: [
+    {k: 'aucun', l: 'Aucun', d: 1},
+    {k: 'petit', l: 'Petit balcon (< 10 m²)', p: {corse: 0.05, autre: 0.044}, src: 'ext20'},
+    {k: 'balcon', l: 'Balcon / terrasse', p: {paris: 0.082, corse: 0.12, autre: 0.097}},
+    {k: 'grande', l: 'Grande terrasse (> 50 m²)', p: {corse: 0.25, autre: 0.20}, src: 'ext20'},
+    {k: 'jardin', l: 'Jardin privatif (rez-de-jardin)', p: 0.125, src: 'ext20'}]},
+  {id: 'sdb', label: 'Salles de bain', pour: 'tous', src: 'nf', options: [
+    {k: '1', l: '1', d: 1}, {k: '2', l: '2 ou plus', p: {appart: 0.14, maison: 0.09}}]},
+  {id: 'mitoyen', label: 'Implantation', pour: 'maison', src: 'est', options: [
+    {k: 'indiv', l: 'Individuelle', d: 1}, {k: 'mit1', l: 'Mitoyenne 1 côté', p: -0.05}, {k: 'mit2', l: 'Mitoyenne 2 côtés', p: -0.08}]},
+  {id: 'terrain', label: 'Terrain (m²)', pour: 'maison', special: true, number: true},
+  {id: 'vue', label: 'Vue', pour: 'tous', src: 'est', options: [
+    {k: 'vis', l: 'Vis-à-vis proche', p: -0.05},
+    {k: 'std', l: 'Standard', d: 1},
+    {k: 'deg', l: 'Dégagée', p: 0.03},
+    {k: 'mon', l: 'Monument / Seine', p: 0.08, z: ['paris'], src: 'te'},
+    {k: 'merp', l: 'Vue mer partielle', p: 0.10, z: ['corse', 'autre'], src: 'vue'},
+    {k: 'merpano', l: 'Vue mer panoramique', p: 0.25, z: ['corse', 'autre'], src: 'vue'}]},
+  {id: 'lumiere', label: 'Luminosité', pour: 'tous', src: 'est', options: [
+    {k: 'sombre', l: 'Sombre', p: -0.07}, {k: 'normale', l: 'Normale', d: 1}, {k: 'lumineux', l: 'Très lumineux / traversant', p: 0.05}]},
+  {id: 'bruit', label: 'Environnement sonore', pour: 'tous', src: 'bruit', options: [
+    {k: 'tres', l: 'Très bruyant (boulevard, rail…)', p: -0.10}, {k: 'bruyant', l: 'Rue passante', p: -0.05},
+    {k: 'normal', l: 'Normal', d: 1}, {k: 'calme', l: 'Très calme', p: 0.02, src: 'est'}]},
+  {id: 'parking', label: 'Stationnement', pour: 'appart', options: [
+    {k: 'aucun', l: 'Aucun', d: 1},
+    {k: '1', l: '1 place / box', abs: {paris: 28000}, p: {autre: 0.07}, src: {paris: 'park', autre: 'nf'}},
+    {k: '2', l: '2 places ou plus', abs: {paris: 56000}, p: {autre: 0.12}, src: {paris: 'park', autre: 'nf'}}]},
+  {id: 'garage', label: 'Stationnement', pour: 'maison', src: 'nf', options: [
+    {k: 'oui', l: 'Garage / parking', d: 1}, {k: 'non', l: 'Aucun', p: -0.05}]},
+  {id: 'location', label: 'Location', pour: 'tous', special: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}]},
+  {id: 'mobilier', label: 'Mobilier vendu avec', pour: 'tous', special: true, options: [   // en €/m², compté à part
+    {k: '0', l: 'Aucun (vide)', d: 1, m2: 0}, {k: 'b', l: 'Basique', m2: 60}, {k: 'c', l: 'Correct', m2: 120}, {k: 'h', l: 'Haut de gamme', m2: 250}]},
+  {id: 'chambre', label: 'Chambre séparée (≤ 40 m²)', pour: 'appart', check: true, p: 0.05, maxSurf: 40, src: 'chambre'},
+  {id: 'cave', label: 'Cave', pour: 'appart', check: true, p: 0.01, src: 'est'},
+  {id: 'soussol', label: 'Sous-sol', pour: 'maison', check: true, p: 0.03, src: 'nf'},
+  {id: 'piscine', label: 'Piscine', pour: 'maison', check: true, p: {corse: 0.10, autre: 0.076}, src: 'ext'},
+  {id: 'anc', label: 'Assainissement non conforme', pour: 'maison', check: true, abs: -10000, src: 'est'},
+];
+
+const fmt = n => Math.round(n).toLocaleString('fr-FR');
+const fmtK = n => n >= 1e6 ? (n / 1e6).toLocaleString('fr-FR', {maximumFractionDigits: 2}) + ' M€' : fmt(n / 1000) + ' k€';
+const fmtDate = s => new Date(s).toLocaleDateString('fr-FR', {month: 'short', year: 'numeric'});
+const state = {type: '121', lat: null, lon: null, run: 0, zone: 'autre'};
+const cache = new Map();
+
+const getJSON = url => fetch(url.replace(/^http:/, 'https:')).then(r => { if (!r.ok) throw new Error('API ' + r.status); return r.json(); });
+
+// Toutes les pages d'une requête (plafonnées pour rester raisonnable)
+async function fetchPages(url, maxPages = 4) {
+  const out = [];
+  for (let k = 0; url && k < maxPages; k++) {
+    const js = await getJSON(url);
+    out.push(...js.features.map(toSale).filter(Boolean));
+    url = js.next;
+  }
+  return out;
+}
+
+// L'API renvoie au plus 500 ventes par page et ignore le tri par date : au-delà de 500, on découpe
+// par année (et on pagine), sinon on ne verrait que les ventes les plus anciennes.
+async function fetchBox(lon0, lat0, lon1, lat1, type, yearMin) {
+  const bbox = [lon0, lat0, lon1, lat1].map(v => v.toFixed(5)).join(',');
+  const base = `${API}?in_bbox=${bbox}&codtypbien=${type}&page_size=500`;
+  const key = base + '&anneemut_min=' + yearMin;
+  if (cache.has(key)) return cache.get(key);
+  const p = (async () => {
+    const js = await getJSON(key);
+    if (!js.next) return js.features.map(toSale).filter(Boolean);
+    const years = [];
+    for (let y = yearMin; y <= new Date().getFullYear(); y++) years.push(y);
+    return (await Promise.all(years.map(y => fetchPages(`${base}&anneemut=${y}`)))).flat();
+  })();
+  cache.set(key, p);
+  p.catch(() => cache.delete(key));
+  return p;
+}
+
+function toSale(f) {
+  const p = f.properties;
+  const prix = +p.valeurfonc, surf = +p.sbati;
+  if (!(prix > 1000) || !(surf >= 9) || p.libnatmut.startsWith('Echange') || p.libnatmut === 'Adjudication') return null;
+  // centre de la (première) parcelle
+  const ring = f.geometry?.coordinates?.[0]?.[0];
+  if (!ring) return null;
+  const lon = ring.reduce((s, c) => s + c[0], 0) / ring.length, lat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
+  return {id: p.idopendata, prix, surf, ppm: prix / surf, date: p.datemut, terrain: +p.sterr, lat, lon,
+          vefa: p.vefa, parcelle: p.l_idpar?.[0] || '', insee: p.l_codinsee?.[0] || ''};
+}
+
+// Boîtes de recherche de plus en plus larges : petites boîtes centrées (zones denses),
+// puis anneaux de tuiles 0.02° (zones rurales).
+function searchSteps(lat, lon) {
+  const half = MAX_BOX / 2 * 0.99;  // marge pour rester sous la limite après arrondi
+  const steps = [0.003, 0.006, half].map(h => {
+    const hx = Math.min(h * 1.4, half);
+    return [[lon - hx, lat - h, lon + hx, lat + h]];
+  });
+  for (const R of [1, 2]) {
+    const tiles = [];
+    for (let i = -R; i <= R; i++) for (let j = -R; j <= R; j++) {
+      if (Math.max(Math.abs(i), Math.abs(j)) !== R) continue;
+      const cx = lon + i * MAX_BOX, cy = lat + j * MAX_BOX;
+      tiles.push([cx - half, cy - half, cx + half, cy + half]);
+    }
+    steps.push(tiles);
+  }
+  return steps;
+}
+
+async function estimate() {
+  if (state.lat == null) return;
+  const surf = +document.getElementById('surf').value;
+  if (!(surf >= 9)) return;
+  const run = ++state.run, type = state.type;
+  const yearMin = new Date().getFullYear() - +document.getElementById('since').value;
+  const out = document.getElementById('out');
+  const kx = 111320 * Math.cos(state.lat * Math.PI / 180), ky = 110540;
+  const seen = new Map();
+  let usable = [], radius = 0;
+
+  for (const [k, boxes] of searchSteps(state.lat, state.lon).entries()) {
+    out.innerHTML = `<div class="empty">Recherche des ventes comparables… (zone ${k + 1}/5)</div>`;
+    let results;
+    try { results = await Promise.all(boxes.map(b => fetchBox(...b, type, yearMin))); }
+    catch (e) { if (run === state.run) out.innerHTML = `<div class="empty">L'API DVF ne répond pas (${e.message}). Réessaie dans un instant.</div>`; return; }
+    if (run !== state.run) return;   // une recherche plus récente a été lancée
+    for (const s of results.flat()) {
+      if (seen.has(s.id)) continue;
+      s.d = Math.hypot((s.lon - state.lon) * kx, (s.lat - state.lat) * ky);
+      seen.set(s.id, s);
+    }
+    usable = [...seen.values()].filter(s => s.surf / surf > 0.5 && s.surf / surf < 2);
+    if (usable.length >= TARGET) break;
+  }
+  if (usable.length < 3) { render({none: true}); return; }
+
+  // Retire les ventes aberrantes (ventes familiales, lots, erreurs) : hors [0.5x, 2x] la médiane locale
+  const med0 = quantile(usable.map(s => [s.ppm, 1]), 0.5);
+  usable = usable.filter(s => s.ppm > med0 * 0.5 && s.ppm < med0 * 2);
+  // Actualise chaque vente au niveau de prix de la dernière année bien couverte, d'après la médiane
+  // locale par année (années d'au moins 30 ventes ; correction plafonnée à ±15 %)
+  const byYear = {};
+  usable.forEach(s => (byYear[s.date.slice(0, 4)] ??= []).push([s.ppm, 1]));
+  const ys = Object.keys(byYear).filter(y => byYear[y].length >= 30).sort();
+  const trend = {};
+  if (ys.length >= 2) {
+    const ref = quantile(byYear[ys[ys.length - 1]], 0.5);
+    ys.forEach(y => trend[y] = Math.max(0.85, Math.min(1.15, ref / quantile(byYear[y], 0.5))));
+  }
+  usable.forEach(s => s.adj = s.ppm * (trend[s.date.slice(0, 4)] ?? 1));
+  usable.sort((a, b) => a.d - b.d);
+  const comps = usable.slice(0, Math.max(TARGET, usable.filter(s => s.d < 300).length)).slice(0, 150);
+  radius = comps[comps.length - 1].d;
+  const d0 = Math.max(150, radius / 3);
+  const now = Date.now();
+  for (const c of comps) {
+    const ageYears = (now - new Date(c.date)) / 3.156e10;
+    c.w = 1 / (1 + (c.d / d0) ** 2) * Math.exp(-2 * Math.abs(Math.log(c.surf / surf))) * Math.pow(0.5, ageYears / 3);
+  }
+  const pairs = comps.map(c => [c.adj, c.w]);
+  const med = quantile(pairs, 0.5), p25 = quantile(pairs, 0.25), p75 = quantile(pairs, 0.75);
+  const spread = (p75 - p25) / med;
+  const effN = comps.reduce((s, c) => s + c.w, 0) ** 2 / comps.reduce((s, c) => s + c.w * c.w, 0);
+  const conf = effN > 12 && spread < 0.3 ? ['Fiabilité bonne', 'var(--good)']
+             : effN > 5 && spread < 0.5 ? ['Fiabilité moyenne', 'var(--warn)']
+             : ['Fiabilité faible', 'var(--bad)'];
+  comps.sort((a, b) => b.w - a.w);
+  const deps = {};
+  comps.forEach(c => { const d = c.insee.slice(0, 2); deps[d] = (deps[d] || 0) + 1; });
+  const dep = Object.keys(deps).sort((a, b) => deps[b] - deps[a])[0];
+  const zone = dep === '75' ? 'paris' : dep === '2A' || dep === '2B' ? 'corse' : 'autre';
+  render({surf, med, p25, p75, comps, radius, conf, zone, all: usable, trend, refYear: ys[ys.length - 1]});
+}
+
+function quantile(pairs, p) {
+  pairs = pairs.slice().sort((a, b) => a[0] - b[0]);
+  const tot = pairs.reduce((s, x) => s + x[1], 0);
+  let acc = 0;
+  for (const [v, w] of pairs) { acc += w; if (acc >= p * tot) return v; }
+  return pairs[pairs.length - 1][0];
+}
+
+let layer = L.layerGroup(), circle = null, pin = null, markers = [];
+function render(r) {
+  const out = document.getElementById('out');
+  layer.clearLayers(); markers = []; if (circle) circle.remove();
+  if (r.none) { state.base = null; out.innerHTML = '<div class="empty">Pas assez de ventes comparables autour de ce point pour ce type de bien. Essaie d\'élargir la période.</div>'; return; }
+  circle = L.circle([state.lat, state.lon], {radius: r.radius, color: '#2f6fde', weight: 1, fillOpacity: .04}).addTo(map);
+  const maxW = r.comps[0].w;
+  r.comps.forEach(c => {
+    markers.push(L.circleMarker([c.lat, c.lon], {radius: 3 + 5 * c.w / maxW, color: '#fff', weight: 1, fillColor: '#2f6fde', fillOpacity: .5 + .5 * c.w / maxW})
+      .bindPopup(`${fmtDate(c.date)} · ${fmt(c.surf)} m²${c.terrain ? ` · terrain ${fmt(c.terrain)} m²` : ''}${c.vefa ? ' · neuf (VEFA)' : ''}<br><b>${fmt(c.prix)} €</b> (${fmt(c.ppm)} €/m²)<br><small>Parcelle ${c.parcelle}</small>`)
+      .addTo(layer));
+  });
+  // Médiane locale par année (toutes ventes de taille comparable trouvées)
+  const byYear = {};
+  r.all.forEach(s => (byYear[s.date.slice(0, 4)] ??= []).push([s.ppm, 1]));
+  const years = Object.keys(byYear).sort().map(y => ({y, n: byYear[y].length, m: quantile(byYear[y], 0.5)}));
+  const maxM = Math.max(...years.map(v => v.m));
+  const bars = years.map(v => `<div title="${v.n} ventes">${fmt(v.m)}<span style="height:${(v.m / maxM * 60).toFixed(0)}px"></span>${v.y}</div>`).join('');
+  const rows = r.comps.slice(0, 25).map((c, k) =>
+    `<tr data-k="${k}"><td>${fmtDate(c.date)}</td><td class="n">${c.d < 1000 ? fmt(c.d) + ' m' : (c.d / 1000).toFixed(1) + ' km'}</td><td class="n">${fmt(c.surf)}</td><td class="n">${fmtK(c.prix)}</td><td class="n">${fmt(c.ppm)}</td></tr>`).join('');
+  state.base = r;
+  if (r.zone !== state.zone) { state.zone = r.zone; fillOptions(); }
+  out.innerHTML = `
+    <div class="result" id="res"></div>
+    <div class="result rent" id="rent"></div>
+    ${years.length > 1 ? `<h2>Prix médian au m² du secteur, par année</h2><div class="bars">${bars}</div>` : ''}
+    <h2>Ventes les plus comparables</h2>
+    <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">m²</th><th class="n">Prix</th><th class="n">€/m²</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema) — hors Alsace-Moselle et Mayotte.</div>`;
+  out.querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => {
+    const c = r.comps[+tr.dataset.k];
+    map.setView([c.lat, c.lon], Math.max(map.getZoom(), 16));
+    markers[+tr.dataset.k].openPopup();
+  });
+  updateResult();
+}
+
+// --- Critères : formulaire, ajustements et carte de résultat ---
+const isAppart = () => state.type === '121';
+const visible = c => c.pour === 'tous' || (c.pour === 'appart') === isAppart();
+const field = id => document.getElementById('c_' + id);
+const crit = id => CRITERES.find(c => c.id === id);
+const lower = s => s.length > 1 ? s[0].toLowerCase() + s.slice(1) : s;
+const pct = a => (a > 0 ? '+' : a < 0 ? '−' : '') + Math.abs(Math.round(a * 1000) / 10).toLocaleString('fr-FR') + ' %';
+const eur = a => (a > 0 ? '+ ' : '− ') + fmtK(Math.abs(a));
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem('criteres-v2') || '{}'); } catch (e) {}
+
+// Résout une valeur qui peut dépendre du type de bien puis de la zone
+function res(v) {
+  if (v == null || typeof v !== 'object') return v;
+  if ('appart' in v || 'maison' in v) return res(v[isAppart() ? 'appart' : 'maison']);
+  return res(state.zone in v ? v[state.zone] : v.autre);
+}
+const zoneOptions = c => c.options.filter(o => !o.z || o.z.includes(state.zone));
+const selected = c => zoneOptions(c).find(o => String(o.k) === field(c.id).value) || c.options.find(o => o.d);
+
+function buildForm() {
+  const box = document.getElementById('crit'), checks = document.getElementById('checks');
+  for (const c of CRITERES) {
+    const wrap = document.createElement('div');
+    wrap.dataset.pour = c.pour;
+    if (c.check) {
+      wrap.innerHTML = `<label><input type="checkbox" id="c_${c.id}"${saved[c.id] ? ' checked' : ''}> ${c.label}</label>`;
+      checks.append(wrap);
+    } else if (c.number) {
+      wrap.innerHTML = `<label>${c.label}</label><input type="number" min="0" id="c_${c.id}" placeholder="optionnel" value="${saved[c.id] ?? ''}">`;
+      box.append(wrap);
+    } else {
+      wrap.innerHTML = `<label>${c.label}</label><select id="c_${c.id}"></select>`;
+      box.append(wrap);
+    }
+    field(c.id).addEventListener('input', () => {
+      saved[c.id] = c.check ? field(c.id).checked : field(c.id).value;
+      try { localStorage.setItem('criteres-v2', JSON.stringify(saved)); } catch (e) {}
+      updateResult();
+    });
+  }
+  fillOptions();
+  syncForm();
+}
+// (Re)remplit les listes selon la zone (ex. « vue mer » hors Paris), en gardant le dernier choix de l'utilisateur
+function fillOptions() {
+  for (const c of CRITERES) {
+    if (!c.options) continue;
+    const opts = zoneOptions(c), want = String(saved[c.id] ?? field(c.id).value);
+    const keep = opts.find(o => String(o.k) === want) || opts.find(o => o.d);
+    field(c.id).innerHTML = opts.map(o => `<option value="${o.k}"${o === keep ? ' selected' : ''}>${o.l}</option>`).join('');
+  }
+}
+function syncForm() {
+  document.querySelectorAll('[data-pour]').forEach(el => el.hidden = !(el.dataset.pour === 'tous' || (el.dataset.pour === 'appart') === isAppart()));
+}
+
+function adjustments(base) {
+  const lines = [], add = (label, src, o) => lines.push({label, src: res(src), ...o});
+  for (const c of CRITERES) {
+    if (!visible(c)) continue;
+    if (c.check) {
+      if (c.maxSurf && base.surf > c.maxSurf) continue;
+      if (field(c.id).checked) res(c.abs) ? add(c.label, c.src, {abs: res(c.abs)}) : add(c.label, c.src, {p: res(c.p)});
+      continue;
+    }
+    if (c.special || !c.options) continue;
+    const o = selected(c), src = o.src || c.src;
+    const name = o.l.toLowerCase().startsWith(c.label.toLowerCase()) ? o.l : `${c.label} : ${lower(o.l)}`;
+    if (o.cout) {
+      // Décote = coût des travaux rapporté au prix du secteur (plafonnée à 40 %)
+      const cout = res(o.cout);
+      add(`${name} (≈ ${fmt(cout)} €/m² de travaux)`, src, {p: -Math.min(0.4, cout / base.med)});
+    } else if (res(o.abs)) add(name, src, {abs: res(o.abs)});
+    else if (res(o.p)) add(name, src, {p: res(o.p)});
+  }
+  const dpe = selected(crit('dpe')).k;
+  if (dpe !== '?' && dpe !== 'D') add(`DPE : ${dpe} (vs D)`, 'vv', {p: DPE[isAppart() ? 'appart' : 'maison'][state.zone][dpe]});
+  // Époque : divisée par deux si le DPE est connu, car une partie de l'écart tient déjà à la performance énergétique
+  const ep = selected(crit('epoque'));
+  let pe = res(ep.p);
+  if (pe) {
+    if (dpe !== '?') pe /= 2;
+    add(`Construction : ${lower(ep.l)}${dpe !== '?' ? ' (effet ½, DPE déjà compté)' : ''}`, 'nf', {p: pe});
+  }
+  if (isAppart()) {
+    const e = +selected(crit('etage')).k, asc = +selected(crit('ascenseur')).k;
+    const a = ETAGE[state.zone === 'paris' ? 'paris' : 'autre'][asc ? 'asc' : 'sans'][e];
+    if (a) add(e === 0 ? 'Rez-de-chaussée' : `${e === 6 ? '6e étage et +' : e === 1 ? '1er étage' : e + 'e étage'} ${asc ? 'avec' : 'sans'} ascenseur`, 'et', {p: a});
+  } else {
+    // Terrain comparé au terrain médian des maisons vendues autour (élasticité modérée, plafonnée à ±10 %)
+    const t = +field('terrain').value, ts = base.comps.filter(c => c.terrain > 0).map(c => [c.terrain, c.w]);
+    if (t > 0 && ts.length >= 5) {
+      const tMed = quantile(ts, 0.5), a = Math.max(-0.10, Math.min(0.10, 0.08 * Math.log(t / tMed)));
+      if (Math.abs(a) >= 0.005) add(`Terrain ${fmt(t)} m² (médiane du secteur ${fmt(tMed)} m²)`, 'dvf', {p: a});
+    }
+  }
+  return lines;
+}
+
+// Les critères se recoupent (une maison récente avec piscine et vue mer est souvent aussi lumineuse et
+// calme) et le prix du secteur inclut déjà des biens qui ont ces atouts. Dans chaque sens (atouts /
+// défauts), le critère le plus fort compte en entier, les suivants de moins en moins.
+const DECROISSANCE = [1, 0.75, 0.55, 0.4, 0.3, 0.25, 0.2];
+function dampen(lines) {
+  for (const sign of [1, -1]) {
+    lines.filter(l => l.p && Math.sign(l.p) === sign)
+      .sort((a, b) => Math.abs(b.p) - Math.abs(a.p))
+      .forEach((l, i) => l.eff = l.p * DECROISSANCE[Math.min(i, DECROISSANCE.length - 1)]);
+  }
+}
+const SEUIL_ATYPIQUE = 0.25;   // règle des évaluateurs : au-delà de ~25 % d'ajustements cumulés, les comparables ne comparent plus grand-chose
+
+function updateResult() {
+  const el = document.getElementById('res'), r = state.base;
+  if (!el || !r) return;
+  setTimeout(updateRent);
+  const lines = adjustments(r);
+  dampen(lines);
+  const raw = lines.reduce((f, l) => f * (1 + (l.p || 0)), 1);
+  const factor = Math.max(0.5, Math.min(1.6, lines.reduce((f, l) => f * (1 + (l.eff || 0)), 1)));
+  const abs = lines.reduce((s, l) => s + (l.abs || 0), 0);
+  const val = ppm => ppm * factor * r.surf + abs;
+  const prix = val(r.med);
+  // Bien atypique : fiabilité abaissée d'un cran et fourchette élargie
+  const gross = lines.reduce((s, l) => s + Math.abs(l.eff || 0), 0) + Math.abs(abs) / (r.med * r.surf);
+  const atypique = gross > SEUIL_ATYPIQUE, widen = atypique ? Math.min(0.15, (gross - SEUIL_ATYPIQUE) / 2) : 0;
+  const conf = !atypique ? r.conf : r.conf[0].endsWith('bonne') ? ['Fiabilité moyenne', 'var(--warn)'] : ['Fiabilité faible', 'var(--bad)'];
+  const damped = lines.some(l => l.eff != null && l.eff !== l.p);
+  const mob = selected(crit('mobilier')).m2 * r.surf;
+  state.prix = prix; state.mob = mob; state.factor = factor;
+  state.chambreEff = lines.find(l => l.src === 'chambre')?.eff || 0;
+  const used = [];
+  const ref = k => {
+    if (!k || !SOURCES[k]) return '';
+    if (!used.includes(k)) used.push(k);
+    return `<sup>${used.indexOf(k) + 1}</sup>`;
+  };
+  const rows = lines.map(l => `<div><span>${l.label}${ref(l.src)}${l.eff != null && l.eff !== l.p ? ` <small class="raw">(${pct(l.p)} seul)</small>` : ''}</span><b class="${(l.p || l.abs) > 0 ? 'up' : 'down'}">${l.abs ? eur(l.abs) : pct(l.eff)}</b></div>`).join('');
+  const zoneName = {paris: 'Paris', corse: 'Corse', autre: 'reste de la France'}[state.zone];
+  el.innerHTML = `
+    <div class="big">${fmtK(prix)}</div>
+    <div class="ppm">${fmt(prix / r.surf)} €/m²</div>
+    <div class="range">Fourchette : ${fmtK(val(r.p25) * (1 - widen))} – ${fmtK(val(r.p75) * (1 + widen))}</div>
+    <span class="conf" style="background:${conf[1]}">${conf[0]}</span>
+    ${atypique ? `<div class="warnbox">Bien atypique pour le secteur : ${pct(gross).replace('+', '')} d'ajustements cumulés. Les ventes autour lui ressemblent peu, la fourchette est élargie. Un avis de professionnel local est conseillé.</div>` : ''}
+    <div class="calc">
+      <div><span>Prix du marché du secteur (${fmt(r.med)} €/m²)</span><b>${fmtK(r.med * r.surf)}</b></div>
+      ${rows}
+      ${lines.length ? `<div class="tot"><span>Total des ajustements${damped ? ` <small class="raw">(cumul brut ${pct(raw - 1)})</small>` : ''}</span><b>${factor !== 1 ? pct(factor - 1) : ''}${abs ? ' ' + eur(abs) : ''}</b></div>${damped ? '<div class="note">Les critères se recoupent : le plus fort compte en entier, les suivants de moins en moins.</div>' : ''}` : '<div><span>Aucun ajustement : bien « moyen » du secteur</span></div>'}
+      ${mob ? `<div class="tot"><span>Mobilier (estimé à part)</span><b>+ ${fmtK(mob)}</b></div><div><span><b>Total avec mobilier</b></span><b>${fmtK(prix + mob)}</b></div>` : ''}
+    </div>
+    <div class="range">Coefficients : <b>${zoneName}</b>. Basé sur ${r.comps.length} ventes dans un rayon de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}, pondérées par distance, surface et ancienneté.</div>
+    ${Object.keys(r.trend).length ? `<div class="range">Prix actualisés au niveau ${r.refYear} selon l'évolution du secteur : ${Object.entries(r.trend).filter(([y]) => y !== r.refYear).map(([y, f]) => `ventes ${y} ${pct(f - 1)}`).join(', ')}.</div>` : ''}
+    ${mob ? '<div class="range">Bon à savoir : le mobilier listé à part dans l\'acte n\'est pas soumis aux frais de notaire.</div>' : ''}
+    ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
+}
+
+// --- Loyer : carte officielle des loyers (toute la France), ajustée selon les atouts du bien ---
+const LOYERS_API = 'https://tabular-api.data.gouv.fr/api/resources/';
+const CARTE = {   // ressources de la carte des loyers 2025 (loyers d'annonce charges comprises, logements vides)
+  all: '55b34088-0964-415f-9df7-d87dd98a09be',     // appartement type 52 m²
+  t12: '14a1fe11-b2d1-49b3-9f6b-83d12df9482c',     // 1-2 pièces, 37 m²
+  t3: '5e3b28a4-cf56-43a3-ae79-43cceeb27f8c',      // 3 pièces et +, 72 m²
+  maison: '129f764d-b613-44e4-952c-5ff50a8c9b73',  // maison type 92 m²
+};
+const CHARGES = {appart: {paris: 2.5, autre: 2.0}, maison: 0.5};   // €/m²/mois, pour l'affichage hors charges (estimation)
+const MEUBLE = {paris: 0.14, autre: 0.12};
+// Les atouts et défauts du bien jouent sur le loyer comme sur le prix, mais moins fort : un locataire paie
+// l'usage, pas la rareté. Élasticité calée sur les rares mesures directes (Homepilot : balcon +5,3 % de
+// loyer contre ≈ +8 % de prix ; rez-de-chaussée −6,8 % contre −10 %), soit ≈ 0,7.
+const ELASTICITE_LOYER = 0.7;
+// Petites surfaces : la carte regroupe 1 et 2 pièces (logement type 37 m²) et lisse la prime des studios.
+// Annonces actives à Paris (Hestia, mai 2026) : T1 de 20 m² à 48,9 €/m² contre 38,3 pour un T2 de 39 m², soit ≈ -0,35.
+const ELASTICITE_PETITS = -0.35;
+// Recalage de Paris sur les annonces actuelles : écart entre Hestia (T2, mai 2026) et le modèle, par arrondissement
+// [écart %, nb d'annonces]. Chaque écart est rapproché de la médiane parisienne (+4,3 %) quand il repose sur peu d'annonces.
+const RECALAGE_PARIS = {5: [14.3, 12], 7: [3.7, 13], 4: [-1.4, 12], 16: [11.4, 22], 13: [11.8, 22], 17: [4.9, 56], 9: [-1.1, 15],
+  15: [4.4, 44], 10: [4.3, 26], 12: [5.2, 22], 11: [1.3, 28], 19: [9.1, 23], 18: [2.5, 49], 14: [-4.5, 27], 20: [1.1, 25]};
+const RECALAGE_MEDIAN = 4.3;
+// Corse (Hestia ne couvre pas l'île) : écart entre SeLoger (janv. 2026) et la carte, en %, plafonné à ±15 %
+const RECALAGE_CORSE = {'2A004': {appart: 0, maison: -8.2}, '2B033': {appart: 4.8, maison: 15}};
+function recalage(insee) {
+  if (/^751\d\d$/.test(insee || '')) {
+    const [e, n] = RECALAGE_PARIS[+insee.slice(3)] || [RECALAGE_MEDIAN, 0];
+    return {f: 1 + (e * n + RECALAGE_MEDIAN * 20) / (n + 20) / 100, src: 'hestia'};
+  }
+  const c = RECALAGE_CORSE[insee];
+  if (c) return {f: 1 + c[isAppart() ? 'appart' : 'maison'] / 100, src: 'slcorse'};
+  return {f: 1, src: null};
+}
+
+const memo = new Map();
+const once = (key, fn) => {
+  if (!memo.has(key)) { const p = fn(); memo.set(key, p); p.catch(() => memo.delete(key)); }
+  return memo.get(key);
+};
+const cityCode = (lat, lon) => once(`city:${lat.toFixed(5)},${lon.toFixed(5)}`, async () =>
+  (await getJSON(`https://data.geopf.fr/geocodage/reverse?lon=${lon}&lat=${lat}&limit=1`)).features[0]?.properties.citycode);
+const carte = (rid, insee) => once(`carte:${rid}:${insee}`, async () =>
+  (await getJSON(`${LOYERS_API}${rid}/data/?INSEE_C__exact=${insee}`)).data[0]);
+
+// Loyer au m² charges comprises pour la surface exacte : interpolation (en log) entre l'indicateur
+// 1-2 pièces (37 m²) et 3 pièces et + (72 m²) ; maisons : indicateur 92 m² avec élasticité -0,15.
+function loyerM2(rows, surf) {
+  const keys = ['loypredm2', 'lwr.IPm2', 'upr.IPm2'];
+  if (isAppart() && rows.t12 && rows.t3) {
+    const s = Math.max(12, Math.min(150, surf));
+    const t = (Math.log(Math.max(37, s)) - Math.log(37)) / (Math.log(72) - Math.log(37));
+    const petit = s < 37 ? Math.pow(s / 37, ELASTICITE_PETITS) : 1;
+    const [m2, lo, hi] = keys.map(k => Math.exp(Math.log(rows.t12[k]) + (Math.log(rows.t3[k]) - Math.log(rows.t12[k])) * t) * petit);
+    return {m2, lo, hi, row: rows.all || rows.t12};
+  }
+  const row = isAppart() ? rows.all : rows.maison, ref = isAppart() ? 52 : 92;
+  if (!row) return null;
+  const f = Math.pow(Math.max(15, Math.min(250, surf)) / ref, isAppart() ? -0.25 : -0.15);
+  const [m2, lo, hi] = keys.map(k => row[k] * f);
+  return {m2, lo, hi, row};
+}
+
+async function updateRent() {
+  const el = document.getElementById('rent'), r = state.base;
+  if (!el || !r) return;
+  const token = state.rentRun = (state.rentRun || 0) + 1;
+  if (!el.innerHTML) el.innerHTML = '<div class="empty">Estimation du loyer…</div>';
+  try {
+    // Commune du point ; en pleine campagne (aucune adresse proche), celle de la vente la plus proche
+    const insee = await cityCode(state.lat, state.lon).catch(() => null)
+      || [...r.comps].sort((a, b) => a.d - b.d)[0]?.insee;
+    if (!insee) throw new Error('commune introuvable');
+    const rows = isAppart()
+      ? Object.fromEntries(await Promise.all(['all', 't12', 't3'].map(async k => [k, await carte(CARTE[k], insee)])))
+      : {maison: await carte(CARTE.maison, insee)};
+    if (token !== state.rentRun) return;
+    const lm = loyerM2(rows, r.surf);
+    if (!lm) { el.innerHTML = '<div class="empty">Pas d\'indicateur de loyer pour cette commune.</div>'; return; }
+    renderRent(el, r, lm, insee);
+  } catch (e) {
+    if (token === state.rentRun) el.innerHTML = `<div class="empty">Loyer indisponible pour le moment (${e.message}).</div>`;
+  }
+}
+
+function renderRent(el, r, lm, insee) {
+  const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
+  const meuble = selected(crit('location')).k === 'meuble';
+  const charges = isAppart() ? CHARGES.appart[z] : CHARGES.maison;
+  // Atouts / défauts : même facteur que pour le prix (déjà amorti), atténué pour le loyer
+  // (la chambre séparée est retirée ici puis appliquée en entier plus bas)
+  let qual = Math.pow((state.factor || 1) / (1 + (state.chambreEff || 0)), ELASTICITE_LOYER);
+  // Studios (≤ 35 m²) : la demande est telle que les défauts pèsent deux fois moins
+  const petit = isAppart() && surf <= 35 && qual < 1;
+  if (petit) qual = 1 - (1 - qual) / 2;
+  const chambre = isAppart() && surf <= 40 && field('chambre').checked;
+  if (chambre) qual *= 1.05;   // atout d'usage : compte en entier sur le loyer
+  const {f: actu, src: actuSrc} = recalage(insee);
+  const factor = qual * (meuble ? 1 + MEUBLE[z] : 1);
+  // Parking : à Paris il se loue à part (~150 €/mois) ; ailleurs il est déjà dans le facteur du bien
+  const nbPk = isAppart() ? {'1': 1, '2': 2}[selected(crit('parking')).k] || 0 : 0;
+  const pkM = z === 'paris' ? nbPk * 150 : 0;
+  const cc = m2 => m2 * actu * factor * surf + pkM;
+  const CC = cc(lm.m2), lo = cc((lm.m2 + lm.lo) / 2), hi = cc((lm.m2 + lm.hi) / 2);
+  const HC = CC - charges * surf;
+  const prixRef = state.prix + (meuble ? state.mob : 0);
+  const rdt = HC * 12 / prixRef;
+  const used = [];
+  const ref = k => { if (!k || !SOURCES[k]) return ''; if (!used.includes(k)) used.push(k); return `<sup>${used.indexOf(k) + 1}</sup>`; };
+  const dpe = selected(crit('dpe')).k, etat = selected(crit('etat')).k;
+  const fiable = lm.row.TYPPRED === 'commune' && lm.row.nbobs_com >= 30 && lm.row.R2_adj >= 0.5;
+
+  let alerts = '';
+  if (dpe === 'G') alerts += `<div class="alert"><b>Location interdite</b> depuis le 1er janvier 2025 pour un logement classé G (non décent)${ref('loi')}. Le loyer indiqué suppose des travaux pour sortir de G.</div>`;
+  if (dpe === 'F') alerts += `<div class="warnbox">Classé F : loyer gelé (aucune hausse possible) depuis août 2022, et location interdite à partir du 1er janvier 2028${ref('loi')}.</div>`;
+  if (dpe === 'E') alerts += `<div class="warnbox">Classé E : location interdite à partir de 2034${ref('loi')}.</div>`;
+  if (etat === 'renover') alerts += '<div class="warnbox">À rénover entièrement : en l\'état, le logement n\'est probablement pas louable (critères de décence).</div>';
+
+  const m2 = v => v.toFixed(1).replace('.', ',');
+  el.innerHTML = `
+    <h3>Loyer estimé — location ${meuble ? 'meublée' : 'vide'}</h3>
+    <div class="big">${fmt(CC)} € <small>/ mois charges comprises</small></div>
+    <div class="ppm">${m2((CC - pkM) / surf)} €/m² · ≈ ${fmt(HC)} € hors charges</div>
+    <div class="range">Fourchette : ${fmt(lo)} – ${fmt(hi)} € / mois</div>
+    <div class="range">Rendement brut : <b>${(rdt * 100).toFixed(1).replace('.', ',')} %</b> (loyer hors charges annuel ÷ prix estimé${meuble && state.mob ? ' + mobilier' : ''})</div>
+    <div class="calc">
+      <div><span>Loyer de marché de la commune${ref('carte')} (${m2(lm.m2)} €/m² pour ${fmt(surf)} m²${isAppart() && surf < 37 ? `, prime des petites surfaces${ref('hestia')}` : ''})</span><b>${fmt(lm.m2 * surf)} €</b></div>
+      ${actu !== 1 ? `<div><span>Recalage sur les annonces récentes du secteur${ref(actuSrc)}</span><b class="${actu > 1 ? 'up' : 'down'}">${pct(actu - 1)}</b></div>` : ''}
+      ${Math.abs(qual - 1) > 0.001 ? `<div><span>Atouts et défauts du bien${ref('calib')} <small class="raw">(${pct(state.factor - 1)} sur le prix${petit ? ', défauts moitié moins pour un studio' : ''}${chambre ? ', chambre séparée +5 %' : ''})</small>${petit ? ref('et') : ''}</span><b class="${qual > 1 ? 'up' : 'down'}">${pct(qual - 1)}</b></div>` : ''}
+      ${meuble ? `<div><span>Meublé${ref(z === 'paris' ? 'apur' : 'est')}</span><b class="up">${pct(MEUBLE[z])}</b></div>` : ''}
+      ${pkM ? `<div><span>Parking loué avec${ref('yespark')}</span><b class="up">+ ${fmt(pkM)} €</b></div>` : ''}
+    </div>
+    ${alerts}
+    <div class="range">${fiable ? `Indicateur communal fiable (${fmt(lm.row.nbobs_com)} annonces, 2019-2025).` : `Indicateur peu précis : ${lm.row.TYPPRED === 'commune' ? 'peu d\'annonces dans la commune' : 'commune estimée à partir des communes voisines'} (${fmt(lm.row.nbobs_com)} annonces).`} Hors charges : charges estimées à ${charges.toLocaleString('fr-FR')} €/m²/mois.</div>
+    ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
+}
+
+// --- Carte ---
+const map = L.map('map').setView([46.6, 2.4], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
+layer.addTo(map);
+function setPoint(lat, lon, zoom) {
+  state.lat = lat; state.lon = lon;
+  if (pin) pin.remove();
+  pin = L.marker([lat, lon]).addTo(map);
+  map.setView([lat, lon], zoom || Math.max(map.getZoom(), 15));
+  estimate();
+}
+map.on('click', e => setPoint(e.latlng.lat, e.latlng.lng, map.getZoom()));
+
+// --- Recherche d'adresse (Géoplateforme IGN) ---
+const addr = document.getElementById('addr'), sugg = document.getElementById('sugg');
+let timer, geoRun = 0;
+const geocode = async q => (await (await fetch('https://data.geopf.fr/geocodage/search?limit=8&q=' + encodeURIComponent(q))).json()).features;
+async function searchNow() {
+  const q = addr.value.trim();
+  if (q.length < 3) return;
+  clearTimeout(timer); sugg.hidden = true; geoRun++;
+  const out = document.getElementById('out');
+  try {
+    const feats = await geocode(q), f = feats[0];
+    if (!f) { out.innerHTML = '<div class="empty">Adresse introuvable. Essaie avec le code postal ou la ville.</div>'; return; }
+    // Plusieurs adresses presque aussi probables (ex. même rue dans deux villes) : on laisse choisir
+    const close = feats.filter(g => f.properties.score - g.properties.score < 0.05);
+    if (close.length > 1) { showSuggestions(close, 'Plusieurs adresses correspondent, choisis la bonne :'); return; }
+    addr.value = f.properties.label;
+    setPoint(f.geometry.coordinates[1], f.geometry.coordinates[0], 16);
+  } catch (e) { out.innerHTML = '<div class="empty">Recherche d\'adresse indisponible : clique sur la carte.</div>'; }
+}
+function showSuggestions(feats, title) {
+  sugg.innerHTML = (title ? `<li class="title">${title}</li>` : '') +
+    (feats.length ? feats.map((f, k) => `<li data-k="${k}">${f.properties.label}</li>`).join('') : '<li>Aucune adresse trouvée</li>');
+  sugg.hidden = false;
+  sugg.querySelectorAll('li[data-k]').forEach(li => li.onclick = () => {
+    const f = feats[+li.dataset.k];
+    addr.value = f.properties.label; sugg.hidden = true;
+    setPoint(f.geometry.coordinates[1], f.geometry.coordinates[0], 16);
+  });
+}
+document.getElementById('go').onclick = searchNow;
+addr.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchNow(); } });
+addr.addEventListener('input', () => {
+  clearTimeout(timer);
+  const q = addr.value.trim();
+  if (q.length < 4) { sugg.hidden = true; return; }
+  timer = setTimeout(async () => {
+    try {
+      const my = ++geoRun, feats = await geocode(q);
+      if (my !== geoRun) return;
+      showSuggestions(feats);
+    } catch (e) { sugg.innerHTML = '<li>Recherche indisponible — clique sur la carte.</li>'; sugg.hidden = false; }
+  }, 250);
+});
+document.addEventListener('click', e => { if (!e.target.closest('.sugg')) sugg.hidden = true; });
+
+// --- Paramètres ---
+document.querySelectorAll('#type button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x === b));
+  state.type = b.dataset.v; syncForm(); estimate();
+});
+buildForm();
+let debounce;
+['surf', 'since'].forEach(id => document.getElementById(id).addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(estimate, 400); }));
+</script>
+</body>
+</html>
