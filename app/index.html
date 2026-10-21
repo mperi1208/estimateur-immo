@@ -23,6 +23,18 @@ aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto
 #map{height:100%;min-height:320px}
 h1{font-size:20px;margin:0 0 2px}
 .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.titre-ligne{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.titre-ligne h1{margin:0}
+.recentes-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.recentes-btn[aria-expanded="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.recentes{margin:10px 0 4px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+.recentes button.rec{display:block;width:100%;text-align:left;padding:9px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);font:inherit;cursor:pointer}
+.recentes button.rec:hover{background:var(--accent-soft)}
+.recentes .rec b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recentes .rec span{font-size:12px;color:var(--muted)}
+.recentes .bas{display:flex;justify-content:space-between;padding:6px 12px;font-size:12px;color:var(--muted)}
+.recentes .bas button{border:0;background:none;color:var(--muted);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+#go{margin-top:14px;padding:12px;font-size:16px}
 label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 4px}
 input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -178,6 +190,26 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .doc .nom{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .invwrap .doc .meta{color:var(--muted)}
 .invwrap .pied{margin-top:20px;text-align:right}
+.invwrap .sous-titre{font-size:17px;margin:22px 0 10px}
+.invwrap .liste-tete{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.invwrap .filtres{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 10px}
+.invwrap .filtres button{padding:5px 12px;border-radius:99px;font-size:13px}
+.invwrap .filtres button span{color:var(--muted);margin-left:2px}
+.invwrap .filtres button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.invwrap .filtres button.on span{color:rgba(255,255,255,.8)}
+.invwrap .scis{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.invwrap a.sci{display:grid;grid-template-columns:48px minmax(0,1fr) 16px;gap:12px;align-items:center;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;color:inherit;text-decoration:none}
+.invwrap a.sci:hover{border-color:var(--accent)}
+.invwrap a.sci .ico{width:48px;height:48px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.invwrap a.sci .ico svg{width:28px;height:28px}
+.invwrap a.sci .infos span{font-size:12px;color:var(--muted)}
+.invwrap a.sci .chiffres{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:8px;border-top:1px solid var(--line)}
+.invwrap a.sci .chev{grid-column:3;grid-row:1}
+.invwrap .vignette.sciv svg{width:40px;height:40px}
+.invwrap .associe{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.invwrap .associe .part{font-size:13px;color:var(--muted);margin:6px 0 4px}
+.invwrap .boutons.centre{justify-content:center}
+.invwrap .bloc .liste{margin-bottom:10px}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 
 [hidden]{display:none!important}
@@ -270,14 +302,14 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 </dialog>
 <div class="wrap" id="estim">
 <aside>
-  <h1>Estimer un bien</h1>
+  <div class="titre-ligne"><h1>Estimer un bien</h1><button id="recentesBtn" class="recentes-btn" hidden aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Récentes</button></div>
+  <div id="recentes" class="recentes" hidden></div>
   <div class="sub">Prix et loyer à partir des ventes réelles (DVF), partout en France</div>
 
   <label>Adresse</label>
   <div class="sugg">
     <div class="search">
       <input id="addr" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off">
-      <button id="go">Rechercher</button>
     </div>
     <ul id="sugg" hidden></ul>
   </div>
@@ -303,7 +335,9 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div id="critCache" hidden></div>
   </details>
 
-  <div id="out"><div class="empty">Choisis une adresse pour lancer l'estimation.</div></div>
+  <button class="cta" id="go">Rechercher</button>
+
+  <div id="out"><div class="empty">Renseigne l'adresse et les détails du bien, puis clique sur « Rechercher ».</div></div>
 
 </aside>
 <div id="map"></div>
@@ -527,7 +561,7 @@ const CRITERES = [
 const fmt = n => Math.round(n).toLocaleString('fr-FR');
 const fmtK = n => n >= 1e6 ? (n / 1e6).toLocaleString('fr-FR', {maximumFractionDigits: 2}) + ' M€' : fmt(n / 1000) + ' k€';
 const fmtDate = s => new Date(s).toLocaleDateString('fr-FR', {month: 'short', year: 'numeric'});
-const state = {type: '121', lat: null, lon: null, run: 0, zone: 'autre'};
+const state = {type: '121', lat: null, lon: null, run: 0, zone: 'autre', lance: false, adresse: null};
 const cache = new Map();
 
 const getJSON = url => fetch(url.replace(/^http:/, 'https:')).then(r => { if (!r.ok) throw new Error('API ' + r.status); return r.json(); });
@@ -671,7 +705,7 @@ async function ventesPourIndice(trouvees, yearMin) {
 }
 
 async function estimate() {
-  if (state.lat == null) return;
+  if (state.lat == null || !state.lance) return;   // rien avant le premier clic sur « Rechercher »
   const surf = +document.getElementById('surf').value;
   if (!(surf >= 9)) return;
   const run = ++state.run, type = state.type;
@@ -1254,6 +1288,7 @@ function renderSynth() {
       <span class="louer">Louer <span class="seg mini" id="louer"><button data-v="vide"${meuble ? '' : ' class="on"'}>Vide</button><button data-v="meuble"${meuble ? ' class="on"' : ''}>Meublé</button></span></span>
     </div>
     ${alertes.join('')}`;
+  memoriser();
   el.querySelectorAll('#louer button').forEach(b => b.onclick = () => {
     field('location').value = b.dataset.v;
     field('location').dispatchEvent(new Event('input'));
@@ -1264,13 +1299,20 @@ function renderSynth() {
 const map = L.map('map').setView([46.6, 2.4], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
 layer.addTo(map);
-function setPoint(lat, lon, zoom) {
+// Place le point sans lancer l'estimation (on règle d'abord les détails du bien)
+function placer(lat, lon, zoom, label) {
   choixTravaux = {}; try { localStorage.removeItem('travaux-choix'); } catch (e) {}
-  state.lat = lat; state.lon = lon;
+  state.lat = lat; state.lon = lon; state.adresse = label; state.lance = false; state.base = null; state.run++;
   if (pin) pin.remove();
   pin = L.marker([lat, lon]).addTo(map);
+  layer.clearLayers(); if (circle) { circle.remove(); circle = null; }
   map.setView([lat, lon], zoom || Math.max(map.getZoom(), 15));
-  estimate();
+  document.getElementById('out').innerHTML = '<div class="empty">Adresse trouvée. Règle les détails du bien, puis clique sur « Rechercher ».</div>';
+}
+// Clic sur la carte : place le point et estime tout de suite
+function setPoint(lat, lon, zoom) {
+  placer(lat, lon, zoom, addr.value.trim());
+  state.lance = true; estimate();
 }
 map.on('click', e => setPoint(e.latlng.lat, e.latlng.lng, map.getZoom()));
 
@@ -1278,33 +1320,41 @@ map.on('click', e => setPoint(e.latlng.lat, e.latlng.lng, map.getZoom()));
 const addr = document.getElementById('addr'), sugg = document.getElementById('sugg');
 let timer, geoRun = 0;
 const geocode = async q => (await (await fetch('https://data.geopf.fr/geocodage/search?limit=8&q=' + encodeURIComponent(q))).json()).features;
-async function searchNow() {
-  const q = addr.value.trim();
-  if (q.length < 3) return;
+// Trouve l'adresse tapée ; true si un seul résultat clair (sinon on propose les adresses possibles)
+async function localiser(q, lancerApres) {
   clearTimeout(timer); sugg.hidden = true; geoRun++;
   const out = document.getElementById('out');
   try {
     const feats = await geocode(q), f = feats[0];
-    if (!f) { out.innerHTML = '<div class="empty">Adresse introuvable. Essaie avec le code postal ou la ville.</div>'; return; }
+    if (!f) { out.innerHTML = '<div class="empty">Adresse introuvable. Essaie avec le code postal ou la ville.</div>'; return false; }
     // Plusieurs adresses presque aussi probables (ex. même rue dans deux villes) : on laisse choisir
     const close = feats.filter(g => f.properties.score - g.properties.score < 0.05);
-    if (close.length > 1) { showSuggestions(close, 'Plusieurs adresses correspondent, choisis la bonne :'); return; }
+    if (close.length > 1) { showSuggestions(close, 'Plusieurs adresses correspondent, choisis la bonne :', lancerApres); return false; }
     addr.value = f.properties.label;
-    setPoint(f.geometry.coordinates[1], f.geometry.coordinates[0], 16);
-  } catch (e) { out.innerHTML = '<div class="empty">Recherche d\'adresse indisponible : clique sur la carte.</div>'; }
+    placer(f.geometry.coordinates[1], f.geometry.coordinates[0], 16, f.properties.label);
+    return true;
+  } catch (e) { out.innerHTML = '<div class="empty">Recherche d\'adresse indisponible : clique sur la carte.</div>'; return false; }
 }
-function showSuggestions(feats, title) {
+// « Rechercher » : localise l'adresse si elle a changé, puis lance l'estimation avec les détails réglés
+async function lancer() {
+  const q = addr.value.trim();
+  if (q.length >= 3 && q !== state.adresse) { if (!await localiser(q, true)) return; }
+  else if (state.lat == null) { document.getElementById('out').innerHTML = '<div class="empty">Tape une adresse (ou clique sur la carte).</div>'; return; }
+  state.lance = true; estimate();
+}
+function showSuggestions(feats, title, lancerApres = false) {
   sugg.innerHTML = (title ? `<li class="title">${title}</li>` : '') +
-    (feats.length ? feats.map((f, k) => `<li data-k="${k}">${f.properties.label}</li>`).join('') : '<li>Aucune adresse trouvée</li>');
+    (feats.length ? feats.map((f, k) => `<li data-k="${k}">${esc(f.properties.label)}</li>`).join('') : '<li>Aucune adresse trouvée</li>');
   sugg.hidden = false;
   sugg.querySelectorAll('li[data-k]').forEach(li => li.onclick = () => {
     const f = feats[+li.dataset.k];
     addr.value = f.properties.label; sugg.hidden = true;
-    setPoint(f.geometry.coordinates[1], f.geometry.coordinates[0], 16);
+    placer(f.geometry.coordinates[1], f.geometry.coordinates[0], 16, f.properties.label);
+    if (lancerApres) { state.lance = true; estimate(); }
   });
 }
-document.getElementById('go').onclick = searchNow;
-addr.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchNow(); } });
+document.getElementById('go').onclick = lancer;
+addr.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); lancer(); } });
 addr.addEventListener('input', () => {
   clearTimeout(timer);
   const q = addr.value.trim();
@@ -1318,6 +1368,75 @@ addr.addEventListener('input', () => {
   }, 250);
 });
 document.addEventListener('click', e => { if (!e.target.closest('.sugg')) sugg.hidden = true; });
+
+// --- Recherches récentes (sur l'appareil, et dans le compte une fois connecté) ---
+const RECENTES = {
+  liste: [],
+  charger() { try { const v = JSON.parse(localStorage.getItem('recherches-v1') || '[]'); this.liste = Array.isArray(v) ? v : []; } catch (e) { this.liste = []; } },
+  garder() { try { localStorage.setItem('recherches-v1', JSON.stringify(this.liste)); } catch (e) {} majRecentes(); },
+  enregistrer() { this.garder(); if (window.INV) INV.sauverCompte(); },
+  // Fusion avec celles du compte : la plus récente de chaque recherche gagne
+  fusionner(autres) {
+    const m = new Map();
+    [...this.liste, ...(Array.isArray(autres) ? autres : [])].forEach(r => { const x = m.get(r.cle); if (!x || x.quand < r.quand) m.set(r.cle, r); });
+    this.liste = [...m.values()].sort((a, b) => b.quand.localeCompare(a.quand)).slice(0, 20);
+    this.garder();
+  },
+};
+let memoMinuteur;
+// Appelé à chaque nouveau résultat : garde la dernière version de la recherche (détails compris)
+function memoriser() {
+  clearTimeout(memoMinuteur);
+  memoMinuteur = setTimeout(() => {
+    if (!state.base || state.prix == null || state.lat == null) return;
+    const cle = `${state.lat.toFixed(5)},${state.lon.toFixed(5)},${state.type}`;
+    const r = {cle, label: addr.value.trim() || 'Point choisi sur la carte', lat: state.lat, lon: state.lon, type: state.type,
+      surf: +document.getElementById('surf').value, since: document.getElementById('since').value, criteres: {...saved},
+      prix: Math.round(state.prix), loyer: state.loyerHC ? Math.round(state.loyerHC) : null, quand: new Date().toISOString()};
+    RECENTES.liste = [r, ...RECENTES.liste.filter(x => x.cle !== cle)].slice(0, 20);
+    RECENTES.enregistrer();
+  }, 1500);
+}
+const ilYa = iso => {
+  const min = (Date.now() - new Date(iso)) / 60000, f = new Intl.RelativeTimeFormat('fr', {numeric: 'auto'});
+  return min < 1 ? 'à l\'instant' : min < 60 ? f.format(-Math.round(min), 'minute') : min < 1440 ? f.format(-Math.round(min / 60), 'hour') : f.format(-Math.round(min / 1440), 'day');
+};
+function majRecentes() {
+  const btn = document.getElementById('recentesBtn'), pan = document.getElementById('recentes');
+  btn.hidden = !RECENTES.liste.length;
+  if (!RECENTES.liste.length) { pan.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+  pan.innerHTML = RECENTES.liste.map((r, i) => {
+    const n = CRITERES.filter(c => !c.cache && r.criteres[c.id] != null && r.criteres[c.id] !== '' && r.criteres[c.id] !== false
+      && String(r.criteres[c.id]) !== String((c.options || []).find(o => o.d)?.k)).length;
+    return `<button class="rec" data-i="${i}"><b>${esc(r.label)}</b><span>${r.type === '111' ? 'Maison' : 'Appartement'} · ${fmt(r.surf)} m²${n ? ` · ${n} détail${n > 1 ? 's' : ''}` : ''} · ${fmtK(r.prix)}${r.loyer ? ` · ${fmt(r.loyer)} €/mois` : ''} · ${ilYa(r.quand)}</span></button>`;
+  }).join('') + `<div class="bas"><span>Gardées sur cet appareil${typeof COMPTE !== 'undefined' && COMPTE.user ? ' et dans ton compte' : ''}</span><button id="recentesVider">Effacer</button></div>`;
+  pan.querySelectorAll('button.rec').forEach(b => b.onclick = () => reprendre(RECENTES.liste[+b.dataset.i]));
+  pan.querySelector('#recentesVider').onclick = () => { if (confirm('Effacer les recherches récentes ?')) { RECENTES.liste = []; RECENTES.enregistrer(); } };
+}
+// Remet tout comme lors de la recherche (adresse, type, surface, détails), puis relance
+function reprendre(r) {
+  document.getElementById('recentes').hidden = true; document.getElementById('recentesBtn').setAttribute('aria-expanded', 'false');
+  addr.value = r.label === 'Point choisi sur la carte' ? '' : r.label;
+  document.getElementById('surf').value = r.surf;
+  document.getElementById('since').value = r.since || 'auto';
+  state.type = r.type;
+  document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x.dataset.v === r.type));
+  saved = {...r.criteres};
+  try { localStorage.setItem('criteres-v2', JSON.stringify(saved)); } catch (e) {}
+  syncForm(); fillOptions();
+  CRITERES.filter(c => c.check).forEach(c => field(c.id).checked = !!saved[c.id]);
+  CRITERES.filter(c => c.number).forEach(c => field(c.id).value = saved[c.id] ?? '');
+  majAffiner();
+  placer(r.lat, r.lon, 16, addr.value.trim());
+  state.lance = true; estimate();
+  window.scrollTo(0, 0);
+}
+document.getElementById('recentesBtn').onclick = () => {
+  const pan = document.getElementById('recentes'), b = document.getElementById('recentesBtn');
+  pan.hidden = !pan.hidden; b.setAttribute('aria-expanded', String(!pan.hidden));
+};
+RECENTES.charger();
+setTimeout(majRecentes);   // après le chargement des autres scripts (esc, COMPTE)
 
 // --- Paramètres ---
 document.querySelectorAll('#type button').forEach(b => b.onclick = () => {
@@ -1951,7 +2070,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=1"></script>
+<script src="investissements.js?v=3"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
