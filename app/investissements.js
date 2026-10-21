@@ -222,7 +222,7 @@ const erreurDocs = e => /bucket not found|not found/i.test((e && e.message) || '
 // Le même moteur que l'onglet Estimer, chargé dans un cadre caché : il ne touche ni à la recherche en cours,
 // ni aux réglages enregistrés. Une estimation à la fois.
 const moteur = {
-  pret: null, file: Promise.resolve(),
+  pret: null, cadre: null, file: Promise.resolve(),
   charger() {
     if (!this.pret) this.pret = new Promise((ok, ko) => {
       const f = Object.assign(document.createElement('iframe'), {src: 'index.html?moteur=1', tabIndex: -1, title: 'moteur d\'estimation'});
@@ -232,15 +232,24 @@ const moteur = {
         const t0 = Date.now();
         (function attendre() { if (f.contentWindow.estimerPour) ok(f.contentWindow); else if (Date.now() - t0 > 20000) ko(new Error('moteur d\'estimation indisponible')); else setTimeout(attendre, 100); })();
       };
-      document.body.append(f);
+      document.body.append(f); this.cadre = f;
     }).catch(e => { this.pret = null; throw e; });
     return this.pret;
   },
   estimer(params) {
-    const r = this.file.then(async () => (await this.charger()).estimerPour(params));
+    const r = this.file.then(async () => {
+      const w = await this.charger();
+      let minuteur;
+      try {
+        return await Promise.race([w.estimerPour(params), new Promise((_, ko) => { minuteur = setTimeout(() => ko(new Error('trop long')), 90000); })]);
+      } finally { clearTimeout(minuteur); }
+    });
     this.file = r.catch(() => {});
+    // Bloqué (service des ventes qui ne répond pas) : on repart d'un cadre neuf pour la prochaine fois
+    r.catch(e => { if (e.message === 'trop long') this.reinitialiser(); });
     return r;
   },
+  reinitialiser() { if (this.cadre) this.cadre.remove(); this.cadre = null; this.pret = null; },
 };
 const TYPE_DVF = {appart: '121', maison: '111'};
 const EPOQUES = [[1914, 'av1914'], [1948, '1914'], [1970, '1948'], [1981, '1970'], [1992, '1981'], [Infinity, '1992']];
@@ -251,22 +260,9 @@ function criteresEffectifs(b) {
 }
 const cleEstimation = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);
 const estimable = b => TYPE_DVF[b.type] && b.adresse.trim().length >= 5 && b.surface >= 9;
-const enCours = new Set(), minuteursEst = {};
-// À (re)faire : jamais estimé, caractéristiques changées, plus d'un mois, ou échec de la veille
-function aEstimer(b) {
-  if (!estimable(b) || enCours.has(b.id)) return false;
-  const e = b.estimation;
-  if (!e || e.cle !== cleEstimation(b)) return true;
-  const age = (Date.now() - new Date(e.le)) / 864e5;
-  return e.erreur ? age >= 1 : age > 30;
-}
-function planifierEstimation(b, delai = 1200) {
-  clearTimeout(minuteursEst[b.id]);
-  if (!estimable(b)) { majAuto(b); return; }
-  minuteursEst[b.id] = setTimeout(() => estimerBien(b), delai);
-}
+const enCours = new Set();
 async function estimerBien(b) {
-  if (!estimable(b)) return;
+  if (!estimable(b) || enCours.has(b.id)) return;
   const cle = cleEstimation(b);
   enCours.add(b.id); majAuto(b);
   const le = new Date().toISOString().slice(0, 10);
@@ -277,11 +273,10 @@ async function estimerBien(b) {
       b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
     }
     const res = await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
-    if (cleEstimation(b) !== cle) return;   // modifié entre-temps : une autre estimation suit
     b.estimation = res.erreur ? {erreur: res.erreur, cle, le} : {...res, cle, le};
     if (!res.erreur && !b.valeurManuelle) { b.valeur = res.prix; b.valeurLe = moisCourant(); }
   } catch (e) {
-    if (cleEstimation(b) === cle) b.estimation = {erreur: e.message || String(e), cle, le};
+    b.estimation = {erreur: e.message === 'trop long' ? 'L\'estimation a pris trop de temps (le service des ventes répond mal). Réessaie dans un instant.' : e.message || String(e), cle, le};
   } finally {
     enCours.delete(b.id);
   }
@@ -292,25 +287,40 @@ async function estimerBien(b) {
 let minuteurListe;
 const vueListeBientot = () => { clearTimeout(minuteurListe); minuteurListe = setTimeout(() => { if (!ouvert) vueListe(); }, 300); };
 // Bloc « Estimation automatique » de la fiche
+let chrono = null;
 function majAuto(b) {
   const el = racine.querySelector('#inv_auto'); if (!el || ouvert !== b.id) return;
-  const e = b.estimation, a_jour = e && e.cle === cleEstimation(b);
+  clearInterval(chrono);
+  const e = b.estimation, a_jour = e && e.cle === cleEstimation(b), btn = racine.querySelector('#inv_estimer');
+  // Le bouton en bas des caractéristiques : seul moyen de lancer l'estimation
+  if (btn) {
+    btn.disabled = !estimable(b) || enCours.has(b.id);
+    btn.textContent = enCours.has(b.id) ? 'Estimation en cours…' : !estimable(b) ? 'Estimer ce bien (adresse et surface à remplir)' : e && !e.erreur && a_jour ? 'Estimer à nouveau' : 'Estimer ce bien';
+  }
   let h;
-  if (!TYPE_DVF[b.type]) h = '<div class="aide">Estimation automatique disponible pour les appartements et les maisons.</div>';
-  else if (!estimable(b)) h = '<div class="aide">Renseigne l\'adresse et la surface : le bien sera estimé automatiquement, comme dans l\'onglet Estimer.</div>';
-  else if (enCours.has(b.id) || (!a_jour && !e)) h = '<div class="auto-cours"><span class="rond"></span>Estimation en cours…</div>';
-  else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)} <button class="lien" data-a="reestimer">Réessayer</button></div>`;
+  if (!TYPE_DVF[b.type]) h = '<div class="aide">Estimation disponible pour les appartements et les maisons.</div>';
+  else if (enCours.has(b.id)) {
+    const t0 = Date.now();
+    h = '<div class="auto-cours"><span class="rond"></span>Recherche des ventes comparables… <span id="inv_chrono"></span></div>';
+    chrono = setInterval(() => {
+      const c = racine.querySelector('#inv_chrono'); if (!c || !enCours.has(b.id)) return clearInterval(chrono);
+      const t = Math.round((Date.now() - t0) / 1000);
+      c.textContent = t + ' s' + (t >= 20 ? ' (le service des ventes répond lentement)' : '');
+    }, 1000);
+  }
+  else if (!e) h = `<div class="aide">${estimable(b) ? 'Règle les caractéristiques, puis clique sur « Estimer ce bien ».' : 'Renseigne l\'adresse et la surface, règle les caractéristiques, puis clique sur « Estimer ce bien ».'}</div>`;
+  else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)}</div>`;
   else {
     const loue = LOUE.includes(b.location.statut);
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
-        ${e.loyer ? `<div><span>Loyer de marché</span><b>${eur(e.loyer)}</b><small>hors charges/mois, ${criteresEffectifs(b).location === 'meuble' ? 'meublé' : 'vide'}</small></div>
+        ${e.loyer ? `<div><span>Loyer de marché</span><b>${eur(e.loyer)}</b><small>hors charges/mois, ${e.cle && JSON.parse(e.cle)[3].location === 'meuble' ? 'meublé' : 'vide'}</small></div>
         <div><span>Rendement brut</span><b>${pct(e.loyer * 12 / e.prix)}</b><small>au loyer de marché, sur la valeur</small></div>` : ''}</div>
       <div class="aide">${esc(e.fiabilite)} · ${e.ventes} ventes à moins de ${e.rayon < 1000 ? fmt(e.rayon) + ' m' : (e.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}${e.periode ? ` (ventes ${e.periode})` : ''} · estimé le ${new Date(e.le).toLocaleDateString('fr-FR')}${b.geo ? ` · adresse reconnue : ${esc(b.geo.label)}` : ''}
         ${loue && e.loyer && b.location.loyer ? `<br>Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / e.loyer - 1)} par rapport au marché.` : ''}</div>
-      ${!a_jour ? '<div class="aide">Caractéristiques modifiées : nouvelle estimation dans un instant…</div>' : ''}
-      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien suit cette estimation (tu peux la remplacer à la main).</div>'}
-    </div>`;
+      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
+    </div>
+    ${!a_jour ? '<div class="aide">Caractéristiques modifiées depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
   }
   el.innerHTML = h;
 }
@@ -409,7 +419,6 @@ function vueListe() {
   }
   racine.innerHTML = h;
   vignettes();
-  biens.filter(aEstimer).forEach(b => estimerBien(b));
 }
 function carte(b, c) {
   const tags = [b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
@@ -466,7 +475,10 @@ function vueDetail(b) {
     ${section('Le bien', `<div class="grille">
       ${champ(b, 'nom', 'Nom', {type: 'text', ph: 'ex. Studio Passy'})}
       ${champ(b, 'type', 'Type', {options: Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.l]))})}
-      ${champ(b, 'adresse', 'Adresse', {type: 'text', large: true, ph: 'ex. 12 rue Fesch, Ajaccio'})}
+      <div class="large sugg"><label for="inv_adresse">Adresse</label>
+        <input id="inv_adresse" data-p="adresse" type="text" value="${esc(b.adresse)}" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="inv_sugg" aria-expanded="false">
+        <ul id="inv_sugg" role="listbox" hidden></ul>
+        ${b.geo && b.geo.pour === b.adresse.trim() && b.geo.label !== b.adresse.trim() ? `<div class="aide">Adresse reconnue : ${esc(b.geo.label)}</div>` : ''}</div>
       ${champ(b, 'surface', 'Surface (m²)')}${champ(b, 'pieces', 'Pièces')}
       ${champ(b, 'annee', 'Année de construction')}
       <div><label for="inv_detention">Détenu par</label><select id="inv_detention" data-p="detention">
@@ -476,7 +488,8 @@ function vueDetail(b) {
         ${sciDe(b) ? `<div class="aide"><a href="#investissements/sci:${encodeURIComponent(b.sciId)}">Voir la fiche de la SCI →</a></div>` : ''}</div>
     </div>
     ${critHTML(b)}
-    <div class="valeur"><h4>Estimation automatique</h4><div id="inv_auto"></div>
+    ${TYPE_DVF[b.type] ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
+    <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
       <div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div></div>`)}
     ${section('Achat', `<div class="grille">
@@ -500,8 +513,6 @@ function vueDetail(b) {
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
   majCalculs(b); docsHTML(b); vignettes(); majAuto(b);
-  // Estimation manquante, ancienne (plus de 30 jours) ou faite avec d'autres caractéristiques : on la relance
-  if (aEstimer(b)) planifierEstimation(b, 0);
 }
 // Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Estimer)
 function critHTML(b) {
@@ -624,6 +635,47 @@ function docsHTML(b) {
   });
 }
 
+// ---------- Adresse : propositions pendant la frappe ----------
+let suggAdr = [], suggMinuteur, suggTour = 0, suggChoix = -1;
+function montrerSugg(liste) {
+  const ul = racine.querySelector('#inv_sugg'), inp = racine.querySelector('#inv_adresse'); if (!ul) return;
+  suggAdr = liste; suggChoix = -1;
+  ul.innerHTML = liste.map((f, k) => `<li role="option" data-k="${k}">${esc(f.properties.label)}</li>`).join('');
+  ul.hidden = !liste.length; inp.setAttribute('aria-expanded', String(!!liste.length));
+}
+function choisirAdresse(k) {
+  const b = biens.find(x => x.id === ouvert), f = suggAdr[k]; if (!b || !f) return;
+  b.adresse = f.properties.label;
+  b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: f.properties.label};
+  suggAdr = []; sauver(); vueDetail(b);
+}
+racine.addEventListener('input', e => {
+  if (e.target.id !== 'inv_adresse') return;
+  clearTimeout(suggMinuteur);
+  const q = e.target.value.trim();
+  if (q.length < 4) return montrerSugg([]);
+  suggMinuteur = setTimeout(async () => {
+    const tour = ++suggTour;
+    try { const feats = await geocode(q); if (tour === suggTour) montrerSugg(feats.slice(0, 6)); } catch (err) { montrerSugg([]); }
+  }, 250);
+});
+racine.addEventListener('keydown', e => {
+  if (e.target.id !== 'inv_adresse' || !suggAdr.length) return;
+  const lis = racine.querySelectorAll('#inv_sugg li');
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggChoix = (suggChoix + (e.key === 'ArrowDown' ? 1 : -1) + lis.length) % lis.length;
+    lis.forEach((li, i) => li.classList.toggle('actif', i === suggChoix));
+  } else if (e.key === 'Enter') { e.preventDefault(); choisirAdresse(Math.max(0, suggChoix)); }
+  else if (e.key === 'Escape') montrerSugg([]);
+});
+// mousedown plutôt que click : le champ ne perd pas le focus avant le choix
+racine.addEventListener('mousedown', e => {
+  const li = e.target.closest('#inv_sugg li[data-k]'); if (!li) return;
+  e.preventDefault(); choisirAdresse(+li.dataset.k);
+});
+racine.addEventListener('focusout', e => { if (e.target.id === 'inv_adresse') setTimeout(() => montrerSugg([]), 150); });
+
 // ---------- Actions ----------
 function ajouter(o) { const b = nouveauBien(o); biens.push(b); sauver(); location.hash = '#investissements/' + b.id; }
 racine.addEventListener('click', async e => {
@@ -651,7 +703,7 @@ racine.addEventListener('click', async e => {
       valeur: est.prix, valeurLe: moisCourant(), location: {statut: est.meuble ? 'meuble' : 'vide', loyer: est.loyer, charges: null, locataire: '', debutBail: '', vacance: 0}});
   }
   if (!b) return;
-  if (a === 'reestimer') estimerBien(b);
+  if (a === 'estimerAuto') estimerBien(b);
   if (a === 'valeurAuto' && b.estimation && b.estimation.prix) { b.valeurManuelle = false; b.valeur = b.estimation.prix; b.valeurLe = moisCourant(); sauver(); vueDetail(b); }
   if (a === 'estimer' && estimable(b)) {
     // Même recherche dans l'onglet Estimer (adresse, type, surface, caractéristiques), avec la carte et le détail du calcul
@@ -718,11 +770,10 @@ racine.addEventListener('change', async e => {
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver();
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  // Ce qui sert à l'estimation : on la relance (après une courte pause, le temps de finir la saisie)
-  if (['adresse', 'type', 'surface', 'annee', 'location.statut'].includes(chemin) || chemin.startsWith('criteres.')) planifierEstimation(b);
   if (['type', 'location.statut', 'adresse'].includes(chemin) || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
-  if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur'].includes(chemin)) majAuto(b);
+  // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
+  if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces'].includes(chemin)) majAuto(b);
   majCalculs(b);
 });
 
