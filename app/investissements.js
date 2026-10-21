@@ -33,26 +33,29 @@ const solde = (P, r, M, k) => r ? P * Math.pow(1 + r, k) - M * (Math.pow(1 + r, 
 // compte des différés et remboursements anticipés), ou l'offre (montant, durée, 1re échéance).
 function etatPret(p, auj = moisCourant()) {
   const r = (p.taux || 0) / 1200;
-  let crd, mois, M;
+  let crd, mois, M, pause = 0;
   if (p.crd > 0 && p.mois > 0 && p.crdLe) {
     M = p.mensualite || pmt(p.crd, r, p.mois);
-    const k = Math.min(p.mois, Math.max(0, ecartMois(p.crdLe, auj)));
-    crd = solde(p.crd, r, M, k); mois = p.mois - k;
+    const ecart = ecartMois(p.crdLe, auj);
+    // Relevé à une date à venir : prêt en pause (différé) jusque-là, remboursement de ce restant dû ensuite
+    if (ecart < 0) { pause = -ecart; crd = p.crd; mois = p.mois + pause; }
+    else { const k = Math.min(p.mois, ecart); crd = solde(p.crd, r, M, k); mois = p.mois - k; }
   } else if (p.montant > 0 && p.duree > 0 && p.debut) {
     M = p.mensualite || pmt(p.montant, r, p.duree);
     const k = Math.min(p.duree, Math.max(0, ecartMois(p.debut, auj) + 1));   // échéances déjà payées
     crd = solde(p.montant, r, M, k); mois = p.duree - k;
   } else return null;
   crd = Math.max(0, crd);
-  // 12 prochains mois : intérêts et capital remboursé
+  // 12 prochains mois : intérêts et capital remboursé (rien pendant la pause : les intérêts s'ajoutent au capital)
   let c = crd, interets = 0, capital = 0;
-  for (let i = 0; i < Math.min(12, mois); i++) { const it = c * r; interets += it; capital += M - it; c -= M - it; }
-  return {crd, mois, M, assur: p.assurance || 0, fin: decalerMois(auj, mois), interets, capital};
+  const payes = Math.max(0, Math.min(12, mois) - pause);
+  for (let i = 0; i < payes; i++) { const it = c * r; interets += it; capital += M - it; c -= M - it; }
+  return {crd, mois, M, pause, payes, reprise: pause ? p.crdLe : null, assur: p.assurance || 0, fin: decalerMois(auj, mois), interets, capital};
 }
 // Renégociation ou rachat aux taux d'aujourd'hui (même calcul que l'ancien onglet « Mes crédits »)
 function analyseReneg(p, e, sci) {
   if (!e || !(e.mois > 0 && e.crd > 1000 && p.taux > 0)) return null;
-  const n = e.mois, tNew = T.tauxDuree(T.TAUX_ACTUEL, n) + (sci ? T.SURPRIME_SCI : 0);
+  const n = e.mois - (e.pause || 0), tNew = T.tauxDuree(T.TAUX_ACTUEL, n) + (sci ? T.SURPRIME_SCI : 0);   // durée de remboursement restante
   const mensu2 = pmt(e.crd, tNew / 1200, n), gainMois = e.M - mensu2, gainTotal = gainMois * n;
   const ira = Math.min(0.03 * e.crd, 6 * e.crd * p.taux / 1200), fraisRachat = ira + 1000 + 0.015 * e.crd;
   let surprime = null;
@@ -74,11 +77,11 @@ function calculs(b) {
   const loyersAn = loyerMois * 12 * (1 - Math.min(12, b.location.vacance || 0) / 12);
   const c = b.chargesAn;
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100;
-  const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * Math.min(12, x.e.mois));
+  const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
   const a = b.achat, cout = (a.prix || 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
   const crd = somme(prets, x => x.e && x.e.crd), cfAn = loyersAn - chargesAn - creditAn;
   return {prets, loue, loyerMois, loyersAn, chargesAn, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
-    mensuCredit: somme(actifs, x => x.e.M + x.e.assur), interetsAn: somme(actifs, x => x.e.interets + x.e.assur * Math.min(12, x.e.mois)),
+    mensuCredit: somme(actifs, x => x.e.pause ? 0 : x.e.M + x.e.assur), interetsAn: somme(actifs, x => x.e.interets + x.e.assur * x.e.payes),
     capitalAn: somme(actifs, x => x.e.capital), emprunte: somme(b.prets, p => p.montant),
     brut: cout > 0 && loyerMois ? loyerMois * 12 / cout : null, net: cout > 0 && loue ? (loyersAn - chargesAn) / cout : null,
     patrimoine: b.valeur > 0 ? b.valeur - crd : null, plusValue: b.valeur > 0 && cout > 0 ? b.valeur - cout : null};
@@ -617,9 +620,9 @@ function resumePret(b, p, e) {
   if (!e) return '<div class="aide">Renseigne le montant, le taux, la durée et la 1re échéance (ou le restant dû relevé) pour voir où tu en es.</div>';
   if (e.mois <= 0) return '<div class="okbox">Prêt remboursé.</div>';
   const a = analyseReneg(p, e, b.structure !== 'np'), dejaPaye = p.montant > 0 ? 1 - e.crd / p.montant : null;
-  let h = `<div class="okbox">Aujourd'hui : <b>${eur(e.crd)}</b> restant dû, ${e.mois} mois restants (fin en ${libMois(e.fin)}). Mensualité ${eur(e.M)}${e.assur ? ` + ${eur(e.assur)} d'assurance` : ''}.
+  let h = `<div class="okbox">${e.pause ? `<b>En pause</b> jusqu'en ${libMois(e.reprise)} (différé : pas d'échéance, les intérêts s'ajoutent au capital). À la reprise : <b>${eur(e.crd)}</b> à rembourser en ${e.mois - e.pause} mois, mensualité ${eur(e.M)}${e.assur ? ` + ${eur(e.assur)} d'assurance` : ''}, fin en ${libMois(e.fin)}.` : `Aujourd'hui : <b>${eur(e.crd)}</b> restant dû, ${e.mois} mois restants (fin en ${libMois(e.fin)}). Mensualité ${eur(e.M)}${e.assur ? ` + ${eur(e.assur)} d'assurance` : ''}.`}
     ${dejaPaye != null ? `<div class="barre"><span style="width:${Math.max(0, Math.min(100, dejaPaye * 100)).toFixed(1)}%"></span></div><div class="aide">${pct(dejaPaye)} du capital remboursé</div>` : ''}
-    Sur les 12 prochains mois : ${eur(e.interets)} d'intérêts et ${eur(e.capital)} de capital remboursé.</div>`;
+    Sur les 12 prochains mois : ${e.pause ? `${e.payes} échéance${e.payes > 1 ? 's' : ''} après la reprise, ` : ''}${eur(e.interets)} d'intérêts et ${eur(e.capital)} de capital remboursé.</div>`;
   if (a) h += `<div class="${a.netAvenant > 0 ? 'okbox' : 'warnbox'}">Au taux du marché (${T.TAUX_ACTUEL.mois}) : <b>${a.tNew.toFixed(2).replace('.', ',')} %</b>${b.structure !== 'np' ? ' (SCI)' : ''} contre ${String(p.taux).replace('.', ',')} % ; mensualité ${eur(a.mensu2)}, soit ${eur(a.gainMois)}/mois et ${eur(a.gainTotal)} d'intérêts ${a.gainTotal >= 0 ? 'en moins' : 'en plus'}.
     Renégociation avec ta banque (avenant ≈ 600 €) : gain net ≈ <b>${eur(a.netAvenant)}</b>. Rachat par une autre banque (indemnités ≈ ${eur(a.ira)}) : gain net ≈ <b>${eur(a.netRachat)}</b>.
     ${a.surprime ? `<br>Surprime payée à la signature (${libMois(a.offre)}) : <b>${a.surprime[0] >= 0 ? '+' : ''}${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à ' + (a.surprime[1] >= 0 ? '+' : '') + a.surprime[1].toFixed(2).replace('.', ',') : ''} point</b> par rapport au taux moyen du marché à durée égale.` : ''}</div>`;
