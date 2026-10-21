@@ -88,7 +88,7 @@ function calculs(b) {
 }
 
 // ---------- Données : invité (cet appareil) ou compte ----------
-let biens = [], scis = [], etatCompte = '', compteCharge = false, minuteur = null, enAttente = false;
+let biens = [], scis = [], supprimes = {}, etatCompte = '', compteCharge = false, minuteur = null, enAttente = false;
 const CLE = 'mes-investissements', CLE_SCI = 'mes-scis';
 function nouveauBien(o = {}) {
   return {id: uid(), nom: 'Nouveau bien', type: 'appart', adresse: '', surface: null, pieces: null, annee: null,
@@ -143,7 +143,11 @@ function biensLocaux() {
   if (!Array.isArray(c)) c = window.MES_CREDITS || [];
   return c.map(depuisCredit);
 }
-function sauver() {
+// Chaque bien / SCI modifié reçoit l'heure du changement (maj) : quand plusieurs pages ou appareils écrivent dans
+// le compte, on garde pour chacun la version la plus récente au lieu d'écraser tout le compte
+function sauver(...modifies) {
+  const t = Date.now();
+  modifies.forEach(o => { if (o) o.maj = t; });
   if (!COMPTE.user) { try { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } catch (e) { alert('Mémoire de l\'appareil pleine : enregistrement impossible.'); } return; }
   if (!compteCharge) return;   // compte pas encore lu : ne pas l'écraser
   etatCompte = 'Enregistrement…'; majEtat(); enAttente = true;
@@ -153,13 +157,56 @@ function sauver() {
 async function envoyer() {
   if (!enAttente || !COMPTE.user) return;
   enAttente = false;
-  try { await COMPTE.ecrire(contenu()); etatCompte = 'Enregistré dans ton compte.'; }
-  catch (e) { etatCompte = 'Échec de l\'enregistrement : ' + erreurCompte(e); }
+  try {
+    const avant = JSON.stringify([biens, scis]);
+    fusionnerDistant(await COMPTE.lire());   // ce qu'une autre page a pu enregistrer entre-temps
+    await COMPTE.ecrire(contenu());
+    etatCompte = 'Enregistré dans ton compte.';
+    if (JSON.stringify([biens, scis]) !== avant) rafraichir();
+  } catch (e) { etatCompte = 'Échec de l\'enregistrement : ' + erreurCompte(e); }
   majEtat();
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(minuteur); envoyer(); } });
 // Ce qui part dans le compte : les biens et les recherches récentes de l'onglet Estimer
-const contenu = () => ({version: 2, biens, scis, recherches: typeof RECENTES !== 'undefined' ? RECENTES.liste : []});
+// Fusion bien par bien (et SCI par SCI) : la version modifiée le plus récemment gagne ; les suppressions sont gardées 6 mois
+function fusionListes(locale, distante, sup) {
+  const m = new Map();
+  for (const x of distante || []) if (!sup[x.id]) m.set(x.id, x);
+  for (const x of locale) { if (sup[x.id]) continue; const y = m.get(x.id); if (!y || (x.maj || 0) >= (y.maj || 0)) m.set(x.id, x); }
+  return [...new Set([...locale.map(x => x.id), ...(distante || []).map(x => x.id)])].filter(id => m.has(id)).map(id => m.get(id));
+}
+function fusionnerDistant(brut) {
+  if (!brut || Array.isArray(brut)) return;
+  const limite = Date.now() - 180 * 864e5;
+  supprimes = Object.fromEntries(Object.entries({...(brut.supprimes || {}), ...supprimes}).filter(([, t]) => t > limite));
+  biens = fusionListes(biens, brut.biens, supprimes);
+  scis = fusionListes(scis, brut.scis, supprimes);
+  normaliser();
+  if (typeof RECENTES !== 'undefined' && brut.recherches) RECENTES.fusionner(brut.recherches);
+}
+const marquerSupprime = id => { supprimes[id] = Date.now(); };
+// Réaffiche après une mise à jour venue d'ailleurs, sauf pendant une saisie (pour ne pas perdre le champ en cours)
+function rafraichir() {
+  const a = document.activeElement;
+  if (a && racine.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+  afficher();
+}
+// En revenant sur la page (autre onglet, autre appareil entre-temps) : on relit le compte
+let lectureEnCours = false;
+async function tirer() {
+  if (!COMPTE.user || !compteCharge || lectureEnCours || enAttente || document.hidden) return;
+  lectureEnCours = true;
+  try {
+    const avant = JSON.stringify([biens, scis]);
+    fusionnerDistant(await COMPTE.lire());
+    if (JSON.stringify([biens, scis]) !== avant) rafraichir();
+  } catch (e) { console.warn('Relecture du compte :', e); }
+  lectureEnCours = false;
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tirer(); });
+window.addEventListener('focus', tirer);
+setInterval(tirer, 30000);
+const contenu = () => ({version: 2, biens, scis, supprimes, recherches: typeof RECENTES !== 'undefined' ? RECENTES.liste : []});
 const majEtat = () => { const e = document.getElementById('inv_etat'); if (e) e.textContent = etatCompte; };
 
 // ---------- Fichiers : plans, photos, documents ----------
@@ -264,7 +311,8 @@ function criteresEffectifs(b) {
 const cleEstimation = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);
 const estimable = b => TYPE_DVF[b.type] && b.adresse.trim().length >= 5 && b.surface >= 9;
 const enCours = new Set();
-async function estimerBien(b) {
+async function estimerBien(b0) {
+  let b = b0;
   if (!estimable(b) || enCours.has(b.id)) return;
   const cle = cleEstimation(b);
   enCours.add(b.id); majAuto(b);
@@ -276,6 +324,8 @@ async function estimerBien(b) {
       b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
     }
     const res = await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
+    // Le bien a pu être remplacé entre-temps par sa version du compte (autre page) : on écrit dans la version actuelle
+    const geo = b.geo; b = biens.find(x => x.id === b.id) || b; if (!b.geo || b.geo.pour !== geo.pour) b.geo = geo;
     b.estimation = res.erreur ? {erreur: res.erreur, cle, le} : {...res, cle, le};
     if (!res.erreur && !b.valeurManuelle) { b.valeur = res.prix; b.valeurLe = moisCourant(); }
   } catch (e) {
@@ -283,7 +333,7 @@ async function estimerBien(b) {
   } finally {
     enCours.delete(b.id);
   }
-  sauver();
+  sauver(b);
   if (ouvert === b.id) { majAuto(b); majCalculs(b); const v = racine.querySelector('[data-p="valeur"]'); if (v && document.activeElement !== v) v.value = b.valeur ?? ''; }
   else if (!ouvert) vueListeBientot();
 }
@@ -347,6 +397,7 @@ COMPTE.surChangement(async user => {
       biens = distants; scis = distants.length ? scisLoc : []; normaliser(); await COMPTE.ecrire(contenu());
     }
     if (brut && Array.isArray(brut.scis)) scis = brut.scis;
+    supprimes = brut && brut.supprimes ? brut.supprimes : {};
     biens = distants; normaliser(); compteCharge = true; etatCompte = 'Enregistré dans ton compte.';
     if (typeof RECENTES !== 'undefined' && RECENTES.liste.length !== nRech) sauver();   // recherches de cet appareil à ajouter au compte
   } catch (e) { etatCompte = 'Impossible de lire ton compte : ' + erreurCompte(e); }
@@ -656,7 +707,7 @@ function choisirAdresse(k) {
   const b = biens.find(x => x.id === ouvert), f = suggAdr[k]; if (!b || !f) return;
   b.adresse = f.properties.label;
   b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: f.properties.label};
-  suggAdr = []; sauver(); vueDetail(b);
+  suggAdr = []; sauver(b); vueDetail(b);
 }
 racine.addEventListener('input', e => {
   if (e.target.id !== 'inv_adresse') return;
@@ -686,7 +737,7 @@ racine.addEventListener('mousedown', e => {
 racine.addEventListener('focusout', e => { if (e.target.id === 'inv_adresse') setTimeout(() => montrerSugg([]), 150); });
 
 // ---------- Actions ----------
-function ajouter(o) { const b = nouveauBien(o); biens.push(b); sauver(); location.hash = '#investissements/' + b.id; }
+function ajouter(o) { const b = nouveauBien(o); biens.push(b); sauver(b); location.hash = '#investissements/' + b.id; }
 racine.addEventListener('click', async e => {
   // Lien vers la fiche déjà dans l'adresse (aucun changement d'adresse, donc rien ne se passerait) : on l'ouvre directement
   const lien = e.target.closest('a[href^="#investissements"]');
@@ -700,14 +751,15 @@ racine.addEventListener('click', async e => {
   if (a === 'connexion') return ouvrirCompte();
   if (a === 'ajout') return ajouter();
   if (a === 'filtre') { filtre = t.dataset.f; return vueListe(); }
-  if (a === 'ajoutSci') { const x = nouvelleSci(); scis.push(x); sauver(); location.hash = '#investissements/sci:' + x.id; return; }
+  if (a === 'ajoutSci') { const x = nouvelleSci(); scis.push(x); sauver(x); location.hash = '#investissements/sci:' + x.id; return; }
   if (sci) {
-    if (a === 'ajoutAssocie') { sci.associes.push({nom: '', parts: sci.associes.length ? null : 100}); sauver(); vueSci(sci); }
-    if (a === 'supprAssocie' && confirm('Retirer cet associé ?')) { sci.associes.splice(+t.dataset.i, 1); sauver(); vueSci(sci); }
+    if (a === 'ajoutAssocie') { sci.associes.push({nom: '', parts: sci.associes.length ? null : 100}); sauver(sci); vueSci(sci); }
+    if (a === 'supprAssocie' && confirm('Retirer cet associé ?')) { sci.associes.splice(+t.dataset.i, 1); sauver(sci); vueSci(sci); }
     if (a === 'ajoutBienSci') ajouter({structure: 'sci', sciId: sci.id});
     if (a === 'supprSci' && confirm(`Supprimer la fiche « ${sci.nom} » ? Ses biens restent, en nom propre.`)) {
-      biens.forEach(x => { if (x.sciId === sci.id) { x.structure = 'np'; x.sciId = null; } });
-      scis = scis.filter(x => x !== sci); sauver(); location.hash = '#investissements';
+      const deplaces = biens.filter(x => x.sciId === sci.id);
+      deplaces.forEach(x => { x.structure = 'np'; x.sciId = null; });
+      marquerSupprime(sci.id); scis = scis.filter(x => x !== sci); sauver(...deplaces); location.hash = '#investissements';
     }
     return;
   }
@@ -719,23 +771,23 @@ racine.addEventListener('click', async e => {
   }
   if (!b) return;
   if (a === 'estimerAuto') estimerBien(b);
-  if (a === 'valeurAuto' && b.estimation && b.estimation.prix) { b.valeurManuelle = false; b.valeur = b.estimation.prix; b.valeurLe = moisCourant(); sauver(); vueDetail(b); }
+  if (a === 'valeurAuto' && b.estimation && b.estimation.prix) { b.valeurManuelle = false; b.valeur = b.estimation.prix; b.valeurLe = moisCourant(); sauver(b); vueDetail(b); }
   if (a === 'estimer' && estimable(b)) {
     // Même recherche dans l'onglet Estimer (adresse, type, surface, caractéristiques), avec la carte et le détail du calcul
     showTab('estimation');
     if (b.geo) reprendre({label: b.geo.label, lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, since: 'auto', criteres: criteresEffectifs(b)});
     else { document.getElementById('addr').value = b.adresse; document.getElementById('surf').value = b.surface; document.getElementById('go').click(); }
   }
-  if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, crd: null, mois: null, crdLe: ''}); sauver(); vueDetail(b); }
-  if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(); vueDetail(b); }
+  if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
+  if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'fichier') racine.querySelector('#inv_fichier').click();
   if (a === 'supprDoc') {
     const d = b.docs.find(x => x.id === t.dataset.id);
-    if (d && confirm(`Supprimer « ${d.nom} » ?`)) { await supprimerDoc(d); b.docs = b.docs.filter(x => x !== d); sauver(); docsHTML(b); vignettes(); }
+    if (d && confirm(`Supprimer « ${d.nom} » ?`)) { await supprimerDoc(d); b.docs = b.docs.filter(x => x !== d); sauver(b); docsHTML(b); vignettes(); }
   }
   if (a === 'supprimer' && confirm(`Supprimer « ${b.nom} » et ses documents ? C'est définitif.`)) {
     for (const d of b.docs) await supprimerDoc(d);
-    biens = biens.filter(x => x !== b); sauver(); location.hash = '#investissements';
+    marquerSupprime(b.id); biens = biens.filter(x => x !== b); sauver(); location.hash = '#investissements';
   }
 });
 racine.addEventListener('change', async e => {
@@ -746,7 +798,7 @@ racine.addEventListener('change', async e => {
     let v = t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' || t.type === 'search' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
     if (t.type === 'month' && t.value && !v) { alert('Date au format AAAA-MM, par exemple 2019-06.'); t.value = lire(sci, chemin) || ''; return; }
     if (chemin === 'nom' && !String(v).trim()) { t.value = sci.nom; return; }
-    ecrire(sci, chemin, v); sauver();
+    ecrire(sci, chemin, v); sauver(sci);
     if (chemin === 'regime') return vueSci(sci);
     racine.querySelector('#inv_titre').textContent = sci.nom;
     racine.querySelector('#inv_sous').textContent = ['SCI ' + REGIMES[sci.regime], sci.siren ? 'SIREN ' + sci.siren : '', sci.siege].filter(Boolean).join(' · ');
@@ -759,17 +811,17 @@ racine.addEventListener('change', async e => {
     if (v === '+') {
       const nom = (prompt('Nom de la SCI ?') || '').trim();
       if (!nom) { e.target.value = b.structure === 'sci' ? b.sciId : 'np'; return; }
-      const x = nouvelleSci({nom}); scis.push(x); v = x.id;
+      const x = nouvelleSci({nom, maj: Date.now()}); scis.push(x); v = x.id;
     }
     if (v === 'np') { b.structure = 'np'; b.sciId = null; } else { b.structure = 'sci'; b.sciId = v; }
-    sauver(); return vueDetail(b);
+    sauver(b); return vueDetail(b);
   }
   if (e.target.id === 'inv_fichier') {
     const etat = racine.querySelector('#inv_docEtat'), fichiers = [...e.target.files];
     e.target.value = '';
     for (const [i, f] of fichiers.entries()) {
       etat.textContent = `Envoi ${i + 1}/${fichiers.length}…`;
-      try { b.docs.push(await ajouterDoc(b, f)); sauver(); } catch (err) { alert(erreurDocs(err)); }
+      try { b.docs.push(await ajouterDoc(b, f)); sauver(b); } catch (err) { alert(erreurDocs(err)); }
     }
     etat.textContent = ''; docsHTML(b); vignettes();
     return;
@@ -783,7 +835,7 @@ racine.addEventListener('change', async e => {
   ecrire(b, chemin, v);
   if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
-  sauver();
+  sauver(b);
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
   if (['type', 'location.statut', 'adresse'].includes(chemin) || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
