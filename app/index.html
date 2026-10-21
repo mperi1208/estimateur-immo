@@ -95,6 +95,12 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .cfwrap{display:grid;grid-template-columns:420px 1fr;flex:1;min-height:0}
 #cf main{padding:20px;min-width:0;overflow-y:auto}
 #cf details{margin:0 0 12px}
+#cf .sect{border:1px solid var(--line);border-radius:10px;padding:4px 12px 12px;margin:0 0 12px}
+#cf .sect h3{font-size:15px;margin:8px 0 2px}
+#cf details.opt{border-style:dashed}
+#cf details.opt[open]{border-style:solid}
+#cf .chip{font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;margin-left:6px;vertical-align:1px;background:var(--line);color:var(--muted)}
+#cf .chip.on{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good)}
 #cf .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 #cf .grid [hidden]{display:none}
 #cf label{margin:10px 0 4px}
@@ -174,7 +180,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <div id="cf_bien" class="bienbar"></div>
 <div class="cfwrap">
 <aside id="cf_form">
-  <details open><summary>Projet</summary><div class="grid">
+  <details class="opt" id="cf_boxProjet"><summary>Projet travaux <span class="chip"></span></summary><div class="hint">Ouvre cette section pour simuler des travaux, puis une location ou une revente. Fermée : achat simple.</div><div class="grid">
     <div><label>Type de projet</label><select id="cf_projet"><option value="simple">Achat (sans gros travaux)</option><option value="location">Achat + travaux, puis location</option><option value="revente">Achat + travaux, puis revente</option></select></div>
     <div data-travaux><label>Durée des travaux (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
     <div data-travaux><label>Valeur après travaux (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
@@ -184,7 +190,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
   <label class="check" data-travaux><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label>
   <div class="hint" data-travaux>La location démarre à la fin du chantier (« Location à partir du mois »). Le différé du crédit (section Crédit) peut durer plus longtemps : tu encaisses alors des loyers pendant que tu ne paies que les intérêts. Le montant des travaux et du mobilier se règle dans « Le bien ».</div></details>
 
-  <details open><summary>Le bien</summary><div class="grid">
+  <div class="sect"><h3>Le bien</h3><div class="grid">
     <div><label>Prix d'achat (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
     <div><label>Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
     <div><label>Surface (m²)</label><input id="cf_surf" type="number" min="9"></div>
@@ -192,19 +198,10 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div><label>Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
     <div><label>Travaux (€)</label><input id="cf_travaux" type="number" min="0" step="1000"></div>
     <div data-meuble><label>Mobilier (€)</label><input id="cf_mobilier" type="number" min="0" step="500"></div>
-  </div></details>
+  </div></div>
 
-  <details open><summary>Détention et fiscalité</summary><div class="grid">
-    <div><label>Détention</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
-    <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
-    <div data-np><label>Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
-    <div data-notis><label>Tranche d'imposition (TMI)</label><select id="cf_tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
-    <div data-amort><label>Part du terrain (%)</label><input id="cf_terrain" type="number" min="0" max="80"></div>
-  </div>
-  <label class="check" data-is><input type="checkbox" id="cf_distrib"> Distribuer les bénéfices aux associés (flat tax 31,4 %)</label>
-  <div id="cf_fiscNote" class="hint"></div></details>
-
-  <details open><summary>Crédit</summary><div class="grid">
+  <div class="sect"><h3>Crédit</h3><div class="grid">
+    <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
     <div><label>Apport (€)</label><input id="cf_apport" type="number" min="0" step="1000"></div>
     <div><label>Durée (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
     <div><label>Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
@@ -217,9 +214,10 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
   <label class="check"><input type="checkbox" id="cf_notaireCredit"> Inclure les frais de notaire dans le crédit (« prêt à 110 % »)</label>
   <div class="hint">Sinon, l'apport sert d'abord à payer les frais de notaire. Beaucoup de banques le demandent, mais un financement à 110 % sans apport reste possible, y compris en SCI : on le voit sur des prêts SCI réels.</div>
   <div class="hint" id="cf_tauxHint"></div>
-  <button id="cf_tauxMarche" style="margin-top:8px">Mettre le taux du marché</button></details>
+  <button id="cf_tauxMarche" style="margin-top:8px">Mettre le taux du marché</button></div>
 
-  <details open><summary>Location et charges</summary><div class="grid">
+  <div class="sect"><h3>Location et charges</h3><div class="grid">
+    <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
     <div><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
     <div><label>Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
     <div><label>Location à partir du mois</label><input id="cf_debutLoc" type="number" min="0" max="60"></div>
@@ -231,13 +229,21 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div><label>Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
     <div data-meuble><label>CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
   </div>
-  <div class="hint">« Location à partir du mois » : mets la durée des travaux si le bien n'est pas loué tout de suite.</div></details>
+  <div class="hint">« Location à partir du mois » : mets la durée des travaux si le bien n'est pas loué tout de suite.</div></div>
 
-  <details><summary>Hypothèses</summary><div class="grid">
+  <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="hint">Fermée : cash-flow avant impôts. Ouvre-la pour compter les impôts selon la structure (nom propre, SCI à l'IR ou à l'IS, choisie dans « Crédit »).</div><div class="grid">
+    <div data-np><label>Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
+    <div data-notis><label>Tranche d'imposition (TMI)</label><select id="cf_tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
+    <div data-amort><label>Part du terrain (%)</label><input id="cf_terrain" type="number" min="0" max="80"></div>
+    <div data-is><label>Bâtiment de plus de 15 ans</label><select id="cf_vieux"><option value="1">Oui (contribution 2,5 %)</option><option value="0">Non</option></select></div>
+  </div>
+  <label class="check" data-is><input type="checkbox" id="cf_distrib"> Distribuer les bénéfices aux associés (flat tax 31,4 %)</label>
+  <div id="cf_fiscNote" class="hint"></div></details>
+
+  <details class="opt" id="cf_boxEvol"><summary>Évolutions dans le temps <span class="chip"></span></summary><div class="hint">Fermée : loyers, prix et charges restent constants.</div><div class="grid">
     <div><label>Hausse des loyers (%/an)</label><input id="cf_gLoyer" type="number" step="0.1"></div>
     <div><label>Hausse du prix (%/an)</label><input id="cf_gPrix" type="number" step="0.1"></div>
     <div><label>Hausse des charges (%/an)</label><input id="cf_gCharges" type="number" step="0.1"></div>
-    <div><label>Bâtiment de plus de 15 ans</label><select id="cf_vieux"><option value="1">Oui</option><option value="0">Non</option></select></div>
   </div></details>
   <button id="cf_reset">Remettre les valeurs par défaut</button>
 </aside>
@@ -1104,6 +1110,15 @@ function charger() {
   for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
   const lies = defautsLies({taux: v.taux, tf: v.tf, copro: v.copro, compta: v.compta});
   for (const k in lies) set(k, lies[k]);
+  for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
+  majChips();
+}
+function majChips() {
+  for (const k in BOXES) {
+    const c = $(BOXES[k]).querySelector('.chip'), on = ouvert(k);
+    c.textContent = on ? 'compté' : 'non compté';
+    c.classList.toggle('on', on);
+  }
 }
 // Reprend le bien estimé dans l'onglet Estimation (seulement s'il a changé depuis la dernière reprise,
 // pour ne pas écraser ce que tu as modifié à la main)
@@ -1124,12 +1139,13 @@ function sync(est, mode) {
     set('copro', est.type === 'appart' ? Math.round(est.surf * 8 / 10) * 10 : 0);
     set('compta', {np: est.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
     // Nouveau bien : on repart d'un achat simple (le projet travaux se relance depuis la carte « Projet travaux »)
-    if (!mode) { set('projet', 'simple'); set('travaux', 0); set('valeurApres', 0); set('differe', 0); set('debutLoc', 0); }
+    if (!mode) { $('boxProjet').open = false; majChips(); set('projet', 'simple'); set('travaux', 0); set('valeurApres', 0); set('differe', 0); set('debutLoc', 0); }
     try { localStorage.setItem('cashflow-bien', cle); } catch (e) {}
     sauver();
   }
   if (mode && est.projet) {
     const pj = est.projet;
+    $('boxProjet').open = true; majChips();
     set('projet', mode); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
     if (get('differe') < pj.duree) { set('differe', pj.duree); set('typeDiff', 'partiel'); }
     set('debutLoc', pj.duree); set('moisRevente', pj.duree + 6);
@@ -1140,9 +1156,12 @@ function sync(est, mode) {
   }
   rendre();
 }
+const BOXES = {projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol'};
+const ouvert = k => $(BOXES[k]).open;
 function sauver() {
   const v = {};
   for (const k of FIELDS) v[k] = get(k);
+  v.ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
   try { localStorage.setItem('cashflow-v1', JSON.stringify(v)); } catch (e) {}
 }
 function afficherChamps() {
@@ -1178,6 +1197,10 @@ function echeancier(capital, tauxAn, mois, differe, typeDiff, assAn) {
 // ---------- Simulation ----------
 function simuler() {
   const p = {}; for (const k of FIELDS) p[k] = get(k);
+  // Sections fermées = non comptées
+  if (!ouvert('projet')) p.projet = 'simple';
+  if (!ouvert('evol')) { p.gLoyer = 0; p.gPrix = 0; p.gCharges = 0; }
+  p.avecImpots = ouvert('impots');
   const meuble = p.meuble === '1';
   let st = p.struct;
   const notes = [];
@@ -1197,7 +1220,8 @@ function simuler() {
   const coutTotal = coutHorsBanque + p.dossier + fraisGarantie;
   const moisCredit = Math.round(p.duree * 12);
   const ech = echeancier(pret, p.taux, moisCredit, p.differe, p.typeDiff, p.assur);
-  const horizon = Math.ceil((p.differe + moisCredit) / 12);
+  const finCredit = Math.ceil((p.differe + moisCredit) / 12);
+  const horizon = finCredit + 5;   // 5 ans de plus pour voir l'après-crédit
   const fraisAcq = fraisNotaire + p.dossier + fraisGarantie;
   const terrain = p.terrain / 100;
   const amortAn = y => (y <= AMORT.bati ? p.prix * (1 - terrain) / AMORT.bati : 0)
@@ -1223,35 +1247,49 @@ function simuler() {
   const tmi = +p.tmi / 100;
   function impotsFoncierReel() {
     let report = 0;
-    return annees.map(a => {
+    const notes = [];
+    const res = annees.map(a => {
       const autres = a.charges + a.travaux1;                        // charges hors intérêts
       const financier = a.interets + a.assurance + (a.y === 1 ? p.dossier + fraisGarantie : 0);
       let r = a.loyers - autres - financier;
-      if (r >= 0) { const imput = Math.min(report, r); report -= imput; r -= imput; return r * (tmi + PS_FONCIER); }
+      if (r >= 0) {
+        const imput = Math.min(report, r); report -= imput; r -= imput;
+        notes.push(imput ? `déficit reporté utilisé ${eur(imput)}, reste ${eur(report)}` : 'revenus fonciers imposés');
+        return r * (tmi + PS_FONCIER);
+      }
       const global = Math.min(-r, autres, PLAFOND_DEFICIT);         // part imputable sur le revenu global
       report += -r - global;
+      notes.push(`déficit foncier : ${eur(global)} déduit de tes autres revenus, ${eur(report)} reporté`);
       return -global * tmi;
     });
+    res.notes = notes;
+    return res;
   }
-  const impotsMicroFoncier = () => annees.map(a => a.loyers * 0.7 * (tmi + PS_FONCIER));
-  const impotsMicroBic = () => annees.map(a => a.loyers * 0.5 * (tmi + PS_BIC));
+  const avecNotes = (arr, note) => Object.assign(arr, {notes: arr.map(() => note)});
+  const impotsMicroFoncier = () => avecNotes(annees.map(a => a.loyers * 0.7 * (tmi + PS_FONCIER)), 'micro-foncier : 30 % des loyers non imposés');
+  const impotsMicroBic = () => avecNotes(annees.map(a => a.loyers * 0.5 * (tmi + PS_BIC)), 'micro-BIC : 50 % des loyers non imposés');
   function impotsLmnpReel() {
     let deficit = 0, amortStock = 0;
-    return annees.map(a => {
+    const notes = [];
+    const res = annees.map(a => {
       let r = a.loyers - a.charges - a.interets - a.assurance - a.frais1;
       amortStock += a.amort;
-      if (r <= 0) { deficit += -r; return 0; }
+      if (r <= 0) { deficit += -r; notes.push(`déficit ${eur(deficit)} reporté, réserve d'amortissement ${eur(amortStock)}`); return 0; }
       const d = Math.min(deficit, r); deficit -= d; r -= d;
       const am = Math.min(amortStock, r); amortStock -= am; r -= am;
+      notes.push(`amortissement déduit ${eur(am)}, réserve restante ${eur(amortStock)}${amortStock < 1 && r > 0 ? ' : réserve épuisée' : ''}`);
       return r * (tmi + PS_BIC);
     });
+    res.notes = notes;
+    return res;
   }
   function impotsIS() {
     let deficit = 0;
     return annees.map(a => {
       let r = a.loyers - a.charges - a.interets - a.assurance - (a.y === 1 ? fraisAcq : 0) - a.amort;
-      if (r <= 0) { deficit += -r; a.benef = 0; return {is: 0, pfu: 0}; }
+      if (r <= 0) { deficit += -r; a.benef = 0; a.fisc = `amortissement ${eur(a.amort)}, déficit reporté ${eur(deficit)}`; return {is: 0, pfu: 0}; }
       const d = Math.min(deficit, r); deficit -= d; r -= d;
+      a.fisc = `amortissement ${eur(a.amort)}, bénéfice imposé ${eur(r)}`;
       const is = 0.15 * Math.min(r, IS_SEUIL) + 0.25 * Math.max(0, r - IS_SEUIL);
       a.benef = r - is;
       return {is, pfu: p.distrib ? a.benef * PFU : 0};
@@ -1283,14 +1321,16 @@ function simuler() {
     }
   }
   let cumul = -apportEff;
+  if (!p.avecImpots) { impots = annees.map(() => 0); regime = 'impôts non comptés'; annees.forEach(a => { a.fisc = ''; a.is = 0; a.pfu = 0; }); }
   annees.forEach((a, i) => {
     a.impots = impots[i];
+    if (impots.notes) a.fisc = impots.notes[i];
     a.cf = a.loyers - a.charges - a.credit - a.impots;
     cumul += a.cf; a.cumul = cumul;
   });
   const base = p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix;   // valeur de départ : après travaux s'il y en a
   const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
-  return {p, st, regime, notes, pret, apportEff, base, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble};
+  return {p, st, regime, notes, pret, apportEff, base, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble};
 }
 
 // ---------- Affichage ----------
@@ -1312,7 +1352,7 @@ function rendre() {
 
   const a1 = s.annees.find(a => a.loyers > 0) || s.annees[0];
   const mens = s.ech.pmt + s.ech.assM;
-  const anneesCredit = s.annees.filter(a => a.y <= Math.ceil((p.differe + p.duree * 12) / 12));
+  const anneesCredit = s.annees.filter(a => a.y <= s.finCredit);
   const cfMoyen = anneesCredit.reduce((t, a) => t + a.cf, 0) / anneesCredit.length / 12;
   const coutCredit = s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie;
   const fin = s.annees[s.annees.length - 1];
@@ -1320,23 +1360,25 @@ function rendre() {
   const coutRef = p.projet === 'location' ? s.coutTotal : p.prix;
   $('tiles').innerHTML = [
     ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}`],
-    ['Cash-flow / mois', eur(a1.cf / 12), `année ${a1.y}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}`],
+    ['Cash-flow / mois', eur(a1.cf / 12), p.avecImpots ? `année ${a1.y}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}, impôts non comptés`],
     ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
-    ['Rendement', pct(p.loyer * 12 / coutRef * 100) + ' brut', `${p.projet === 'location' ? 'sur le coût total, travaux compris · ' : ''}${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} net de charges · ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts`],
+    ['Rendement', pct(p.loyer * 12 / coutRef * 100) + ' brut', `${p.projet === 'location' ? 'sur le coût total, travaux compris · ' : ''}${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} net de charges${p.avecImpots ? ` · ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
     ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
 
-  let al = `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>`;
+  let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '<div class="okbox">Impôts <b>non comptés</b> : ouvre la section « Impôts » pour les inclure.</div>';
+  if (!ouvert('evol')) al += '<div class="hint">Loyers, prix et charges constants : ouvre « Évolutions dans le temps » pour les faire progresser.</div>';
+  al += `<div class="hint">Le graphique continue 5 ans après la fin du crédit (année ${s.finCredit}) pour montrer l'après-crédit.</div>`;
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
   if (p.projet === 'location') al += `<div class="okbox">Projet travaux : <b>${eur(p.travaux)}</b> de travaux ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois (intérêts seuls pendant ${p.differe} mois, loyer à partir du mois ${p.debutLoc + 1}).${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.pret * p.taux / 1200 + s.ech.assM)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
-  if (s.st === 'is') al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
+  if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
   if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche la première année de location.</div>`;
   $('alerts').innerHTML = al;
-  $('chartTitle').textContent = `Cash-flow annuel après impôts (${s.horizon} ans)`;
-  graphe(s.annees);
+  $('chartTitle').textContent = `Cash-flow annuel ${p.avecImpots ? 'après' : 'avant'} impôts (${s.horizon} ans)`;
+  graphe(s.annees, s.finCredit);
   tableau(s);
 }
 
@@ -1361,7 +1403,8 @@ function bilanRevente(s) {
   const encaisse = prixVente - fraisVente - crd - ira;
   const margeBrute = encaisse - s.apportEff - sorties;
   let impot = 0, detail;
-  if (s.st === 'is') {
+  if (!p.avecImpots) detail = 'non compté (section Impôts fermée)';
+  else if (s.st === 'is') {
     const r = Math.max(0, margeBrute);
     const is = 0.15 * Math.min(r, IS_SEUIL) + 0.25 * Math.max(0, r - IS_SEUIL), pfu = p.distrib ? (r - is) * PFU : 0;
     impot = is + pfu;
@@ -1404,7 +1447,7 @@ function rendreRevente(s) {
   $('alerts').innerHTML = al;
 }
 
-function graphe(annees) {
+function graphe(annees, finCredit) {
   const W = 760, H = 260, L = 56, R = 8, T = 12, B = 26;
   const vals = annees.map(a => a.cf);
   let max = Math.max(0, ...vals), min = Math.min(0, ...vals);
@@ -1426,13 +1469,17 @@ function graphe(annees) {
     svg += `<rect x="${L + i * bw}" y="${T}" width="${bw}" height="${H - T - B}" fill="transparent" data-i="${i}"/>`;
     if (annees.length <= 12 || (a.y % 5 === 0) || a.y === 1) svg += `<text x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${a.y}</text>`;
   });
+  if (finCredit && finCredit < annees.length) {
+    const xf = L + finCredit * bw;
+    svg += `<line x1="${xf}" x2="${xf}" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/><text x="${xf + 4}" y="${T + 10}">fin du crédit</text>`;
+  }
   svg += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--muted)" stroke-width="1"/></svg>`;
   const el = $('chart'); el.innerHTML = svg;
   const tip = $('tip');
   el.querySelectorAll('rect[data-i]').forEach(r => {
     r.addEventListener('mousemove', e => {
       const a = annees[+r.dataset.i];
-      tip.innerHTML = `<b>Année ${a.y}</b><br>Cash-flow : ${eur(a.cf)} (${eur(a.cf / 12)}/mois)<br>Loyers ${eur(a.loyers)} · crédit ${eur(a.credit)}<br>Charges ${eur(a.charges)} · impôts ${eur(a.impots)}`;
+      tip.innerHTML = `<b>Année ${a.y}</b>${a.y > finCredit ? ' (crédit terminé)' : ''}<br>Cash-flow : ${eur(a.cf)} (${eur(a.cf / 12)}/mois)<br>Loyers ${eur(a.loyers)} · crédit ${eur(a.credit)}<br>Charges ${eur(a.charges)} · impôts ${eur(a.impots)}${a.fisc ? `<br><span style="color:var(--muted)">${a.fisc}</span>` : ''}`;
       tip.style.display = 'block';
       tip.style.left = Math.min(e.pageX + 12, window.innerWidth - tip.offsetWidth - 8) + 'px';
       tip.style.top = (e.pageY - tip.offsetHeight - 10) + 'px';
@@ -1531,6 +1578,7 @@ $('form').addEventListener('input', e => {
   }
   sauver(); rendre();
 });
+CF.querySelectorAll('details.opt').forEach(d => d.addEventListener('toggle', () => { majChips(); sauver(); rendre(); }));
 $('tauxMarche').onclick = () => { set('taux', tauxConseille()); sauver(); rendre(); };
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
