@@ -78,11 +78,29 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .okbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--good) 16%,transparent)}
 .cta{display:block;margin-top:12px;padding:9px 12px;border-radius:8px;background:var(--accent);color:#fff;text-align:center;font-weight:600;text-decoration:none}
 .retry{margin-left:6px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
-.result.works{background:color-mix(in srgb,var(--warn) 10%,var(--panel));border:0}
-.result.works summary{font-size:15px;padding:0}
-.result.works .row{grid-template-columns:1fr 1fr}
-.result.works .cta{margin-top:0}
+.row.typesurf{grid-template-columns:1.6fr 1fr}
+.synth{margin-top:16px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--accent-soft);border-radius:12px;padding:10px 12px;min-width:0}
+.kpi .k{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi .v.up{color:var(--good)} .kpi .v.down{color:var(--bad)}
+.kpi .d{font-size:12px;color:var(--muted)}
+.synthbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:8px}
+.synthbar .conf{margin-top:0}
+.louer{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.seg.mini button{padding:4px 10px;font-size:13px}
+.works{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
+.works .kpis{margin-top:8px}
+.works .kpi{background:var(--panel)}
+.works .row{margin-top:10px}
+.detail{margin-top:14px}
+.detail[open]{padding-bottom:12px}
+.affiner .chip{font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;margin-left:6px;background:var(--line);color:var(--muted)}
+.affiner .chip.on{background:var(--accent-soft);color:var(--accent)}
+details.plus{margin-top:12px;border-style:dashed}
 .calc .tot{border-top:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);margin-top:4px;padding-top:6px}
+@media (max-width:420px){.kpi .v{font-size:18px}}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 
 [hidden]{display:none!important}
@@ -90,6 +108,9 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .tabs .brand{display:flex;align-items:center;font-weight:700;margin-right:12px}
 .tabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:0 12px;cursor:pointer;border-bottom:3px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 6px;white-space:nowrap}}
+#cf .voirRes{display:none}
+@media (max-width:900px){#cf .voirRes{display:block;width:100%;margin-top:10px}}
 button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf{display:flex;flex-direction:column;height:calc(100vh - 48px)}
 #cf .cfwrap{display:grid;grid-template-columns:420px 1fr;flex:1;min-height:0}
@@ -97,6 +118,21 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf details{margin:0 0 12px}
 #cf .sect{border:1px solid var(--line);border-radius:10px;padding:4px 12px 12px;margin:0 0 12px}
 #cf .sect h3{font-size:15px;margin:8px 0 2px}
+#cf .sect[hidden]{display:none}
+#cf details.reglages{border-style:solid}
+#cf details.reglages h4{font-size:13px;margin:12px 0 0;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#cf .scen{max-width:420px;margin-bottom:12px;scroll-margin-top:60px}
+#cf .scen button{font-weight:600}
+#credits .credwrap{max-width:980px;margin:0 auto;padding:20px}
+#credits .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+#credits h2{font-size:15px;margin:0 0 8px}
+#credits table{width:100%;border-collapse:collapse;font-size:13px}
+#credits th,#credits td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:normal}
+#credits th:first-child,#credits td:first-child{text-align:left}
+#credits th{color:var(--muted);font-weight:600}
+#credits .scroll{overflow-x:auto}
+#credits input{padding:5px 6px;font-size:13px}
+#credits button{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
 #cf details.opt{border-style:dashed}
 #cf details.opt[open]{border-style:solid}
 #cf .chip{font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;margin-left:6px;vertical-align:1px;background:var(--line);color:var(--muted)}
@@ -108,6 +144,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .check{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:14px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}
 #cf .check input{width:auto}
 #cf button{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+#cf .seg.scen button{border:0;border-radius:0;padding:9px}
+#cf .seg.scen button.on{background:var(--accent);color:#fff}
 #cf .bienbar{padding:10px 20px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-size:14px}
 #cf .voir{display:none;margin-left:8px;padding:3px 10px;font-size:13px}
 #cf .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
@@ -135,13 +173,14 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <body>
 <nav class="tabs" role="tablist">
   <span class="brand">Estimateur m²</span>
-  <button role="tab" data-tab="estimation" aria-selected="true">Estimation</button>
-  <button role="tab" data-tab="cashflow" aria-selected="false">Cash-flow</button>
+  <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
+  <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
+  <button role="tab" data-tab="credits" aria-selected="false">Mes crédits</button>
 </nav>
 <div class="wrap" id="estim">
 <aside>
-  <h1>Estimateur de prix au m²</h1>
-  <div class="sub">Toute la France · ventes réelles DVF interrogées en direct</div>
+  <h1>Estimer un bien</h1>
+  <div class="sub">Prix et loyer à partir des ventes réelles (DVF), partout en France</div>
 
   <label>Adresse</label>
   <div class="sugg">
@@ -153,26 +192,27 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
   </div>
   <div class="hint">…ou clique directement sur la carte.</div>
 
-  <label>Type de bien</label>
-  <div class="seg" id="type">
-    <button data-v="121" class="on">Appartement</button>
-    <button data-v="111">Maison</button>
-  </div>
-
-  <div class="row">
-    <div><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
-    <div><label>Ventes depuis</label>
-      <select id="since"><option value="auto" selected>Automatique</option><option value="2">2 ans</option><option value="3">3 ans</option><option value="5">5 ans</option><option value="10">10 ans</option></select>
+  <div class="row typesurf">
+    <div><label>Type de bien</label>
+      <div class="seg" id="type"><button data-v="121" class="on">Appartement</button><button data-v="111">Maison</button></div>
     </div>
+    <div><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
   </div>
-
-  <details open>
-    <summary>Caractéristiques du bien</summary>
-    <div class="crit" id="crit"></div>
-    <div class="checks" id="checks"></div>
-  </details>
 
   <div id="out"><div class="empty">Choisis une adresse pour lancer l'estimation.</div></div>
+
+  <details class="affiner" id="affiner">
+    <summary>Affiner : état, DPE, étage… <span class="chip" id="nbCrit"></span></summary>
+    <div class="crit" id="crit"></div>
+    <details class="plus"><summary>Plus de critères</summary>
+      <div class="crit" id="crit2"></div>
+      <div class="checks" id="checks"></div>
+      <div class="crit"><div><label>Période des ventes</label>
+        <select id="since"><option value="auto" selected>Automatique</option><option value="2">2 ans</option><option value="3">3 ans</option><option value="5">5 ans</option><option value="10">10 ans</option></select>
+      </div></div>
+    </details>
+    <div id="critCache" hidden></div>
+  </details>
 </aside>
 <div id="map"></div>
 </div>
@@ -180,60 +220,30 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <div id="cf_bien" class="bienbar"></div>
 <div class="cfwrap">
 <aside id="cf_form">
-  <details class="opt" id="cf_boxProjet"><summary>Projet travaux <span class="chip"></span></summary><div class="hint">Ouvre cette section pour simuler des travaux, puis une location ou une revente. Fermée : achat simple.</div><div class="grid">
-    <div><label>Type de projet</label><select id="cf_projet"><option value="simple">Achat (sans gros travaux)</option><option value="location">Achat + travaux, puis location</option><option value="revente">Achat + travaux, puis revente</option></select></div>
-    <div data-travaux><label>Durée des travaux (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
-    <div data-travaux><label>Valeur après travaux (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
-    <div data-revente><label>Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
-    <div data-revente><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
-  </div>
-  <label class="check" data-travaux><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label>
-  <div class="hint" data-travaux>La location démarre à la fin du chantier (« Location à partir du mois »). Le différé du crédit (section Crédit) peut durer plus longtemps : tu encaisses alors des loyers pendant que tu ne paies que les intérêts. Le montant des travaux et du mobilier se règle dans « Le bien ».</div></details>
-
-  <div class="sect"><h3>Le bien</h3><div class="grid">
+  <div class="sect"><h3>L'essentiel</h3><div class="grid">
     <div><label>Prix d'achat (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
-    <div><label>Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
-    <div><label>Surface (m²)</label><input id="cf_surf" type="number" min="9"></div>
-    <div><label>État</label><select id="cf_neuf"><option value="0">Ancien</option><option value="1">Neuf (VEFA)</option></select></div>
-    <div><label>Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
-    <div><label>Travaux (€)</label><input id="cf_travaux" type="number" min="0" step="1000"></div>
-    <div data-meuble><label>Mobilier (€)</label><input id="cf_mobilier" type="number" min="0" step="500"></div>
-  </div></div>
-
-  <div class="sect"><h3>Crédit</h3><div class="grid">
-    <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
     <div><label>Apport (€)</label><input id="cf_apport" type="number" min="0" step="1000"></div>
-    <div><label>Durée (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
-    <div><label>Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
-    <div><label>Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
-    <div><label>Différé (mois)</label><input id="cf_differe" type="number" min="0" max="36"></div>
-    <div><label>Type de différé</label><select id="cf_typeDiff"><option value="partiel">Intérêts seuls</option><option value="total">Total (intérêts ajoutés au capital)</option></select></div>
-    <div><label>Frais de dossier (€)</label><input id="cf_dossier" type="number" min="0" step="100"></div>
-    <div><label>Garantie (% du prêt)</label><input id="cf_garantie" type="number" step="0.1"></div>
-  </div>
-  <label class="check"><input type="checkbox" id="cf_notaireCredit"> Inclure les frais de notaire dans le crédit (« prêt à 110 % »)</label>
-  <div class="hint">Sinon, l'apport sert d'abord à payer les frais de notaire. Beaucoup de banques le demandent, mais un financement à 110 % sans apport reste possible, y compris en SCI : on le voit sur des prêts SCI réels.</div>
-  <div class="hint" id="cf_tauxHint"></div>
-  <button id="cf_tauxMarche" style="margin-top:8px">Mettre le taux du marché</button></div>
-
-  <div class="sect"><h3>Location et charges</h3><div class="grid">
+    <div><label>Durée du crédit (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
+    <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
     <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
     <div><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
-    <div><label>Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
-    <div><label>Location à partir du mois</label><input id="cf_debutLoc" type="number" min="0" max="60"></div>
-    <div><label>Taxe foncière (€/an)</label><input id="cf_tf" type="number" min="0" step="50"></div>
-    <div><label>Copro non récupérable (€/an)</label><input id="cf_copro" type="number" min="0" step="50"></div>
-    <div><label>Assurance PNO (€/an)</label><input id="cf_pno" type="number" min="0" step="10"></div>
-    <div><label>Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
-    <div><label>Entretien (% loyers)</label><input id="cf_entretien" type="number" min="0" step="0.5"></div>
-    <div><label>Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
-    <div data-meuble><label>CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
-  </div>
-  <div class="hint">« Location à partir du mois » : mets la durée des travaux si le bien n'est pas loué tout de suite.</div></div>
+  </div><button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button></div>
 
-  <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="hint">Fermée : cash-flow avant impôts. Ouvre-la pour compter les impôts selon la structure (nom propre, SCI à l'IR ou à l'IS, choisie dans « Crédit »).</div><div class="grid">
-    <div data-np><label>Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
+  <div class="sect" data-revente><h3>Revente</h3><div class="grid">
+    <div><label>Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
+    <div><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
+  </div></div>
+
+  <details class="opt" id="cf_boxProjet"><summary>Travaux <span class="chip"></span></summary><div class="hint">Ouverte : les travaux sont comptés, et le loyer démarre à la fin du chantier.</div><div class="grid">
+    <div><label>Montant des travaux (€)</label><input id="cf_travaux" type="number" min="0" step="1000"></div>
+    <div><label>Durée du chantier (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
+    <div><label>Valeur après travaux (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
+  </div>
+  <label class="check"><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label></details>
+
+  <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="hint">Fermée : cash-flow avant impôts. Ouverte : impôts selon « Achat en » (nom propre, SCI à l'IR ou à l'IS).</div><div class="grid">
     <div data-notis><label>Tranche d'imposition (TMI)</label><select id="cf_tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
+    <div data-np><label>Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
     <div data-amort><label>Part du terrain (%)</label><input id="cf_terrain" type="number" min="0" max="80"></div>
     <div data-is><label>Bâtiment de plus de 15 ans</label><select id="cf_vieux"><option value="1">Oui (contribution 2,5 %)</option><option value="0">Non</option></select></div>
   </div>
@@ -245,10 +255,43 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div><label>Hausse du prix (%/an)</label><input id="cf_gPrix" type="number" step="0.1"></div>
     <div><label>Hausse des charges (%/an)</label><input id="cf_gCharges" type="number" step="0.1"></div>
   </div></details>
+
+  <details class="reglages" id="cf_boxDetail"><summary>Réglages détaillés</summary><div class="hint">Toujours comptés, avec des valeurs par défaut réalistes : ajuste-les si tu les connais.</div>
+    <h4>Crédit</h4><div class="grid">
+      <div><label>Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
+      <div><label>Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
+      <div><label>Différé (mois)</label><input id="cf_differe" type="number" min="0" max="36"></div>
+      <div><label>Type de différé</label><select id="cf_typeDiff"><option value="partiel">Intérêts seuls</option><option value="total">Total (intérêts ajoutés au capital)</option></select></div>
+      <div><label>Frais de dossier (€)</label><input id="cf_dossier" type="number" min="0" step="100"></div>
+      <div><label>Garantie (% du prêt)</label><input id="cf_garantie" type="number" step="0.1"></div>
+    </div>
+    <div class="hint" id="cf_tauxHint"></div>
+    <button id="cf_tauxMarche" style="margin-top:6px">Mettre le taux du marché</button>
+    <label class="check"><input type="checkbox" id="cf_notaireCredit"> Inclure les frais de notaire dans le crédit (« prêt à 110 % »)</label>
+    <h4>Achat</h4><div class="grid">
+      <div><label>Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
+      <div><label>État</label><select id="cf_neuf"><option value="0">Ancien</option><option value="1">Neuf (VEFA)</option></select></div>
+      <div><label>Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
+      <div><label>Surface (m²)</label><input id="cf_surf" type="number" min="9"></div>
+      <div data-meuble><label>Mobilier (€)</label><input id="cf_mobilier" type="number" min="0" step="500"></div>
+    </div>
+    <h4>Charges</h4><div class="grid">
+      <div><label>Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
+      <div><label>Taxe foncière (€/an)</label><input id="cf_tf" type="number" min="0" step="50"></div>
+      <div><label>Copro non récupérable (€/an)</label><input id="cf_copro" type="number" min="0" step="50"></div>
+      <div><label>Assurance PNO (€/an)</label><input id="cf_pno" type="number" min="0" step="10"></div>
+      <div><label>Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
+      <div><label>Entretien (% loyers)</label><input id="cf_entretien" type="number" min="0" step="0.5"></div>
+      <div><label>Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
+      <div data-meuble><label>CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
+    </div>
+  </details>
+  <select id="cf_scenario" hidden><option value="louer">louer</option><option value="revendre">revendre</option></select>
   <button id="cf_reset">Remettre les valeurs par défaut</button>
 </aside>
 
 <main>
+  <div class="seg scen" id="cf_scen"><button data-v="louer">Garder et louer</button><button data-v="revendre">Revendre</button></div>
   <div class="tiles" id="cf_tiles"></div>
   <div id="cf_alerts"></div>
   <div class="card" id="cf_bilan" hidden></div>
@@ -258,7 +301,6 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div class="hint">Bleu : le bien rapporte plus qu'il ne coûte. Rouge : effort d'épargne à prévoir. Le tableau détaillé est juste en dessous.</div>
   </div>
   <details class="card" style="padding:14px 16px"><summary style="padding:0">Tableau année par année</summary><div class="scroll" id="cf_table"></div></details>
-  <div class="card" id="cf_credits"></div>
   <div class="card"><h2>Sources et limites</h2>
     <ol class="srcs">
       <li><a href="https://www.weblex.fr/chiffres-cles/indice-du-taux-moyen-des-credits-immobiliers-annee-2024" target="_blank" rel="noopener">Observatoire Crédit Logement / CSA — taux moyens accordés par durée (historique 2023-2024)</a> ; <a href="https://www.meilleurtaux.com/credit-immobilier/actualites/2026-octobre/credit-immobilier-taux-a-3-40-et-durees-record.html" target="_blank" rel="noopener">septembre 2026 : 3,40 %, 3,39 % sur 20 ans</a>.</li>
@@ -273,6 +315,15 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 </main>
 </div>
 <div class="tip cftip" id="cf_tip"></div>
+</section>
+<section id="credits" hidden>
+  <div class="credwrap">
+    <div class="card" id="cf_credits"></div>
+    <div class="card"><h2>Sources</h2><ol class="srcs">
+      <li><a href="https://www.weblex.fr/chiffres-cles/indice-du-taux-moyen-des-credits-immobiliers-annee-2024" target="_blank" rel="noopener">Observatoire Crédit Logement / CSA — taux moyens accordés par durée</a> ; <a href="https://www.meilleurtaux.com/credit-immobilier/actualites/2026-octobre/credit-immobilier-taux-a-3-40-et-durees-record.html" target="_blank" rel="noopener">septembre 2026</a>.</li>
+      <li><a href="https://www.cpim.fr/renegociation-credit-immo-seuil-rentabilite/" target="_blank" rel="noopener">Renégociation : seuil de rentabilité, indemnités et frais</a>.</li>
+    </ol></div>
+  </div>
 </section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -332,14 +383,14 @@ const ETAGE = {   // écart vs 2e étage (MeilleursAgents 2017/2020) ; index 0 =
 // Options : k = clé, l = libellé, d = défaut, p = % (multiplicatif), abs = montant en €,
 // cout = coût de travaux en €/m² (converti en décote selon le prix du secteur), z = zones où l'option existe.
 const CRITERES = [
-  {id: 'etat', label: 'État général', pour: 'tous', src: 'reno', options: [
+  {id: 'etat', essentiel: true, label: 'État général', pour: 'tous', src: 'reno', options: [
     {k: 'renover', l: 'À rénover entièrement', cout: {paris: 1500, autre: 1100}},
     {k: 'travaux', l: 'Gros travaux (cuisine, SdB…)', cout: {paris: 900, autre: 700}},
     {k: 'rafraichir', l: 'À rafraîchir', cout: {paris: 450, autre: 350}},
     {k: 'bon', l: 'Bon état', d: 1},
     {k: 'neuf', l: 'Refait à neuf', p: 0.06},
     {k: 'luxe', l: 'Prestations haut de gamme', p: 0.10, src: 'est'}]},
-  {id: 'dpe', label: 'DPE (énergie)', pour: 'tous', src: 'vv', special: true, options: [
+  {id: 'dpe', essentiel: true, label: 'DPE (énergie)', pour: 'tous', src: 'vv', special: true, options: [
     {k: '?', l: 'Inconnu', d: 1}, ...'ABCDEFG'.split('').map(x => ({k: x, l: x}))]},
   {id: 'epoque', label: 'Construction', pour: 'tous', src: 'nf', special: true, options: [
     {k: '?', l: 'Je ne sais pas', d: 1},
@@ -349,10 +400,10 @@ const CRITERES = [
     {k: '1970', l: '1970 – 1980', p: {appart: {paris: -0.13, autre: -0.08}, maison: -0.01}},
     {k: '1981', l: '1981 – 1991', p: {appart: {paris: -0.03, autre: 0.03}, maison: 0.17}},
     {k: '1992', l: 'Après 1992', p: {appart: {paris: 0.04, autre: 0.11}, maison: 0.17}}]},
-  {id: 'etage', label: 'Étage', pour: 'appart', src: 'et', special: true, options: [
+  {id: 'etage', essentiel: true, label: 'Étage', pour: 'appart', src: 'et', special: true, options: [
     {k: 0, l: 'RDC'}, {k: 1, l: '1er'}, {k: 2, l: '2e', d: 1}, {k: 3, l: '3e'}, {k: 4, l: '4e'}, {k: 5, l: '5e'}, {k: 6, l: '6e et +'}]},
-  {id: 'ascenseur', label: 'Ascenseur', pour: 'appart', special: true, options: [{k: 0, l: 'Non', d: 1}, {k: 1, l: 'Oui'}]},
-  {id: 'exterieur', label: 'Extérieur', pour: 'appart', src: 'ext', options: [
+  {id: 'ascenseur', essentiel: true, label: 'Ascenseur', pour: 'appart', special: true, options: [{k: 0, l: 'Non', d: 1}, {k: 1, l: 'Oui'}]},
+  {id: 'exterieur', essentiel: true, label: 'Extérieur', pour: 'appart', src: 'ext', options: [
     {k: 'aucun', l: 'Aucun', d: 1},
     {k: 'petit', l: 'Petit balcon (< 10 m²)', p: {corse: 0.05, autre: 0.044}, src: 'ext20'},
     {k: 'balcon', l: 'Balcon / terrasse', p: {paris: 0.082, corse: 0.12, autre: 0.097}},
@@ -362,7 +413,7 @@ const CRITERES = [
     {k: '1', l: '1', d: 1}, {k: '2', l: '2 ou plus', p: {appart: 0.14, maison: 0.09}}]},
   {id: 'mitoyen', label: 'Implantation', pour: 'maison', src: 'est', options: [
     {k: 'indiv', l: 'Individuelle', d: 1}, {k: 'mit1', l: 'Mitoyenne 1 côté', p: -0.05}, {k: 'mit2', l: 'Mitoyenne 2 côtés', p: -0.08}]},
-  {id: 'terrain', label: 'Terrain (m²)', pour: 'maison', special: true, number: true},
+  {id: 'terrain', essentiel: true, label: 'Terrain (m²)', pour: 'maison', special: true, number: true},
   {id: 'vue', label: 'Vue', pour: 'tous', src: 'est', options: [
     {k: 'vis', l: 'Vis-à-vis proche', p: -0.05},
     {k: 'std', l: 'Standard', d: 1},
@@ -381,9 +432,7 @@ const CRITERES = [
     {k: '2', l: '2 places ou plus', abs: {paris: 56000}, p: {autre: 0.12}, src: {paris: 'park', autre: 'nf'}}]},
   {id: 'garage', label: 'Stationnement', pour: 'maison', src: 'nf', options: [
     {k: 'oui', l: 'Garage / parking', d: 1}, {k: 'non', l: 'Aucun', p: -0.05}]},
-  {id: 'location', label: 'Location', pour: 'tous', special: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}]},
-  {id: 'mobilier', label: 'Mobilier vendu avec', pour: 'tous', special: true, options: [   // en €/m², compté à part
-    {k: '0', l: 'Aucun (vide)', d: 1, m2: 0}, {k: 'b', l: 'Basique', m2: 60}, {k: 'c', l: 'Correct', m2: 120}, {k: 'h', l: 'Haut de gamme', m2: 250}]},
+  {id: 'location', label: 'Location', pour: 'tous', special: true, cache: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}]},
   {id: 'chambre', label: 'Chambre séparée (≤ 40 m²)', pour: 'appart', check: true, p: 0.05, maxSurf: 40, src: 'chambre'},
   {id: 'cave', label: 'Cave', pour: 'appart', check: true, p: 0.01, src: 'est'},
   {id: 'soussol', label: 'Sous-sol', pour: 'maison', check: true, p: 0.03, src: 'nf'},
@@ -606,7 +655,7 @@ let layer = L.layerGroup(), circle = null, pin = null, markers = [];
 function render(r) {
   const out = document.getElementById('out');
   layer.clearLayers(); markers = []; if (circle) circle.remove();
-  if (r.none) { state.base = null; out.innerHTML = '<div class="empty">Pas assez de ventes comparables autour de ce point pour ce type de bien. Essaie d\'élargir la période.</div>'; return; }
+  if (r.none) { state.base = null; out.innerHTML = '<div class="empty">Pas assez de ventes comparables autour de ce point pour ce type de bien, même en remontant jusqu\'à 10 ans. Essaie l\'autre type de bien ou un point plus proche d\'un bourg.</div>'; return; }
   circle = L.circle([state.lat, state.lon], {radius: r.radius, color: '#2f6fde', weight: 1, fillOpacity: .04}).addTo(map);
   const maxW = r.comps[0].w;
   r.comps.forEach(c => {
@@ -622,16 +671,19 @@ function render(r) {
   const bars = years.map(v => `<div title="${v.n} ventes">${fmt(v.m)}<span style="height:${(v.m / maxM * 60).toFixed(0)}px"></span>${v.y}</div>`).join('');
   const rows = r.comps.slice(0, 25).map((c, k) =>
     `<tr data-k="${k}"><td>${fmtDate(c.date)}</td><td class="n">${c.d < 1000 ? fmt(c.d) + ' m' : (c.d / 1000).toFixed(1) + ' km'}</td><td class="n">${fmt(c.surf)}</td><td class="n">${fmtK(c.prix)}</td><td class="n">${fmt(c.ppm)}</td></tr>`).join('');
-  state.base = r;
+  state.base = r; state.loyerHC = null; state.lm = null;
   if (r.zone !== state.zone) { state.zone = r.zone; fillOptions(); }
   out.innerHTML = `
-    <div class="result" id="res"></div>
-    <details class="result works" id="works"></details>
-    <div class="result rent" id="rent"></div>
-    ${years.length > 1 ? `<h2>Prix médian au m² du secteur, par année</h2><div class="bars">${bars}</div>` : ''}
-    <h2>Ventes les plus comparables</h2>
-    <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">m²</th><th class="n">Prix</th><th class="n">€/m²</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema) — hors Alsace-Moselle et Mayotte.</div>`;
+    <div class="synth" id="synth"><div class="empty">Calcul…</div></div>
+    <div class="works" id="works"></div>
+    <details class="detail"><summary>Détail du calcul, sources et ventes comparables</summary>
+      <div class="result" id="res"></div>
+      <div class="result rent" id="rent"></div>
+      ${years.length > 1 ? `<h2>Prix médian au m² du secteur, par année</h2><div class="bars">${bars}</div>` : ''}
+      <h2>Ventes les plus comparables</h2>
+      <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">m²</th><th class="n">Prix</th><th class="n">€/m² (vente)</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema) — hors Alsace-Moselle et Mayotte.</div>
+    </details>`;
   out.querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => {
     const c = r.comps[+tr.dataset.k];
     map.setView([c.lat, c.lon], Math.max(map.getZoom(), 16));
@@ -672,28 +724,29 @@ function facteurPour(over) {
 }
 
 function buildForm() {
-  const box = document.getElementById('crit'), checks = document.getElementById('checks');
+  const el = id => document.getElementById(id);
   for (const c of CRITERES) {
     const wrap = document.createElement('div');
     wrap.dataset.pour = c.pour;
+    const cible = c.cache ? el('critCache') : c.check ? el('checks') : c.essentiel ? el('crit') : el('crit2');
     if (c.check) {
       wrap.innerHTML = `<label><input type="checkbox" id="c_${c.id}"${saved[c.id] ? ' checked' : ''}> ${c.label}</label>`;
-      checks.append(wrap);
     } else if (c.number) {
       wrap.innerHTML = `<label>${c.label}</label><input type="number" min="0" id="c_${c.id}" placeholder="optionnel" value="${saved[c.id] ?? ''}">`;
-      box.append(wrap);
     } else {
       wrap.innerHTML = `<label>${c.label}</label><select id="c_${c.id}"></select>`;
-      box.append(wrap);
     }
+    cible.append(wrap);
     field(c.id).addEventListener('input', () => {
       saved[c.id] = c.check ? field(c.id).checked : field(c.id).value;
       try { localStorage.setItem('criteres-v2', JSON.stringify(saved)); } catch (e) {}
+      majAffiner();
       updateResult();
     });
   }
   fillOptions();
   syncForm();
+  majAffiner();
 }
 // (Re)remplit les listes selon la zone (ex. « vue mer » hors Paris), en gardant le dernier choix de l'utilisateur
 function fillOptions() {
@@ -704,6 +757,15 @@ function fillOptions() {
     field(c.id).innerHTML = opts.map(o => `<option value="${o.k}"${o === keep ? ' selected' : ''}>${o.l}</option>`).join('');
   }
 }
+// Nombre de critères réglés (différents du bien « moyen ») affiché sur « Affiner »
+function majAffiner() {
+  const n = CRITERES.filter(c => !c.cache && visible(c) && (c.check ? field(c.id).checked
+    : c.number ? +field(c.id).value > 0 : String(field(c.id).value) !== String(c.options.find(o => o.d)?.k))).length;
+  const chip = document.getElementById('nbCrit');
+  chip.textContent = n ? `${n} réglé${n > 1 ? 's' : ''}` : 'bien moyen du secteur';
+  chip.classList.toggle('on', n > 0);
+}
+const louerMeuble = () => field('location').value === 'meuble';
 function syncForm() {
   document.querySelectorAll('[data-pour]').forEach(el => el.hidden = !(el.dataset.pour === 'tous' || (el.dataset.pour === 'appart') === isAppart()));
 }
@@ -727,8 +789,11 @@ function adjustments(base) {
     } else if (res(o.abs)) add(name, src, {abs: res(o.abs)});
     else if (res(o.p)) add(name, src, {p: res(o.p)});
   }
-  const dpe = selected(crit('dpe')).k;
-  if (dpe !== '?' && dpe !== 'D') add(`DPE : ${dpe} (vs D)`, 'vv', {p: DPE[isAppart() ? 'appart' : 'maison'][state.zone][dpe]});
+  const dpe = selected(crit('dpe')).k, etatK = selected(crit('etat')).k;
+  // La décote DPE des notaires ne tient pas compte de l'état : pour un bien déjà décoté « à rénover »,
+  // une partie de l'écart est déjà comptée, on n'en garde que la moitié
+  const dejaTravaux = ['renover', 'travaux'].includes(etatK) && 'EFG'.includes(dpe);
+  if (dpe !== '?' && dpe !== 'D') add(`DPE : ${dpe} (vs D)${dejaTravaux ? ' (effet ½, travaux déjà comptés)' : ''}`, 'vv', {p: DPE[isAppart() ? 'appart' : 'maison'][state.zone][dpe] / (dejaTravaux ? 2 : 1)});
   // Époque : divisée par deux si le DPE est connu, car une partie de l'écart tient déjà à la performance énergétique
   const ep = selected(crit('epoque'));
   let pe = res(ep.p);
@@ -775,6 +840,7 @@ function updateResult() {
   const el = document.getElementById('res'), r = state.base;
   if (!el || !r) return;
   setTimeout(updateRent);
+  setTimeout(renderSynth);
   const lines = adjustments(r);
   dampen(lines);
   const raw = lines.reduce((f, l) => f * (1 + (l.p || 0)), 1);
@@ -787,8 +853,9 @@ function updateResult() {
   const atypique = gross > SEUIL_ATYPIQUE, widen = atypique ? Math.min(0.15, (gross - SEUIL_ATYPIQUE) / 2) : 0;
   const conf = !atypique ? r.conf : r.conf[0].endsWith('bonne') ? ['Fiabilité moyenne', 'var(--warn)'] : ['Fiabilité faible', 'var(--bad)'];
   const damped = lines.some(l => l.eff != null && l.eff !== l.p);
-  const mob = selected(crit('mobilier')).m2 * r.surf;
+  const mob = louerMeuble() ? budgetMobilier(r.surf, choixTravaux.gamme || 'standard') : 0;   // meubles à acheter pour louer meublé
   state.prix = prix; state.mob = mob; state.factor = factor;
+  state.prixLo = val(r.p25) * (1 - widen); state.prixHi = val(r.p75) * (1 + widen); state.confAff = conf; state.atypique = atypique;
   state.chambreEff = lines.find(l => l.src === 'chambre')?.eff || 0;
   const used = [];
   const ref = k => {
@@ -808,12 +875,10 @@ function updateResult() {
       <div><span>Prix du marché du secteur (${fmt(r.med)} €/m²)</span><b>${fmtK(r.med * r.surf)}</b></div>
       ${rows}
       ${lines.length ? `<div class="tot"><span>Total des ajustements${damped ? ` <small class="raw">(cumul brut ${pct(raw - 1)})</small>` : ''}</span><b>${factor !== 1 ? pct(factor - 1) : ''}${abs ? ' ' + eur(abs) : ''}</b></div>${damped ? '<div class="note">Les critères se recoupent : le plus fort compte en entier, les suivants de moins en moins.</div>' : ''}` : '<div><span>Aucun ajustement : bien « moyen » du secteur</span></div>'}
-      ${mob ? `<div class="tot"><span>Mobilier (estimé à part)</span><b>+ ${fmtK(mob)}</b></div><div><span><b>Total avec mobilier</b></span><b>${fmtK(prix + mob)}</b></div>` : ''}
     </div>
     <div class="range">Coefficients : <b>${zoneName}</b>. Basé sur ${r.comps.length} ventes dans un rayon de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}, pondérées par distance, surface et ancienneté.</div>
     ${r.elargie ? `<div class="warnbox">Peu de ventes récentes près du bien : période élargie automatiquement à <b>${r.periode} ans</b> (ventes de ${r.anMin} à ${r.anMax}), plutôt que d'aller chercher des ventes dans d'autres quartiers.</div>` : ''}
     ${Object.keys(r.trend).length ? `<div class="range">Prix actualisés au niveau ${r.refYear} avec l'indice du quartier (${fmt(r.nbSecteur)} ventes, appartements et maisons) : ${resumeIndice(r.trend, r.refYear)}.</div>` : ''}
-    ${mob ? '<div class="range">Bon à savoir : le mobilier listé à part dans l\'acte n\'est pas soumis aux frais de notaire.</div>' : ''}
     ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
 }
 
@@ -897,6 +962,7 @@ async function updateRent() {
     if (!lm) { el.innerHTML = '<div class="empty">Pas d\'indicateur de loyer pour cette commune.</div>'; return; }
     state.rentRetry = 0;
     renderRent(el, r, lm, insee);
+    renderSynth();
   } catch (e) {
     if (token !== state.rentRun) return;
     // Coupure passagère d'un service de données : deux nouveaux essais, puis un bouton
@@ -908,7 +974,7 @@ async function updateRent() {
 
 function calcLoyer(r, lm, insee, facteurPrix, chambreEff) {
   const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
-  const meuble = selected(crit('location')).k === 'meuble';
+  const meuble = louerMeuble();
   const charges = isAppart() ? CHARGES.appart[z] : CHARGES.maison;
   // Atouts / défauts : même facteur que pour le prix (déjà amorti), atténué pour le loyer
   // (la chambre séparée est retirée ici puis appliquée en entier plus bas)
@@ -932,7 +998,7 @@ function renderRent(el, r, lm, insee) {
   const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
   state.lm = lm; state.insee = insee;
   const {meuble, charges, qual, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC} = calcLoyer(r, lm, insee, state.factor, state.chambreEff);
-  state.loyerHC = HC;
+  state.loyerHC = HC; state.loyerCC = CC;
   setTimeout(renderWorks);
   const prixRef = state.prix + (meuble ? state.mob : 0);
 
@@ -963,7 +1029,6 @@ function renderRent(el, r, lm, insee) {
       ${pkM ? `<div><span>Parking loué avec${ref('yespark')}</span><b class="up">+ ${fmt(pkM)} €</b></div>` : ''}
     </div>
     ${alerts}
-    <button class="cta" onclick="showTab('cashflow')">Simuler le crédit et le cash-flow →</button>
     <div class="range">${fiable ? `Indicateur communal fiable (${fmt(lm.row.nbobs_com)} annonces, 2019-2025).` : `Indicateur peu précis : ${lm.row.TYPPRED === 'commune' ? 'peu d\'annonces dans la commune' : 'commune estimée à partir des communes voisines'} (${fmt(lm.row.nbobs_com)} annonces).`} Hors charges : charges estimées à ${charges.toLocaleString('fr-FR')} €/m²/mois.</div>
     ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
 }
@@ -971,7 +1036,8 @@ function renderRent(el, r, lm, insee) {
 
 // --- Projet travaux : budget, valeur et loyer après travaux ---
 const NIVEAUX = {   // €/m², mêmes coûts que la décote « en l'état » ; durée de chantier indicative
-  aucun: {l: 'Aucun (seulement l\'énergie)', paris: 0, autre: 0, mois: 1, d: 'Pas de travaux d\'aménagement.'},
+  non: {l: 'Non', paris: 0, autre: 0, mois: 0, d: ''},
+  aucun: {l: 'Seulement l\'énergie (DPE)', paris: 0, autre: 0, mois: 1, d: 'Isolation, fenêtres, chauffage, ventilation selon le diagnostic, sans travaux d\'aménagement.'},
   rafraichir: {l: 'Rafraîchissement (peinture, sols)', paris: 450, autre: 350, mois: 2, d: 'Peintures, sols, luminaires, petites reprises.'},
   travaux: {l: 'Gros travaux (cuisine, salle de bain, électricité)', paris: 900, autre: 700, mois: 4, d: 'Cuisine et salle de bain neuves, électricité remise aux normes, peintures et sols.'},
   renover: {l: 'Rénovation complète', paris: 1500, autre: 1100, mois: 6, d: 'Tous corps d\'état : électricité, plomberie, menuiseries, cloisons, cuisine, salle de bain, finitions.'},
@@ -1000,61 +1066,95 @@ function renderWorks() {
   const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
   const etat = selected(crit('etat')).k, dpe = selected(crit('dpe')).k;
   const aRenover = ['renover', 'travaux', 'rafraichir'].includes(etat), passoire = 'EFG'.includes(dpe) && dpe !== '?';
-  const niveau = choixTravaux.niveau && NIVEAUX[choixTravaux.niveau] ? choixTravaux.niveau : aRenover ? etat : 'aucun';
+  const niveau = choixTravaux.niveau && NIVEAUX[choixTravaux.niveau] ? choixTravaux.niveau : aRenover ? etat : passoire ? 'aucun' : 'non';
+  const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${v}</option>`).join('');
+  const question = `<div class="crit"><div><label>Travaux prévus ?</label><select id="w_niveau">${opt(Object.fromEntries(Object.entries(NIVEAUX).map(([k, v]) => [k, v.l])), niveau)}</select></div>`;
+  const bind = () => {
+    const save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
+    document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; save(); renderWorks(); };
+    const g = document.getElementById('w_gamme'), d = document.getElementById('w_dpe');
+    if (g) g.onchange = e => { choixTravaux.gamme = e.target.value; save(); updateResult(); };
+    if (d) d.onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
+  };
+  if (niveau === 'non') {
+    state.projet = null;
+    el.innerHTML = `${question}<div></div></div><button class="cta" onclick="showTab('cashflow')">Financer ce bien →</button>`;
+    bind(); renderSynth();
+    return;
+  }
   const dpeVise = choixTravaux.dpe && (choixTravaux.dpe === '=' || ORDRE_DPE.includes(choixTravaux.dpe)) ? choixTravaux.dpe : passoire ? 'C' : '=';
   const cible = dpeVise === '=' ? dpe : dpeVise;
   const gamme = GAMMES[choixTravaux.gamme] ? choixTravaux.gamme : 'standard';
-  const meubleApres = choixTravaux.meuble != null ? choixTravaux.meuble : selected(crit('location')).k === 'meuble';
+  const meubleApres = louerMeuble();
   const eM2 = coutEnergie(dpe, cible, niveau), tM2 = Math.round(NIVEAUX[niveau][z] * GAMMES[gamme].mult);
   const budget = Math.round((tM2 + eM2) * surf / 500) * 500;
   const mobilier = meubleApres ? budgetMobilier(surf, gamme) : 0;
   const duree = NIVEAUX[niveau].mois + (eM2 ? 1 : 0);
-  // Valeur et loyer « comme si » les travaux étaient faits : état selon la gamme, DPE visé, vide ou meublé
+  // Valeur et loyer « comme si » les travaux étaient faits : état selon la gamme, DPE visé
   const etatApres = niveau === 'aucun' ? etat : GAMMES[gamme].etat;
   const apres = facteurPour({etat: etatApres, dpe: cible});
   const valeurApres = r.med * apres.factor * surf + apres.abs;
-  OVERRIDE = {etat: etatApres, dpe: cible, location: meubleApres ? 'meuble' : 'vide'};
+  OVERRIDE = {etat: etatApres, dpe: cible};
   let loyerApres;
   try { loyerApres = calcLoyer(r, state.lm, state.insee, apres.factor, apres.chambreEff).HC; } finally { OVERRIDE = null; }
   const notaire = state.prix * 0.08;
-  const coutProjet = state.prix + notaire + budget + mobilier;
-  const marge = valeurApres - coutProjet + mobilier;   // le mobilier n'ajoute pas de valeur au bien, mais se revend ou s'amortit à part
+  const coutBien = state.prix + notaire + budget;   // hors mobilier : il n'ajoute pas de valeur au bien
+  const marge = valeurApres - coutBien;
   state.projet = {travaux: budget, valeurApres: Math.round(valeurApres), loyerApres: Math.round(loyerApres), duree, niveau, dpe: cible, gamme, meuble: meubleApres, mobilier};
-  const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${v}</option>`).join('');
   const dpeOpts = {'=': dpe === '?' ? 'Inchangé (DPE inconnu)' : `Inchangé (${dpe})`, ...Object.fromEntries([...ORDRE_DPE].map(c => [c, c]))};
-  const ouvert = el.open || aRenover || passoire;
-  el.innerHTML = `
-    <summary>Projet travaux${aRenover || passoire ? '' : ' (optionnel)'}</summary>
-    <div class="crit" style="margin-top:6px">
-      <div><label>Travaux prévus</label><select id="w_niveau">${opt(Object.fromEntries(Object.entries(NIVEAUX).map(([k, v]) => [k, v.l])), niveau)}</select></div>
+  el.innerHTML = `${question}
       <div><label>Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
       <div><label>DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
-      <div><label>Location après travaux</label><select id="w_meuble">${opt({vide: 'Vide', meuble: 'Meublée'}, meubleApres ? 'meuble' : 'vide')}</select></div>
     </div>
-    <div class="hint">${NIVEAUX[niveau].d}${eM2 ? ' Énergie : isolation, fenêtres, chauffage, ventilation selon le diagnostic.' : ''}</div>
+    <div class="hint">${NIVEAUX[niveau].d}</div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Valeur après travaux</div><div class="v">${fmtK(valeurApres)}</div><div class="d">${niveau === 'aucun' ? 'état inchangé' : GAMMES[gamme].d}${cible !== '?' ? ', DPE ' + cible : ''}</div></div>
+      <div class="kpi"><div class="k">Loyer après travaux</div><div class="v">${fmt(loyerApres)} €</div><div class="d">${meubleApres ? 'meublé' : 'vide'}, hors charges/mois</div></div>
+      <div class="kpi"><div class="k">Valeur créée</div><div class="v ${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+' : '−'}${fmtK(Math.abs(marge))}</div><div class="d">après achat, notaire et travaux</div></div>
+    </div>
     <div class="calc">
       <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
       <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
-      <div><span>Travaux, gamme ${GAMMES[gamme].l.toLowerCase()} : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>
-      ${mobilier ? `<div><span>Mobilier pour la location meublée<sup>${eM2 ? 3 : 2}</sup></span><b>${fmtK(mobilier)}</b></div>` : ''}
-      <div class="tot"><span><b>Coût total du projet</b></span><b>${fmtK(coutProjet)}</b></div>
-      <div><span>Valeur après travaux (${niveau === 'aucun' ? 'état inchangé' : GAMMES[gamme].d}${cible !== '?' ? ', DPE ' + cible : ''})</span><b>${fmtK(valeurApres)}</b></div>
-      <div class="tot"><span><b>Création de valeur</b></span><b class="${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+ ' : '− '}${fmtK(Math.abs(marge))}</b></div>
-      <div><span>Loyer après travaux, ${meubleApres ? 'meublé' : 'vide'} (hors charges)</span><b>${fmt(loyerApres)} €/mois</b></div>
-      <div><span>Rendement brut sur le coût total</span><b>${(loyerApres * 12 / coutProjet * 100).toFixed(1).replace('.', ',')} %</b></div>
+      <div><span>Travaux : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>
+      ${mobilier ? `<div><span>Mobilier pour louer meublé<sup>${eM2 ? 3 : 2}</sup></span><b>${fmtK(mobilier)}</b></div>` : ''}
+      <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
+      <div><span>Rendement brut sur le coût total</span><b>${(loyerApres * 12 / (coutBien + mobilier) * 100).toFixed(1).replace('.', ',')} %</b></div>
     </div>
-    ${dpe === 'G' ? '<div class="alert">Classé G : interdit à la location tant que les travaux énergétiques ne sont pas faits.</div>' : ''}
-    ${marge < 0 ? '<div class="warnbox">Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : l\'opération se justifie plutôt pour louer longtemps que pour revendre.</div>' : ''}
+    ${marge < 0 ? '<div class="warnbox">Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : à envisager plutôt pour louer longtemps que pour revendre.</div>' : ''}
     ${passoire ? '<div class="range">DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.</div>' : ''}
-    <div class="range">Chantier d'environ ${duree} mois. Estimations indicatives : à confirmer par des devis.</div>
-    <div class="row" style="margin-top:10px"><button class="cta" onclick="showTab('cashflow', true, 'location')">Travaux + location →</button><button class="cta" onclick="showTab('cashflow', true, 'revente')">Travaux + revente →</button></div>
+    <div class="row"><button class="cta" onclick="showTab('cashflow', true, 'location')">Travaux + location →</button><button class="cta" onclick="showTab('cashflow', true, 'revente')">Travaux + revente →</button></div>
     <ol class="srcs"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}${mobilier ? `<li><a href="${SOURCES.mobilier[1]}" target="_blank" rel="noopener">${SOURCES.mobilier[0]}</a></li>` : ''}</ol>`;
-  el.open = ouvert;
-  const save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
-  document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; save(); renderWorks(); };
-  document.getElementById('w_dpe').onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
-  document.getElementById('w_gamme').onchange = e => { choixTravaux.gamme = e.target.value; save(); renderWorks(); };
-  document.getElementById('w_meuble').onchange = e => { choixTravaux.meuble = e.target.value === 'meuble'; save(); renderWorks(); };
+  bind(); renderSynth();
+}
+
+// --- Synthèse : les 3 chiffres qui comptent ---
+function renderSynth() {
+  const el = document.getElementById('synth'), r = state.base;
+  if (!el || !r || state.prix == null) return;
+  const loyerOk = state.loyerHC != null && state.lm;
+  const dpe = selected(crit('dpe')).k, meuble = louerMeuble();
+  const rdt = loyerOk ? state.loyerHC * 12 / (state.prix + (meuble ? state.mob : 0)) : null;
+  const alertes = [];
+  if (dpe === 'G') alertes.push('<div class="alert">Classé G : <b>interdit à la location</b> tant que les travaux énergétiques ne sont pas faits.</div>');
+  if (dpe === 'F') alertes.push('<div class="warnbox">Classé F : loyer gelé, location interdite à partir de 2028.</div>');
+  if (state.atypique) alertes.push('<div class="warnbox">Bien atypique pour le secteur : fourchette élargie, détail dans « Détail du calcul ».</div>');
+  if (r.elargie) alertes.push(`<div class="range">Peu de ventes récentes autour : ventes de ${r.anMin} à ${r.anMax} prises en compte, actualisées au prix d'aujourd'hui.</div>`);
+  el.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">Prix estimé</div><div class="v">${fmtK(state.prix)}</div><div class="d">${fmt(state.prix / r.surf)} €/m² · ${fmtK(state.prixLo)} – ${fmtK(state.prixHi)}</div></div>
+      <div class="kpi"><div class="k">Loyer</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'}</div><div class="d">${loyerOk ? `hors charges/mois · ${fmt(state.loyerCC)} € CC` : 'calcul en cours'}</div></div>
+      <div class="kpi"><div class="k">Rendement brut</div><div class="v">${rdt != null ? (rdt * 100).toFixed(1).replace('.', ',') + ' %' : '…'}</div><div class="d">loyer annuel ÷ prix${meuble && state.mob ? ' + mobilier' : ''}</div></div>
+    </div>
+    <div class="synthbar">
+      <span class="conf" style="background:${state.confAff[1]}">${state.confAff[0]}</span>
+      <span class="hint">${r.comps.length} ventes à moins de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}</span>
+      <span class="louer">Louer <span class="seg mini" id="louer"><button data-v="vide"${meuble ? '' : ' class="on"'}>Vide</button><button data-v="meuble"${meuble ? ' class="on"' : ''}>Meublé</button></span></span>
+    </div>
+    ${alertes.join('')}`;
+  el.querySelectorAll('#louer button').forEach(b => b.onclick = () => {
+    field('location').value = b.dataset.v;
+    field('location').dispatchEvent(new Event('input'));
+  });
 }
 
 // --- Carte ---
@@ -1119,7 +1219,7 @@ document.addEventListener('click', e => { if (!e.target.closest('.sugg')) sugg.h
 // --- Paramètres ---
 document.querySelectorAll('#type button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x === b));
-  state.type = b.dataset.v; syncForm(); estimate();
+  state.type = b.dataset.v; syncForm(); majAffiner(); estimate();
 });
 buildForm();
 let debounce;
@@ -1155,14 +1255,14 @@ const AMORT = {bati: 30, travaux: 15, mobilier: 7};
 const CF = document.getElementById('cf');
 const $ = id => document.getElementById('cf_' + id);
 const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier', 'struct', 'meuble', 'regime', 'tmi', 'terrain', 'distrib',
-  'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'debutLoc', 'tf', 'copro', 'pno',
+  'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'tf', 'copro', 'pno',
   'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit',
-  'projet', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente'];
+  'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente'];
 const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
-  garantie: 1.5, loyer: 800, vacance: 0.5, debutLoc: 0, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
+  garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
   gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true,
-  projet: 'simple', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4};
+  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4};
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
 
@@ -1187,6 +1287,7 @@ function charger() {
   const lies = defautsLies({taux: v.taux, tf: v.tf, copro: v.copro, compta: v.compta});
   for (const k in lies) set(k, lies[k]);
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
+  if (v.flags) flags = {...flags, ...v.flags};
   majChips();
 }
 function majChips() {
@@ -1196,12 +1297,12 @@ function majChips() {
     c.classList.toggle('on', on);
   }
 }
-// Reprend le bien estimé dans l'onglet Estimation (seulement s'il a changé depuis la dernière reprise,
+// Reprend le bien estimé dans l'onglet Estimer (seulement s'il a changé depuis la dernière reprise,
 // pour ne pas écraser ce que tu as modifié à la main)
 function sync(est, mode) {
   const bar = $('bien');
   if (!est) {
-    bar.innerHTML = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Estimation</a>, ou remplis les champs à la main.';
+    bar.innerHTML = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Estimer</a>, ou remplis les champs à la main.';
     return rendre();
   }
   const cle = JSON.stringify([est.prix, est.loyer, est.surf, est.type, est.meuble, est.mob]);
@@ -1213,31 +1314,33 @@ function sync(est, mode) {
     set('meuble', est.meuble ? '1' : '0'); set('mobilier', est.mob || 0);
     set('tf', Math.round(est.loyer / 10) * 10);
     set('copro', est.type === 'appart' ? Math.round(est.surf * 8 / 10) * 10 : 0);
-    set('compta', {np: est.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+    if (!flags.comptaManuel) set('compta', {np: est.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
     // Nouveau bien : on repart d'un achat simple (le projet travaux se relance depuis la carte « Projet travaux »)
-    if (!mode) { $('boxProjet').open = false; majChips(); set('projet', 'simple'); set('travaux', 0); set('valeurApres', 0); set('differe', 0); set('debutLoc', 0); }
+    if (!mode) { $('boxProjet').open = false; majChips(); flags.loyers = null; set('scenario', 'louer'); set('travaux', 0); set('valeurApres', 0); if (flags.differeAuto) { set('differe', 0); flags.differeAuto = false; } }
     try { localStorage.setItem('cashflow-bien', cle); } catch (e) {}
     sauver();
   }
   if (mode && est.projet) {
     const pj = est.projet;
     $('boxProjet').open = true; majChips();
-    set('projet', mode); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
-    if (get('differe') < pj.duree) { set('differe', pj.duree); set('typeDiff', 'partiel'); }
-    set('debutLoc', pj.duree); set('moisRevente', pj.duree + 6);
-    set('loyer', pj.loyerApres); set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
-    set('compta', {np: pj.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+    set('scenario', mode === 'revente' ? 'revendre' : 'louer'); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
+    if (get('differe') < pj.duree) { set('differe', pj.duree); set('typeDiff', 'partiel'); flags.differeAuto = true; }
+    set('moisRevente', pj.duree + 6);
+    set('loyer', pj.loyerApres); flags.loyers = {avant: est.loyer, apres: pj.loyerApres}; set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
+    if (!flags.comptaManuel) set('compta', {np: pj.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
     bar.innerHTML += `<br>Projet : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b> ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
     sauver();
   }
   rendre();
 }
 const BOXES = {projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol'};
+let flags = {tauxManuel: false, comptaManuel: false, differeAuto: false};
 const ouvert = k => $(BOXES[k]).open;
 function sauver() {
   const v = {};
   for (const k of FIELDS) v[k] = get(k);
   v.ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
+  v.flags = flags;
   try { localStorage.setItem('cashflow-v1', JSON.stringify(v)); } catch (e) {}
 }
 function afficherChamps() {
@@ -1248,8 +1351,8 @@ function afficherChamps() {
   CF.querySelectorAll('[data-notis]').forEach(e => e.hidden = is);
   CF.querySelectorAll('[data-is]').forEach(e => e.hidden = !is);
   CF.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
-  CF.querySelectorAll('[data-travaux]').forEach(e => e.hidden = get('projet') === 'simple');
-  CF.querySelectorAll('[data-revente]').forEach(e => e.hidden = get('projet') !== 'revente');
+  CF.querySelectorAll('[data-revente]').forEach(e => e.hidden = get('scenario') !== 'revendre');
+  CF.querySelectorAll('#cf_scen button').forEach(b => b.classList.toggle('on', b.dataset.v === get('scenario')));
 }
 
 // ---------- Crédit ----------
@@ -1274,7 +1377,11 @@ function echeancier(capital, tauxAn, mois, differe, typeDiff, assAn) {
 function simuler() {
   const p = {}; for (const k of FIELDS) p[k] = get(k);
   // Sections fermées = non comptées
-  if (!ouvert('projet')) p.projet = 'simple';
+  // Travaux : comptés seulement si la section est ouverte ; le loyer démarre à la fin du chantier
+  const travauxOn = ouvert('projet');
+  if (!travauxOn) { p.travaux = 0; p.valeurApres = 0; p.dureeTravaux = 0; }
+  p.debutLoc = travauxOn ? p.dureeTravaux : 0;
+  p.projet = p.scenario === 'revendre' ? 'revente' : travauxOn ? 'location' : 'simple';
   if (!ouvert('evol')) { p.gLoyer = 0; p.gPrix = 0; p.gCharges = 0; }
   p.avecImpots = ouvert('impots');
   const meuble = p.meuble === '1';
@@ -1380,13 +1487,13 @@ function simuler() {
   } else if (meuble) {
     const micro = impotsMicroBic(), reel = impotsLmnpReel();
     const sum = arr => arr.reduce((s, x) => s + x, 0);
-    const okMicro = annees[0].loyers <= MICRO_BIC;
+    const okMicro = p.loyer * 12 * (1 - p.vacance / 12) <= MICRO_BIC;
     const choix = p.regime === 'micro' && okMicro ? 'micro' : p.regime === 'reel' || !okMicro ? 'reel' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
     impots = choix === 'micro' ? micro : reel;
     regime = 'LMNP ' + (choix === 'micro' ? 'micro-BIC (abattement 50 %)' : 'au réel (avec amortissement)');
   } else {
     const reel = impotsFoncierReel();
-    if (st === 'np' && p.regime !== 'reel' && annees[0].loyers <= MICRO_FONCIER) {
+    if (st === 'np' && p.regime !== 'reel' && p.loyer * 12 * (1 - p.vacance / 12) <= MICRO_FONCIER) {
       const micro = impotsMicroFoncier(), sum = arr => arr.reduce((s, x) => s + x, 0);
       const choix = p.regime === 'micro' ? 'micro' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
       impots = choix === 'micro' ? micro : reel;
@@ -1412,7 +1519,7 @@ function simuler() {
 // ---------- Affichage ----------
 const fmt = n => Math.round(n).toLocaleString('fr-FR');
 const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
-const pct = n => n.toFixed(1).replace('.', ',') + ' %';
+const pct = n => (n < 0 ? '−' : '') + Math.abs(n).toFixed(1).replace('.', ',') + ' %';
 
 function rendre() {
   afficherChamps();
@@ -1426,7 +1533,8 @@ function rendre() {
   rendreTaux();
   if (revente) return rendreRevente(s);
 
-  const a1 = s.annees.find(a => a.loyers > 0) || s.annees[0];
+  // Année de référence : la première année pleine de location (le chantier et ses mois sans loyer faussent l'année 1)
+  const a1 = s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= p.debutLoc) || s.annees.find(a => a.loyers > 0) || s.annees[0];
   const mens = s.ech.pmt + s.ech.assM;
   const anneesCredit = s.annees.filter(a => a.y <= s.finCredit);
   const cfMoyen = anneesCredit.reduce((t, a) => t + a.cf, 0) / anneesCredit.length / 12;
@@ -1436,9 +1544,9 @@ function rendre() {
   const coutRef = p.projet === 'location' ? s.coutTotal : p.prix;
   $('tiles').innerHTML = [
     ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}`],
-    ['Cash-flow / mois', eur(a1.cf / 12), p.avecImpots ? `année ${a1.y}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}, impôts non comptés`],
+    ['Cash-flow / mois', eur(a1.cf / 12), p.avecImpots ? `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, impôts non comptés`],
     ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
-    ['Rendement', pct(p.loyer * 12 / coutRef * 100) + ' brut', `${p.projet === 'location' ? 'sur le coût total, travaux compris · ' : ''}${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} net de charges${p.avecImpots ? ` · ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
+    ['Rendement', pct(p.loyer * 12 / coutRef * 100) + ' brut', `loyer annuel ÷ ${p.projet === 'location' ? 'coût total (achat, travaux, frais)' : 'prix d\'achat'} · net de charges : ${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} du coût total${p.avecImpots ? `, ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
     ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
@@ -1447,11 +1555,11 @@ function rendre() {
   if (!ouvert('evol')) al += '<div class="hint">Loyers, prix et charges constants : ouvre « Évolutions dans le temps » pour les faire progresser.</div>';
   al += `<div class="hint">Le graphique continue 5 ans après la fin du crédit (année ${s.finCredit}) pour montrer l'après-crédit.</div>`;
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
-  if (p.projet === 'location') al += `<div class="okbox">Projet travaux : <b>${eur(p.travaux)}</b> de travaux ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois (intérêts seuls pendant ${p.differe} mois, loyer à partir du mois ${p.debutLoc + 1}).${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.pret * p.taux / 1200 + s.ech.assM)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
+  if (p.projet === 'location') al += `<div class="okbox">Travaux : <b>${eur(p.travaux)}</b> ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois${p.differe ? ` (intérêts seuls pendant ${p.differe} mois)` : ''}, loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.pret * p.taux / 1200 + s.ech.assM)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
-  if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche la première année de location.</div>`;
+  if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche en année ${a1.y}${a1.y > 1 ? ', la première année pleine de location' : ''}.</div>`;
   $('alerts').innerHTML = al;
   $('chartTitle').textContent = `Cash-flow annuel ${p.avecImpots ? 'après' : 'avant'} impôts (${s.horizon} ans)`;
   graphe(s.annees, s.finCredit);
@@ -1637,26 +1745,37 @@ function rendreTaux() {
 // ---------- Démarrage ----------
 charger(); chargerCredits();
 $('form').addEventListener('input', e => {
-  // Les valeurs « liées » suivent leurs champs tant qu'on ne les a pas modifiées soi-même
   const id = e.target.id.replace(/^cf_/, '');
-  if (id === 'struct' || id === 'duree') set('taux', tauxConseille());
-  if (id === 'struct' || id === 'meuble') set('compta', {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+  // Ce que tu règles à la main n'est plus remplacé automatiquement
+  if (id === 'taux') flags.tauxManuel = true;
+  if (id === 'compta') flags.comptaManuel = true;
+  if (id === 'differe') flags.differeAuto = false;
+  if ((id === 'struct' || id === 'duree') && !flags.tauxManuel) set('taux', tauxConseille());
+  if ((id === 'struct' || id === 'meuble') && !flags.comptaManuel) set('compta', {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
   if (id === 'neuf') { set('notaire', get('neuf') === '1' ? 2.5 : 8); set('vieux', get('neuf') === '1' ? '0' : '1'); }
-  // Chantier : intérêts seuls et pas de loyer pendant la durée des travaux
-  if (id === 'projet' || id === 'dureeTravaux') {
-    const t = get('projet') === 'simple' ? 0 : get('dureeTravaux');
-    set('debutLoc', t);
-    // le différé couvre au moins le chantier, mais peut rester plus long si tu l'as choisi
-    if (get('projet') === 'simple') set('differe', 0);
-    else if (get('differe') < t) { set('differe', t); set('typeDiff', 'partiel'); }
-    if (get('projet') !== 'simple' && !get('valeurApres')) set('valeurApres', get('prix'));
-    if (id === 'projet' && get('projet') === 'revente' && get('moisRevente') <= t) set('moisRevente', t + 6);
-  }
+  if (id === 'dureeTravaux' && ouvert('projet') && get('differe') < get('dureeTravaux')) { set('differe', get('dureeTravaux')); set('typeDiff', 'partiel'); flags.differeAuto = true; }
   sauver(); rendre();
 });
+// Ouvrir « Travaux » : intérêts seuls pendant le chantier ; la refermer efface ce différé s'il venait des travaux
+// (et remet le loyer d'avant ou d'après travaux s'il n'a pas été retouché)
+let projetOuvert = ouvert('projet');
+$('boxProjet').addEventListener('toggle', () => {
+  if (ouvert('projet') === projetOuvert) return;   // ouverture faite au chargement : rien à ajuster
+  projetOuvert = ouvert('projet');
+  const L = flags.loyers;
+  if (projetOuvert) {
+    if (get('differe') < get('dureeTravaux')) { set('differe', get('dureeTravaux')); set('typeDiff', 'partiel'); flags.differeAuto = true; }
+    if (!get('valeurApres')) set('valeurApres', get('prix') + get('travaux'));
+    if (L && get('loyer') === L.avant) set('loyer', L.apres);
+  } else {
+    if (flags.differeAuto) { set('differe', 0); flags.differeAuto = false; }
+    if (L && get('loyer') === L.apres) set('loyer', L.avant);
+  }
+});
+CF.querySelectorAll('#cf_scen button').forEach(b => b.onclick = () => { set('scenario', b.dataset.v); sauver(); rendre(); });
 CF.querySelectorAll('details.opt').forEach(d => d.addEventListener('toggle', () => { majChips(); sauver(); rendre(); }));
-$('tauxMarche').onclick = () => { set('taux', tauxConseille()); sauver(); rendre(); };
-$('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
+$('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
+$('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 window.CF_APP = {sync};
 })();
@@ -1671,17 +1790,19 @@ function estimationCourante() {
 }
 function showTab(t, maj = true, mode = null) {
   const cash = t === 'cashflow';
-  document.getElementById('estim').hidden = cash;
+  document.getElementById('estim').hidden = t !== 'estimation';
   document.getElementById('cf').hidden = !cash;
+  document.getElementById('credits').hidden = t !== 'credits';
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   if (maj && location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
   if (cash) window.CF_APP && CF_APP.sync(estimationCourante(), mode);
-  else setTimeout(() => map.invalidateSize(), 0);
+  else if (t === 'estimation') setTimeout(() => map.invalidateSize(), 0);
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => showTab(b.dataset.tab));
-window.addEventListener('hashchange', () => showTab(location.hash === '#cashflow' ? 'cashflow' : 'estimation', false));
-if (location.hash === '#cashflow') showTab('cashflow', false);
+const ONGLETS = ['estimation', 'cashflow', 'credits'];
+window.addEventListener('hashchange', () => showTab(ONGLETS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'estimation', false));
+if (['#cashflow', '#credits'].includes(location.hash)) showTab(location.hash.slice(1), false);
 </script>
 </body>
 </html>
