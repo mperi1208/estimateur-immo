@@ -52,6 +52,7 @@ tr[data-k]:hover td{background:var(--accent-soft);cursor:pointer}
 .bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-size:10px;color:var(--muted);height:100%}
 .bars span{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;opacity:.85}
 details{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:4px 12px 12px}
+#affiner{margin:14px 0 4px}
 summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .crit{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .crit [hidden]{display:none}
@@ -200,10 +201,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
   </div>
 
-  <div id="out"><div class="empty">Choisis une adresse pour lancer l'estimation.</div></div>
-
-  <details class="affiner" id="affiner">
-    <summary>Affiner : état, DPE, étage… <span class="chip" id="nbCrit"></span></summary>
+  <details class="affiner" id="affiner" open>
+    <summary>Détails du bien <span class="chip" id="nbCrit"></span></summary>
     <div class="crit" id="crit"></div>
     <details class="plus"><summary>Plus de critères</summary>
       <div class="crit" id="crit2"></div>
@@ -214,6 +213,9 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     </details>
     <div id="critCache" hidden></div>
   </details>
+
+  <div id="out"><div class="empty">Choisis une adresse pour lancer l'estimation.</div></div>
+
 </aside>
 <div id="map"></div>
 </div>
@@ -758,7 +760,7 @@ function fillOptions() {
     field(c.id).innerHTML = opts.map(o => `<option value="${o.k}"${o === keep ? ' selected' : ''}>${o.l}</option>`).join('');
   }
 }
-// Nombre de critères réglés (différents du bien « moyen ») affiché sur « Affiner »
+// Nombre de critères réglés (différents du bien « moyen ») affiché sur « Détails du bien »
 function majAffiner() {
   const n = CRITERES.filter(c => !c.cache && visible(c) && (c.check ? field(c.id).checked
     : c.number ? +field(c.id).value > 0 : String(field(c.id).value) !== String(c.options.find(o => o.d)?.k))).length;
@@ -767,6 +769,11 @@ function majAffiner() {
   chip.classList.toggle('on', n > 0);
 }
 const louerMeuble = () => field('location').value === 'meuble';
+{
+  const aff = document.getElementById('affiner');
+  try { if (localStorage.getItem('details-ouverts') === '0') aff.open = false; } catch (e) {}
+  aff.addEventListener('toggle', () => { try { localStorage.setItem('details-ouverts', aff.open ? '1' : '0'); } catch (e) {} });
+}
 function syncForm() {
   document.querySelectorAll('[data-pour]').forEach(el => el.hidden = !(el.dataset.pour === 'tous' || (el.dataset.pour === 'appart') === isAppart()));
 }
