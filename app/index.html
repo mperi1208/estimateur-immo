@@ -74,6 +74,7 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .big small{font-size:14px;font-weight:500;color:var(--muted)}
 .alert{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--bad) 14%,transparent)}
 .okbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--good) 16%,transparent)}
+.cta{display:block;margin-top:12px;padding:9px 12px;border-radius:8px;background:var(--accent);color:#fff;text-align:center;font-weight:600;text-decoration:none}
 .calc .tot{border-top:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);margin-top:4px;padding-top:6px}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 </style>
@@ -701,6 +702,7 @@ function renderRent(el, r, lm, insee) {
       ${pkM ? `<div><span>Parking loué avec${ref('yespark')}</span><b class="up">+ ${fmt(pkM)} €</b></div>` : ''}
     </div>
     ${alerts}
+    <a class="cta" href="cashflow.html?${new URLSearchParams({prix: Math.round(state.prix), mob: meuble ? Math.round(state.mob) : 0, loyer: Math.round(HC), surf, type: isAppart() ? 'appart' : 'maison', meuble: meuble ? 1 : 0})}">Simuler le crédit et le cash-flow →</a>
     <div class="range">${fiable ? `Indicateur communal fiable (${fmt(lm.row.nbobs_com)} annonces, 2019-2025).` : `Indicateur peu précis : ${lm.row.TYPPRED === 'commune' ? 'peu d\'annonces dans la commune' : 'commune estimée à partir des communes voisines'} (${fmt(lm.row.nbobs_com)} annonces).`} Hors charges : charges estimées à ${charges.toLocaleString('fr-FR')} €/m²/mois.</div>
     ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
 }

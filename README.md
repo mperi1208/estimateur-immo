@@ -4,5 +4,6 @@ Estimation du prix de vente et du loyer d'un logement, partout en France (Paris 
 
 - **Prix** : ventes réelles DVF autour de l'adresse (API Cerema), actualisées dans le temps, puis ajustées selon les caractéristiques du bien (DPE, étage, extérieur, état…), avec des coefficients sourcés.
 - **Loyer** : carte officielle des loyers par commune (ANIL), recalée sur les annonces récentes à Paris (Hestia) et en Corse (SeLoger), plus le rendement brut.
+- **Cash-flow** (`app/cashflow.html`) : simulation de crédit (différé, frais de notaire inclus ou non, taux du marché + surprime SCI), charges et fiscalité (nom propre, SCI à l'IR, SCI à l'IS), et comparaison de crédits en cours avec les taux actuels.
 
 Tout tourne dans le navigateur : ouvrir `app/index.html`, ou la version en ligne.

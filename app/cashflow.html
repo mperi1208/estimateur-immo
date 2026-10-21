@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur cash-flow</title>
+<style>
+:root{
+  --bg:#f6f5f2;--panel:#ffffff;--ink:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;
+  --accent:#2f6fde;--accent-soft:#e6eefc;--good:#1f8a4c;--warn:#b7791f;--bad:#c0392b;
+  --pos:#2a78d6;--neg:#e34948;--grid:#ecebe7;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#161615;--panel:#1f1f1d;--ink:#ecebe7;--muted:#9c9a93;--line:#33322f;
+  --accent:#6c9bf0;--accent-soft:#22304a;--pos:#3987e5;--neg:#e66767;--grid:#2b2b28;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header{padding:16px 20px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font-size:20px;margin:0}
+.sub{color:var(--muted);font-size:13px}
+.wrap{display:grid;grid-template-columns:420px 1fr;gap:0;min-height:calc(100vh - 60px)}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:16px 20px;overflow-y:auto}
+main{padding:20px;min-width:0}
+details{border:1px solid var(--line);border-radius:10px;padding:4px 12px 12px;margin-bottom:12px}
+summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.grid [hidden]{display:none}
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.check{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:14px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}
+.check input{width:auto}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+button{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tile .v{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .d{font-size:12px;color:var(--muted);margin-top:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:14px}
+.card h2{font-size:15px;margin:0 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}
+.scroll{overflow-x:auto}
+.pos{color:var(--good)} .negt{color:var(--bad)}
+.warnbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--warn) 15%,transparent)}
+.okbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--good) 15%,transparent)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.chart svg text{fill:var(--muted);font-size:11px}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap;display:none}
+.loans input{padding:5px 6px;font-size:13px}
+.loans td{white-space:normal}
+.srcs{font-size:12px;color:var(--muted);padding-left:18px;margin:6px 0 0}
+.srcs a{color:var(--muted)}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}main{padding:14px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Simulateur de cash-flow</h1><div class="sub">Crédit, charges, fiscalité (nom propre, SCI à l'IR ou à l'IS) et taux du moment</div></div>
+  <a href="index.html">← Estimateur de prix et de loyer</a>
+</header>
+<div class="wrap">
+<aside id="form">
+  <details open><summary>Le bien</summary><div class="grid">
+    <div><label>Prix d'achat (€)</label><input id="prix" type="number" min="0" step="1000"></div>
+    <div><label>Type</label><select id="type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
+    <div><label>Surface (m²)</label><input id="surf" type="number" min="9"></div>
+    <div><label>État</label><select id="neuf"><option value="0">Ancien</option><option value="1">Neuf (VEFA)</option></select></div>
+    <div><label>Frais de notaire (%)</label><input id="notaire" type="number" step="0.1"></div>
+    <div><label>Travaux (€)</label><input id="travaux" type="number" min="0" step="1000"></div>
+    <div data-meuble><label>Mobilier (€)</label><input id="mobilier" type="number" min="0" step="500"></div>
+  </div></details>
+
+  <details open><summary>Détention et fiscalité</summary><div class="grid">
+    <div><label>Détention</label><select id="struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
+    <div><label>Location</label><select id="meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
+    <div data-np><label>Régime</label><select id="regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
+    <div data-notis><label>Tranche d'imposition (TMI)</label><select id="tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
+    <div data-amort><label>Part du terrain (%)</label><input id="terrain" type="number" min="0" max="80"></div>
+  </div>
+  <label class="check" data-is><input type="checkbox" id="distrib"> Distribuer les bénéfices aux associés (flat tax 31,4 %)</label>
+  <div id="fiscNote" class="hint"></div></details>
+
+  <details open><summary>Crédit</summary><div class="grid">
+    <div><label>Apport (€)</label><input id="apport" type="number" min="0" step="1000"></div>
+    <div><label>Durée (ans)</label><input id="duree" type="number" min="5" max="30"></div>
+    <div><label>Taux nominal (%)</label><input id="taux" type="number" step="0.01"></div>
+    <div><label>Assurance (%/an)</label><input id="assur" type="number" step="0.01"></div>
+    <div><label>Différé (mois)</label><input id="differe" type="number" min="0" max="36"></div>
+    <div><label>Type de différé</label><select id="typeDiff"><option value="partiel">Intérêts seuls</option><option value="total">Total (intérêts ajoutés au capital)</option></select></div>
+    <div><label>Frais de dossier (€)</label><input id="dossier" type="number" min="0" step="100"></div>
+    <div><label>Garantie (% du prêt)</label><input id="garantie" type="number" step="0.1"></div>
+  </div>
+  <label class="check"><input type="checkbox" id="notaireCredit"> Inclure les frais de notaire dans le crédit (« prêt à 110 % »)</label>
+  <div class="hint">Sinon, l'apport sert d'abord à payer les frais de notaire. Beaucoup de banques le demandent, mais un financement à 110 % sans apport reste possible, y compris en SCI : on le voit sur des prêts SCI réels.</div>
+  <div class="hint" id="tauxHint"></div>
+  <button id="tauxMarche" style="margin-top:8px">Mettre le taux du marché</button></details>
+
+  <details open><summary>Location et charges</summary><div class="grid">
+    <div><label>Loyer hors charges (€/mois)</label><input id="loyer" type="number" min="0" step="10"></div>
+    <div><label>Vacance (mois/an)</label><input id="vacance" type="number" min="0" max="12" step="0.5"></div>
+    <div><label>Location à partir du mois</label><input id="debutLoc" type="number" min="0" max="60"></div>
+    <div><label>Taxe foncière (€/an)</label><input id="tf" type="number" min="0" step="50"></div>
+    <div><label>Copro non récupérable (€/an)</label><input id="copro" type="number" min="0" step="50"></div>
+    <div><label>Assurance PNO (€/an)</label><input id="pno" type="number" min="0" step="10"></div>
+    <div><label>Gestion (% loyers)</label><input id="gestion" type="number" min="0" step="0.5"></div>
+    <div><label>Entretien (% loyers)</label><input id="entretien" type="number" min="0" step="0.5"></div>
+    <div><label>Comptable (€/an)</label><input id="compta" type="number" min="0" step="50"></div>
+    <div data-meuble><label>CFE (€/an)</label><input id="cfe" type="number" min="0" step="50"></div>
+  </div>
+  <div class="hint">« Location à partir du mois » : mets la durée des travaux si le bien n'est pas loué tout de suite.</div></details>
+
+  <details><summary>Hypothèses</summary><div class="grid">
+    <div><label>Hausse des loyers (%/an)</label><input id="gLoyer" type="number" step="0.1"></div>
+    <div><label>Hausse du prix (%/an)</label><input id="gPrix" type="number" step="0.1"></div>
+    <div><label>Hausse des charges (%/an)</label><input id="gCharges" type="number" step="0.1"></div>
+    <div><label>Bâtiment de plus de 15 ans</label><select id="vieux"><option value="1">Oui</option><option value="0">Non</option></select></div>
+  </div></details>
+  <button id="reset">Remettre les valeurs par défaut</button>
+</aside>
+
+<main>
+  <div class="tiles" id="tiles"></div>
+  <div id="alerts"></div>
+  <div class="card">
+    <h2 id="chartTitle">Cash-flow annuel après impôts</h2>
+    <div class="chart" id="chart"></div>
+    <div class="hint">Bleu : le bien rapporte plus qu'il ne coûte. Rouge : effort d'épargne à prévoir. Le tableau détaillé est juste en dessous.</div>
+  </div>
+  <details class="card" style="padding:14px 16px"><summary style="padding:0">Tableau année par année</summary><div class="scroll" id="table"></div></details>
+  <div class="card" id="credits"></div>
+  <div class="card"><h2>Sources et limites</h2>
+    <ol class="srcs">
+      <li><a href="https://www.weblex.fr/chiffres-cles/indice-du-taux-moyen-des-credits-immobiliers-annee-2024" target="_blank" rel="noopener">Observatoire Crédit Logement / CSA — taux moyens accordés par durée (historique 2023-2024)</a> ; <a href="https://www.meilleurtaux.com/credit-immobilier/actualites/2026-octobre/credit-immobilier-taux-a-3-40-et-durees-record.html" target="_blank" rel="noopener">septembre 2026 : 3,40 %, 3,39 % sur 20 ans</a>.</li>
+      <li>Surprime SCI ≈ +0,3 point : mesurée sur deux prêts SCI réels (2023 et 2024) financés <b>sans apport</b> (110 %, frais compris) et avec un long différé, comparés aux taux moyens du même mois. Elle inclut donc l'absence d'apport : avec un apport, une SCI peut sans doute négocier un peu mieux. Cohérent avec les courtiers (+0,2 à +0,5 point).</li>
+      <li><a href="https://www.dougs.fr/blog/sci-ir-ou-is/" target="_blank" rel="noopener">SCI à l'IR ou à l'IS</a> : IS 15 % jusqu'à 42 500 € puis 25 % ; amortissement du bâti ; flat tax 31,4 % en 2026 (<a href="https://www.clubpatrimoine.com/contenus/fiscalite-capital-pfu" target="_blank" rel="noopener">LFSS 2026</a>) ; revenus fonciers : prélèvements sociaux 17,2 %, déficit imputable jusqu'à 10 700 €/an.</li>
+      <li><a href="https://www.cpim.fr/crl-contribution-revenus-locatifs-sci-is-2026/" target="_blank" rel="noopener">Contribution sur les revenus locatifs</a> : 2,5 % des loyers pour une SCI à l'IS, immeuble de plus de 15 ans.</li>
+      <li><a href="https://www.nopillo.com/blog/sci-et-location-meublee" target="_blank" rel="noopener">Meublé en SCI</a> : au-delà de 10 % de recettes meublées, la SCI passe à l'IS ; LMNP : micro-BIC 50 %, prélèvements sociaux 18,6 %.</li>
+      <li><a href="https://www.cpim.fr/renegociation-credit-immo-seuil-rentabilite/" target="_blank" rel="noopener">Renégociation</a> : indemnités de remboursement anticipé plafonnées à 6 mois d'intérêts ou 3 % du capital (prêts aux particuliers ; pour une SCI, voir le contrat).</li>
+    </ol>
+    <div class="hint">Simulation indicative : la fiscalité réelle dépend de ta situation (autres revenus, déficits passés, statut des associés). À valider avec ton comptable ou ta banque.</div>
+  </div>
+</main>
+</div>
+<div class="tip" id="tip"></div>
+
+<script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
+<script>
+// ---------- Taux de marché (série Observatoire Crédit Logement / CSA : taux moyens accordés) ----------
+// Sept. 2026 : 3,39 % sur 20 ans ; 15 et 25 ans estimés avec les écarts d'août 2026 (-0,13 / +0,08 pt).
+const TAUX_ACTUEL = {mois: 'septembre 2026', 15: 3.26, 20: 3.39, 25: 3.47};
+const HISTO = {   // mois d'offre → taux moyens par durée
+  '2023-06': {15: 3.32, 20: 3.51, 25: 3.69}, '2023-07': {15: 3.52, 20: 3.73, 25: 3.89}, '2023-08': {15: 3.72, 20: 3.92, 25: 4.08},
+  '2024-01': {15: 3.89, 20: 4.00, 25: 4.13}, '2024-02': {15: 3.79, 20: 3.90, 25: 3.99}, '2024-03': {15: 3.74, 20: 3.82, 25: 3.91},
+};
+const SURPRIME_SCI = 0.30;   // mesurée sur deux prêts SCI réels sans apport (110 %) et avec différé (voir sources)
+const MOIS_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+function tauxDuree(row, mois) {
+  const a = mois / 12;
+  if (a <= 15) return row[15];
+  if (a <= 20) return row[15] + (row[20] - row[15]) * (a - 15) / 5;
+  if (a <= 25) return row[20] + (row[25] - row[20]) * (a - 20) / 5;
+  return row[25];
+}
+
+// ---------- Fiscalité 2026 ----------
+const PS_FONCIER = 0.172, PS_BIC = 0.186, PFU = 0.314, IS_SEUIL = 42500, CRL = 0.025;
+const PLAFOND_DEFICIT = 10700, MICRO_FONCIER = 15000, MICRO_BIC = 77700;
+const AMORT = {bati: 30, travaux: 15, mobilier: 7};
+
+// ---------- Formulaire ----------
+const $ = id => document.getElementById(id);
+const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier', 'struct', 'meuble', 'regime', 'tmi', 'terrain', 'distrib',
+  'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'debutLoc', 'tf', 'copro', 'pno',
+  'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit'];
+const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
+  tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
+  garantie: 1.5, loyer: 800, vacance: 0.5, debutLoc: 0, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
+  gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true};
+const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
+const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
+
+function tauxConseille() {
+  const sci = get('struct') !== 'np';
+  return Math.round((tauxDuree(TAUX_ACTUEL, get('duree') * 12) + (sci ? SURPRIME_SCI : 0)) * 100) / 100;
+}
+// Valeurs qui dépendent d'autres champs quand l'utilisateur ne les a pas fixées
+function defautsLies(v) {
+  if (v.taux == null) v.taux = tauxConseille();
+  if (v.tf == null) v.tf = Math.round(get('loyer') * 1.0 / 10) * 10;          // ≈ un mois de loyer
+  if (v.copro == null) v.copro = get('type') === 'appart' ? Math.round(get('surf') * 8 / 10) * 10 : 0;
+  if (v.compta == null) v.compta = {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')];
+  return v;
+}
+
+function charger() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('cashflow-v1') || '{}'); } catch (e) {}
+  const q = new URLSearchParams(location.search), depuisEstimateur = q.has('prix');
+  const v = {...DEFAUTS, ...(depuisEstimateur ? {} : saved)};
+  if (depuisEstimateur) {   // valeurs envoyées par l'estimateur ; on garde les réglages personnels (crédit, fiscalité)
+    for (const k of ['struct', 'tmi', 'apport', 'duree', 'assur', 'regime', 'distrib', 'notaireCredit', 'gestion', 'entretien', 'gLoyer', 'gPrix', 'gCharges', 'dossier', 'garantie']) if (k in saved) v[k] = saved[k];
+    v.prix = +q.get('prix'); v.loyer = +q.get('loyer') || v.loyer; v.surf = +q.get('surf') || v.surf;
+    v.type = q.get('type') === 'maison' ? 'maison' : 'appart'; v.meuble = q.get('meuble') === '1' ? '1' : '0';
+    v.mobilier = +q.get('mob') || 0; v.taux = null; v.tf = null; v.copro = null; v.compta = null;
+  }
+  for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
+  const lies = defautsLies({taux: v.taux, tf: v.tf, copro: v.copro, compta: v.compta});
+  for (const k in lies) set(k, lies[k]);
+}
+function sauver() {
+  const v = {};
+  for (const k of FIELDS) v[k] = get(k);
+  try { localStorage.setItem('cashflow-v1', JSON.stringify(v)); } catch (e) {}
+}
+function afficherChamps() {
+  const st = get('struct'), meuble = get('meuble') === '1';
+  const is = st === 'is' || (st === 'ir' && meuble);
+  document.querySelectorAll('[data-meuble]').forEach(e => e.hidden = !meuble);
+  document.querySelectorAll('[data-np]').forEach(e => e.hidden = st !== 'np');
+  document.querySelectorAll('[data-notis]').forEach(e => e.hidden = is);
+  document.querySelectorAll('[data-is]').forEach(e => e.hidden = !is);
+  document.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
+}
+
+// ---------- Crédit ----------
+function echeancier(capital, tauxAn, mois, differe, typeDiff, assAn) {
+  const r = tauxAn / 100 / 12, assM = capital * assAn / 100 / 12, rows = [];
+  let crd = capital;
+  for (let m = 0; m < differe; m++) {
+    const i = crd * r;
+    if (typeDiff === 'total') { crd += i; rows.push({i: 0, cap: 0, ass: assM, crd}); }
+    else rows.push({i, cap: 0, ass: assM, crd});
+  }
+  const pmt = r ? crd * r / (1 - Math.pow(1 + r, -mois)) : crd / mois;
+  for (let m = 0; m < mois; m++) {
+    const i = crd * r, cap = Math.min(pmt - i, crd);
+    crd -= cap;
+    rows.push({i, cap, ass: assM, crd: Math.max(0, crd)});
+  }
+  return {rows, pmt, assM};
+}
+
+// ---------- Simulation ----------
+function simuler() {
+  const p = {}; for (const k of FIELDS) p[k] = get(k);
+  const meuble = p.meuble === '1';
+  let st = p.struct;
+  const notes = [];
+  if (st === 'ir' && meuble) { st = 'is'; notes.push('Location meublée dans une SCI à l\'IR : au-delà de 10 % de recettes meublées, la SCI passe d\'office à l\'IS. La simulation applique donc l\'IS.'); }
+  const fraisNotaire = p.prix * p.notaire / 100;
+  const mobilier = meuble ? p.mobilier : 0;
+  const coutHorsBanque = p.prix + fraisNotaire + p.travaux + mobilier;
+  // Emprunt = coût total - apport, frais bancaires inclus (garantie calculée sur le prêt).
+  // Frais de notaire hors crédit : l'apport doit au moins les couvrir.
+  const apportEff = p.notaireCredit ? p.apport : Math.max(p.apport, fraisNotaire);
+  if (!p.notaireCredit && p.apport < fraisNotaire) notes.push(`Frais de notaire non financés : il faut au moins ${Math.round(fraisNotaire).toLocaleString('fr-FR')} € d'apport pour les payer, contre ${Math.round(p.apport).toLocaleString('fr-FR')} € saisis. La simulation compte ${Math.round(fraisNotaire).toLocaleString('fr-FR')} € de mise de départ.`);
+  const besoin = Math.max(0, coutHorsBanque + p.dossier - apportEff);
+  const pret = besoin / (1 - p.garantie / 100);
+  const fraisGarantie = pret * p.garantie / 100;
+  const coutTotal = coutHorsBanque + p.dossier + fraisGarantie;
+  const moisCredit = Math.round(p.duree * 12);
+  const ech = echeancier(pret, p.taux, moisCredit, p.differe, p.typeDiff, p.assur);
+  const horizon = Math.ceil((p.differe + moisCredit) / 12);
+  const fraisAcq = fraisNotaire + p.dossier + fraisGarantie;
+  const terrain = p.terrain / 100;
+  const amortAn = y => (y <= AMORT.bati ? p.prix * (1 - terrain) / AMORT.bati : 0)
+    + (y <= AMORT.travaux ? p.travaux / AMORT.travaux : 0) + (y <= AMORT.mobilier ? mobilier / AMORT.mobilier : 0);
+
+  const annees = [];
+  for (let y = 1; y <= horizon; y++) {
+    let loyers = 0;
+    for (let m = 12 * (y - 1); m < 12 * y; m++) if (m >= p.debutLoc) loyers += p.loyer * (1 - p.vacance / 12) * Math.pow(1 + p.gLoyer / 100, y - 1);
+    const infl = Math.pow(1 + p.gCharges / 100, y - 1);
+    const fixes = (p.tf + p.copro + p.pno + p.compta + (meuble ? p.cfe : 0)) * infl;
+    const charges = fixes + loyers * (p.gestion + p.entretien) / 100;
+    const rows = ech.rows.slice(12 * (y - 1), 12 * y);
+    const interets = rows.reduce((s, r) => s + r.i, 0), assurance = rows.reduce((s, r) => s + r.ass, 0);
+    const capital = rows.reduce((s, r) => s + r.cap, 0);
+    const crd = rows.length ? rows[rows.length - 1].crd : 0;
+    const crl = st === 'is' && p.vieux === '1' ? loyers * CRL : 0;
+    annees.push({y, loyers, charges, interets, assurance, capital, credit: interets + capital + assurance, crd, crl,
+      amort: amortAn(y), frais1: y === 1 ? fraisAcq : 0, travaux1: y === 1 ? p.travaux : 0});
+  }
+
+  // Impôts selon la structure
+  const tmi = +p.tmi / 100;
+  function impotsFoncierReel() {
+    let report = 0;
+    return annees.map(a => {
+      const autres = a.charges + a.travaux1;                        // charges hors intérêts
+      const financier = a.interets + a.assurance + (a.y === 1 ? p.dossier + fraisGarantie : 0);
+      let r = a.loyers - autres - financier;
+      if (r >= 0) { const imput = Math.min(report, r); report -= imput; r -= imput; return r * (tmi + PS_FONCIER); }
+      const global = Math.min(-r, autres, PLAFOND_DEFICIT);         // part imputable sur le revenu global
+      report += -r - global;
+      return -global * tmi;
+    });
+  }
+  const impotsMicroFoncier = () => annees.map(a => a.loyers * 0.7 * (tmi + PS_FONCIER));
+  const impotsMicroBic = () => annees.map(a => a.loyers * 0.5 * (tmi + PS_BIC));
+  function impotsLmnpReel() {
+    let deficit = 0, amortStock = 0;
+    return annees.map(a => {
+      let r = a.loyers - a.charges - a.interets - a.assurance - a.frais1;
+      amortStock += a.amort;
+      if (r <= 0) { deficit += -r; return 0; }
+      const d = Math.min(deficit, r); deficit -= d; r -= d;
+      const am = Math.min(amortStock, r); amortStock -= am; r -= am;
+      return r * (tmi + PS_BIC);
+    });
+  }
+  function impotsIS() {
+    let deficit = 0;
+    return annees.map(a => {
+      let r = a.loyers - a.charges - a.interets - a.assurance - (a.y === 1 ? fraisAcq : 0) - a.amort;
+      if (r <= 0) { deficit += -r; a.benef = 0; return {is: 0, pfu: 0}; }
+      const d = Math.min(deficit, r); deficit -= d; r -= d;
+      const is = 0.15 * Math.min(r, IS_SEUIL) + 0.25 * Math.max(0, r - IS_SEUIL);
+      a.benef = r - is;
+      return {is, pfu: p.distrib ? a.benef * PFU : 0};
+    });
+  }
+  let regime, impots;
+  if (st === 'is') {
+    const t = impotsIS();
+    impots = t.map((x, i) => x.is + x.pfu + annees[i].crl);
+    regime = 'SCI à l\'IS' + (p.distrib ? ', bénéfices distribués' : ', bénéfices gardés dans la SCI');
+    annees.forEach((a, i) => { a.is = t[i].is; a.pfu = t[i].pfu; });
+  } else if (meuble) {
+    const micro = impotsMicroBic(), reel = impotsLmnpReel();
+    const sum = arr => arr.reduce((s, x) => s + x, 0);
+    const okMicro = annees[0].loyers <= MICRO_BIC;
+    const choix = p.regime === 'micro' && okMicro ? 'micro' : p.regime === 'reel' || !okMicro ? 'reel' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
+    impots = choix === 'micro' ? micro : reel;
+    regime = 'LMNP ' + (choix === 'micro' ? 'micro-BIC (abattement 50 %)' : 'au réel (avec amortissement)');
+  } else {
+    const reel = impotsFoncierReel();
+    if (st === 'np' && p.regime !== 'reel' && annees[0].loyers <= MICRO_FONCIER) {
+      const micro = impotsMicroFoncier(), sum = arr => arr.reduce((s, x) => s + x, 0);
+      const choix = p.regime === 'micro' ? 'micro' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
+      impots = choix === 'micro' ? micro : reel;
+      regime = choix === 'micro' ? 'Micro-foncier (abattement 30 %)' : 'Revenus fonciers au réel';
+    } else {
+      impots = reel;
+      regime = (st === 'ir' ? 'SCI à l\'IR, ' : '') + 'revenus fonciers au réel';
+    }
+  }
+  let cumul = -apportEff;
+  annees.forEach((a, i) => {
+    a.impots = impots[i];
+    a.cf = a.loyers - a.charges - a.credit - a.impots;
+    cumul += a.cf; a.cumul = cumul;
+  });
+  const valeur = p.prix * Math.pow(1 + p.gPrix / 100, horizon);
+  return {p, st, regime, notes, pret, apportEff, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble};
+}
+
+// ---------- Affichage ----------
+const fmt = n => Math.round(n).toLocaleString('fr-FR');
+const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
+const pct = n => n.toFixed(1).replace('.', ',') + ' %';
+
+function rendre() {
+  afficherChamps();
+  const s = simuler(), a1 = s.annees.find(a => a.loyers > 0) || s.annees[0], p = s.p;
+  const mens = s.ech.pmt + s.ech.assM;
+  const anneesCredit = s.annees.filter(a => a.y <= Math.ceil((p.differe + p.duree * 12) / 12));
+  const cfMoyen = anneesCredit.reduce((t, a) => t + a.cf, 0) / anneesCredit.length / 12;
+  const coutCredit = s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie;
+  const loyerAn = p.loyer * 12;
+  const fin = s.annees[s.annees.length - 1];
+  const patrimoine = s.valeur - fin.crd + fin.cumul;
+  $('tiles').innerHTML = [
+    ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}`],
+    ['Cash-flow / mois', eur(a1.cf / 12), `année ${a1.y}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}`],
+    ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
+    ['Rendement', pct(loyerAn / p.prix * 100) + ' brut', `${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} net de charges · ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts`],
+    ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
+    [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
+  ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
+
+  let al = `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>`;
+  s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
+  if (s.st === 'is') al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
+  if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche la première année de location.</div>`;
+  $('alerts').innerHTML = al;
+  $('fiscNote').textContent = s.st === 'is' ? 'IS 15 % jusqu\'à 42 500 € de bénéfice, 25 % au-delà ; amortissement du bâti sur 30 ans.' : '';
+  const tm = tauxDuree(TAUX_ACTUEL, p.duree * 12);
+  $('tauxHint').innerHTML = `Marché (${TAUX_ACTUEL.mois}, ${p.duree} ans) : <b>${tm.toFixed(2).replace('.', ',')} %</b>${p.struct !== 'np' ? ` · en SCI, +${SURPRIME_SCI.toFixed(1).replace('.', ',')} pt : <b>${(tm + SURPRIME_SCI).toFixed(2).replace('.', ',')} %</b>` : ''}`;
+  $('chartTitle').textContent = `Cash-flow annuel après impôts (${s.horizon} ans)`;
+  graphe(s.annees);
+  tableau(s);
+  rendreTaux();
+}
+
+function graphe(annees) {
+  const W = 760, H = 260, L = 56, R = 8, T = 12, B = 26;
+  const vals = annees.map(a => a.cf);
+  let max = Math.max(0, ...vals), min = Math.min(0, ...vals);
+  if (max === min) max = 1;
+  const pad = (max - min) * 0.08; max += max > 0 ? pad : 0; min -= min < 0 ? pad : 0;
+  const y = v => T + (max - v) / (max - min) * (H - T - B);
+  const bw = (W - L - R) / annees.length, gap = 2, w = Math.max(2, bw - gap);
+  const ticks = niceTicks(min, max, 5);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cash-flow annuel après impôts">`;
+  ticks.forEach(t => svg += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${fmtK(t)}</text>`);
+  annees.forEach((a, i) => {
+    const x = L + i * bw + gap / 2, y0 = y(0), y1 = y(a.cf), h = Math.abs(y1 - y0);
+    const top = Math.min(y0, y1), rad = Math.min(4, h / 2, w / 2);
+    // extrémité arrondie côté donnée, base droite sur l'axe zéro
+    const d = a.cf >= 0
+      ? `M${x},${y0} V${top + rad} Q${x},${top} ${x + rad},${top} H${x + w - rad} Q${x + w},${top} ${x + w},${top + rad} V${y0} Z`
+      : `M${x},${y0} V${y1 - rad} Q${x},${y1} ${x + rad},${y1} H${x + w - rad} Q${x + w},${y1} ${x + w},${y1 - rad} V${y0} Z`;
+    svg += `<path d="${d}" fill="${a.cf >= 0 ? 'var(--pos)' : 'var(--neg)'}"/>`;
+    svg += `<rect x="${L + i * bw}" y="${T}" width="${bw}" height="${H - T - B}" fill="transparent" data-i="${i}"/>`;
+    if (annees.length <= 12 || (a.y % 5 === 0) || a.y === 1) svg += `<text x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${a.y}</text>`;
+  });
+  svg += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--muted)" stroke-width="1"/></svg>`;
+  const el = $('chart'); el.innerHTML = svg;
+  const tip = $('tip');
+  el.querySelectorAll('rect[data-i]').forEach(r => {
+    r.addEventListener('mousemove', e => {
+      const a = annees[+r.dataset.i];
+      tip.innerHTML = `<b>Année ${a.y}</b><br>Cash-flow : ${eur(a.cf)} (${eur(a.cf / 12)}/mois)<br>Loyers ${eur(a.loyers)} · crédit ${eur(a.credit)}<br>Charges ${eur(a.charges)} · impôts ${eur(a.impots)}`;
+      tip.style.display = 'block';
+      tip.style.left = Math.min(e.pageX + 12, window.innerWidth - tip.offsetWidth - 8) + 'px';
+      tip.style.top = (e.pageY - tip.offsetHeight - 10) + 'px';
+    });
+    r.addEventListener('mouseleave', () => tip.style.display = 'none');
+  });
+}
+function niceTicks(min, max, n) {
+  const step0 = (max - min) / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(s => s >= step0);
+  const out = [];
+  for (let t = Math.ceil(min / step) * step; t <= max + 1e-9; t += step) out.push(Math.round(t));
+  return out;
+}
+const fmtK = v => Math.abs(v) >= 1000 ? (v / 1000).toLocaleString('fr-FR', {maximumFractionDigits: 1}) + ' k' : fmt(v);
+
+function tableau(s) {
+  const is = s.st === 'is';
+  let h = `<table><thead><tr><th>Année</th><th>Loyers</th><th>Charges</th><th>Intérêts + assur.</th><th>Capital remb.</th><th>Impôts${is ? ' (IS, CRL' + (s.p.distrib ? ', flat tax' : '') + ')' : ''}</th><th>Cash-flow</th><th>/ mois</th><th>Restant dû</th></tr></thead><tbody>`;
+  s.annees.forEach(a => h += `<tr><td>${a.y}</td><td>${fmt(a.loyers)}</td><td>${fmt(a.charges)}</td><td>${fmt(a.interets + a.assurance)}</td><td>${fmt(a.capital)}</td><td>${fmt(a.impots)}</td><td class="${a.cf >= 0 ? 'pos' : 'negt'}">${fmt(a.cf)}</td><td>${fmt(a.cf / 12)}</td><td>${fmt(a.crd)}</td></tr>`);
+  $('table').innerHTML = h + '</tbody></table>';
+}
+
+// ---------- Tes crédits face aux taux actuels ----------
+let credits = [];
+function chargerCredits() {
+  try { credits = JSON.parse(localStorage.getItem('mes-credits') || 'null'); } catch (e) {}
+  if (!Array.isArray(credits)) credits = (window.MES_CREDITS || []).map(c => ({...c}));
+}
+const sauverCredits = () => { try { localStorage.setItem('mes-credits', JSON.stringify(credits)); } catch (e) {} };
+
+function analyseCredit(c) {
+  const r = c.taux / 100 / 12, n = c.mois;
+  const mensu = c.mensualite || (r ? c.crd * r / (1 - Math.pow(1 + r, -n)) : c.crd / n);
+  const tNew = tauxDuree(TAUX_ACTUEL, n) + (c.sci ? SURPRIME_SCI : 0), r2 = tNew / 100 / 12;
+  const mensu2 = r2 ? c.crd * r2 / (1 - Math.pow(1 + r2, -n)) : c.crd / n;
+  const gainMois = mensu - mensu2, gainTotal = gainMois * n;
+  const ira = Math.min(0.03 * c.crd, 6 * c.crd * r);
+  const fraisRachat = ira + 1000 + 0.015 * c.crd, fraisAvenant = 600;
+  // Surprime à la signature : écart entre ton taux et le marché du mois de l'offre (même durée)
+  let surprime = null;
+  if (c.offre && c.duree) {
+    const ms = [c.offre, decalerMois(c.offre, 1)].filter(m => HISTO[m]).map(m => c.taux - tauxDuree(HISTO[m], c.duree));
+    if (ms.length) surprime = [Math.min(...ms), Math.max(...ms)];
+  }
+  return {mensu, tNew, mensu2, gainMois, gainTotal, ira, fraisRachat, netRachat: gainTotal - fraisRachat, netAvenant: gainTotal - fraisAvenant, surprime};
+}
+function decalerMois(ym, k) { const [y, m] = ym.split('-').map(Number), d = new Date(y, m - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+const libMois = ym => { const [y, m] = ym.split('-').map(Number); return MOIS_FR[m - 1] + ' ' + y; };
+
+function rendreTaux() {
+  const t20 = TAUX_ACTUEL[20];
+  let h = `<h2>Tes crédits face aux taux actuels</h2>
+    <div class="hint">Marché (${TAUX_ACTUEL.mois}, taux réellement accordés) : ${TAUX_ACTUEL[15].toFixed(2).replace('.', ',')} % sur 15 ans · <b>${t20.toFixed(2).replace('.', ',')} % sur 20 ans</b> · ${TAUX_ACTUEL[25].toFixed(2).replace('.', ',')} % sur 25 ans. En SCI, compte environ +${SURPRIME_SCI.toFixed(1).replace('.', ',')} point.</div>`;
+  if (!credits.length) h += '<p class="hint">Ajoute tes crédits en cours pour voir combien ils coûteraient aux taux d\'aujourd\'hui et si une renégociation vaut le coup. Ils restent uniquement dans ton navigateur.</p>';
+  h += '<div class="scroll"><table class="loans"><thead><tr><th>Crédit</th><th>Restant dû (€)</th><th>Taux (%)</th><th>Mois restants</th><th>Mensualité (€)</th><th>SCI</th><th></th></tr></thead><tbody>';
+  credits.forEach((c, i) => h += `<tr data-i="${i}"><td><input data-k="nom" value="${(c.nom || '').replace(/"/g, '&quot;')}"></td><td><input data-k="crd" type="number" value="${c.crd}"></td><td><input data-k="taux" type="number" step="0.01" value="${c.taux}"></td><td><input data-k="mois" type="number" value="${c.mois}"></td><td><input data-k="mensualite" type="number" step="0.01" value="${c.mensualite || ''}" placeholder="auto"></td><td><input data-k="sci" type="checkbox"${c.sci ? ' checked' : ''}></td><td><button data-del="${i}" title="Supprimer">✕</button></td></tr>`);
+  h += '</tbody></table></div><button id="addCredit" style="margin-top:8px">+ Ajouter un crédit</button>';
+  credits.forEach(c => {
+    if (!(c.crd > 0 && c.mois > 0 && c.taux > 0)) return;
+    const a = analyseCredit(c);
+    h += `<div class="${a.netAvenant > 0 ? 'okbox' : 'warnbox'}"><b>${c.nom || 'Crédit'}</b> : ${c.taux.toFixed(2).replace('.', ',')} % aujourd'hui contre <b>${a.tNew.toFixed(2).replace('.', ',')} %</b> au marché${c.sci ? ' (SCI)' : ''} sur ${Math.round(c.mois / 12)} ans restants.
+      Mensualité ${eur(a.mensu)} → <b>${eur(a.mensu2)}</b>, soit ${eur(a.gainMois)}/mois et ${eur(a.gainTotal)} d'intérêts en moins.<br>
+      Renégociation avec ta banque (avenant ≈ 600 €) : gain net ≈ <b>${eur(a.netAvenant)}</b>.
+      Rachat par une autre banque (indemnités ≈ ${eur(a.ira)}, dossier et garantie ≈ ${eur(a.fraisRachat - a.ira)}) : gain net ≈ <b>${eur(a.netRachat)}</b>.
+      ${a.surprime ? `<br>Surprime payée à la signature (${libMois(c.offre)}) : <b>+${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à +' + a.surprime[1].toFixed(2).replace('.', ',') : ''} point</b> par rapport au taux moyen du marché à durée égale.` : ''}</div>`;
+  });
+  h += '<div class="hint">Indemnités de remboursement anticipé : plafond légal de 6 mois d\'intérêts ou 3 % du capital pour les prêts aux particuliers ; pour une SCI, c\'est le contrat de prêt qui fixe les règles.</div>';
+  $('credits').innerHTML = h;
+  $('credits').querySelectorAll('tr[data-i] input').forEach(inp => inp.addEventListener('change', () => {
+    const c = credits[+inp.closest('tr').dataset.i], k = inp.dataset.k;
+    c[k] = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? (inp.value === '' ? null : +inp.value) : inp.value;
+    sauverCredits(); rendreTaux();
+  }));
+  $('credits').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { credits.splice(+b.dataset.del, 1); sauverCredits(); rendreTaux(); });
+  $('addCredit').onclick = () => { credits.push({nom: 'Nouveau crédit', crd: 150000, taux: 4, mois: 240, mensualite: null, sci: false}); sauverCredits(); rendreTaux(); };
+}
+
+// ---------- Démarrage ----------
+charger(); chargerCredits();
+$('form').addEventListener('input', e => {
+  // Les valeurs « liées » suivent leurs champs tant qu'on ne les a pas modifiées soi-même
+  if (e.target.id === 'struct' || e.target.id === 'duree') set('taux', tauxConseille());
+  if (e.target.id === 'struct' || e.target.id === 'meuble') set('compta', {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+  if (e.target.id === 'neuf') { set('notaire', get('neuf') === '1' ? 2.5 : 8); set('vieux', get('neuf') === '1' ? '0' : '1'); }
+  sauver(); rendre();
+});
+$('tauxMarche').onclick = () => { set('taux', tauxConseille()); sauver(); rendre(); };
+$('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); } catch (e) {} location.href = location.pathname; };
+rendre();
+</script>
+</body>
+</html>
