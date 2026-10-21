@@ -210,6 +210,25 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .associe .part{font-size:13px;color:var(--muted);margin:6px 0 4px}
 .invwrap .boutons.centre{justify-content:center}
 .invwrap .bloc .liste{margin-bottom:10px}
+.invwrap h4{font-size:13px;margin:4px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.invwrap .crit-bien{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.invwrap .crit-bien .case label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400;color:var(--ink);margin:22px 0 0}
+.invwrap .crit-bien .case input{width:auto}
+.invwrap details.plus-crit{margin-top:10px;border:0;padding:0}
+.invwrap details.plus-crit summary{font-size:13px;color:var(--accent);cursor:pointer;margin-bottom:8px}
+.invwrap #inv_auto{margin-bottom:12px}
+.invwrap .auto-res{padding:12px;border-radius:10px;background:var(--accent-soft)}
+.invwrap .auto-res.perime{opacity:.6}
+.invwrap .auto-chiffres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:8px}
+.invwrap .auto-chiffres span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.invwrap .auto-chiffres b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.invwrap .auto-chiffres small{font-size:12px;color:var(--muted)}
+.invwrap .auto-res button{margin-top:8px}
+.invwrap .auto-cours{display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;background:var(--accent-soft);font-size:14px}
+.invwrap .rond{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);border-right-color:transparent;animation:tourne .8s linear infinite}
+@keyframes tourne{to{transform:rotate(360deg)}}
+@media (max-width:420px){.invwrap .auto-chiffres b{font-size:17px}}
+@media (prefers-reduced-motion:reduce){.invwrap .rond{animation:none}}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 
 [hidden]{display:none!important}
@@ -818,8 +837,11 @@ const crit = id => CRITERES.find(c => c.id === id);
 const lower = s => s.length > 1 ? s[0].toLowerCase() + s.slice(1) : s;
 const pct = a => (a > 0 ? '+' : a < 0 ? '−' : '') + Math.abs(Math.round(a * 1000) / 10).toLocaleString('fr-FR') + ' %';
 const eur = a => (a > 0 ? '+ ' : '− ') + fmtK(Math.abs(a));
+// Mode « moteur » : la page tourne dans un cadre caché pour estimer les biens de « Mes investissements »,
+// sans écran, sans toucher aux réglages enregistrés ni au compte
+const MOTEUR = new URLSearchParams(location.search).has('moteur');
 let saved = {};
-try { saved = JSON.parse(localStorage.getItem('criteres-v2') || '{}'); } catch (e) {}
+try { saved = MOTEUR ? {} : JSON.parse(localStorage.getItem('criteres-v2') || '{}'); } catch (e) {}
 
 // Résout une valeur qui peut dépendre du type de bien puis de la zone
 function res(v) {
@@ -1297,7 +1319,7 @@ function renderSynth() {
 
 // --- Carte ---
 const map = L.map('map').setView([46.6, 2.4], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
+if (!MOTEUR) L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
 layer.addTo(map);
 // Place le point sans lancer l'estimation (on règle d'abord les détails du bien)
 function placer(lat, lon, zoom, label) {
@@ -1386,6 +1408,7 @@ const RECENTES = {
 let memoMinuteur;
 // Appelé à chaque nouveau résultat : garde la dernière version de la recherche (détails compris)
 function memoriser() {
+  if (MOTEUR) return;
   clearTimeout(memoMinuteur);
   memoMinuteur = setTimeout(() => {
     if (!state.base || state.prix == null || state.lat == null) return;
@@ -1436,7 +1459,30 @@ document.getElementById('recentesBtn').onclick = () => {
   pan.hidden = !pan.hidden; b.setAttribute('aria-expanded', String(!pan.hidden));
 };
 RECENTES.charger();
-setTimeout(majRecentes);   // après le chargement des autres scripts (esc, COMPTE)
+setTimeout(majRecentes);
+
+// --- Moteur sans écran : même estimation que l'onglet, pour un bien donné (appelé par Mes investissements) ---
+async function estimerPour(p) {
+  if (!(p.surf >= 9)) return {erreur: 'Surface à renseigner (9 m² minimum).'};
+  state.lat = p.lat; state.lon = p.lon; state.type = p.type; state.adresse = ''; state.lance = true;
+  document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x.dataset.v === p.type));
+  document.getElementById('surf').value = p.surf;
+  document.getElementById('since').value = 'auto';
+  saved = {...(p.criteres || {})};
+  syncForm(); fillOptions();
+  CRITERES.filter(c => c.check).forEach(c => field(c.id).checked = !!saved[c.id]);
+  CRITERES.filter(c => c.number).forEach(c => field(c.id).value = saved[c.id] ?? '');
+  choixTravaux = {niveau: 'non'};   // pas de projet de travaux
+  state.base = null; state.prix = null; state.loyerHC = null;
+  await estimate();
+  if (!state.base) return {erreur: document.getElementById('out').innerText.trim() || 'Estimation impossible pour le moment.'};
+  for (let i = 0; i < 125 && state.loyerHC == null; i++) await new Promise(ok => setTimeout(ok, 200));   // loyer : jusqu'à 25 s
+  const r = state.base;
+  return {prix: Math.round(state.prix), lo: Math.round(state.prixLo), hi: Math.round(state.prixHi),
+    loyer: state.loyerHC != null ? Math.round(state.loyerHC) : null, fiabilite: state.confAff ? state.confAff[0] : '',
+    ventes: r.comps.length, rayon: Math.round(r.radius), periode: r.elargie ? `${r.anMin}–${r.anMax}` : ''};
+}
+window.estimerPour = estimerPour;   // après le chargement des autres scripts (esc, COMPTE)
 
 // --- Paramètres ---
 document.querySelectorAll('#type button').forEach(b => b.onclick = () => {
@@ -2070,7 +2116,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=3"></script>
+<script src="investissements.js?v=6"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

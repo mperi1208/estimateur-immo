@@ -2,6 +2,7 @@
 // ses plans et documents. Invité : tout reste sur cet appareil (localStorage, fichiers dans IndexedDB).
 // Connecté : dans le compte (Supabase : liste des biens dans immo_profils, fichiers dans le stockage « immo-docs »).
 (() => {
+if (typeof MOTEUR !== 'undefined' && MOTEUR) return;
 const T = window.CF_APP.taux;   // taux du marché, historique, surprime SCI (onglet Financer)
 const racine = document.getElementById('inv');
 const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
@@ -87,7 +88,8 @@ function calculs(b) {
 let biens = [], scis = [], etatCompte = '', compteCharge = false, minuteur = null, enAttente = false;
 const CLE = 'mes-investissements', CLE_SCI = 'mes-scis';
 function nouveauBien(o = {}) {
-  return {id: uid(), nom: 'Nouveau bien', type: 'appart', adresse: '', surface: null, pieces: null, etage: null, dpe: '', annee: null,
+  return {id: uid(), nom: 'Nouveau bien', type: 'appart', adresse: '', surface: null, pieces: null, annee: null,
+    criteres: {}, geo: null, estimation: null, valeurManuelle: false,
     structure: 'np', sciId: null, valeur: null, valeurLe: '',
     achat: {date: '', prix: null, notaire: null, travaux: null, mobilier: null, frais: null},
     location: {statut: 'vide', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0},
@@ -117,6 +119,14 @@ function normaliser() {
     }
     if (b.structure === 'sci' && !scis.some(x => x.id === b.sciId)) { b.structure = 'np'; b.sciId = null; }
     delete b.sci;
+    // Caractéristiques d'estimation (anciens champs DPE / étage repris)
+    if (!b.criteres) {
+      b.criteres = {};
+      if (b.dpe) b.criteres.dpe = b.dpe;
+      if (b.etage != null && b.etage !== '') b.criteres.etage = String(Math.max(0, Math.min(6, Math.round(b.etage))));
+      if (b.valeur) b.valeurManuelle = true;   // valeur saisie avant l'estimation automatique : on la garde
+    }
+    delete b.dpe; delete b.etage;
   }
 }
 const sciDe = b => b.structure === 'sci' ? scis.find(x => x.id === b.sciId) : null;
@@ -207,6 +217,103 @@ async function supprimerDoc(doc) {
   urls.delete(doc.id);
 }
 const erreurDocs = e => /bucket not found|not found/i.test((e && e.message) || '') ? 'Le stockage des documents n\'est pas encore activé (script supabase-docs.sql à lancer).' : (e && e.message) || String(e);
+
+// ---------- Estimation automatique ----------
+// Le même moteur que l'onglet Estimer, chargé dans un cadre caché : il ne touche ni à la recherche en cours,
+// ni aux réglages enregistrés. Une estimation à la fois.
+const moteur = {
+  pret: null, file: Promise.resolve(),
+  charger() {
+    if (!this.pret) this.pret = new Promise((ok, ko) => {
+      const f = Object.assign(document.createElement('iframe'), {src: 'index.html?moteur=1', tabIndex: -1, title: 'moteur d\'estimation'});
+      f.setAttribute('aria-hidden', 'true');
+      f.style.cssText = 'position:fixed;left:-10000px;top:0;width:900px;height:700px;visibility:hidden;border:0';
+      f.onload = () => {
+        const t0 = Date.now();
+        (function attendre() { if (f.contentWindow.estimerPour) ok(f.contentWindow); else if (Date.now() - t0 > 20000) ko(new Error('moteur d\'estimation indisponible')); else setTimeout(attendre, 100); })();
+      };
+      document.body.append(f);
+    }).catch(e => { this.pret = null; throw e; });
+    return this.pret;
+  },
+  estimer(params) {
+    const r = this.file.then(async () => (await this.charger()).estimerPour(params));
+    this.file = r.catch(() => {});
+    return r;
+  },
+};
+const TYPE_DVF = {appart: '121', maison: '111'};
+const EPOQUES = [[1914, 'av1914'], [1948, '1914'], [1970, '1948'], [1981, '1970'], [1992, '1981'], [Infinity, '1992']];
+function criteresEffectifs(b) {
+  const c = {...b.criteres, location: ['meuble', 'saisonnier'].includes(b.location.statut) ? 'meuble' : 'vide'};
+  if (b.annee > 1500) c.epoque = EPOQUES.find(([y]) => b.annee < y)[1];
+  return c;
+}
+const cleEstimation = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);
+const estimable = b => TYPE_DVF[b.type] && b.adresse.trim().length >= 5 && b.surface >= 9;
+const enCours = new Set(), minuteursEst = {};
+// À (re)faire : jamais estimé, caractéristiques changées, plus d'un mois, ou échec de la veille
+function aEstimer(b) {
+  if (!estimable(b) || enCours.has(b.id)) return false;
+  const e = b.estimation;
+  if (!e || e.cle !== cleEstimation(b)) return true;
+  const age = (Date.now() - new Date(e.le)) / 864e5;
+  return e.erreur ? age >= 1 : age > 30;
+}
+function planifierEstimation(b, delai = 1200) {
+  clearTimeout(minuteursEst[b.id]);
+  if (!estimable(b)) { majAuto(b); return; }
+  minuteursEst[b.id] = setTimeout(() => estimerBien(b), delai);
+}
+async function estimerBien(b) {
+  if (!estimable(b)) return;
+  const cle = cleEstimation(b);
+  enCours.add(b.id); majAuto(b);
+  const le = new Date().toISOString().slice(0, 10);
+  try {
+    if (!b.geo || b.geo.pour !== b.adresse.trim()) {
+      const f = (await geocode(b.adresse.trim()))[0];
+      if (!f) throw new Error('Adresse introuvable : ajoute la ville ou le code postal.');
+      b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
+    }
+    const res = await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
+    if (cleEstimation(b) !== cle) return;   // modifié entre-temps : une autre estimation suit
+    b.estimation = res.erreur ? {erreur: res.erreur, cle, le} : {...res, cle, le};
+    if (!res.erreur && !b.valeurManuelle) { b.valeur = res.prix; b.valeurLe = moisCourant(); }
+  } catch (e) {
+    if (cleEstimation(b) === cle) b.estimation = {erreur: e.message || String(e), cle, le};
+  } finally {
+    enCours.delete(b.id);
+  }
+  sauver();
+  if (ouvert === b.id) { majAuto(b); majCalculs(b); const v = racine.querySelector('[data-p="valeur"]'); if (v && document.activeElement !== v) v.value = b.valeur ?? ''; }
+  else if (!ouvert) vueListeBientot();
+}
+let minuteurListe;
+const vueListeBientot = () => { clearTimeout(minuteurListe); minuteurListe = setTimeout(() => { if (!ouvert) vueListe(); }, 300); };
+// Bloc « Estimation automatique » de la fiche
+function majAuto(b) {
+  const el = racine.querySelector('#inv_auto'); if (!el || ouvert !== b.id) return;
+  const e = b.estimation, a_jour = e && e.cle === cleEstimation(b);
+  let h;
+  if (!TYPE_DVF[b.type]) h = '<div class="aide">Estimation automatique disponible pour les appartements et les maisons.</div>';
+  else if (!estimable(b)) h = '<div class="aide">Renseigne l\'adresse et la surface : le bien sera estimé automatiquement, comme dans l\'onglet Estimer.</div>';
+  else if (enCours.has(b.id) || (!a_jour && !e)) h = '<div class="auto-cours"><span class="rond"></span>Estimation en cours…</div>';
+  else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)} <button class="lien" data-a="reestimer">Réessayer</button></div>`;
+  else {
+    const loue = LOUE.includes(b.location.statut);
+    h = `<div class="auto-res${a_jour ? '' : ' perime'}">
+      <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
+        ${e.loyer ? `<div><span>Loyer de marché</span><b>${eur(e.loyer)}</b><small>hors charges/mois, ${criteresEffectifs(b).location === 'meuble' ? 'meublé' : 'vide'}</small></div>
+        <div><span>Rendement brut</span><b>${pct(e.loyer * 12 / e.prix)}</b><small>au loyer de marché, sur la valeur</small></div>` : ''}</div>
+      <div class="aide">${esc(e.fiabilite)} · ${e.ventes} ventes à moins de ${e.rayon < 1000 ? fmt(e.rayon) + ' m' : (e.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}${e.periode ? ` (ventes ${e.periode})` : ''} · estimé le ${new Date(e.le).toLocaleDateString('fr-FR')}${b.geo ? ` · adresse reconnue : ${esc(b.geo.label)}` : ''}
+        ${loue && e.loyer && b.location.loyer ? `<br>Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / e.loyer - 1)} par rapport au marché.` : ''}</div>
+      ${!a_jour ? '<div class="aide">Caractéristiques modifiées : nouvelle estimation dans un instant…</div>' : ''}
+      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien suit cette estimation (tu peux la remplacer à la main).</div>'}
+    </div>`;
+  }
+  el.innerHTML = h;
+}
 
 // ---------- Passage invité ↔ compte ----------
 COMPTE.surChangement(async user => {
@@ -302,6 +409,7 @@ function vueListe() {
   }
   racine.innerHTML = h;
   vignettes();
+  biens.filter(aEstimer).forEach(b => estimerBien(b));
 }
 function carte(b, c) {
   const tags = [b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
@@ -360,7 +468,6 @@ function vueDetail(b) {
       ${champ(b, 'type', 'Type', {options: Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.l]))})}
       ${champ(b, 'adresse', 'Adresse', {type: 'text', large: true, ph: 'ex. 12 rue Fesch, Ajaccio'})}
       ${champ(b, 'surface', 'Surface (m²)')}${champ(b, 'pieces', 'Pièces')}
-      ${champ(b, 'etage', 'Étage')}${champ(b, 'dpe', 'DPE', {options: {'': '—', A: 'A', B: 'B', C: 'C', D: 'D', E: 'E', F: 'F', G: 'G'}})}
       ${champ(b, 'annee', 'Année de construction')}
       <div><label for="inv_detention">Détenu par</label><select id="inv_detention" data-p="detention">
         <option value="np"${b.structure !== 'sci' ? ' selected' : ''}>Nom propre</option>
@@ -368,9 +475,10 @@ function vueDetail(b) {
         <option value="+">+ Créer une SCI…</option></select>
         ${sciDe(b) ? `<div class="aide"><a href="#investissements/sci:${encodeURIComponent(b.sciId)}">Voir la fiche de la SCI →</a></div>` : ''}</div>
     </div>
-    <div class="valeur"><div class="grille">${champ(b, 'valeur', 'Valeur estimée (€)', {step: 1000})}${champ(b, 'valeurLe', 'Estimée en', {type: 'month'})}</div>
-      <div class="boutons">${est ? `<button data-a="valeurEst">Prendre l'estimation en cours : ${kEur(est.prix)}</button>` : ''}<button data-a="estimer"${b.adresse ? '' : ' disabled title="Renseigne d\'abord l\'adresse"'}>Estimer ce bien →</button></div>
-      ${est ? `<div class="aide">Estimation en cours : ${esc(est.label)}, ${fmt(est.surf)} m².</div>` : ''}</div>`)}
+    ${critHTML(b)}
+    <div class="valeur"><h4>Estimation automatique</h4><div id="inv_auto"></div>
+      <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
+      <div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div></div>`)}
     ${section('Achat', `<div class="grille">
       ${champ(b, 'achat.date', 'Date d\'achat', {type: 'month'})}${champ(b, 'achat.prix', 'Prix d\'achat (€)', {step: 1000})}
       ${champ(b, 'achat.notaire', 'Frais de notaire (€)', {step: 100})}${champ(b, 'achat.travaux', 'Travaux (€)', {step: 500})}
@@ -391,7 +499,26 @@ function vueDetail(b) {
     </div>
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
-  majCalculs(b); docsHTML(b); vignettes();
+  majCalculs(b); docsHTML(b); vignettes(); majAuto(b);
+  // Estimation manquante, ancienne (plus de 30 jours) ou faite avec d'autres caractéristiques : on la relance
+  if (aEstimer(b)) planifierEstimation(b, 0);
+}
+// Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Estimer)
+function critHTML(b) {
+  if (!TYPE_DVF[b.type]) return '';
+  const pour = b.type === 'appart' ? 'appart' : 'maison';
+  const liste = CRITERES.filter(c => !c.cache && c.id !== 'epoque' && (c.pour === 'tous' || c.pour === pour));
+  const un = c => {
+    const v = b.criteres[c.id], id = 'inv_c_' + c.id;
+    if (c.check) return `<div class="case"><label><input type="checkbox" id="${id}" data-p="criteres.${c.id}"${v ? ' checked' : ''}> ${esc(c.label)}</label></div>`;
+    if (c.number) return `<div><label for="${id}">${esc(c.label)}</label><input type="number" min="0" id="${id}" data-p="criteres.${c.id}" value="${esc(v ?? '')}" placeholder="facultatif"></div>`;
+    const def = (c.options.find(o => o.d) || c.options[0]).k;
+    return `<div><label for="${id}">${esc(c.label)}</label><select id="${id}" data-p="criteres.${c.id}">${c.options.map(o => `<option value="${esc(o.k)}"${String(v ?? def) === String(o.k) ? ' selected' : ''}>${esc(o.l)}</option>`).join('')}</select></div>`;
+  };
+  const ess = liste.filter(c => c.essentiel), autres = liste.filter(c => !c.essentiel);
+  const n = autres.filter(c => c.check ? b.criteres[c.id] : b.criteres[c.id] != null && String(b.criteres[c.id]) !== String((c.options || []).find(o => o.d)?.k ?? '')).length;
+  return `<div class="crit-bien"><h4>Caractéristiques</h4><div class="grille">${ess.map(un).join('')}</div>
+    <details class="plus-crit"${n ? ' open' : ''}><summary>Plus de caractéristiques${n ? ` (${n})` : ''}</summary><div class="grille">${autres.map(un).join('')}</div></details></div>`;
 }
 function vueSci(x) {
   const sesBiens = biens.filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
@@ -448,7 +575,7 @@ function pretHTML(b, p, i) {
 function majCalculs(b) {
   const c = calculs(b), q = s => racine.querySelector(s);
   q('#inv_kpis').innerHTML = `<div class="kpis six">
-    ${kpi('Valeur', b.valeur ? kEur(b.valeur) : '—', !b.valeur ? 'à renseigner' : b.valeurLe ? 'estimée en ' + libMois(b.valeurLe) : 'estimée')}
+    ${kpi('Valeur', b.valeur ? kEur(b.valeur) : '—', !b.valeur ? 'à renseigner' : !b.valeurManuelle && b.estimation && !b.estimation.erreur ? 'estimée automatiquement' : 'saisie à la main' + (b.valeurLe ? ' (' + libMois(b.valeurLe) + ')' : ''))}
     ${kpi('Restant dû', c.crd ? kEur(c.crd) : '—', c.mensuCredit ? eur(c.mensuCredit) + '/mois assurance comprise' : '')}
     ${kpi('Patrimoine net', c.patrimoine != null ? kEur(c.patrimoine) : '—', 'valeur − restant dû', c.patrimoine != null ? signe(c.patrimoine) : '')}
     ${kpi('Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois) : '—', 'par mois, avant impôts', signe(c.cfMois))}
@@ -519,18 +646,18 @@ racine.addEventListener('click', async e => {
   }
   if (a === 'ajoutEst') {
     const est = estimationCourante(); if (!est) return;
-    return ajouter({nom: est.label.split(' ').slice(0, 4).join(' '), adresse: est.label, type: est.type, surface: est.surf, dpe: est.dpe && est.dpe !== '?' ? est.dpe : '',
+    return ajouter({nom: est.label.split(' ').slice(0, 4).join(' '), adresse: est.label, type: est.type, surface: est.surf,
+      criteres: Object.fromEntries(Object.entries(saved).filter(([k]) => k !== 'location')), geo: state.lat != null ? {lat: state.lat, lon: state.lon, label: est.label, pour: est.label} : null,
       valeur: est.prix, valeurLe: moisCourant(), location: {statut: est.meuble ? 'meuble' : 'vide', loyer: est.loyer, charges: null, locataire: '', debutBail: '', vacance: 0}});
   }
   if (!b) return;
-  if (a === 'valeurEst') { const est = estimationCourante(); if (est) { b.valeur = est.prix; b.valeurLe = moisCourant(); sauver(); vueDetail(b); } }
-  if (a === 'estimer') {
+  if (a === 'reestimer') estimerBien(b);
+  if (a === 'valeurAuto' && b.estimation && b.estimation.prix) { b.valeurManuelle = false; b.valeur = b.estimation.prix; b.valeurLe = moisCourant(); sauver(); vueDetail(b); }
+  if (a === 'estimer' && estimable(b)) {
+    // Même recherche dans l'onglet Estimer (adresse, type, surface, caractéristiques), avec la carte et le détail du calcul
     showTab('estimation');
-    document.getElementById('addr').value = b.adresse;
-    if (b.surface) document.getElementById('surf').value = b.surface;
-    const tb = document.querySelector(`#type button[data-v="${b.type === 'maison' ? 111 : 121}"]`);
-    if (tb && !tb.classList.contains('on')) tb.click();
-    document.getElementById('go').click();
+    if (b.geo) reprendre({label: b.geo.label, lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, since: 'auto', criteres: criteresEffectifs(b)});
+    else { document.getElementById('addr').value = b.adresse; document.getElementById('surf').value = b.surface; document.getElementById('go').click(); }
   }
   if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, crd: null, mois: null, crdLe: ''}); sauver(); vueDetail(b); }
   if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(); vueDetail(b); }
@@ -582,14 +709,20 @@ racine.addEventListener('change', async e => {
   }
   const chemin = e.target.dataset.p; if (!chemin) return;
   const t = e.target;
-  let v = t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
+  let v = t.type === 'checkbox' ? t.checked : t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
   if (t.type === 'month' && t.value && !v) { alert('Date au format AAAA-MM, par exemple 2024-03.'); t.value = lire(b, chemin) || ''; return; }
+  // Prix et valeur tapés en milliers (« 819 ») : compris comme 819 000 €
+  if (['valeur', 'achat.prix'].includes(chemin) && v > 0 && v < 2000) { v *= 1000; t.value = v; }
   ecrire(b, chemin, v);
+  if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver();
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
+  // Ce qui sert à l'estimation : on la relance (après une courte pause, le temps de finir la saisie)
+  if (['adresse', 'type', 'surface', 'annee', 'location.statut'].includes(chemin) || chemin.startsWith('criteres.')) planifierEstimation(b);
   if (['type', 'location.statut', 'adresse'].includes(chemin) || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
+  if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur'].includes(chemin)) majAuto(b);
   majCalculs(b);
 });
 
