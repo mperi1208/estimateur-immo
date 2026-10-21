@@ -9,13 +9,12 @@ Estimation du prix de vente et du loyer d'un logement, partout en France (Paris 
 
 Tout tourne dans le navigateur : ouvrir `app/index.html`, ou la version en ligne.
 
-## Activer les comptes
+## Comptes
 
-Les comptes passent par [Supabase](https://supabase.com) (offre gratuite) :
+Les comptes passent par [Supabase](https://supabase.com), dans le même projet que [pari-ldc](https://github.com/mperi1208/pari-ldc) : un compte du pari sert aussi ici. L'adresse du projet et sa clé publique sont dans `const SUPABASE` (`app/index.html`) ; cette clé est faite pour être publique, ce sont les règles de la base qui protègent les données.
 
-1. Créer un projet Supabase.
-2. Dans **SQL Editor**, coller et lancer le contenu de [`supabase.sql`](supabase.sql) : la table `profils` et les règles qui limitent chaque compte à sa propre ligne.
-3. Dans **Authentication → URL Configuration**, mettre `https://mperi1208.github.io/estimateur-immo/app/` en *Site URL* (et dans *Redirect URLs*).
-4. Dans **Project Settings → API**, copier l'URL du projet et la clé publique `anon`, puis les mettre dans `const SUPABASE = {url: '…', cle: '…'}` (fichier `app/index.html`). Cette clé est faite pour être publique : ce sont les règles de `supabase.sql` qui protègent les données.
+Mise en place, une fois, dans le projet Supabase :
 
-Sans ces deux valeurs, le site fonctionne en mode invité uniquement.
+1. **SQL Editor** : lancer [`supabase.sql`](supabase.sql) (table `immo_profils`, chaque compte limité à sa propre ligne).
+2. **SQL Editor** : lancer [`supabase-partage-pari-ldc.sql`](supabase-partage-pari-ldc.sql), pour que les comptes créés depuis l'estimateur ne deviennent pas joueurs du pari.
+3. **Authentication → URL Configuration → Redirect URLs** : ajouter `https://mperi1208.github.io/estimateur-immo/**` (liens de confirmation et de mot de passe oublié).

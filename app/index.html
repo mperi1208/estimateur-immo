@@ -1278,7 +1278,7 @@ let debounce;
 // --- Compte : invité par défaut (tout reste sur cet appareil), ou compte en ligne pour retrouver ses crédits partout ---
 // Comptes et données chez Supabase. L'adresse du projet et sa clé publique (« anon ») ne sont pas secrètes :
 // la base n'autorise chaque compte qu'à lire et écrire sa propre ligne (règles de sécurité, voir supabase.sql).
-const SUPABASE = {url: '', cle: ''};
+const SUPABASE = {url: 'https://wcqtolzixkmwijedvlkh.supabase.co', cle: 'sb_publishable_QZN-GiiGqkeZdTLZ9zKpeg_U6VKIE9U'};
 const COMPTE = {
   client: null, user: null, ecouteurs: [], pret: false,
   actif: () => !!(SUPABASE.url && SUPABASE.cle),
@@ -1304,12 +1304,12 @@ const COMPTE = {
     this.pret = true; majBoutonCompte();
   },
   async lire() {
-    const {data, error} = await this.client.from('profils').select('credits').eq('user_id', this.user.id).maybeSingle();
+    const {data, error} = await this.client.from('immo_profils').select('credits').eq('user_id', this.user.id).maybeSingle();
     if (error) throw error;
     return data ? data.credits : null;
   },
   async ecrire(credits) {
-    const {error} = await this.client.from('profils').upsert({user_id: this.user.id, credits, maj: new Date().toISOString()});
+    const {error} = await this.client.from('immo_profils').upsert({user_id: this.user.id, credits, maj: new Date().toISOString()});
     if (error) throw error;
   },
 };
@@ -1328,6 +1328,7 @@ function erreurCompte(e) {
   if (/password should be at least|weak password/i.test(m)) return 'Mot de passe trop court ou trop simple (6 caractères minimum).';
   if (/rate limit|too many/i.test(m)) return 'Trop d\'essais : réessaie dans quelques minutes.';
   if (/invalid email|unable to validate email/i.test(m)) return 'Adresse e-mail invalide.';
+  if (/could not find the table|relation .* does not exist/i.test(m)) return 'la base des crédits n\'est pas encore installée (script supabase.sql à lancer).';
   return m;
 }
 function ouvrirCompte(mode = 'connexion') {
@@ -1370,7 +1371,7 @@ function ouvrirCompte(mode = 'connexion') {
           const {error} = await a.signInWithPassword({email, password: mdp}); if (error) throw error;
           dlg.close();
         } else if (mode === 'creer') {
-          const {data, error} = await a.signUp({email, password: mdp, options: {emailRedirectTo: retour}}); if (error) throw error;
+          const {data, error} = await a.signUp({email, password: mdp, options: {emailRedirectTo: retour, data: {app: 'estimateur-immo'}}}); if (error) throw error;
           if (data.session) dlg.close();
           else msg('Compte créé. Ouvre le lien de confirmation reçu par e-mail, puis connecte-toi.');
         } else if (mode === 'oubli') {
