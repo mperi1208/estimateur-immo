@@ -110,11 +110,13 @@ details.plus{margin-top:12px;border-style:dashed}
 .tabs .brand{display:flex;align-items:center;font-weight:700;margin-right:12px}
 .tabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:0 12px;cursor:pointer;border-bottom:3px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-.tabs .compte{margin-left:auto;display:flex;align-items:center}
-.tabs .compte button{display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--line);border-radius:99px;color:var(--ink);font-weight:600;max-width:220px}
-.tabs .compte button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tabs .compte button.connecte{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
-@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 6px;white-space:nowrap}.tabs .compte{flex:0 0 auto}.tabs .compte button{flex:0 0 auto;padding:0 9px}.tabs .compte button span{display:none}}
+.tabs .compte{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tabs .compte .statut{cursor:pointer;display:flex;align-items:center;gap:5px;color:var(--muted);font-size:14px;font-weight:600;max-width:220px;min-width:0}
+.tabs .compte .statut span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs .compte .statut.connecte{color:var(--accent)}
+.tabs .compte button{height:34px;padding:0 14px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
+.tabs .compte button.sortir{background:none;border:1px solid var(--line);color:var(--ink)}
+@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
 #compteDlg{border:1px solid var(--line);border-radius:14px;padding:20px;width:min(380px,calc(100vw - 32px));background:var(--panel);color:var(--ink)}
 #compteDlg::backdrop{background:rgba(0,0,0,.35)}
 #compteDlg .fermer{position:absolute;top:10px;right:10px;margin:0}
@@ -200,7 +202,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
   <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
   <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
   <button role="tab" data-tab="credits" aria-selected="false">Mes crédits</button>
-  <div class="compte"><button id="compteBtn" aria-haspopup="dialog" title="Compte"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></button></div>
+  <div class="compte"><span class="statut" id="compteStatut"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog">Se connecter</button></div>
 </nav>
 <dialog id="compteDlg" aria-label="Compte">
   <form method="dialog" class="fermer"><button aria-label="Fermer">✕</button></form>
@@ -1315,9 +1317,12 @@ const COMPTE = {
 };
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 function majBoutonCompte() {
-  const b = document.getElementById('compteBtn');
-  b.classList.toggle('connecte', !!COMPTE.user);
+  const b = document.getElementById('compteBtn'), st = document.getElementById('compteStatut');
+  st.classList.toggle('connecte', !!COMPTE.user);
+  st.title = COMPTE.user ? 'Connecté : ' + COMPTE.user.email : 'Mode invité : tout reste sur cet appareil';
   document.getElementById('compteNom').textContent = COMPTE.user ? COMPTE.user.email : 'Invité';
+  b.textContent = COMPTE.user ? 'Déconnexion' : 'Se connecter';
+  b.classList.toggle('sortir', !!COMPTE.user);
 }
 // Messages de Supabase traduits
 function erreurCompte(e) {
@@ -1388,7 +1393,9 @@ function ouvrirCompte(mode = 'connexion') {
   if (!dlg.open) dlg.showModal();
   const champ = body.querySelector('input'); if (champ) champ.focus();
 }
-document.getElementById('compteBtn').onclick = () => ouvrirCompte();
+// Invité : ouvre la connexion. Connecté : déconnecte directement.
+document.getElementById('compteBtn').onclick = () => COMPTE.user && COMPTE.client ? COMPTE.client.auth.signOut() : ouvrirCompte();
+document.getElementById('compteStatut').onclick = () => ouvrirCompte();
 </script>
 <script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
 <script>
