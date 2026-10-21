@@ -77,6 +77,7 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .alert{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--bad) 14%,transparent)}
 .okbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--good) 16%,transparent)}
 .cta{display:block;margin-top:12px;padding:9px 12px;border-radius:8px;background:var(--accent);color:#fff;text-align:center;font-weight:600;text-decoration:none}
+.retry{margin-left:6px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
 .calc .tot{border-top:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);margin-top:4px;padding-top:6px}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 
@@ -782,9 +783,14 @@ async function updateRent() {
     if (token !== state.rentRun) return;
     const lm = loyerM2(rows, r.surf);
     if (!lm) { el.innerHTML = '<div class="empty">Pas d\'indicateur de loyer pour cette commune.</div>'; return; }
+    state.rentRetry = 0;
     renderRent(el, r, lm, insee);
   } catch (e) {
-    if (token === state.rentRun) el.innerHTML = `<div class="empty">Loyer indisponible pour le moment (${e.message}).</div>`;
+    if (token !== state.rentRun) return;
+    // Coupure passagère d'un service de données : deux nouveaux essais, puis un bouton
+    state.rentRetry = (state.rentRetry || 0) + 1;
+    if (state.rentRetry <= 2) { el.innerHTML = '<div class="empty">Le service des loyers ne répond pas, nouvel essai…</div>'; setTimeout(updateRent, 1500 * state.rentRetry); }
+    else el.innerHTML = `<div class="empty">Loyer indisponible pour le moment (${e.message}). <button class="retry" onclick="state.rentRetry = 0; updateRent()">Réessayer</button></div>`;
   }
 }
 
