@@ -78,6 +78,10 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .okbox{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:13px;background:color-mix(in srgb,var(--good) 16%,transparent)}
 .cta{display:block;margin-top:12px;padding:9px 12px;border-radius:8px;background:var(--accent);color:#fff;text-align:center;font-weight:600;text-decoration:none}
 .retry{margin-left:6px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+.result.works{background:color-mix(in srgb,var(--warn) 10%,var(--panel));border:0}
+.result.works summary{font-size:15px;padding:0}
+.result.works .row{grid-template-columns:1fr 1fr}
+.result.works .cta{margin-top:0}
 .calc .tot{border-top:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);margin-top:4px;padding-top:6px}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 
@@ -170,6 +174,16 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <div id="cf_bien" class="bienbar"></div>
 <div class="cfwrap">
 <aside id="cf_form">
+  <details open><summary>Projet</summary><div class="grid">
+    <div><label>Type de projet</label><select id="cf_projet"><option value="simple">Achat (sans gros travaux)</option><option value="location">Achat + travaux, puis location</option><option value="revente">Achat + travaux, puis revente</option></select></div>
+    <div data-travaux><label>Durée des travaux (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
+    <div data-travaux><label>Valeur après travaux (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
+    <div data-revente><label>Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
+    <div data-revente><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
+  </div>
+  <label class="check" data-travaux><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label>
+  <div class="hint" data-travaux>Pendant le chantier : intérêts seuls (différé) et pas de loyer. Le montant des travaux se règle dans « Le bien ».</div></details>
+
   <details open><summary>Le bien</summary><div class="grid">
     <div><label>Prix d'achat (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
     <div><label>Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
@@ -231,6 +245,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <main>
   <div class="tiles" id="cf_tiles"></div>
   <div id="cf_alerts"></div>
+  <div class="card" id="cf_bilan" hidden></div>
   <div class="card">
     <h2 id="cf_chartTitle">Cash-flow annuel après impôts</h2>
     <div class="chart" id="cf_chart"></div>
@@ -288,6 +303,8 @@ const SOURCES = {
   yespark: ['Yespark — location moyenne d\'une place de parking à Paris : 148 €/mois', 'https://www.yespark.fr/prix-parking'],
   loi: ['Loi Climat et résilience — calendrier DPE pour la location (G 2025, F 2028, E 2034)', 'https://www.pap.fr/actualites/loi-climat-les-proprietaires-bailleurs-face-a-la-lutte-contre-les-passoires-energetiques/a22519'],
   chambre: ['Estimation : à surface égale, une vraie chambre se loue et se vend mieux qu\'une pièce unique (écart non chiffré par les études, +5 % retenu)', ''],
+  couts: ['Coûts de travaux 2026 (rénovateurs) : rafraîchissement 220-500 €/m², rénovation complète 700-1 100 €/m² (Paris +20 à 40 %)', 'https://renovbox.fr/prix/renovation/appartement/'],
+  energie: ['Rénovation énergétique : 200-350 €/m² pour passer de G à C-D, 400-450 €/m² pour viser A-B (Travaux.com)', 'https://www.travaux.com/energie-renouvelable-diagnostic/guide-des-prix/prix-dune-renovation-energetique'],
   est: ['Estimation : aucune étude chiffrée fiable trouvée, ordre de grandeur prudent', ''],
 };
 
@@ -309,9 +326,9 @@ const ETAGE = {   // écart vs 2e étage (MeilleursAgents 2017/2020) ; index 0 =
 // cout = coût de travaux en €/m² (converti en décote selon le prix du secteur), z = zones où l'option existe.
 const CRITERES = [
   {id: 'etat', label: 'État général', pour: 'tous', src: 'reno', options: [
-    {k: 'renover', l: 'À rénover entièrement', cout: {paris: 1500, autre: 1200}},
-    {k: 'travaux', l: 'Gros travaux (cuisine, SdB…)', cout: {paris: 800, autre: 600}},
-    {k: 'rafraichir', l: 'À rafraîchir', cout: 300},
+    {k: 'renover', l: 'À rénover entièrement', cout: {paris: 1500, autre: 1100}},
+    {k: 'travaux', l: 'Gros travaux (cuisine, SdB…)', cout: {paris: 900, autre: 700}},
+    {k: 'rafraichir', l: 'À rafraîchir', cout: {paris: 450, autre: 350}},
     {k: 'bon', l: 'Bon état', d: 1},
     {k: 'neuf', l: 'Refait à neuf', p: 0.06},
     {k: 'luxe', l: 'Prestations haut de gamme', p: 0.10, src: 'est'}]},
@@ -534,6 +551,7 @@ function render(r) {
   if (r.zone !== state.zone) { state.zone = r.zone; fillOptions(); }
   out.innerHTML = `
     <div class="result" id="res"></div>
+    <details class="result works" id="works"></details>
     <div class="result rent" id="rent"></div>
     ${years.length > 1 ? `<h2>Prix médian au m² du secteur, par année</h2><div class="bars">${bars}</div>` : ''}
     <h2>Ventes les plus comparables</h2>
@@ -565,7 +583,18 @@ function res(v) {
   return res(state.zone in v ? v[state.zone] : v.autre);
 }
 const zoneOptions = c => c.options.filter(o => !o.z || o.z.includes(state.zone));
-const selected = c => zoneOptions(c).find(o => String(o.k) === field(c.id).value) || c.options.find(o => o.d);
+let OVERRIDE = null;   // critères forcés le temps d'un calcul (ex. « après travaux »)
+const selected = c => (OVERRIDE && c.id in OVERRIDE && c.options.find(o => String(o.k) === String(OVERRIDE[c.id])))
+  || zoneOptions(c).find(o => String(o.k) === field(c.id).value) || c.options.find(o => o.d);
+function facteurPour(over) {
+  OVERRIDE = over;
+  try {
+    const lines = adjustments(state.base);
+    dampen(lines);
+    return {factor: Math.max(0.5, Math.min(1.6, lines.reduce((f, l) => f * (1 + (l.eff || 0)), 1))),
+      abs: lines.reduce((s, l) => s + (l.abs || 0), 0), chambreEff: lines.find(l => l.src === 'chambre')?.eff || 0};
+  } finally { OVERRIDE = null; }
+}
 
 function buildForm() {
   const box = document.getElementById('crit'), checks = document.getElementById('checks');
@@ -794,13 +823,13 @@ async function updateRent() {
   }
 }
 
-function renderRent(el, r, lm, insee) {
+function calcLoyer(r, lm, insee, facteurPrix, chambreEff) {
   const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
   const meuble = selected(crit('location')).k === 'meuble';
   const charges = isAppart() ? CHARGES.appart[z] : CHARGES.maison;
   // Atouts / défauts : même facteur que pour le prix (déjà amorti), atténué pour le loyer
   // (la chambre séparée est retirée ici puis appliquée en entier plus bas)
-  let qual = Math.pow((state.factor || 1) / (1 + (state.chambreEff || 0)), ELASTICITE_LOYER);
+  let qual = Math.pow((facteurPrix || 1) / (1 + (chambreEff || 0)), ELASTICITE_LOYER);
   // Studios (≤ 35 m²) : la demande est telle que les défauts pèsent deux fois moins
   const petit = isAppart() && surf <= 35 && qual < 1;
   if (petit) qual = 1 - (1 - qual) / 2;
@@ -813,9 +842,17 @@ function renderRent(el, r, lm, insee) {
   const pkM = z === 'paris' ? nbPk * 150 : 0;
   const cc = m2 => m2 * actu * factor * surf + pkM;
   const CC = cc(lm.m2), lo = cc((lm.m2 + lm.lo) / 2), hi = cc((lm.m2 + lm.hi) / 2);
-  const HC = CC - charges * surf;
+  return {meuble, charges, qual, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC: CC - charges * surf};
+}
+
+function renderRent(el, r, lm, insee) {
+  const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
+  state.lm = lm; state.insee = insee;
+  const {meuble, charges, qual, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC} = calcLoyer(r, lm, insee, state.factor, state.chambreEff);
   state.loyerHC = HC;
+  setTimeout(renderWorks);
   const prixRef = state.prix + (meuble ? state.mob : 0);
+
   const rdt = HC * 12 / prixRef;
   const used = [];
   const ref = k => { if (!k || !SOURCES[k]) return ''; if (!used.includes(k)) used.push(k); return `<sup>${used.indexOf(k) + 1}</sup>`; };
@@ -848,11 +885,81 @@ function renderRent(el, r, lm, insee) {
     ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
 }
 
+
+// --- Projet travaux : budget, valeur et loyer après travaux ---
+const NIVEAUX = {   // €/m², mêmes coûts que la décote « en l'état » ; durée de chantier indicative
+  aucun: {l: 'Aucun (seulement l\'énergie)', paris: 0, autre: 0, mois: 1},
+  rafraichir: {l: 'Rafraîchissement (peinture, sols)', paris: 450, autre: 350, mois: 2},
+  travaux: {l: 'Gros travaux (cuisine, salle de bain, électricité)', paris: 900, autre: 700, mois: 4},
+  renover: {l: 'Rénovation complète', paris: 1500, autre: 1100, mois: 6},
+};
+const ORDRE_DPE = 'ABCDEFG';
+// Rénovation énergétique : ≈ 200-350 €/m² pour 3-4 classes, 400-450 €/m² pour viser A-B ; moitié moins si rénovation complète (isolation, chauffage déjà en partie compris)
+const coutEnergie = (de, vers, niveau) => {
+  const g = ORDRE_DPE.indexOf(de) - ORDRE_DPE.indexOf(vers);
+  if (!(g >= 1) || ORDRE_DPE.indexOf(de) < 0) return 0;
+  return Math.min(450, 75 * (g + 1)) * (niveau === 'renover' ? 0.5 : 1);
+};
+let choixTravaux = {};
+try { choixTravaux = JSON.parse(localStorage.getItem('travaux-choix') || '{}'); } catch (e) {}
+
+function renderWorks() {
+  const el = document.getElementById('works'), r = state.base;
+  if (!el || !r || !state.lm) return;
+  const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
+  const etat = selected(crit('etat')).k, dpe = selected(crit('dpe')).k;
+  const aRenover = ['renover', 'travaux', 'rafraichir'].includes(etat), passoire = 'EFG'.includes(dpe) && dpe !== '?';
+  const niveau = choixTravaux.niveau && NIVEAUX[choixTravaux.niveau] ? choixTravaux.niveau : aRenover ? etat : 'aucun';
+  const dpeVise = choixTravaux.dpe && (choixTravaux.dpe === '=' || ORDRE_DPE.includes(choixTravaux.dpe)) ? choixTravaux.dpe : passoire ? 'C' : '=';
+  const cible = dpeVise === '=' ? dpe : dpeVise;
+  const eM2 = coutEnergie(dpe, cible, niveau), tM2 = NIVEAUX[niveau][z];
+  const budget = Math.round((tM2 + eM2) * surf / 500) * 500;
+  const duree = NIVEAUX[niveau].mois + (eM2 ? 1 : 0);
+  // Valeur et loyer « comme si » le bien était refait à neuf, avec le DPE visé
+  const apres = facteurPour({etat: niveau === 'aucun' ? etat : 'neuf', dpe: cible});
+  const valeurApres = r.med * apres.factor * surf + apres.abs;
+  const loyerApres = calcLoyer(r, state.lm, state.insee, apres.factor, apres.chambreEff).HC;
+  const notaire = state.prix * 0.08;
+  const coutProjet = state.prix + notaire + budget;
+  const marge = valeurApres - coutProjet;
+  state.projet = {travaux: budget, valeurApres: Math.round(valeurApres), loyerApres: Math.round(loyerApres), duree, niveau, dpe: cible};
+  const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${v}</option>`).join('');
+  const dpeOpts = {'=': dpe === '?' ? 'Inchangé (DPE inconnu)' : `Inchangé (${dpe})`, ...Object.fromEntries([...ORDRE_DPE].map(c => [c, c]))};
+  const ouvert = el.open || aRenover || passoire;
+  el.innerHTML = `
+    <summary>Projet travaux${aRenover || passoire ? '' : ' (optionnel)'}</summary>
+    <div class="crit" style="margin-top:6px">
+      <div><label>Travaux prévus</label><select id="w_niveau">${opt(Object.fromEntries(Object.entries(NIVEAUX).map(([k, v]) => [k, v.l])), niveau)}</select></div>
+      <div><label>DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
+    </div>
+    <div class="calc">
+      <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
+      <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
+      <div><span>Travaux : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>
+      <div class="tot"><span><b>Coût total du projet</b></span><b>${fmtK(coutProjet)}</b></div>
+      <div><span>Valeur après travaux (${niveau === 'aucun' ? 'état inchangé' : 'refait à neuf'}${cible !== '?' ? ', DPE ' + cible : ''})</span><b>${fmtK(valeurApres)}</b></div>
+      <div class="tot"><span><b>Création de valeur</b></span><b class="${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+ ' : '− '}${fmtK(Math.abs(marge))}</b></div>
+      <div><span>Loyer après travaux (hors charges)</span><b>${fmt(loyerApres)} €/mois</b></div>
+      <div><span>Rendement brut sur le coût total</span><b>${(loyerApres * 12 / coutProjet * 100).toFixed(1).replace('.', ',')} %</b></div>
+    </div>
+    ${dpe === 'G' ? '<div class="alert">Classé G : interdit à la location tant que les travaux énergétiques ne sont pas faits.</div>' : ''}
+    ${marge < 0 ? '<div class="warnbox">Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : l\'opération se justifie plutôt pour louer longtemps que pour revendre.</div>' : ''}
+    ${passoire ? '<div class="range">DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.</div>' : ''}
+    <div class="range">Chantier d'environ ${duree} mois. Estimations indicatives : à confirmer par des devis.</div>
+    <div class="row" style="margin-top:10px"><button class="cta" onclick="showTab('cashflow', true, 'location')">Travaux + location →</button><button class="cta" onclick="showTab('cashflow', true, 'revente')">Travaux + revente →</button></div>
+    <ol class="srcs"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}</ol>`;
+  el.open = ouvert;
+  const save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
+  document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; save(); renderWorks(); };
+  document.getElementById('w_dpe').onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
+}
+
 // --- Carte ---
 const map = L.map('map').setView([46.6, 2.4], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
 layer.addTo(map);
 function setPoint(lat, lon, zoom) {
+  choixTravaux = {}; try { localStorage.removeItem('travaux-choix'); } catch (e) {}
   state.lat = lat; state.lon = lon;
   if (pin) pin.remove();
   pin = L.marker([lat, lon]).addTo(map);
@@ -945,11 +1052,13 @@ const CF = document.getElementById('cf');
 const $ = id => document.getElementById('cf_' + id);
 const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier', 'struct', 'meuble', 'regime', 'tmi', 'terrain', 'distrib',
   'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'debutLoc', 'tf', 'copro', 'pno',
-  'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit'];
+  'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit',
+  'projet', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente'];
 const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, debutLoc: 0, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
-  gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true};
+  gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true,
+  projet: 'simple', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4};
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
 
@@ -976,7 +1085,7 @@ function charger() {
 }
 // Reprend le bien estimé dans l'onglet Estimation (seulement s'il a changé depuis la dernière reprise,
 // pour ne pas écraser ce que tu as modifié à la main)
-function sync(est) {
+function sync(est, mode) {
   const bar = $('bien');
   if (!est) {
     bar.innerHTML = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Estimation</a>, ou remplis les champs à la main.';
@@ -992,7 +1101,17 @@ function sync(est) {
     set('tf', Math.round(est.loyer / 10) * 10);
     set('copro', est.type === 'appart' ? Math.round(est.surf * 8 / 10) * 10 : 0);
     set('compta', {np: est.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+    // Nouveau bien : on repart d'un achat simple (le projet travaux se relance depuis la carte « Projet travaux »)
+    if (!mode) { set('projet', 'simple'); set('travaux', 0); set('valeurApres', 0); set('differe', 0); set('debutLoc', 0); }
     try { localStorage.setItem('cashflow-bien', cle); } catch (e) {}
+    sauver();
+  }
+  if (mode && est.projet) {
+    const pj = est.projet;
+    set('projet', mode); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
+    set('differe', pj.duree); set('typeDiff', 'partiel'); set('debutLoc', pj.duree); set('moisRevente', pj.duree + 6);
+    set('loyer', pj.loyerApres);
+    bar.innerHTML += `<br>Projet : travaux <b>${eur(pj.travaux)}</b>, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b> hors charges/mois.`;
     sauver();
   }
   rendre();
@@ -1010,6 +1129,8 @@ function afficherChamps() {
   CF.querySelectorAll('[data-notis]').forEach(e => e.hidden = is);
   CF.querySelectorAll('[data-is]').forEach(e => e.hidden = !is);
   CF.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
+  CF.querySelectorAll('[data-travaux]').forEach(e => e.hidden = get('projet') === 'simple');
+  CF.querySelectorAll('[data-revente]').forEach(e => e.hidden = get('projet') !== 'revente');
 }
 
 // ---------- Crédit ----------
@@ -1042,8 +1163,10 @@ function simuler() {
   const coutHorsBanque = p.prix + fraisNotaire + p.travaux + mobilier;
   // Emprunt = coût total - apport, frais bancaires inclus (garantie calculée sur le prêt).
   // Frais de notaire hors crédit : l'apport doit au moins les couvrir.
-  const apportEff = p.notaireCredit ? p.apport : Math.max(p.apport, fraisNotaire);
-  if (!p.notaireCredit && p.apport < fraisNotaire) notes.push(`Frais de notaire non financés : il faut au moins ${Math.round(fraisNotaire).toLocaleString('fr-FR')} € d'apport pour les payer, contre ${Math.round(p.apport).toLocaleString('fr-FR')} € saisis. La simulation compte ${Math.round(fraisNotaire).toLocaleString('fr-FR')} € de mise de départ.`);
+  const travauxHors = p.projet !== 'simple' && !p.travauxCredit ? p.travaux : 0;
+  const horsCredit = (p.notaireCredit ? 0 : fraisNotaire) + travauxHors;
+  const apportEff = Math.max(p.apport, horsCredit);
+  if (p.apport < horsCredit) notes.push(`${[!p.notaireCredit && 'Frais de notaire', travauxHors && 'travaux'].filter(Boolean).join(' et ')} hors crédit : il faut au moins ${Math.round(horsCredit).toLocaleString('fr-FR')} € d'apport, contre ${Math.round(p.apport).toLocaleString('fr-FR')} € saisis. La simulation compte ${Math.round(horsCredit).toLocaleString('fr-FR')} € de mise de départ.`);
   const besoin = Math.max(0, coutHorsBanque + p.dossier - apportEff);
   const pret = besoin / (1 - p.garantie / 100);
   const fraisGarantie = pret * p.garantie / 100;
@@ -1141,8 +1264,9 @@ function simuler() {
     a.cf = a.loyers - a.charges - a.credit - a.impots;
     cumul += a.cf; a.cumul = cumul;
   });
-  const valeur = p.prix * Math.pow(1 + p.gPrix / 100, horizon);
-  return {p, st, regime, notes, pret, apportEff, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble};
+  const base = p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix;   // valeur de départ : après travaux s'il y en a
+  const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
+  return {p, st, regime, notes, pret, apportEff, base, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble};
 }
 
 // ---------- Affichage ----------
@@ -1152,35 +1276,107 @@ const pct = n => n.toFixed(1).replace('.', ',') + ' %';
 
 function rendre() {
   afficherChamps();
-  const s = simuler(), a1 = s.annees.find(a => a.loyers > 0) || s.annees[0], p = s.p;
+  const s = simuler(), p = s.p, revente = p.projet === 'revente';
+  $('chartTitle').closest('.card').hidden = revente;
+  $('table').closest('details').hidden = revente;
+  $('bilan').hidden = !revente;
+  $('fiscNote').textContent = s.st === 'is' ? 'IS 15 % jusqu\'à 42 500 € de bénéfice, 25 % au-delà ; amortissement du bâti sur 30 ans.' : '';
+  const tm = tauxDuree(TAUX_ACTUEL, p.duree * 12);
+  $('tauxHint').innerHTML = `Marché (${TAUX_ACTUEL.mois}, ${p.duree} ans) : <b>${tm.toFixed(2).replace('.', ',')} %</b>${p.struct !== 'np' ? ` · en SCI, +${SURPRIME_SCI.toFixed(1).replace('.', ',')} pt : <b>${(tm + SURPRIME_SCI).toFixed(2).replace('.', ',')} %</b>` : ''}`;
+  rendreTaux();
+  if (revente) return rendreRevente(s);
+
+  const a1 = s.annees.find(a => a.loyers > 0) || s.annees[0];
   const mens = s.ech.pmt + s.ech.assM;
   const anneesCredit = s.annees.filter(a => a.y <= Math.ceil((p.differe + p.duree * 12) / 12));
   const cfMoyen = anneesCredit.reduce((t, a) => t + a.cf, 0) / anneesCredit.length / 12;
   const coutCredit = s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie;
-  const loyerAn = p.loyer * 12;
   const fin = s.annees[s.annees.length - 1];
   const patrimoine = s.valeur - fin.crd + fin.cumul;
+  const coutRef = p.projet === 'location' ? s.coutTotal : p.prix;
   $('tiles').innerHTML = [
-    ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}`],
+    ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}`],
     ['Cash-flow / mois', eur(a1.cf / 12), `année ${a1.y}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}`],
     ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
-    ['Rendement', pct(loyerAn / p.prix * 100) + ' brut', `${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} net de charges · ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts`],
+    ['Rendement', pct(p.loyer * 12 / coutRef * 100) + ' brut', `${p.projet === 'location' ? 'sur le coût total, travaux compris · ' : ''}${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} net de charges · ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts`],
     ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
-    [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
+    [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
 
   let al = `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>`;
+  if (p.projet === 'location') al += `<div class="okbox">Projet travaux : <b>${eur(p.travaux)}</b> de travaux ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois (intérêts seuls pendant ${p.differe} mois, loyer à partir du mois ${p.debutLoc + 1}). Valeur après travaux : <b>${eur(s.base)}</b> pour un coût total de ${eur(s.coutTotal)}, soit ${s.base >= s.coutTotal ? '+' : '−'}${eur(Math.abs(s.base - s.coutTotal))} de création de valeur.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is') al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
+  if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
   if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche la première année de location.</div>`;
   $('alerts').innerHTML = al;
-  $('fiscNote').textContent = s.st === 'is' ? 'IS 15 % jusqu\'à 42 500 € de bénéfice, 25 % au-delà ; amortissement du bâti sur 30 ans.' : '';
-  const tm = tauxDuree(TAUX_ACTUEL, p.duree * 12);
-  $('tauxHint').innerHTML = `Marché (${TAUX_ACTUEL.mois}, ${p.duree} ans) : <b>${tm.toFixed(2).replace('.', ',')} %</b>${p.struct !== 'np' ? ` · en SCI, +${SURPRIME_SCI.toFixed(1).replace('.', ',')} pt : <b>${(tm + SURPRIME_SCI).toFixed(2).replace('.', ',')} %</b>` : ''}`;
   $('chartTitle').textContent = `Cash-flow annuel après impôts (${s.horizon} ans)`;
   graphe(s.annees);
   tableau(s);
-  rendreTaux();
+}
+
+// ---------- Achat + travaux + revente ----------
+const SURTAXE = [[250000, 0.06], [200000, 0.05], [150000, 0.04], [100000, 0.03], [50000, 0.02]];   // plus-values > 50 000 €
+function bilanRevente(s) {
+  const p = s.p, n = Math.max(1, Math.round(p.moisRevente));
+  const rows = s.ech.rows.slice(0, n);
+  const interets = rows.reduce((t, r) => t + r.i, 0), assurance = rows.reduce((t, r) => t + r.ass, 0);
+  const capital = rows.reduce((t, r) => t + r.cap, 0);
+  const crd = rows.length ? rows[rows.length - 1].crd : s.pret;
+  const chargesFixes = (p.tf + p.copro + p.pno + p.compta + (s.meuble ? p.cfe : 0)) * n / 12;
+  const loyers = 0;   // revente d'un bien vide : un locataire en place bloquerait ou décoterait la vente
+  const chargesVar = 0;
+  const prixVente = s.base * Math.pow(1 + p.gPrix / 100, n / 12);
+  const fraisVente = prixVente * p.fraisRevente / 100;
+  const ira = Math.min(0.03 * crd, 6 * crd * p.taux / 100 / 12);
+  const mobilier = s.meuble ? p.mobilier : 0;
+  const coutAchat = p.prix + s.fraisNotaire + p.travaux + mobilier + p.dossier + s.fraisGarantie;
+  // Trésorerie : ce qui sort de ta poche pendant l'opération, ce que tu encaisses à la revente
+  const sorties = interets + assurance + capital + chargesFixes + chargesVar - loyers;
+  const encaisse = prixVente - fraisVente - crd - ira;
+  const margeBrute = encaisse - s.apportEff - sorties;
+  let impot = 0, detail;
+  if (s.st === 'is') {
+    const r = Math.max(0, margeBrute);
+    const is = 0.15 * Math.min(r, IS_SEUIL) + 0.25 * Math.max(0, r - IS_SEUIL), pfu = p.distrib ? (r - is) * PFU : 0;
+    impot = is + pfu;
+    detail = `IS sur le résultat de l'opération${p.distrib ? ', puis flat tax 31,4 % sur la distribution' : ' (bénéfice gardé dans la SCI)'}`;
+  } else {
+    // Plus-value des particuliers (aussi pour une SCI à l'IR) : frais d'acquisition réels ou forfait 7,5 %, travaux sur factures
+    const pv = prixVente - fraisVente - (p.prix + Math.max(s.fraisNotaire, 0.075 * p.prix) + p.travaux);
+    if (pv > 0) {
+      const sur = SURTAXE.find(([seuil]) => pv > seuil)?.[1] || 0;
+      impot = pv * (0.19 + PS_FONCIER + sur);
+      detail = `plus-value de ${eur(pv)} × 36,2 %${sur ? ` + surtaxe ${pct(sur * 100)}` : ''}, sans abattement avant 6 ans`;
+    } else detail = 'pas de plus-value imposable';
+  }
+  return {n, interets, assurance, capital, crd, chargesFixes, chargesVar, loyers, prixVente, fraisVente, ira, coutAchat,
+    sorties, encaisse, margeBrute, impot, detail, net: margeBrute - impot};
+}
+function rendreRevente(s) {
+  const p = s.p, b = bilanRevente(s), mise = s.apportEff;
+  const portage = b.interets + b.assurance + b.chargesFixes + b.chargesVar - b.loyers;
+  $('tiles').innerHTML = [
+    ['Marge nette', eur(b.net), `après impôt · ${eur(b.margeBrute)} avant impôt`],
+    ['Rentabilité', mise > 0 ? pct(b.net / mise * 100) : pct(b.net / b.coutAchat * 100), mise > 0 ? `sur ta mise de départ de ${eur(mise)}, en ${b.n} mois` : `du coût total, sans apport, en ${b.n} mois`],
+    ['Prix de revente', eur(b.prixVente), `au bout de ${b.n} mois · frais de revente ${eur(b.fraisVente)}`],
+    ['Coût du projet', eur(b.coutAchat), 'achat, notaire, travaux, frais bancaires'],
+    ['Coût de portage', eur(portage), `intérêts et assurance ${eur(b.interets + b.assurance)}, charges ${eur(b.chargesFixes + b.chargesVar)}${b.loyers ? `, moins ${eur(b.loyers)} de loyers` : ''}`],
+    ['Effort pendant l\'opération', eur(b.sorties / b.n) + '/mois', `${eur(b.sorties)} au total : mensualités et charges${b.loyers ? ', moins les loyers' : ''}`],
+  ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
+  const ligne = (l, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${l}</td><td>${v < 0 ? '−' : ''} ${fmt(Math.abs(v))} €</td></tr>`;
+  $('bilan').innerHTML = `<h2>Bilan de l'opération (${b.n} mois)</h2><div class="scroll"><table>
+    ${ligne('Prix de revente', b.prixVente)}${ligne('Frais de revente', -b.fraisVente)}${ligne('Remboursement du crédit (capital restant dû)', -b.crd)}${ligne('Indemnités de remboursement anticipé (au plus)', -b.ira)}
+    ${ligne('<b>Encaissé à la revente</b>', b.encaisse)}${ligne('Mise de départ', -mise)}${ligne('Mensualités et charges payées pendant l\'opération' + (b.loyers ? ', moins les loyers' : ''), -b.sorties)}
+    ${ligne('<b>Marge avant impôt</b>', b.margeBrute)}${ligne('Impôt : ' + b.detail, -b.impot)}${ligne('<b>Marge nette</b>', b.net)}
+  </table></div>`;
+  let al = `<div class="okbox">Achat ${eur(p.prix)} + travaux ${eur(p.travaux)} (${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}), chantier de ${p.dureeTravaux} mois, revente estimée ${eur(b.prixVente)} au bout de ${b.n} mois.</div>`;
+  s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
+  if (b.n <= 24) al += '<div class="warnbox">Revente rapide après travaux : le fisc peut requalifier l\'opération en activité de <b>marchand de biens</b> (bénéfice imposé comme un revenu professionnel et TVA sur la marge), surtout si elle se répète. La cour d\'appel de Versailles l\'a encore jugé en février 2026.</div>';
+  if (s.st === 'ir') al += '<div class="okbox">SCI à l\'IR : la plus-value est taxée comme celle d\'un particulier, au niveau des associés.</div>';
+  al += '<div class="hint">Indemnités de remboursement anticipé : souvent supprimées en cas de vente du bien si c\'est prévu dans l\'offre de prêt. Vérifie ton contrat, la ligne compte ici le maximum légal.</div>';
+  if (b.net < 0) al += '<div class="warnbox">L\'opération perd de l\'argent avec ces hypothèses : il faudrait acheter moins cher, réduire les travaux, ou garder le bien pour le louer.</div>';
+  $('alerts').innerHTML = al;
 }
 
 function graphe(annees) {
@@ -1294,9 +1490,17 @@ function rendreTaux() {
 charger(); chargerCredits();
 $('form').addEventListener('input', e => {
   // Les valeurs « liées » suivent leurs champs tant qu'on ne les a pas modifiées soi-même
-  if (e.target.id === 'struct' || e.target.id === 'duree') set('taux', tauxConseille());
-  if (e.target.id === 'struct' || e.target.id === 'meuble') set('compta', {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
-  if (e.target.id === 'neuf') { set('notaire', get('neuf') === '1' ? 2.5 : 8); set('vieux', get('neuf') === '1' ? '0' : '1'); }
+  const id = e.target.id.replace(/^cf_/, '');
+  if (id === 'struct' || id === 'duree') set('taux', tauxConseille());
+  if (id === 'struct' || id === 'meuble') set('compta', {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+  if (id === 'neuf') { set('notaire', get('neuf') === '1' ? 2.5 : 8); set('vieux', get('neuf') === '1' ? '0' : '1'); }
+  // Chantier : intérêts seuls et pas de loyer pendant la durée des travaux
+  if (id === 'projet' || id === 'dureeTravaux') {
+    const t = get('projet') === 'simple' ? 0 : get('dureeTravaux');
+    set('differe', t); set('debutLoc', t); set('typeDiff', 'partiel');
+    if (get('projet') !== 'simple' && !get('valeurApres')) set('valeurApres', get('prix'));
+    if (id === 'projet' && get('projet') === 'revente' && get('moisRevente') <= t) set('moisRevente', t + 6);
+  }
   sauver(); rendre();
 });
 $('tauxMarche').onclick = () => { set('taux', tauxConseille()); sauver(); rendre(); };
@@ -1311,15 +1515,15 @@ function estimationCourante() {
   if (!state.base || !state.loyerHC) return null;
   const meuble = selected(crit('location')).k === 'meuble';
   return {prix: Math.round(state.prix), loyer: Math.round(state.loyerHC), surf: state.base.surf, type: isAppart() ? 'appart' : 'maison',
-    meuble, mob: meuble ? Math.round(state.mob) : 0, label: document.getElementById('addr').value || 'Point choisi sur la carte'};
+    meuble, mob: meuble ? Math.round(state.mob) : 0, label: document.getElementById('addr').value || 'Point choisi sur la carte', projet: state.projet || null};
 }
-function showTab(t, maj = true) {
+function showTab(t, maj = true, mode = null) {
   const cash = t === 'cashflow';
   document.getElementById('estim').hidden = cash;
   document.getElementById('cf').hidden = !cash;
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   if (maj && location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
-  if (cash) window.CF_APP && CF_APP.sync(estimationCourante());
+  if (cash) window.CF_APP && CF_APP.sync(estimationCourante(), mode);
   else setTimeout(() => map.invalidateSize(), 0);
   window.scrollTo(0, 0);
 }
