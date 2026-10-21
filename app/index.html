@@ -110,7 +110,23 @@ details.plus{margin-top:12px;border-style:dashed}
 .tabs .brand{display:flex;align-items:center;font-weight:700;margin-right:12px}
 .tabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:0 12px;cursor:pointer;border-bottom:3px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 6px;white-space:nowrap}}
+.tabs .compte{margin-left:auto;display:flex;align-items:center}
+.tabs .compte button{display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--line);border-radius:99px;color:var(--ink);font-weight:600;max-width:220px}
+.tabs .compte button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs .compte button.connecte{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 6px;white-space:nowrap}.tabs .compte{flex:0 0 auto}.tabs .compte button{flex:0 0 auto;padding:0 9px}.tabs .compte button span{display:none}}
+#compteDlg{border:1px solid var(--line);border-radius:14px;padding:20px;width:min(380px,calc(100vw - 32px));background:var(--panel);color:var(--ink)}
+#compteDlg::backdrop{background:rgba(0,0,0,.35)}
+#compteDlg .fermer{position:absolute;top:10px;right:10px;margin:0}
+#compteDlg .fermer button{border:0;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 8px}
+#compteDlg h2{font-size:18px;margin:0 0 6px}
+#compteDlg label{display:block;margin:12px 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+#compteDlg input{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+#compteDlg .seg{margin:12px 0 4px}
+#compteDlg button.cta{margin-top:14px}
+#compteDlg .lien{border:0;background:none;color:var(--accent);font:inherit;font-size:13px;padding:0;margin-top:10px;cursor:pointer;text-decoration:underline}
+#compteDlg .msg{margin-top:10px;font-size:13px}
+#compteDlg .msg.err{color:var(--bad)}
 #cf .voirRes{display:none}
 @media (max-width:900px){#cf .voirRes{display:block;width:100%;margin-top:10px}}
 button.cta{border:0;width:100%;font:inherit;cursor:pointer}
@@ -133,6 +149,12 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #credits th:first-child,#credits td:first-child{text-align:left}
 #credits th{color:var(--muted);font-weight:600}
 #credits .scroll{overflow-x:auto}
+#credits .compteEtat{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:var(--bg);font-size:13px}
+#credits .compteEtat.connecte{background:var(--accent-soft)}
+#credits .lien{border:0;background:none;color:var(--accent);font:inherit;font-size:13px;padding:0;cursor:pointer;text-decoration:underline}
+#credits td.valeur{min-width:130px}
+#credits td.valeur .lien{display:block;margin-top:3px;font-size:12px;white-space:nowrap}
+#credits .patrimoine{margin:12px 0}
 #credits input{padding:5px 6px;font-size:13px}
 #credits button{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
 #cf details.opt{border-style:dashed}
@@ -178,7 +200,12 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
   <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
   <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
   <button role="tab" data-tab="credits" aria-selected="false">Mes crédits</button>
+  <div class="compte"><button id="compteBtn" aria-haspopup="dialog" title="Compte"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></button></div>
 </nav>
+<dialog id="compteDlg" aria-label="Compte">
+  <form method="dialog" class="fermer"><button aria-label="Fermer">✕</button></form>
+  <div id="compteBody"></div>
+</dialog>
 <div class="wrap" id="estim">
 <aside>
   <h1>Estimer un bien</h1>
@@ -1247,6 +1274,121 @@ buildForm();
 let debounce;
 ['surf', 'since'].forEach(id => document.getElementById(id).addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(estimate, 400); }));
 </script>
+<script>
+// --- Compte : invité par défaut (tout reste sur cet appareil), ou compte en ligne pour retrouver ses crédits partout ---
+// Comptes et données chez Supabase. L'adresse du projet et sa clé publique (« anon ») ne sont pas secrètes :
+// la base n'autorise chaque compte qu'à lire et écrire sa propre ligne (règles de sécurité, voir supabase.sql).
+const SUPABASE = {url: '', cle: ''};
+const COMPTE = {
+  client: null, user: null, ecouteurs: [], pret: false,
+  actif: () => !!(SUPABASE.url && SUPABASE.cle),
+  surChangement(f) { this.ecouteurs.push(f); },
+  async init() {
+    if (!this.actif()) { this.pret = true; return majBoutonCompte(); }
+    try {
+      await new Promise((ok, ko) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
+        sc.onload = ok; sc.onerror = () => ko(new Error('service de comptes injoignable'));
+        document.head.append(sc);
+      });
+      this.client = window.supabase.createClient(SUPABASE.url, SUPABASE.cle);
+      this.client.auth.onAuthStateChange((ev, session) => {
+        if (ev === 'PASSWORD_RECOVERY') setTimeout(() => ouvrirCompte('nouveau'));
+        const u = session ? session.user : null;
+        if ((u && u.id) !== (this.user && this.user.id)) { this.user = u; majBoutonCompte(); this.ecouteurs.forEach(f => f(u)); }
+      });
+      const {data} = await this.client.auth.getSession();
+      if (data.session && !this.user) { this.user = data.session.user; this.ecouteurs.forEach(f => f(this.user)); }
+    } catch (e) { console.warn('Compte :', e.message); }
+    this.pret = true; majBoutonCompte();
+  },
+  async lire() {
+    const {data, error} = await this.client.from('profils').select('credits').eq('user_id', this.user.id).maybeSingle();
+    if (error) throw error;
+    return data ? data.credits : null;
+  },
+  async ecrire(credits) {
+    const {error} = await this.client.from('profils').upsert({user_id: this.user.id, credits, maj: new Date().toISOString()});
+    if (error) throw error;
+  },
+};
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+function majBoutonCompte() {
+  const b = document.getElementById('compteBtn');
+  b.classList.toggle('connecte', !!COMPTE.user);
+  document.getElementById('compteNom').textContent = COMPTE.user ? COMPTE.user.email : 'Invité';
+}
+// Messages de Supabase traduits
+function erreurCompte(e) {
+  const m = (e && e.message) || String(e);
+  if (/invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
+  if (/already registered|already been registered/i.test(m)) return 'Un compte existe déjà avec cet e-mail : connecte-toi.';
+  if (/email not confirmed/i.test(m)) return 'Confirme d\'abord ton e-mail avec le lien reçu.';
+  if (/password should be at least|weak password/i.test(m)) return 'Mot de passe trop court ou trop simple (6 caractères minimum).';
+  if (/rate limit|too many/i.test(m)) return 'Trop d\'essais : réessaie dans quelques minutes.';
+  if (/invalid email|unable to validate email/i.test(m)) return 'Adresse e-mail invalide.';
+  return m;
+}
+function ouvrirCompte(mode = 'connexion') {
+  const dlg = document.getElementById('compteDlg'), body = document.getElementById('compteBody');
+  const retour = location.origin + location.pathname;
+  if (!COMPTE.actif()) {
+    body.innerHTML = `<h2>Mode invité</h2><p class="hint">Les comptes ne sont pas encore activés sur ce site. Tout ce que tu saisis reste enregistré sur cet appareil.</p>`;
+  } else if (!COMPTE.pret) {
+    body.innerHTML = '<h2>Compte</h2><p class="hint">Connexion au service de comptes…</p>';
+  } else if (!COMPTE.client) {
+    body.innerHTML = '<h2>Compte</h2><p class="hint">Le service de comptes est injoignable pour le moment. Tu restes en mode invité : tout est enregistré sur cet appareil.</p>';
+  } else if (COMPTE.user && mode !== 'nouveau') {
+    body.innerHTML = `<h2>Ton compte</h2><p class="hint">Connecté avec <b>${esc(COMPTE.user.email)}</b>. Tes crédits sont enregistrés dans ton compte : tu les retrouves sur tous tes appareils.</p>
+      <button class="cta" id="cpt_out">Se déconnecter</button>`;
+    body.querySelector('#cpt_out').onclick = async () => { await COMPTE.client.auth.signOut(); dlg.close(); };
+  } else {
+    const titres = {connexion: 'Se connecter', creer: 'Créer un compte', oubli: 'Mot de passe oublié', nouveau: 'Nouveau mot de passe'};
+    body.innerHTML = `<h2>${titres[mode]}</h2>
+      ${mode === 'connexion' || mode === 'creer' ? `<p class="hint">Tu es en <b>mode invité</b> : tes crédits restent sur cet appareil. Avec un compte, tu les retrouves partout.</p>
+      <div class="seg"><button type="button" data-m="connexion"${mode === 'connexion' ? ' class="on"' : ''}>Se connecter</button><button type="button" data-m="creer"${mode === 'creer' ? ' class="on"' : ''}>Créer un compte</button></div>` : ''}
+      <form id="cpt_form" novalidate>
+        ${mode !== 'nouveau' ? '<label for="cpt_mail">E-mail</label><input id="cpt_mail" type="email" autocomplete="email" required>' : ''}
+        ${mode !== 'oubli' ? `<label for="cpt_mdp">${mode === 'nouveau' ? 'Nouveau mot de passe' : 'Mot de passe'}</label><input id="cpt_mdp" type="password" minlength="6" autocomplete="${mode === 'connexion' ? 'current-password' : 'new-password'}" required>` : ''}
+        <button class="cta" type="submit">${{connexion: 'Se connecter', creer: 'Créer mon compte', oubli: 'Recevoir le lien', nouveau: 'Enregistrer'}[mode]}</button>
+      </form>
+      ${mode === 'connexion' ? '<button class="lien" data-m="oubli">Mot de passe oublié ?</button>' : mode === 'oubli' ? '<button class="lien" data-m="connexion">← Retour</button>' : ''}
+      <div class="msg" id="cpt_msg"></div>`;
+    body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => ouvrirCompte(b.dataset.m));
+    const msg = (t, err) => { const el = body.querySelector('#cpt_msg'); el.textContent = t; el.classList.toggle('err', !!err); };
+    body.querySelector('#cpt_form').onsubmit = async e => {
+      e.preventDefault();
+      const email = (body.querySelector('#cpt_mail') || {}).value?.trim(), mdp = (body.querySelector('#cpt_mdp') || {}).value;
+      const btn = e.target.querySelector('button[type=submit]');
+      if (mode !== 'nouveau' && !/^\S+@\S+\.\S+$/.test(email || '')) return msg('Adresse e-mail invalide.', true);
+      if (mode !== 'oubli' && (mdp || '').length < 6) return msg('Mot de passe : 6 caractères minimum.', true);
+      btn.disabled = true; msg('…');
+      try {
+        const a = COMPTE.client.auth;
+        if (mode === 'connexion') {
+          const {error} = await a.signInWithPassword({email, password: mdp}); if (error) throw error;
+          dlg.close();
+        } else if (mode === 'creer') {
+          const {data, error} = await a.signUp({email, password: mdp, options: {emailRedirectTo: retour}}); if (error) throw error;
+          if (data.session) dlg.close();
+          else msg('Compte créé. Ouvre le lien de confirmation reçu par e-mail, puis connecte-toi.');
+        } else if (mode === 'oubli') {
+          const {error} = await a.resetPasswordForEmail(email, {redirectTo: retour}); if (error) throw error;
+          msg('Si un compte existe avec cet e-mail, un lien pour changer le mot de passe vient d\'être envoyé.');
+        } else {
+          const {error} = await a.updateUser({password: mdp}); if (error) throw error;
+          msg('Mot de passe changé.'); setTimeout(() => dlg.close(), 1200);
+        }
+      } catch (err) { msg(erreurCompte(err), true); }
+      btn.disabled = false;
+    };
+  }
+  if (!dlg.open) dlg.showModal();
+  const champ = body.querySelector('input'); if (champ) champ.focus();
+}
+document.getElementById('compteBtn').onclick = () => ouvrirCompte();
+</script>
 <script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
 <script>
 (() => {
@@ -1713,12 +1855,41 @@ function tableau(s) {
 }
 
 // ---------- Tes crédits face aux taux actuels ----------
-let credits = [];
-function chargerCredits() {
-  try { credits = JSON.parse(localStorage.getItem('mes-credits') || 'null'); } catch (e) {}
-  if (!Array.isArray(credits)) credits = (window.MES_CREDITS || []).map(c => ({...c}));
+let credits = [], etatCompte = '', compteCharge = false, minuteur = null;
+function creditsLocaux() {
+  let c = null;
+  try { c = JSON.parse(localStorage.getItem('mes-credits') || 'null'); } catch (e) {}
+  return Array.isArray(c) ? c : (window.MES_CREDITS || []).map(c => ({...c}));
 }
-const sauverCredits = () => { try { localStorage.setItem('mes-credits', JSON.stringify(credits)); } catch (e) {} };
+function chargerCredits() { credits = creditsLocaux(); }
+// Invité : sur cet appareil. Connecté : dans le compte (envoi groupé après la dernière modification).
+function sauverCredits() {
+  if (!COMPTE.user) { try { localStorage.setItem('mes-credits', JSON.stringify(credits)); } catch (e) {} return; }
+  if (!compteCharge) return;   // compte pas encore lu : ne pas l'écraser
+  etatCompte = 'Enregistrement…'; majEtatCompte();
+  clearTimeout(minuteur);
+  minuteur = setTimeout(async () => {
+    try { await COMPTE.ecrire(credits); etatCompte = 'Enregistré dans ton compte.'; }
+    catch (e) { etatCompte = 'Échec de l\'enregistrement : ' + erreurCompte(e); }
+    majEtatCompte();
+  }, 700);
+}
+const majEtatCompte = () => { const el = document.getElementById('cf_etatCompte'); if (el) el.textContent = etatCompte; };
+COMPTE.surChangement(async user => {
+  compteCharge = false;
+  if (!user) { etatCompte = ''; credits = creditsLocaux(); return rendreTaux(); }
+  etatCompte = 'Chargement de ton compte…'; rendreTaux();
+  try {
+    let distants = await COMPTE.lire();
+    if (!Array.isArray(distants)) {   // premier passage : proposer de reprendre les crédits de cet appareil
+      const locaux = creditsLocaux();
+      distants = locaux.length && confirm(`Mettre dans ton compte les ${locaux.length} crédit${locaux.length > 1 ? 's' : ''} enregistré${locaux.length > 1 ? 's' : ''} sur cet appareil ?`) ? locaux : [];
+      await COMPTE.ecrire(distants);
+    }
+    credits = distants; compteCharge = true; etatCompte = 'Enregistré dans ton compte.';
+  } catch (e) { etatCompte = 'Impossible de lire ton compte : ' + erreurCompte(e); }
+  rendreTaux();
+});
 
 function analyseCredit(c) {
   const r = c.taux / 100 / 12, n = c.mois;
@@ -1739,21 +1910,35 @@ function analyseCredit(c) {
 function decalerMois(ym, k) { const [y, m] = ym.split('-').map(Number), d = new Date(y, m - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 const libMois = ym => { const [y, m] = ym.split('-').map(Number); return MOIS_FR[m - 1] + ' ' + y; };
 
+const kEur = v => Math.round(v / 1000).toLocaleString('fr-FR') + ' k€';
 function rendreTaux() {
   const t20 = TAUX_ACTUEL[20];
   let h = `<h2>Tes crédits face aux taux actuels</h2>
     <div class="hint">Marché (${TAUX_ACTUEL.mois}, taux réellement accordés) : ${TAUX_ACTUEL[15].toFixed(2).replace('.', ',')} % sur 15 ans · <b>${t20.toFixed(2).replace('.', ',')} % sur 20 ans</b> · ${TAUX_ACTUEL[25].toFixed(2).replace('.', ',')} % sur 25 ans. En SCI, compte environ +${SURPRIME_SCI.toFixed(1).replace('.', ',')} point.</div>`;
-  if (!credits.length) h += '<p class="hint">Ajoute tes crédits en cours pour voir combien ils coûteraient aux taux d\'aujourd\'hui et si une renégociation vaut le coup. Ils restent uniquement dans ton navigateur.</p>';
-  h += '<div class="scroll"><table class="loans"><thead><tr><th>Crédit</th><th>Restant dû (€)</th><th>Taux (%)</th><th>Mois restants</th><th>Mensualité (€)</th><th>SCI</th><th></th></tr></thead><tbody>';
-  credits.forEach((c, i) => h += `<tr data-i="${i}"><td><input data-k="nom" value="${(c.nom || '').replace(/"/g, '&quot;')}"></td><td><input data-k="crd" type="number" value="${c.crd}"></td><td><input data-k="taux" type="number" step="0.01" value="${c.taux}"></td><td><input data-k="mois" type="number" value="${c.mois}"></td><td><input data-k="mensualite" type="number" step="0.01" value="${c.mensualite || ''}" placeholder="auto"></td><td><input data-k="sci" type="checkbox"${c.sci ? ' checked' : ''}></td><td><button data-del="${i}" title="Supprimer">✕</button></td></tr>`);
+  h += COMPTE.user ? `<div class="compteEtat connecte">Compte <b>${esc(COMPTE.user.email)}</b> · <span id="cf_etatCompte">${esc(etatCompte)}</span></div>`
+    : `<div class="compteEtat">Mode invité : tes crédits restent sur cet appareil. <button class="lien" onclick="ouvrirCompte()">Se connecter ou créer un compte</button> pour les retrouver partout.</div>`;
+  if (!credits.length) h += '<p class="hint">Ajoute tes crédits en cours pour voir combien ils coûteraient aux taux d\'aujourd\'hui, si une renégociation vaut le coup, et ce que tu possèdes vraiment une fois le crédit déduit de la valeur du bien.</p>';
+  const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
+  h += '<div class="scroll"><table class="loans"><thead><tr><th>Crédit</th><th>Restant dû (€)</th><th>Taux (%)</th><th>Mois restants</th><th>Mensualité (€)</th><th>SCI</th><th>Valeur du bien (€)</th><th></th></tr></thead><tbody>';
+  credits.forEach((c, i) => h += `<tr data-i="${i}"><td><input data-k="nom" value="${esc(c.nom)}"></td><td><input data-k="crd" type="number" value="${c.crd ?? ''}"></td><td><input data-k="taux" type="number" step="0.01" value="${c.taux ?? ''}"></td><td><input data-k="mois" type="number" value="${c.mois ?? ''}"></td><td><input data-k="mensualite" type="number" step="0.01" value="${c.mensualite || ''}" placeholder="auto"></td><td><input data-k="sci" type="checkbox"${c.sci ? ' checked' : ''}></td><td class="valeur"><input data-k="valeur" type="number" step="1000" value="${c.valeur || ''}" placeholder="facultatif">${est ? `<button class="lien" data-est="${i}" title="${esc(est.label)}">← estimation (${kEur(est.prix)})</button>` : ''}</td><td><button data-del="${i}" title="Supprimer">✕</button></td></tr>`);
   h += '</tbody></table></div><button id="cf_addCredit" style="margin-top:8px">+ Ajouter un crédit</button>';
+  if (!est) h += '<div class="hint">Pour la valeur d\'un bien : estime-le dans l\'onglet <a href="#estimation">Estimer</a>, puis reviens ici et clique sur « ← estimation ».</div>';
+  // Patrimoine : valeur des biens moins ce qui reste dû
+  const avecValeur = credits.filter(c => c.valeur > 0 && c.crd >= 0);
+  if (avecValeur.length) {
+    const V = avecValeur.reduce((t, c) => t + c.valeur, 0), D = avecValeur.reduce((t, c) => t + (c.crd || 0), 0);
+    h += `<div class="kpis patrimoine"><div class="kpi"><div class="k">Valeur des biens</div><div class="v">${kEur(V)}</div><div class="d">${avecValeur.length} bien${avecValeur.length > 1 ? 's' : ''}</div></div>
+      <div class="kpi"><div class="k">Restant dû</div><div class="v">${kEur(D)}</div><div class="d">${Math.round(D / V * 100)} % de la valeur</div></div>
+      <div class="kpi"><div class="k">Patrimoine net</div><div class="v ${V - D >= 0 ? 'up' : 'down'}">${V - D < 0 ? '−' : ''}${kEur(Math.abs(V - D))}</div><div class="d">valeur − restant dû</div></div></div>`;
+  }
   credits.forEach(c => {
     if (!(c.crd > 0 && c.mois > 0 && c.taux > 0)) return;
     const a = analyseCredit(c);
-    h += `<div class="${a.netAvenant > 0 ? 'okbox' : 'warnbox'}"><b>${c.nom || 'Crédit'}</b> : ${c.taux.toFixed(2).replace('.', ',')} % aujourd'hui contre <b>${a.tNew.toFixed(2).replace('.', ',')} %</b> au marché${c.sci ? ' (SCI)' : ''} sur ${Math.round(c.mois / 12)} ans restants.
+    h += `<div class="${a.netAvenant > 0 ? 'okbox' : 'warnbox'}"><b>${esc(c.nom || 'Crédit')}</b> : ${c.taux.toFixed(2).replace('.', ',')} % aujourd'hui contre <b>${a.tNew.toFixed(2).replace('.', ',')} %</b> au marché${c.sci ? ' (SCI)' : ''} sur ${Math.round(c.mois / 12)} ans restants.
       Mensualité ${eur(a.mensu)} → <b>${eur(a.mensu2)}</b>, soit ${eur(a.gainMois)}/mois et ${eur(a.gainTotal)} d'intérêts en moins.<br>
       Renégociation avec ta banque (avenant ≈ 600 €) : gain net ≈ <b>${eur(a.netAvenant)}</b>.
       Rachat par une autre banque (indemnités ≈ ${eur(a.ira)}, dossier et garantie ≈ ${eur(a.fraisRachat - a.ira)}) : gain net ≈ <b>${eur(a.netRachat)}</b>.
+      ${c.valeur > 0 ? `<br>Bien${c.bien ? ' (' + esc(c.bien) + ')' : ''} estimé <b>${eur(c.valeur)}</b> : il te reste <b>${eur(c.valeur - c.crd)}</b> une fois le crédit soldé aujourd'hui (crédit = ${Math.round(c.crd / c.valeur * 100)} % de la valeur, hors frais de revente).` : ''}
       ${a.surprime ? `<br>Surprime payée à la signature (${libMois(c.offre)}) : <b>+${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à +' + a.surprime[1].toFixed(2).replace('.', ',') : ''} point</b> par rapport au taux moyen du marché à durée égale.` : ''}</div>`;
   });
   h += '<div class="hint">Indemnités de remboursement anticipé : plafond légal de 6 mois d\'intérêts ou 3 % du capital pour les prêts aux particuliers ; pour une SCI, c\'est le contrat de prêt qui fixe les règles.</div>';
@@ -1764,6 +1949,11 @@ function rendreTaux() {
     sauverCredits(); rendreTaux();
   }));
   $('credits').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { credits.splice(+b.dataset.del, 1); sauverCredits(); rendreTaux(); });
+  $('credits').querySelectorAll('[data-est]').forEach(b => b.onclick = () => {
+    const c = credits[+b.dataset.est], e = estimationCourante();
+    if (!e) return;
+    c.valeur = e.prix; c.bien = e.label; sauverCredits(); rendreTaux();
+  });
   $('addCredit').onclick = () => { credits.push({nom: 'Nouveau crédit', crd: 150000, taux: 4, mois: 240, mensualite: null, sci: false}); sauverCredits(); rendreTaux(); };
 }
 
@@ -1802,8 +1992,9 @@ CF.querySelectorAll('details.opt').forEach(d => d.addEventListener('toggle', () 
 $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
-window.CF_APP = {sync};
+window.CF_APP = {sync, rendreCredits: rendreTaux};
 })();
+COMPTE.init();
 </script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
@@ -1821,6 +2012,7 @@ function showTab(t, maj = true, mode = null) {
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   if (maj && location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
   if (cash) window.CF_APP && CF_APP.sync(estimationCourante(), mode);
+  if (t === 'credits' && window.CF_APP) CF_APP.rendreCredits();
   else if (t === 'estimation') setTimeout(() => map.invalidateSize(), 0);
   window.scrollTo(0, 0);
 }
