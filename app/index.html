@@ -103,6 +103,81 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 details.plus{margin-top:12px;border-style:dashed}
 .calc .tot{border-top:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);margin-top:4px;padding-top:6px}
 @media (max-width:420px){.kpi .v{font-size:18px}}
+/* --- Mes investissements --- */
+#invest{min-height:calc(100vh - 48px)}
+.invwrap{max-width:1040px;margin:0 auto;padding:20px 16px 40px}
+.invwrap h1{font-size:24px;margin:0}
+.invwrap .invhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.invwrap .actions{display:flex;gap:8px;flex-wrap:wrap}
+.invwrap button{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+.invwrap button:disabled{opacity:.5;cursor:default}
+.invwrap button.primaire{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.invwrap button.danger{color:var(--bad)}
+.invwrap .lien{border:0;background:none;color:var(--accent);padding:0;text-decoration:underline;font-size:13px}
+.invwrap .compteEtat{margin:0 0 14px;padding:8px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.invwrap .compteEtat.connecte{background:var(--accent-soft);border-color:transparent}
+.invwrap .kpis.six{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:16px}
+@media (max-width:900px){.invwrap .kpis.six{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:520px){.invwrap .kpis.six{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.invwrap .liste{display:flex;flex-direction:column;gap:12px}
+.invwrap a.bien{display:grid;grid-template-columns:104px minmax(0,1fr) minmax(0,1.3fr) 20px;gap:16px;align-items:center;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;color:inherit;text-decoration:none;transition:border-color .15s,box-shadow .15s}
+.invwrap a.bien:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.invwrap .vignette{height:88px;border-radius:10px;background:var(--accent-soft) center/cover no-repeat;color:var(--accent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;text-align:center;line-height:1.2;padding:4px}
+.invwrap .vignette svg{width:34px;height:34px}
+.invwrap .vignette.photo{color:transparent}
+.invwrap .vignette.photo svg{display:none}
+.invwrap .vignette.photo span{align-self:flex-start;margin-top:auto;background:rgba(0,0,0,.55);color:#fff;padding:2px 6px;border-radius:5px}
+.invwrap .infos{display:flex;flex-direction:column;gap:3px;min-width:0}
+.invwrap .infos b{font-size:16px}
+.invwrap .adr{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.invwrap .tags{font-size:12px;color:var(--muted)}
+.invwrap .chiffres{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.invwrap .chiffres span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.invwrap .chiffres b{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.invwrap .up{color:var(--good)} .invwrap .down{color:var(--bad)}
+.invwrap .chev{font-size:26px;color:var(--muted)}
+@media (max-width:760px){.invwrap a.bien{grid-template-columns:76px minmax(0,1fr) 16px;gap:12px}.invwrap .vignette{height:72px}.invwrap .chiffres{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr));row-gap:8px;padding-top:8px;border-top:1px solid var(--line)}.invwrap .chev{grid-row:1;grid-column:3}}
+.invwrap .vide{text-align:center;padding:48px 16px;background:var(--panel);border:1px dashed var(--line);border-radius:14px}
+.invwrap .vide .ico{color:var(--accent);display:flex;justify-content:center}.invwrap .vide .ico svg{width:52px;height:52px}
+.invwrap .vide p{color:var(--muted);max-width:460px;margin:8px auto 18px}
+.invwrap .retour{display:inline-block;margin-bottom:12px;color:var(--accent);text-decoration:none;font-weight:600}
+.invwrap .dethead{display:flex;gap:16px;align-items:center;margin-bottom:16px}
+.invwrap .vignette.grand{width:120px;height:96px;flex:0 0 auto}
+.invwrap .blocs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.invwrap .blocs{align-items:start}
+.invwrap .bloc.large{grid-column:1/-1}
+.invwrap .prets{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:10px}
+@media (max-width:520px){.invwrap .prets{grid-template-columns:1fr}}
+.invwrap .prets .pret{margin-bottom:0}
+.invwrap .bloc.large > button{margin-top:10px}
+@media (max-width:900px){.invwrap .blocs{grid-template-columns:1fr}}
+.invwrap .bloc{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.invwrap .bloc h3{font-size:15px;margin:0 0 10px}
+.invwrap .grille{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+.invwrap .grille .large{grid-column:1/-1}
+.invwrap label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.invwrap input,.invwrap select,.invwrap textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:14px}
+.invwrap textarea{resize:vertical}
+.invwrap .aide{font-size:12px;color:var(--muted);margin-top:4px}
+.invwrap .valeur{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.invwrap .boutons{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.invwrap .total{margin-top:10px;font-size:14px}
+.invwrap .pret{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.invwrap .pret-tete{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.invwrap details.releve{margin-top:10px;border:0;padding:0}
+.invwrap details.releve summary{font-size:13px;color:var(--accent);cursor:pointer;margin-bottom:6px}
+.invwrap .resume .okbox,.invwrap .resume .warnbox{margin-top:10px;font-size:13px}
+.invwrap .barre{height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
+.invwrap .barre span{display:block;height:100%;background:var(--good)}
+.invwrap .calc{font-size:14px}
+.invwrap .docs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:10px}
+.invwrap .doc{font-size:12px;min-width:0}
+.invwrap .doc .apercu{display:flex;align-items:center;justify-content:center;height:90px;border-radius:8px;border:1px solid var(--line);background:var(--bg) center/cover no-repeat;text-decoration:none;color:var(--muted);cursor:pointer}
+.invwrap .doc .apercu.indispo{opacity:.4;cursor:default}
+.invwrap .doc .pdf{font-weight:700;font-size:15px;color:var(--bad)}
+.invwrap .doc .nom{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.invwrap .doc .meta{color:var(--muted)}
+.invwrap .pied{margin-top:20px;text-align:right}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 
 [hidden]{display:none!important}
@@ -110,6 +185,8 @@ details.plus{margin-top:12px;border-style:dashed}
 .tabs .brand{display:flex;align-items:center;font-weight:700;margin-right:12px}
 .tabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:0 12px;cursor:pointer;border-bottom:3px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs .court{display:none}
+@media (max-width:520px){.tabs .long{display:none}.tabs .court{display:inline}}
 .tabs .compte{margin-left:auto;display:flex;align-items:center;gap:10px}
 .tabs .compte .statut{cursor:pointer;display:flex;align-items:center;gap:5px;color:var(--muted);font-size:14px;font-weight:600;max-width:220px;min-width:0}
 .tabs .compte .statut span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -143,22 +220,6 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf details.reglages h4{font-size:13px;margin:12px 0 0;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 #cf .scen{max-width:420px;margin-bottom:12px;scroll-margin-top:60px}
 #cf .scen button{font-weight:600}
-#credits .credwrap{max-width:980px;margin:0 auto;padding:20px}
-#credits .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
-#credits h2{font-size:15px;margin:0 0 8px}
-#credits table{width:100%;border-collapse:collapse;font-size:13px}
-#credits th,#credits td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:normal}
-#credits th:first-child,#credits td:first-child{text-align:left}
-#credits th{color:var(--muted);font-weight:600}
-#credits .scroll{overflow-x:auto}
-#credits .compteEtat{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:var(--bg);font-size:13px}
-#credits .compteEtat.connecte{background:var(--accent-soft)}
-#credits .lien{border:0;background:none;color:var(--accent);font:inherit;font-size:13px;padding:0;cursor:pointer;text-decoration:underline}
-#credits td.valeur{min-width:130px}
-#credits td.valeur .lien{display:block;margin-top:3px;font-size:12px;white-space:nowrap}
-#credits .patrimoine{margin:12px 0}
-#credits input{padding:5px 6px;font-size:13px}
-#credits button{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
 #cf details.opt{border-style:dashed}
 #cf details.opt[open]{border-style:solid}
 #cf .chip{font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;margin-left:6px;vertical-align:1px;background:var(--line);color:var(--muted)}
@@ -200,7 +261,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
   <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
-  <button role="tab" data-tab="credits" aria-selected="false">Mes crédits</button>
+  <button role="tab" data-tab="investissements" aria-selected="false"><span class="long">Mes investissements</span><span class="court">Investissements</span></button>
   <div class="compte"><span class="statut" id="compteStatut"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog">Se connecter</button></div>
 </nav>
 <dialog id="compteDlg" aria-label="Compte">
@@ -347,15 +408,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 </div>
 <div class="tip cftip" id="cf_tip"></div>
 </section>
-<section id="credits" hidden>
-  <div class="credwrap">
-    <div class="card" id="cf_credits"></div>
-    <div class="card"><h2>Sources</h2><ol class="srcs">
-      <li><a href="https://www.weblex.fr/chiffres-cles/indice-du-taux-moyen-des-credits-immobiliers-annee-2024" target="_blank" rel="noopener">Observatoire Crédit Logement / CSA — taux moyens accordés par durée</a> ; <a href="https://www.meilleurtaux.com/credit-immobilier/actualites/2026-octobre/credit-immobilier-taux-a-3-40-et-durees-record.html" target="_blank" rel="noopener">septembre 2026</a>.</li>
-      <li><a href="https://www.cpim.fr/renegociation-credit-immo-seuil-rentabilite/" target="_blank" rel="noopener">Renégociation : seuil de rentabilité, indemnités et frais</a>.</li>
-    </ol></div>
-  </div>
-</section>
+<section id="invest" hidden><div class="invwrap" id="inv"></div></section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
@@ -1319,7 +1372,7 @@ function majBoutonCompte() {
   const b = document.getElementById('compteBtn'), st = document.getElementById('compteStatut');
   st.classList.toggle('connecte', !!COMPTE.user);
   st.title = COMPTE.user ? 'Connecté : ' + COMPTE.user.email : 'Mode invité : tout reste sur cet appareil';
-  document.getElementById('compteNom').textContent = COMPTE.user ? COMPTE.user.email : 'Invité';
+  document.getElementById('compteNom').textContent = COMPTE.user ? '' : 'Invité';
   b.textContent = COMPTE.user ? 'Déconnexion' : 'Se connecter';
   b.classList.toggle('sortir', !!COMPTE.user);
 }
@@ -1703,7 +1756,6 @@ function rendre() {
   $('fiscNote').textContent = s.st === 'is' ? 'IS 15 % jusqu\'à 42 500 € de bénéfice, 25 % au-delà ; amortissement du bâti sur 30 ans.' : '';
   const tm = tauxDuree(TAUX_ACTUEL, p.duree * 12);
   $('tauxHint').innerHTML = `Marché (${TAUX_ACTUEL.mois}, ${p.duree} ans) : <b>${tm.toFixed(2).replace('.', ',')} %</b>${p.struct !== 'np' ? ` · en SCI, +${SURPRIME_SCI.toFixed(1).replace('.', ',')} pt : <b>${(tm + SURPRIME_SCI).toFixed(2).replace('.', ',')} %</b>` : ''}`;
-  rendreTaux();
   if (revente) return rendreRevente(s);
 
   // Année de référence : la première année pleine de location (le chantier et ses mois sans loyer faussent l'année 1)
@@ -1861,111 +1913,8 @@ function tableau(s) {
   $('table').innerHTML = h + '</tbody></table>';
 }
 
-// ---------- Tes crédits face aux taux actuels ----------
-let credits = [], etatCompte = '', compteCharge = false, minuteur = null;
-function creditsLocaux() {
-  let c = null;
-  try { c = JSON.parse(localStorage.getItem('mes-credits') || 'null'); } catch (e) {}
-  return Array.isArray(c) ? c : (window.MES_CREDITS || []).map(c => ({...c}));
-}
-function chargerCredits() { credits = creditsLocaux(); }
-// Invité : sur cet appareil. Connecté : dans le compte (envoi groupé après la dernière modification).
-function sauverCredits() {
-  if (!COMPTE.user) { try { localStorage.setItem('mes-credits', JSON.stringify(credits)); } catch (e) {} return; }
-  if (!compteCharge) return;   // compte pas encore lu : ne pas l'écraser
-  etatCompte = 'Enregistrement…'; majEtatCompte();
-  clearTimeout(minuteur);
-  minuteur = setTimeout(async () => {
-    try { await COMPTE.ecrire(credits); etatCompte = 'Enregistré dans ton compte.'; }
-    catch (e) { etatCompte = 'Échec de l\'enregistrement : ' + erreurCompte(e); }
-    majEtatCompte();
-  }, 700);
-}
-const majEtatCompte = () => { const el = document.getElementById('cf_etatCompte'); if (el) el.textContent = etatCompte; };
-COMPTE.surChangement(async user => {
-  compteCharge = false;
-  if (!user) { etatCompte = ''; credits = creditsLocaux(); return rendreTaux(); }
-  etatCompte = 'Chargement de ton compte…'; rendreTaux();
-  try {
-    let distants = await COMPTE.lire();
-    if (!Array.isArray(distants)) {   // premier passage : proposer de reprendre les crédits de cet appareil
-      const locaux = creditsLocaux();
-      distants = locaux.length && confirm(`Mettre dans ton compte les ${locaux.length} crédit${locaux.length > 1 ? 's' : ''} enregistré${locaux.length > 1 ? 's' : ''} sur cet appareil ?`) ? locaux : [];
-      await COMPTE.ecrire(distants);
-    }
-    credits = distants; compteCharge = true; etatCompte = 'Enregistré dans ton compte.';
-  } catch (e) { etatCompte = 'Impossible de lire ton compte : ' + erreurCompte(e); }
-  rendreTaux();
-});
-
-function analyseCredit(c) {
-  const r = c.taux / 100 / 12, n = c.mois;
-  const mensu = c.mensualite || (r ? c.crd * r / (1 - Math.pow(1 + r, -n)) : c.crd / n);
-  const tNew = tauxDuree(TAUX_ACTUEL, n) + (c.sci ? SURPRIME_SCI : 0), r2 = tNew / 100 / 12;
-  const mensu2 = r2 ? c.crd * r2 / (1 - Math.pow(1 + r2, -n)) : c.crd / n;
-  const gainMois = mensu - mensu2, gainTotal = gainMois * n;
-  const ira = Math.min(0.03 * c.crd, 6 * c.crd * r);
-  const fraisRachat = ira + 1000 + 0.015 * c.crd, fraisAvenant = 600;
-  // Surprime à la signature : écart entre ton taux et le marché du mois de l'offre (même durée)
-  let surprime = null;
-  if (c.offre && c.duree) {
-    const ms = [c.offre, decalerMois(c.offre, 1)].filter(m => HISTO[m]).map(m => c.taux - tauxDuree(HISTO[m], c.duree));
-    if (ms.length) surprime = [Math.min(...ms), Math.max(...ms)];
-  }
-  return {mensu, tNew, mensu2, gainMois, gainTotal, ira, fraisRachat, netRachat: gainTotal - fraisRachat, netAvenant: gainTotal - fraisAvenant, surprime};
-}
-function decalerMois(ym, k) { const [y, m] = ym.split('-').map(Number), d = new Date(y, m - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
-const libMois = ym => { const [y, m] = ym.split('-').map(Number); return MOIS_FR[m - 1] + ' ' + y; };
-
-const kEur = v => Math.round(v / 1000).toLocaleString('fr-FR') + ' k€';
-function rendreTaux() {
-  const t20 = TAUX_ACTUEL[20];
-  let h = `<h2>Tes crédits face aux taux actuels</h2>
-    <div class="hint">Marché (${TAUX_ACTUEL.mois}, taux réellement accordés) : ${TAUX_ACTUEL[15].toFixed(2).replace('.', ',')} % sur 15 ans · <b>${t20.toFixed(2).replace('.', ',')} % sur 20 ans</b> · ${TAUX_ACTUEL[25].toFixed(2).replace('.', ',')} % sur 25 ans. En SCI, compte environ +${SURPRIME_SCI.toFixed(1).replace('.', ',')} point.</div>`;
-  h += COMPTE.user ? `<div class="compteEtat connecte">Compte <b>${esc(COMPTE.user.email)}</b> · <span id="cf_etatCompte">${esc(etatCompte)}</span></div>`
-    : `<div class="compteEtat">Mode invité : tes crédits restent sur cet appareil. <button class="lien" onclick="ouvrirCompte()">Se connecter ou créer un compte</button> pour les retrouver partout.</div>`;
-  if (!credits.length) h += '<p class="hint">Ajoute tes crédits en cours pour voir combien ils coûteraient aux taux d\'aujourd\'hui, si une renégociation vaut le coup, et ce que tu possèdes vraiment une fois le crédit déduit de la valeur du bien.</p>';
-  const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
-  h += '<div class="scroll"><table class="loans"><thead><tr><th>Crédit</th><th>Restant dû (€)</th><th>Taux (%)</th><th>Mois restants</th><th>Mensualité (€)</th><th>SCI</th><th>Valeur du bien (€)</th><th></th></tr></thead><tbody>';
-  credits.forEach((c, i) => h += `<tr data-i="${i}"><td><input data-k="nom" value="${esc(c.nom)}"></td><td><input data-k="crd" type="number" value="${c.crd ?? ''}"></td><td><input data-k="taux" type="number" step="0.01" value="${c.taux ?? ''}"></td><td><input data-k="mois" type="number" value="${c.mois ?? ''}"></td><td><input data-k="mensualite" type="number" step="0.01" value="${c.mensualite || ''}" placeholder="auto"></td><td><input data-k="sci" type="checkbox"${c.sci ? ' checked' : ''}></td><td class="valeur"><input data-k="valeur" type="number" step="1000" value="${c.valeur || ''}" placeholder="facultatif">${est ? `<button class="lien" data-est="${i}" title="${esc(est.label)}">← estimation (${kEur(est.prix)})</button>` : ''}</td><td><button data-del="${i}" title="Supprimer">✕</button></td></tr>`);
-  h += '</tbody></table></div><button id="cf_addCredit" style="margin-top:8px">+ Ajouter un crédit</button>';
-  if (!est) h += '<div class="hint">Pour la valeur d\'un bien : estime-le dans l\'onglet <a href="#estimation">Estimer</a>, puis reviens ici et clique sur « ← estimation ».</div>';
-  // Patrimoine : valeur des biens moins ce qui reste dû
-  const avecValeur = credits.filter(c => c.valeur > 0 && c.crd >= 0);
-  if (avecValeur.length) {
-    const V = avecValeur.reduce((t, c) => t + c.valeur, 0), D = avecValeur.reduce((t, c) => t + (c.crd || 0), 0);
-    h += `<div class="kpis patrimoine"><div class="kpi"><div class="k">Valeur des biens</div><div class="v">${kEur(V)}</div><div class="d">${avecValeur.length} bien${avecValeur.length > 1 ? 's' : ''}</div></div>
-      <div class="kpi"><div class="k">Restant dû</div><div class="v">${kEur(D)}</div><div class="d">${Math.round(D / V * 100)} % de la valeur</div></div>
-      <div class="kpi"><div class="k">Patrimoine net</div><div class="v ${V - D >= 0 ? 'up' : 'down'}">${V - D < 0 ? '−' : ''}${kEur(Math.abs(V - D))}</div><div class="d">valeur − restant dû</div></div></div>`;
-  }
-  credits.forEach(c => {
-    if (!(c.crd > 0 && c.mois > 0 && c.taux > 0)) return;
-    const a = analyseCredit(c);
-    h += `<div class="${a.netAvenant > 0 ? 'okbox' : 'warnbox'}"><b>${esc(c.nom || 'Crédit')}</b> : ${c.taux.toFixed(2).replace('.', ',')} % aujourd'hui contre <b>${a.tNew.toFixed(2).replace('.', ',')} %</b> au marché${c.sci ? ' (SCI)' : ''} sur ${Math.round(c.mois / 12)} ans restants.
-      Mensualité ${eur(a.mensu)} → <b>${eur(a.mensu2)}</b>, soit ${eur(a.gainMois)}/mois et ${eur(a.gainTotal)} d'intérêts en moins.<br>
-      Renégociation avec ta banque (avenant ≈ 600 €) : gain net ≈ <b>${eur(a.netAvenant)}</b>.
-      Rachat par une autre banque (indemnités ≈ ${eur(a.ira)}, dossier et garantie ≈ ${eur(a.fraisRachat - a.ira)}) : gain net ≈ <b>${eur(a.netRachat)}</b>.
-      ${c.valeur > 0 ? `<br>Bien${c.bien ? ' (' + esc(c.bien) + ')' : ''} estimé <b>${eur(c.valeur)}</b> : il te reste <b>${eur(c.valeur - c.crd)}</b> une fois le crédit soldé aujourd'hui (crédit = ${Math.round(c.crd / c.valeur * 100)} % de la valeur, hors frais de revente).` : ''}
-      ${a.surprime ? `<br>Surprime payée à la signature (${libMois(c.offre)}) : <b>+${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à +' + a.surprime[1].toFixed(2).replace('.', ',') : ''} point</b> par rapport au taux moyen du marché à durée égale.` : ''}</div>`;
-  });
-  h += '<div class="hint">Indemnités de remboursement anticipé : plafond légal de 6 mois d\'intérêts ou 3 % du capital pour les prêts aux particuliers ; pour une SCI, c\'est le contrat de prêt qui fixe les règles.</div>';
-  $('credits').innerHTML = h;
-  $('credits').querySelectorAll('tr[data-i] input').forEach(inp => inp.addEventListener('change', () => {
-    const c = credits[+inp.closest('tr').dataset.i], k = inp.dataset.k;
-    c[k] = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? (inp.value === '' ? null : +inp.value) : inp.value;
-    sauverCredits(); rendreTaux();
-  }));
-  $('credits').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { credits.splice(+b.dataset.del, 1); sauverCredits(); rendreTaux(); });
-  $('credits').querySelectorAll('[data-est]').forEach(b => b.onclick = () => {
-    const c = credits[+b.dataset.est], e = estimationCourante();
-    if (!e) return;
-    c.valeur = e.prix; c.bien = e.label; sauverCredits(); rendreTaux();
-  });
-  $('addCredit').onclick = () => { credits.push({nom: 'Nouveau crédit', crd: 150000, taux: 4, mois: 240, mensualite: null, sci: false}); sauverCredits(); rendreTaux(); };
-}
-
 // ---------- Démarrage ----------
-charger(); chargerCredits();
+charger();
 $('form').addEventListener('input', e => {
   const id = e.target.id.replace(/^cf_/, '');
   // Ce que tu règles à la main n'est plus remplacé automatiquement
@@ -1999,10 +1948,10 @@ CF.querySelectorAll('details.opt').forEach(d => d.addEventListener('toggle', () 
 $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
-window.CF_APP = {sync, rendreCredits: rendreTaux};
+window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
-COMPTE.init();
 </script>
+<script src="investissements.js?v=1"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -2011,22 +1960,26 @@ function estimationCourante() {
   return {prix: Math.round(state.prix), loyer: Math.round(state.loyerHC), surf: state.base.surf, type: isAppart() ? 'appart' : 'maison',
     meuble, mob: meuble ? Math.round(state.mob) : 0, dpe: selected(crit('dpe')).k, etat: selected(crit('etat')).k, label: document.getElementById('addr').value || 'Point choisi sur la carte', projet: state.projet || null};
 }
-function showTab(t, maj = true, mode = null) {
+function showTab(t, maj = true, mode = null, sous = null) {
   const cash = t === 'cashflow';
   document.getElementById('estim').hidden = t !== 'estimation';
   document.getElementById('cf').hidden = !cash;
-  document.getElementById('credits').hidden = t !== 'credits';
+  document.getElementById('invest').hidden = t !== 'investissements';
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
-  if (maj && location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
+  if (maj && location.hash !== '#' + t && !(sous && location.hash.startsWith('#' + t + '/'))) history.replaceState(null, '', '#' + t);
   if (cash) window.CF_APP && CF_APP.sync(estimationCourante(), mode);
-  if (t === 'credits' && window.CF_APP) CF_APP.rendreCredits();
+  if (t === 'investissements' && window.INV) INV.afficher(sous);
   else if (t === 'estimation') setTimeout(() => map.invalidateSize(), 0);
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => showTab(b.dataset.tab));
-const ONGLETS = ['estimation', 'cashflow', 'credits'];
-window.addEventListener('hashchange', () => showTab(ONGLETS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'estimation', false));
-if (['#cashflow', '#credits'].includes(location.hash)) showTab(location.hash.slice(1), false);
+const ONGLETS = ['estimation', 'cashflow', 'investissements'];
+function lireHash() {
+  const [t, sous] = location.hash.slice(1).split('/');
+  return {t: t === 'credits' ? 'investissements' : t, sous: sous ? decodeURIComponent(sous) : null};
+}
+window.addEventListener('hashchange', () => { const {t, sous} = lireHash(); showTab(ONGLETS.includes(t) ? t : 'estimation', false, null, sous); });
+{ const {t, sous} = lireHash(); if (t === 'cashflow' || t === 'investissements') showTab(t, false, null, sous); }
 </script>
 </body>
 </html>
