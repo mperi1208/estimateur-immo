@@ -368,7 +368,13 @@ const etatHTML = () => COMPTE.user
   : '<div class="compteEtat">Mode invité : tes biens restent sur cet appareil. <button class="lien" data-a="connexion">Se connecter</button> pour les retrouver partout.</div>';
 let ouvert = null, filtre = 'tout';   // bien ou SCI (« sci:<id> ») affiché en détail ; détenteur filtré dans la liste
 
-function afficher(id = ouvert) {
+// Le bien ou la SCI ouvert est celui de l'adresse de la page (#investissements/<id>) : quand les données du compte
+// arrivent après coup, on rouvre bien la fiche demandée au lieu d'afficher la liste avec une adresse de fiche
+function idDuHash() {
+  const [t, sous] = location.hash.slice(1).split('/');
+  return (t === 'investissements' || t === 'credits') && sous ? decodeURIComponent(sous) : null;
+}
+function afficher(id = idDuHash()) {
   const sci = id && id.startsWith('sci:') ? scis.find(x => x.id === id.slice(4)) : null;
   ouvert = sci ? id : id && biens.some(b => b.id === id) ? id : null;
   if (sci) vueSci(sci); else if (ouvert) vueDetail(biens.find(b => b.id === ouvert)); else vueListe();
@@ -679,6 +685,12 @@ racine.addEventListener('focusout', e => { if (e.target.id === 'inv_adresse') se
 // ---------- Actions ----------
 function ajouter(o) { const b = nouveauBien(o); biens.push(b); sauver(); location.hash = '#investissements/' + b.id; }
 racine.addEventListener('click', async e => {
+  // Lien vers la fiche déjà dans l'adresse (aucun changement d'adresse, donc rien ne se passerait) : on l'ouvre directement
+  const lien = e.target.closest('a[href^="#investissements"]');
+  if (lien) {
+    if (lien.getAttribute('href') === location.hash) { e.preventDefault(); afficher(idDuHash()); window.scrollTo(0, 0); }
+    return;
+  }
   const t = e.target.closest('[data-a]'); if (!t) return;
   const b = biens.find(x => x.id === ouvert), a = t.dataset.a;
   const sci = ouvert && ouvert.startsWith('sci:') ? scis.find(x => x.id === ouvert.slice(4)) : null;
