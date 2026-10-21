@@ -162,7 +162,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
   <div class="row">
     <div><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
     <div><label>Ventes depuis</label>
-      <select id="since"><option value="2">2 ans</option><option value="3" selected>3 ans</option><option value="5">5 ans</option></select>
+      <select id="since"><option value="auto" selected>Automatique</option><option value="2">2 ans</option><option value="3">3 ans</option><option value="5">5 ans</option><option value="10">10 ans</option></select>
     </div>
   </div>
 
@@ -437,7 +437,7 @@ function toSale(f) {
   const ring = f.geometry?.coordinates?.[0]?.[0];
   if (!ring) return null;
   const lon = ring.reduce((s, c) => s + c[0], 0) / ring.length, lat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
-  return {id: p.idopendata, prix, surf, ppm: prix / surf, date: p.datemut, terrain: +p.sterr, lat, lon,
+  return {id: p.idopendata, type: p.codtypbien, prix, surf, ppm: prix / surf, date: p.datemut, terrain: +p.sterr, lat, lon,
           vefa: p.vefa, parcelle: p.l_idpar?.[0] || '', insee: p.l_codinsee?.[0] || ''};
 }
 
@@ -461,50 +461,116 @@ function searchSteps(lat, lon) {
   return steps;
 }
 
-async function estimate() {
-  if (state.lat == null) return;
-  const surf = +document.getElementById('surf').value;
-  if (!(surf >= 9)) return;
-  const run = ++state.run, type = state.type;
-  const yearMin = new Date().getFullYear() - +document.getElementById('since').value;
-  const out = document.getElementById('out');
-  const kx = 111320 * Math.cos(state.lat * Math.PI / 180), ky = 110540;
-  const seen = new Map();
-  let usable = [], radius = 0;
+// Période « automatique » : 3 ans, puis 5 et 10 ans tant qu'il manque de ventes comparables près du bien.
+// Dans les marchés peu actifs (Corse, petites villes, maisons), mieux vaut des ventes plus anciennes mais
+// proches, actualisées avec l'indice local, que des ventes récentes dans d'autres quartiers.
+const PERIODES_AUTO = [3, 5, 10];
+const RAYON_OK = {'121': 600, '111': 1500};   // m : au-delà, on remonte plus loin dans le temps
 
+async function chercherVentes(run, type, surf, yearMin, kx, ky, out, etiquette) {
+  const seen = new Map();
+  let usable = [];
   for (const [k, boxes] of searchSteps(state.lat, state.lon).entries()) {
-    out.innerHTML = `<div class="empty">Recherche des ventes comparables… (zone ${k + 1}/5)</div>`;
-    let results;
-    try { results = await Promise.all(boxes.map(b => fetchBox(...b, type, yearMin))); }
-    catch (e) { if (run === state.run) out.innerHTML = `<div class="empty">L'API DVF ne répond pas (${e.message}). Réessaie dans un instant.</div>`; return; }
-    if (run !== state.run) return;   // une recherche plus récente a été lancée
+    out.innerHTML = `<div class="empty">Recherche des ventes comparables${etiquette}… (zone ${k + 1}/5)</div>`;
+    const results = await Promise.all(boxes.map(b => fetchBox(...b, type, yearMin)));
+    if (run !== state.run) return null;   // une recherche plus récente a été lancée
     for (const s of results.flat()) {
       if (seen.has(s.id)) continue;
       s.d = Math.hypot((s.lon - state.lon) * kx, (s.lat - state.lat) * ky);
+      // Ventes groupées sur des parcelles éloignées : leur point moyen tombe hors de la zone cherchée
+      if (s.d > 7000) continue;
       seen.set(s.id, s);
     }
     usable = [...seen.values()].filter(s => s.surf / surf > 0.5 && s.surf / surf < 2);
     if (usable.length >= TARGET) break;
   }
+  return {seen, usable};
+}
+
+// Indice de prix local : médiane du prix au m² par année sur toutes les ventes trouvées (toutes surfaces),
+// lissée sur 3 ans et pondérée par le nombre de ventes ; une année trop pauvre prend l'année couverte la plus proche.
+function indiceLocal(ventes) {
+  // Chaque type de logement est ramené à son propre niveau de prix, pour pouvoir mêler appartements et maisons
+  const parType = {};
+  ventes.forEach(v => (parType[v.type] ??= []).push([v.ppm, 1]));
+  const medType = Object.fromEntries(Object.entries(parType).map(([t, arr]) => [t, quantile(arr, 0.5)]));
+  const byYear = {};
+  for (const v of ventes) {
+    const r = v.ppm / medType[v.type];
+    if (r > 0.4 && r < 2.5) (byYear[v.date.slice(0, 4)] ??= []).push([r, 1]);
+  }
+  const years = Object.keys(byYear).sort();
+  const logMed = {};
+  years.forEach(y => { if (byYear[y].length >= 5) logMed[y] = Math.log(quantile(byYear[y], 0.5)); });
+  const lisse = {};
+  years.forEach(y => {
+    let sw = 0, sv = 0;
+    for (const dy of [-1, 0, 1]) {
+      const yy = String(+y + dy);
+      if (logMed[yy] == null) continue;
+      const w = byYear[yy].length * (dy === 0 ? 2 : 1);
+      sw += w; sv += w * logMed[yy];
+    }
+    if (sw >= 12) lisse[y] = sv / sw;
+  });
+  const ok = Object.keys(lisse).sort();
+  const trend = {};
+  if (ok.length < 2) return {trend, refYear: null, n: 0};
+  const ref = ok[ok.length - 1];
+  // Prudence : avec peu de ventes, l'indice est ramené vers « pas d'évolution » (poids n / (n + 60))
+  const n = years.reduce((t, y) => t + byYear[y].length, 0), k = n / (n + 60);
+  for (const y of years) {
+    const yy = lisse[y] != null ? y : ok.reduce((b, c) => Math.abs(c - y) < Math.abs(b - y) ? c : b);
+    trend[y] = Math.max(0.6, Math.min(1.7, Math.exp(k * (lisse[ref] - lisse[yy]))));
+  }
+  return {trend, refYear: ref, n};
+}
+
+// Ventes servant à l'indice : celles trouvées, complétées si besoin par tous les logements (appartements et
+// maisons) dans une zone d'environ 2 km autour du bien, pour que la tendance repose sur assez de ventes
+async function ventesPourIndice(trouvees, yearMin) {
+  if (trouvees.length >= 300) return trouvees;
+  const h = MAX_BOX / 2 * 0.99, box = [state.lon - h, state.lat - h, state.lon + h, state.lat + h];
+  const lots = await Promise.all(['121', '111'].map(t => fetchBox(...box, t, yearMin).catch(() => [])));
+  const parId = new Map(trouvees.map(v => [v.id, v]));
+  lots.flat().forEach(v => parId.has(v.id) || parId.set(v.id, v));
+  return [...parId.values()];
+}
+
+async function estimate() {
+  if (state.lat == null) return;
+  const surf = +document.getElementById('surf').value;
+  if (!(surf >= 9)) return;
+  const run = ++state.run, type = state.type;
+  const choix = document.getElementById('since').value;
+  const periodes = choix === 'auto' ? PERIODES_AUTO : [+choix];
+  const an = new Date().getFullYear();
+  const out = document.getElementById('out');
+  const kx = 111320 * Math.cos(state.lat * Math.PI / 180), ky = 110540;
+  let res = null, periode = periodes[0], elargie = false;
+  for (const [i, w] of periodes.entries()) {
+    periode = w;
+    try { res = await chercherVentes(run, type, surf, an - w, kx, ky, out, periodes.length > 1 ? ` sur ${w} ans` : ''); }
+    catch (e) { if (run === state.run) out.innerHTML = `<div class="empty">L'API DVF ne répond pas (${e.message}). Réessaie dans un instant.</div>`; return; }
+    if (!res) return;
+    const proches = res.usable.filter(s => s.d <= RAYON_OK[type]).length;
+    if (proches >= TARGET || i === periodes.length - 1) break;
+    elargie = true;
+  }
+  let usable = res.usable;
   if (usable.length < 3) { render({none: true}); return; }
 
   // Retire les ventes aberrantes (ventes familiales, lots, erreurs) : hors [0.5x, 2x] la médiane locale
   const med0 = quantile(usable.map(s => [s.ppm, 1]), 0.5);
   usable = usable.filter(s => s.ppm > med0 * 0.5 && s.ppm < med0 * 2);
-  // Actualise chaque vente au niveau de prix de la dernière année bien couverte, d'après la médiane
-  // locale par année (années d'au moins 30 ventes ; correction plafonnée à ±15 %)
-  const byYear = {};
-  usable.forEach(s => (byYear[s.date.slice(0, 4)] ??= []).push([s.ppm, 1]));
-  const ys = Object.keys(byYear).filter(y => byYear[y].length >= 30).sort();
-  const trend = {};
-  if (ys.length >= 2) {
-    const ref = quantile(byYear[ys[ys.length - 1]], 0.5);
-    ys.forEach(y => trend[y] = Math.max(0.85, Math.min(1.15, ref / quantile(byYear[y], 0.5))));
-  }
+  // Actualise chaque vente au niveau de prix de la dernière année bien couverte (indice local)
+  const ventesIdx = await ventesPourIndice([...res.seen.values()], an - periode);
+  if (run !== state.run) return;
+  const {trend, refYear, n: nIndice} = indiceLocal(ventesIdx);
   usable.forEach(s => s.adj = s.ppm * (trend[s.date.slice(0, 4)] ?? 1));
   usable.sort((a, b) => a.d - b.d);
   const comps = usable.slice(0, Math.max(TARGET, usable.filter(s => s.d < 300).length)).slice(0, 150);
-  radius = comps[comps.length - 1].d;
+  const radius = comps[comps.length - 1].d;
   const d0 = Math.max(150, radius / 3);
   const now = Date.now();
   for (const c of comps) {
@@ -523,7 +589,9 @@ async function estimate() {
   comps.forEach(c => { const d = c.insee.slice(0, 2); deps[d] = (deps[d] || 0) + 1; });
   const dep = Object.keys(deps).sort((a, b) => deps[b] - deps[a])[0];
   const zone = dep === '75' ? 'paris' : dep === '2A' || dep === '2B' ? 'corse' : 'autre';
-  render({surf, med, p25, p75, comps, radius, conf, zone, all: usable, trend, refYear: ys[ys.length - 1]});
+  const anneesComps = comps.map(c => +c.date.slice(0, 4));
+  render({surf, med, p25, p75, comps, radius, conf, zone, all: usable, trend, refYear, periode, elargie,
+    anMin: Math.min(...anneesComps), anMax: Math.max(...anneesComps), nbSecteur: nIndice});
 }
 
 function quantile(pairs, p) {
@@ -696,6 +764,13 @@ function dampen(lines) {
 }
 const SEUIL_ATYPIQUE = 0.25;   // règle des évaluateurs : au-delà de ~25 % d'ajustements cumulés, les comparables ne comparent plus grand-chose
 
+// « ventes 2016 +32 %, 2019 +18 %, 2023 +3 % » : quelques années repères plutôt que toute la liste
+function resumeIndice(trend, ref) {
+  const ys = Object.keys(trend).filter(y => y !== ref).sort();
+  const pick = ys.length <= 4 ? ys : [ys[0], ys[Math.floor(ys.length / 3)], ys[Math.floor(2 * ys.length / 3)], ys[ys.length - 1]];
+  return [...new Set(pick)].map(y => `ventes ${y} ${pct(trend[y] - 1)}`).join(', ');
+}
+
 function updateResult() {
   const el = document.getElementById('res'), r = state.base;
   if (!el || !r) return;
@@ -736,7 +811,8 @@ function updateResult() {
       ${mob ? `<div class="tot"><span>Mobilier (estimé à part)</span><b>+ ${fmtK(mob)}</b></div><div><span><b>Total avec mobilier</b></span><b>${fmtK(prix + mob)}</b></div>` : ''}
     </div>
     <div class="range">Coefficients : <b>${zoneName}</b>. Basé sur ${r.comps.length} ventes dans un rayon de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}, pondérées par distance, surface et ancienneté.</div>
-    ${Object.keys(r.trend).length ? `<div class="range">Prix actualisés au niveau ${r.refYear} selon l'évolution du secteur : ${Object.entries(r.trend).filter(([y]) => y !== r.refYear).map(([y, f]) => `ventes ${y} ${pct(f - 1)}`).join(', ')}.</div>` : ''}
+    ${r.elargie ? `<div class="warnbox">Peu de ventes récentes près du bien : période élargie automatiquement à <b>${r.periode} ans</b> (ventes de ${r.anMin} à ${r.anMax}), plutôt que d'aller chercher des ventes dans d'autres quartiers.</div>` : ''}
+    ${Object.keys(r.trend).length ? `<div class="range">Prix actualisés au niveau ${r.refYear} avec l'indice du quartier (${fmt(r.nbSecteur)} ventes, appartements et maisons) : ${resumeIndice(r.trend, r.refYear)}.</div>` : ''}
     ${mob ? '<div class="range">Bon à savoir : le mobilier listé à part dans l\'acte n\'est pas soumis aux frais de notaire.</div>' : ''}
     ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
 }
