@@ -229,6 +229,11 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .auto-chiffres span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .invwrap .auto-chiffres b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
 .invwrap .auto-chiffres small{font-size:12px;color:var(--muted)}
+.invwrap .deux-loyers{display:flex;gap:14px}
+.invwrap .deux-loyers small{display:block}
+.invwrap .deux-loyers b{color:var(--muted)}
+.invwrap .deux-loyers .actif b{color:var(--ink)}
+.invwrap .deux-loyers .actif small{color:var(--accent);font-weight:600}
 .invwrap .auto-res button{margin-top:8px}
 .invwrap .auto-cours{display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;background:var(--accent-soft);font-size:14px}
 .invwrap .rond{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);border-right-color:transparent;animation:tourne .8s linear infinite}
@@ -1484,7 +1489,14 @@ async function estimerPour(p) {
   if (!state.base) return {erreur: document.getElementById('out').innerText.trim() || 'Estimation impossible pour le moment.'};
   for (let i = 0; i < 125 && state.loyerHC == null; i++) await new Promise(ok => setTimeout(ok, 200));   // loyer : jusqu'à 25 s
   const r = state.base;
-  return {prix: Math.round(state.prix), lo: Math.round(state.prixLo), hi: Math.round(state.prixHi),
+  // Loyer de marché vide ET meublé (même bien, seule la location change)
+  let loyerVide = null, loyerMeuble = null;
+  if (state.lm) {
+    const f = field('location'), avant = f.value;
+    const hc = v => { f.value = v; return Math.round(calcLoyer(r, state.lm, state.insee, state.factor, state.chambreEff, state.factorHorsEtat).HC); };
+    try { loyerVide = hc('vide'); loyerMeuble = hc('meuble'); } finally { f.value = avant; }
+  }
+  return {prix: Math.round(state.prix), lo: Math.round(state.prixLo), hi: Math.round(state.prixHi), loyerVide, loyerMeuble,
     loyer: state.loyerHC != null ? Math.round(state.loyerHC) : null, fiabilite: state.confAff ? state.confAff[0] : '',
     ventes: r.comps.length, rayon: Math.round(r.radius), periode: r.elargie ? `${r.anMin}–${r.anMax}` : ''};
 }
@@ -2122,7 +2134,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=14"></script>
+<script src="investissements.js?v=15"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

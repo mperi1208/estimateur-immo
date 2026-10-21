@@ -308,7 +308,15 @@ function criteresEffectifs(b) {
   if (b.annee > 1500) c.epoque = EPOQUES.find(([y]) => b.annee < y)[1];
   return c;
 }
-const cleEstimation = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);
+const cleEstimation = b => { const c = criteresEffectifs(b); delete c.location; return JSON.stringify([b.adresse.trim(), b.type, b.surface, c]); };
+const cleAncienne = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);   // estimations faites avant (location comprise)
+// Loyers de marché d'une estimation : vide et meublé (les anciennes n'en ont qu'un, celui de la location d'alors)
+function loyersMarche(e) {
+  if (!e || e.erreur) return {};
+  let loc = null; try { loc = JSON.parse(e.cle)[3].location; } catch (x) {}
+  return {vide: e.loyerVide ?? (loc !== 'meuble' ? e.loyer : null), meuble: e.loyerMeuble ?? (loc === 'meuble' ? e.loyer : null)};
+}
+const meubleBien = b => ['meuble', 'saisonnier'].includes(b.location.statut);
 const estimable = b => TYPE_DVF[b.type] && b.adresse.trim().length >= 5 && b.surface >= 9;
 const enCours = new Set();
 async function estimerBien(b0) {
@@ -344,7 +352,7 @@ let chrono = null;
 function majAuto(b) {
   const el = racine.querySelector('#inv_auto'); if (!el || ouvert !== b.id) return;
   clearInterval(chrono);
-  const e = b.estimation, a_jour = e && e.cle === cleEstimation(b), btn = racine.querySelector('#inv_estimer');
+  const e = b.estimation, a_jour = e && (e.cle === cleEstimation(b) || e.cle === cleAncienne(b)), btn = racine.querySelector('#inv_estimer');
   // Le bouton en bas des caractéristiques : seul moyen de lancer l'estimation
   if (btn) {
     btn.disabled = !estimable(b) || enCours.has(b.id);
@@ -364,13 +372,14 @@ function majAuto(b) {
   else if (!e) h = `<div class="aide">${estimable(b) ? 'Règle les caractéristiques, puis clique sur « Estimer ce bien ».' : 'Renseigne l\'adresse et la surface, règle les caractéristiques, puis clique sur « Estimer ce bien ».'}</div>`;
   else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)}</div>`;
   else {
-    const loue = LOUE.includes(b.location.statut);
+    const loue = LOUE.includes(b.location.statut), L = loyersMarche(e), m = meubleBien(b);
+    const ref = m ? L.meuble ?? L.vide : L.vide ?? L.meuble;
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
-        ${e.loyer ? `<div><span>Loyer de marché</span><b>${eur(e.loyer)}</b><small>hors charges/mois, ${e.cle && JSON.parse(e.cle)[3].location === 'meuble' ? 'meublé' : 'vide'}</small></div>
-        <div><span>Rendement brut</span><b>${pct(e.loyer * 12 / e.prix)}</b><small>au loyer de marché, sur la valeur</small></div>` : ''}</div>
+        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers"><div class="${m ? '' : 'actif'}"><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div class="${m ? 'actif' : ''}"><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div></div><small>hors charges/mois${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : ''}</small></div>
+        <div><span>Rendement brut</span><b>${pct(ref * 12 / e.prix)}</b><small>au loyer ${m ? 'meublé' : 'vide'}, sur la valeur</small></div>` : ''}</div>
       <div class="aide">${esc(e.fiabilite)} · ${e.ventes} ventes à moins de ${e.rayon < 1000 ? fmt(e.rayon) + ' m' : (e.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}${e.periode ? ` (ventes ${e.periode})` : ''} · estimé le ${new Date(e.le).toLocaleDateString('fr-FR')}${b.geo ? ` · adresse reconnue : ${esc(b.geo.label)}` : ''}
-        ${loue && e.loyer && b.location.loyer ? `<br>Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / e.loyer - 1)} par rapport au marché.` : ''}</div>
+        ${loue && ref && b.location.loyer ? `<br>Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / ref - 1)} par rapport au marché ${m ? 'meublé' : 'vide'}.` : ''}</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
     </div>
     ${!a_jour ? '<div class="aide">Caractéristiques modifiées depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
@@ -528,7 +537,7 @@ function vueDetail(b) {
     ${section('Rentabilité', '<div id="inv_renta"></div>')}
     ${section('Location', `<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: STATUTS})}
-      ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
+      ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
       ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}
       ${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}` : ''}
     </div>`)}
