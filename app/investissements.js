@@ -791,6 +791,8 @@ racine.addEventListener('change', async e => {
 
 // Démarrage : biens de cet appareil, puis le compte s'il y a une session
 biens = biensLocaux(); scis = scisLocales(); normaliser();
+// Biens repris des anciens crédits : enregistrés tout de suite, pour garder les mêmes identifiants d'un chargement à l'autre
+try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
 window.INV = {afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
 COMPTE.init();
 })();
