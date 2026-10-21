@@ -182,7 +182,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div data-revente><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
   </div>
   <label class="check" data-travaux><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label>
-  <div class="hint" data-travaux>Pendant le chantier : intérêts seuls (différé) et pas de loyer. Le montant des travaux se règle dans « Le bien ».</div></details>
+  <div class="hint" data-travaux>La location démarre à la fin du chantier (« Location à partir du mois »). Le différé du crédit (section Crédit) peut durer plus longtemps : tu encaisses alors des loyers pendant que tu ne paies que les intérêts. Le montant des travaux et du mobilier se règle dans « Le bien ».</div></details>
 
   <details open><summary>Le bien</summary><div class="grid">
     <div><label>Prix d'achat (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
@@ -305,6 +305,7 @@ const SOURCES = {
   chambre: ['Estimation : à surface égale, une vraie chambre se loue et se vend mieux qu\'une pièce unique (écart non chiffré par les études, +5 % retenu)', ''],
   couts: ['Coûts de travaux 2026 (rénovateurs) : rafraîchissement 220-500 €/m², rénovation complète 700-1 100 €/m² (Paris +20 à 40 %)', 'https://renovbox.fr/prix/renovation/appartement/'],
   energie: ['Rénovation énergétique : 200-350 €/m² pour passer de G à C-D, 400-450 €/m² pour viser A-B (Travaux.com)', 'https://www.travaux.com/energie-renouvelable-diagnostic/guide-des-prix/prix-dune-renovation-energetique'],
+  mobilier: ['Mobilier d\'une location meublée : 3 000 à 6 000 € en neuf (11 équipements obligatoires, décret de 2015)', 'https://www.investissement-locatif.com/liste-meuble-lmnp.html'],
   est: ['Estimation : aucune étude chiffrée fiable trouvée, ordre de grandeur prudent', ''],
 };
 
@@ -888,11 +889,19 @@ function renderRent(el, r, lm, insee) {
 
 // --- Projet travaux : budget, valeur et loyer après travaux ---
 const NIVEAUX = {   // €/m², mêmes coûts que la décote « en l'état » ; durée de chantier indicative
-  aucun: {l: 'Aucun (seulement l\'énergie)', paris: 0, autre: 0, mois: 1},
-  rafraichir: {l: 'Rafraîchissement (peinture, sols)', paris: 450, autre: 350, mois: 2},
-  travaux: {l: 'Gros travaux (cuisine, salle de bain, électricité)', paris: 900, autre: 700, mois: 4},
-  renover: {l: 'Rénovation complète', paris: 1500, autre: 1100, mois: 6},
+  aucun: {l: 'Aucun (seulement l\'énergie)', paris: 0, autre: 0, mois: 1, d: 'Pas de travaux d\'aménagement.'},
+  rafraichir: {l: 'Rafraîchissement (peinture, sols)', paris: 450, autre: 350, mois: 2, d: 'Peintures, sols, luminaires, petites reprises.'},
+  travaux: {l: 'Gros travaux (cuisine, salle de bain, électricité)', paris: 900, autre: 700, mois: 4, d: 'Cuisine et salle de bain neuves, électricité remise aux normes, peintures et sols.'},
+  renover: {l: 'Rénovation complète', paris: 1500, autre: 1100, mois: 6, d: 'Tous corps d\'état : électricité, plomberie, menuiseries, cloisons, cuisine, salle de bain, finitions.'},
 };
+// Gamme des finitions : coût (haut de gamme ≈ 1,3-1,5 × le standard) et état obtenu après travaux
+const GAMMES = {
+  eco: {l: 'Économique', mult: 0.75, etat: 'bon', d: 'bon état'},
+  standard: {l: 'Standard', mult: 1, etat: 'neuf', d: 'refait à neuf'},
+  haut: {l: 'Haut de gamme', mult: 1.4, etat: 'luxe', d: 'prestations haut de gamme'},
+};
+// Mobilier d'une location meublée : 3 000 à 6 000 € en neuf pour un appartement (liste du décret de 2015)
+const budgetMobilier = (surf, gamme) => Math.round((2000 + 60 * surf) * {eco: 0.7, standard: 1, haut: 1.5}[gamme] / 100) * 100;
 const ORDRE_DPE = 'ABCDEFG';
 // Rénovation énergétique : ≈ 200-350 €/m² pour 3-4 classes, 400-450 €/m² pour viser A-B ; moitié moins si rénovation complète (isolation, chauffage déjà en partie compris)
 const coutEnergie = (de, vers, niveau) => {
@@ -912,17 +921,23 @@ function renderWorks() {
   const niveau = choixTravaux.niveau && NIVEAUX[choixTravaux.niveau] ? choixTravaux.niveau : aRenover ? etat : 'aucun';
   const dpeVise = choixTravaux.dpe && (choixTravaux.dpe === '=' || ORDRE_DPE.includes(choixTravaux.dpe)) ? choixTravaux.dpe : passoire ? 'C' : '=';
   const cible = dpeVise === '=' ? dpe : dpeVise;
-  const eM2 = coutEnergie(dpe, cible, niveau), tM2 = NIVEAUX[niveau][z];
+  const gamme = GAMMES[choixTravaux.gamme] ? choixTravaux.gamme : 'standard';
+  const meubleApres = choixTravaux.meuble != null ? choixTravaux.meuble : selected(crit('location')).k === 'meuble';
+  const eM2 = coutEnergie(dpe, cible, niveau), tM2 = Math.round(NIVEAUX[niveau][z] * GAMMES[gamme].mult);
   const budget = Math.round((tM2 + eM2) * surf / 500) * 500;
+  const mobilier = meubleApres ? budgetMobilier(surf, gamme) : 0;
   const duree = NIVEAUX[niveau].mois + (eM2 ? 1 : 0);
-  // Valeur et loyer « comme si » le bien était refait à neuf, avec le DPE visé
-  const apres = facteurPour({etat: niveau === 'aucun' ? etat : 'neuf', dpe: cible});
+  // Valeur et loyer « comme si » les travaux étaient faits : état selon la gamme, DPE visé, vide ou meublé
+  const etatApres = niveau === 'aucun' ? etat : GAMMES[gamme].etat;
+  const apres = facteurPour({etat: etatApres, dpe: cible});
   const valeurApres = r.med * apres.factor * surf + apres.abs;
-  const loyerApres = calcLoyer(r, state.lm, state.insee, apres.factor, apres.chambreEff).HC;
+  OVERRIDE = {etat: etatApres, dpe: cible, location: meubleApres ? 'meuble' : 'vide'};
+  let loyerApres;
+  try { loyerApres = calcLoyer(r, state.lm, state.insee, apres.factor, apres.chambreEff).HC; } finally { OVERRIDE = null; }
   const notaire = state.prix * 0.08;
-  const coutProjet = state.prix + notaire + budget;
-  const marge = valeurApres - coutProjet;
-  state.projet = {travaux: budget, valeurApres: Math.round(valeurApres), loyerApres: Math.round(loyerApres), duree, niveau, dpe: cible};
+  const coutProjet = state.prix + notaire + budget + mobilier;
+  const marge = valeurApres - coutProjet + mobilier;   // le mobilier n'ajoute pas de valeur au bien, mais se revend ou s'amortit à part
+  state.projet = {travaux: budget, valeurApres: Math.round(valeurApres), loyerApres: Math.round(loyerApres), duree, niveau, dpe: cible, gamme, meuble: meubleApres, mobilier};
   const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${v}</option>`).join('');
   const dpeOpts = {'=': dpe === '?' ? 'Inchangé (DPE inconnu)' : `Inchangé (${dpe})`, ...Object.fromEntries([...ORDRE_DPE].map(c => [c, c]))};
   const ouvert = el.open || aRenover || passoire;
@@ -930,16 +945,20 @@ function renderWorks() {
     <summary>Projet travaux${aRenover || passoire ? '' : ' (optionnel)'}</summary>
     <div class="crit" style="margin-top:6px">
       <div><label>Travaux prévus</label><select id="w_niveau">${opt(Object.fromEntries(Object.entries(NIVEAUX).map(([k, v]) => [k, v.l])), niveau)}</select></div>
+      <div><label>Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
       <div><label>DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
+      <div><label>Location après travaux</label><select id="w_meuble">${opt({vide: 'Vide', meuble: 'Meublée'}, meubleApres ? 'meuble' : 'vide')}</select></div>
     </div>
+    <div class="hint">${NIVEAUX[niveau].d}${eM2 ? ' Énergie : isolation, fenêtres, chauffage, ventilation selon le diagnostic.' : ''}</div>
     <div class="calc">
       <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
       <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
-      <div><span>Travaux : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>
+      <div><span>Travaux, gamme ${GAMMES[gamme].l.toLowerCase()} : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>
+      ${mobilier ? `<div><span>Mobilier pour la location meublée<sup>${eM2 ? 3 : 2}</sup></span><b>${fmtK(mobilier)}</b></div>` : ''}
       <div class="tot"><span><b>Coût total du projet</b></span><b>${fmtK(coutProjet)}</b></div>
-      <div><span>Valeur après travaux (${niveau === 'aucun' ? 'état inchangé' : 'refait à neuf'}${cible !== '?' ? ', DPE ' + cible : ''})</span><b>${fmtK(valeurApres)}</b></div>
+      <div><span>Valeur après travaux (${niveau === 'aucun' ? 'état inchangé' : GAMMES[gamme].d}${cible !== '?' ? ', DPE ' + cible : ''})</span><b>${fmtK(valeurApres)}</b></div>
       <div class="tot"><span><b>Création de valeur</b></span><b class="${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+ ' : '− '}${fmtK(Math.abs(marge))}</b></div>
-      <div><span>Loyer après travaux (hors charges)</span><b>${fmt(loyerApres)} €/mois</b></div>
+      <div><span>Loyer après travaux, ${meubleApres ? 'meublé' : 'vide'} (hors charges)</span><b>${fmt(loyerApres)} €/mois</b></div>
       <div><span>Rendement brut sur le coût total</span><b>${(loyerApres * 12 / coutProjet * 100).toFixed(1).replace('.', ',')} %</b></div>
     </div>
     ${dpe === 'G' ? '<div class="alert">Classé G : interdit à la location tant que les travaux énergétiques ne sont pas faits.</div>' : ''}
@@ -947,11 +966,13 @@ function renderWorks() {
     ${passoire ? '<div class="range">DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.</div>' : ''}
     <div class="range">Chantier d'environ ${duree} mois. Estimations indicatives : à confirmer par des devis.</div>
     <div class="row" style="margin-top:10px"><button class="cta" onclick="showTab('cashflow', true, 'location')">Travaux + location →</button><button class="cta" onclick="showTab('cashflow', true, 'revente')">Travaux + revente →</button></div>
-    <ol class="srcs"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}</ol>`;
+    <ol class="srcs"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}${mobilier ? `<li><a href="${SOURCES.mobilier[1]}" target="_blank" rel="noopener">${SOURCES.mobilier[0]}</a></li>` : ''}</ol>`;
   el.open = ouvert;
   const save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
   document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; save(); renderWorks(); };
   document.getElementById('w_dpe').onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
+  document.getElementById('w_gamme').onchange = e => { choixTravaux.gamme = e.target.value; save(); renderWorks(); };
+  document.getElementById('w_meuble').onchange = e => { choixTravaux.meuble = e.target.value === 'meuble'; save(); renderWorks(); };
 }
 
 // --- Carte ---
@@ -1032,6 +1053,7 @@ const HISTO = {   // mois d'offre → taux moyens par durée
   '2023-06': {15: 3.32, 20: 3.51, 25: 3.69}, '2023-07': {15: 3.52, 20: 3.73, 25: 3.89}, '2023-08': {15: 3.72, 20: 3.92, 25: 4.08},
   '2024-01': {15: 3.89, 20: 4.00, 25: 4.13}, '2024-02': {15: 3.79, 20: 3.90, 25: 3.99}, '2024-03': {15: 3.74, 20: 3.82, 25: 3.91},
 };
+const GAMMES_CF = {eco: 'économique', standard: 'standard', haut: 'haut de gamme'};
 const SURPRIME_SCI = 0.30;   // mesurée sur deux prêts SCI réels sans apport (110 %) et avec différé (voir sources)
 const MOIS_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 function tauxDuree(row, mois) {
@@ -1109,9 +1131,11 @@ function sync(est, mode) {
   if (mode && est.projet) {
     const pj = est.projet;
     set('projet', mode); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
-    set('differe', pj.duree); set('typeDiff', 'partiel'); set('debutLoc', pj.duree); set('moisRevente', pj.duree + 6);
-    set('loyer', pj.loyerApres);
-    bar.innerHTML += `<br>Projet : travaux <b>${eur(pj.travaux)}</b>, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b> hors charges/mois.`;
+    if (get('differe') < pj.duree) { set('differe', pj.duree); set('typeDiff', 'partiel'); }
+    set('debutLoc', pj.duree); set('moisRevente', pj.duree + 6);
+    set('loyer', pj.loyerApres); set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
+    set('compta', {np: pj.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+    bar.innerHTML += `<br>Projet : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b> ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
     sauver();
   }
   rendre();
@@ -1304,7 +1328,8 @@ function rendre() {
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
 
   let al = `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>`;
-  if (p.projet === 'location') al += `<div class="okbox">Projet travaux : <b>${eur(p.travaux)}</b> de travaux ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois (intérêts seuls pendant ${p.differe} mois, loyer à partir du mois ${p.debutLoc + 1}). Valeur après travaux : <b>${eur(s.base)}</b> pour un coût total de ${eur(s.coutTotal)}, soit ${s.base >= s.coutTotal ? '+' : '−'}${eur(Math.abs(s.base - s.coutTotal))} de création de valeur.</div>`;
+  const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
+  if (p.projet === 'location') al += `<div class="okbox">Projet travaux : <b>${eur(p.travaux)}</b> de travaux ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois (intérêts seuls pendant ${p.differe} mois, loyer à partir du mois ${p.debutLoc + 1}).${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.pret * p.taux / 1200 + s.ech.assM)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is') al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
@@ -1497,7 +1522,10 @@ $('form').addEventListener('input', e => {
   // Chantier : intérêts seuls et pas de loyer pendant la durée des travaux
   if (id === 'projet' || id === 'dureeTravaux') {
     const t = get('projet') === 'simple' ? 0 : get('dureeTravaux');
-    set('differe', t); set('debutLoc', t); set('typeDiff', 'partiel');
+    set('debutLoc', t);
+    // le différé couvre au moins le chantier, mais peut rester plus long si tu l'as choisi
+    if (get('projet') === 'simple') set('differe', 0);
+    else if (get('differe') < t) { set('differe', t); set('typeDiff', 'partiel'); }
     if (get('projet') !== 'simple' && !get('valeurApres')) set('valeurApres', get('prix'));
     if (id === 'projet' && get('projet') === 'revente' && get('moisRevente') <= t) set('moisRevente', t + 6);
   }
