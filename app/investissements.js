@@ -476,7 +476,7 @@ function vueDetail(b) {
       ${champ(b, 'nom', 'Nom', {type: 'text', ph: 'ex. Studio Passy'})}
       ${champ(b, 'type', 'Type', {options: Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.l]))})}
       <div class="large sugg"><label for="inv_adresse">Adresse</label>
-        <input id="inv_adresse" data-p="adresse" type="text" value="${esc(b.adresse)}" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="inv_sugg" aria-expanded="false">
+        <input id="inv_adresse" name="search" data-p="adresse" type="search" enterkeyhint="search" value="${esc(b.adresse)}" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="inv_sugg" aria-expanded="false">
         <ul id="inv_sugg" role="listbox" hidden></ul>
         ${b.geo && b.geo.pour === b.adresse.trim() && b.geo.label !== b.adresse.trim() ? `<div class="aide">Adresse reconnue : ${esc(b.geo.label)}</div>` : ''}</div>
       ${champ(b, 'surface', 'Surface (m²)')}${champ(b, 'pieces', 'Pièces')}
@@ -728,7 +728,7 @@ racine.addEventListener('change', async e => {
   const sci = ouvert && ouvert.startsWith('sci:') ? scis.find(x => x.id === ouvert.slice(4)) : null;
   if (sci) {
     const t = e.target, chemin = t.dataset.p; if (!chemin) return;
-    let v = t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
+    let v = t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' || t.type === 'search' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
     if (t.type === 'month' && t.value && !v) { alert('Date au format AAAA-MM, par exemple 2019-06.'); t.value = lire(sci, chemin) || ''; return; }
     if (chemin === 'nom' && !String(v).trim()) { t.value = sci.nom; return; }
     ecrire(sci, chemin, v); sauver();
@@ -761,7 +761,7 @@ racine.addEventListener('change', async e => {
   }
   const chemin = e.target.dataset.p; if (!chemin) return;
   const t = e.target;
-  let v = t.type === 'checkbox' ? t.checked : t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
+  let v = t.type === 'checkbox' ? t.checked : t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' || t.type === 'search' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
   if (t.type === 'month' && t.value && !v) { alert('Date au format AAAA-MM, par exemple 2024-03.'); t.value = lire(b, chemin) || ''; return; }
   // Prix et valeur tapés en milliers (« 819 ») : compris comme 819 000 €
   if (['valeur', 'achat.prix'].includes(chemin) && v > 0 && v < 2000) { v *= 1000; t.value = v; }
