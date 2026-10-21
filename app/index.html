@@ -85,6 +85,7 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .kpi .k{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .kpi .v{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .kpi .v.up{color:var(--good)} .kpi .v.down{color:var(--bad)}
+.kpi .v.txt{font-size:17px;white-space:normal;line-height:1.25}
 .kpi .d{font-size:12px;color:var(--muted)}
 .synthbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:8px}
 .synthbar .conf{margin-top:0}
@@ -857,6 +858,7 @@ function updateResult() {
   state.prix = prix; state.mob = mob; state.factor = factor;
   state.prixLo = val(r.p25) * (1 - widen); state.prixHi = val(r.p75) * (1 + widen); state.confAff = conf; state.atypique = atypique;
   state.chambreEff = lines.find(l => l.src === 'chambre')?.eff || 0;
+  state.factorHorsEtat = facteurPour({etat: 'bon', dpe: '?'}).factor;
   const used = [];
   const ref = k => {
     if (!k || !SOURCES[k]) return '';
@@ -972,16 +974,20 @@ async function updateRent() {
   }
 }
 
-function calcLoyer(r, lm, insee, facteurPrix, chambreEff) {
+function calcLoyer(r, lm, insee, facteurPrix, chambreEff, facteurHorsEtat) {
   const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
   const meuble = louerMeuble();
   const charges = isAppart() ? CHARGES.appart[z] : CHARGES.maison;
   // Atouts / défauts : même facteur que pour le prix (déjà amorti), atténué pour le loyer
   // (la chambre séparée est retirée ici puis appliquée en entier plus bas)
-  let qual = Math.pow((facteurPrix || 1) / (1 + (chambreEff || 0)), ELASTICITE_LOYER);
-  // Studios (≤ 35 m²) : la demande est telle que les défauts pèsent deux fois moins
-  const petit = isAppart() && surf <= 35 && qual < 1;
-  if (petit) qual = 1 - (1 - qual) / 2;
+  const fp = facteurPrix || 1, fh = facteurHorsEtat || fp;
+  let autres = Math.pow(fh / (1 + (chambreEff || 0)), ELASTICITE_LOYER);
+  // Studios (≤ 35 m²) : la demande est telle que les défauts d'emplacement (étage, lumière, bruit…) pèsent
+  // deux fois moins. Pas l'état ni le DPE : une cuisine et une salle de bain à refaire se paient aussi à la location.
+  const petit = isAppart() && surf <= 35 && autres < 1;
+  if (petit) autres = 1 - (1 - autres) / 2;
+  const etatDpe = Math.pow(fp / fh, ELASTICITE_LOYER);
+  let qual = autres * etatDpe;
   const chambre = isAppart() && surf <= 40 && field('chambre').checked;
   if (chambre) qual *= 1.05;   // atout d'usage : compte en entier sur le loyer
   const {f: actu, src: actuSrc} = recalage(insee);
@@ -991,13 +997,13 @@ function calcLoyer(r, lm, insee, facteurPrix, chambreEff) {
   const pkM = z === 'paris' ? nbPk * 150 : 0;
   const cc = m2 => m2 * actu * factor * surf + pkM;
   const CC = cc(lm.m2), lo = cc((lm.m2 + lm.lo) / 2), hi = cc((lm.m2 + lm.hi) / 2);
-  return {meuble, charges, qual, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC: CC - charges * surf};
+  return {meuble, charges, qual, etatDpe, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC: CC - charges * surf};
 }
 
 function renderRent(el, r, lm, insee) {
   const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
   state.lm = lm; state.insee = insee;
-  const {meuble, charges, qual, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC} = calcLoyer(r, lm, insee, state.factor, state.chambreEff);
+  const {meuble, charges, qual, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC} = calcLoyer(r, lm, insee, state.factor, state.chambreEff, state.factorHorsEtat);
   state.loyerHC = HC; state.loyerCC = CC;
   setTimeout(renderWorks);
   const prixRef = state.prix + (meuble ? state.mob : 0);
@@ -1009,7 +1015,7 @@ function renderRent(el, r, lm, insee) {
   const fiable = lm.row.TYPPRED === 'commune' && lm.row.nbobs_com >= 30 && lm.row.R2_adj >= 0.5;
 
   let alerts = '';
-  if (dpe === 'G') alerts += `<div class="alert"><b>Location interdite</b> depuis le 1er janvier 2025 pour un logement classé G (non décent)${ref('loi')}. Le loyer indiqué suppose des travaux pour sortir de G.</div>`;
+  if (dpe === 'G') alerts += `<div class="alert"><b>Location interdite</b> depuis le 1er janvier 2025 pour un logement classé G (non décent)${ref('loi')}. Le loyer ci-dessous est théorique : il faut d'abord des travaux pour sortir de G (voir « Travaux prévus ? »).</div>`;
   if (dpe === 'F') alerts += `<div class="warnbox">Classé F : loyer gelé (aucune hausse possible) depuis août 2022, et location interdite à partir du 1er janvier 2028${ref('loi')}.</div>`;
   if (dpe === 'E') alerts += `<div class="warnbox">Classé E : location interdite à partir de 2034${ref('loi')}.</div>`;
   if (etat === 'renover') alerts += '<div class="warnbox">À rénover entièrement : en l\'état, le logement n\'est probablement pas louable (critères de décence).</div>';
@@ -1024,7 +1030,7 @@ function renderRent(el, r, lm, insee) {
     <div class="calc">
       <div><span>Loyer de marché de la commune${ref('carte')} (${m2(lm.m2)} €/m² pour ${fmt(surf)} m²${isAppart() && surf < 37 ? `, prime des petites surfaces${ref('hestia')}` : ''})</span><b>${fmt(lm.m2 * surf)} €</b></div>
       ${actu !== 1 ? `<div><span>Recalage sur les annonces récentes du secteur${ref(actuSrc)}</span><b class="${actu > 1 ? 'up' : 'down'}">${pct(actu - 1)}</b></div>` : ''}
-      ${Math.abs(qual - 1) > 0.001 ? `<div><span>Atouts et défauts du bien${ref('calib')} <small class="raw">(${pct(state.factor - 1)} sur le prix${petit ? ', défauts moitié moins pour un studio' : ''}${chambre ? ', chambre séparée +5 %' : ''})</small>${petit ? ref('et') : ''}</span><b class="${qual > 1 ? 'up' : 'down'}">${pct(qual - 1)}</b></div>` : ''}
+      ${Math.abs(qual - 1) > 0.001 ? `<div><span>Atouts et défauts du bien${ref('calib')} <small class="raw">(${pct(state.factor - 1)} sur le prix${petit ? ', défauts d\'emplacement moitié moins pour un studio' : ''}${chambre ? ', chambre séparée +5 %' : ''})</small>${petit ? ref('et') : ''}</span><b class="${qual > 1 ? 'up' : 'down'}">${pct(qual - 1)}</b></div>` : ''}
       ${meuble ? `<div><span>Meublé${ref(z === 'paris' ? 'apur' : 'est')}</span><b class="up">${pct(MEUBLE[z])}</b></div>` : ''}
       ${pkM ? `<div><span>Parking loué avec${ref('yespark')}</span><b class="up">+ ${fmt(pkM)} €</b></div>` : ''}
     </div>
@@ -1096,7 +1102,7 @@ function renderWorks() {
   const valeurApres = r.med * apres.factor * surf + apres.abs;
   OVERRIDE = {etat: etatApres, dpe: cible};
   let loyerApres;
-  try { loyerApres = calcLoyer(r, state.lm, state.insee, apres.factor, apres.chambreEff).HC; } finally { OVERRIDE = null; }
+  try { loyerApres = calcLoyer(r, state.lm, state.insee, apres.factor, apres.chambreEff, state.factorHorsEtat).HC; } finally { OVERRIDE = null; }
   const notaire = state.prix * 0.08;
   const coutBien = state.prix + notaire + budget;   // hors mobilier : il n'ajoute pas de valeur au bien
   const marge = valeurApres - coutBien;
@@ -1109,7 +1115,7 @@ function renderWorks() {
     <div class="hint">${NIVEAUX[niveau].d}</div>
     <div class="kpis">
       <div class="kpi"><div class="k">Valeur après travaux</div><div class="v">${fmtK(valeurApres)}</div><div class="d">${niveau === 'aucun' ? 'état inchangé' : GAMMES[gamme].d}${cible !== '?' ? ', DPE ' + cible : ''}</div></div>
-      <div class="kpi"><div class="k">Loyer après travaux</div><div class="v">${fmt(loyerApres)} €</div><div class="d">${meubleApres ? 'meublé' : 'vide'}, hors charges/mois</div></div>
+      <div class="kpi"><div class="k">Loyer après travaux</div><div class="v">${fmt(loyerApres)} €</div><div class="d">${meubleApres ? 'meublé' : 'vide'}, hors charges/mois · ${cible === 'G' ? 'toujours G : non louable' : dpe === 'G' || etat === 'renover' ? 'aujourd\'hui : non louable' : `${pct(loyerApres / state.loyerHC - 1)} vs en l'état (${fmt(state.loyerHC)} €)`}</div></div>
       <div class="kpi"><div class="k">Valeur créée</div><div class="v ${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+' : '−'}${fmtK(Math.abs(marge))}</div><div class="d">après achat, notaire et travaux</div></div>
     </div>
     <div class="calc">
@@ -1134,6 +1140,12 @@ function renderSynth() {
   const loyerOk = state.loyerHC != null && state.lm;
   const dpe = selected(crit('dpe')).k, meuble = louerMeuble();
   const rdt = loyerOk ? state.loyerHC * 12 / (state.prix + (meuble ? state.mob : 0)) : null;
+  // G : location interdite (nouveaux baux depuis 2025) ; à rénover entièrement : pas décent en l'état
+
+  const etat = selected(crit('etat')).k;
+  const pj = state.projet && state.projet.dpe !== 'G' && !(etat === 'renover' && state.projet.niveau === 'aucun') ? state.projet : null;
+  const nonLouable = dpe === 'G' || etat === 'renover';
+  const coutPj = pj ? state.prix * 1.08 + pj.travaux + pj.mobilier : 0;
   const alertes = [];
   if (dpe === 'G') alertes.push('<div class="alert">Classé G : <b>interdit à la location</b> tant que les travaux énergétiques ne sont pas faits.</div>');
   if (dpe === 'F') alertes.push('<div class="warnbox">Classé F : loyer gelé, location interdite à partir de 2028.</div>');
@@ -1142,8 +1154,11 @@ function renderSynth() {
   el.innerHTML = `
     <div class="kpis">
       <div class="kpi"><div class="k">Prix estimé</div><div class="v">${fmtK(state.prix)}</div><div class="d">${fmt(state.prix / r.surf)} €/m² · ${fmtK(state.prixLo)} – ${fmtK(state.prixHi)}</div></div>
+      ${loyerOk && nonLouable ? `
+      <div class="kpi"><div class="k">Loyer</div><div class="v down txt">Non louable</div><div class="d">en l'état (${dpe === 'G' ? 'DPE G' : 'à rénover entièrement'})${pj ? ` · <b>${fmt(pj.loyerApres)} €</b> HC après travaux` : ' · voir « Travaux prévus ? »'}</div></div>
+      <div class="kpi"><div class="k">Rendement brut</div><div class="v">${pj ? (pj.loyerApres * 12 / coutPj * 100).toFixed(1).replace('.', ',') + ' %' : '—'}</div><div class="d">${pj ? 'après travaux, sur le coût total (achat, notaire, travaux' + (pj.mobilier ? ', mobilier' : '') + ')' : 'pas de loyer en l\'état'}</div></div>` : `
       <div class="kpi"><div class="k">Loyer</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'}</div><div class="d">${loyerOk ? `hors charges/mois · ${fmt(state.loyerCC)} € CC` : 'calcul en cours'}</div></div>
-      <div class="kpi"><div class="k">Rendement brut</div><div class="v">${rdt != null ? (rdt * 100).toFixed(1).replace('.', ',') + ' %' : '…'}</div><div class="d">loyer annuel ÷ prix${meuble && state.mob ? ' + mobilier' : ''}</div></div>
+      <div class="kpi"><div class="k">Rendement brut</div><div class="v">${rdt != null ? (rdt * 100).toFixed(1).replace('.', ',') + ' %' : '…'}</div><div class="d">loyer annuel ÷ prix${meuble && state.mob ? ' + mobilier' : ''}</div></div>`}
     </div>
     <div class="synthbar">
       <span class="conf" style="background:${state.confAff[1]}">${state.confAff[0]}</span>
@@ -1299,7 +1314,9 @@ function majChips() {
 }
 // Reprend le bien estimé dans l'onglet Estimer (seulement s'il a changé depuis la dernière reprise,
 // pour ne pas écraser ce que tu as modifié à la main)
+let bienEst = null;
 function sync(est, mode) {
+  bienEst = est;
   const bar = $('bien');
   if (!est) {
     bar.innerHTML = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Estimer</a>, ou remplis les champs à la main.';
@@ -1559,6 +1576,7 @@ function rendre() {
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
+  if (bienEst && (bienEst.dpe === 'G' || bienEst.etat === 'renover') && p.projet === 'simple') al += `<div class="alert">${bienEst.dpe === 'G' ? 'Classé G : <b>location interdite</b> sans travaux énergétiques' : 'À rénover entièrement : <b>pas louable en l\'état</b>'}. Ouvre « Travaux » (ou lance le projet depuis l'onglet Estimer) pour une simulation réaliste.</div>`;
   if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche en année ${a1.y}${a1.y > 1 ? ', la première année pleine de location' : ''}.</div>`;
   $('alerts').innerHTML = al;
   $('chartTitle').textContent = `Cash-flow annuel ${p.avecImpots ? 'après' : 'avant'} impôts (${s.horizon} ans)`;
@@ -1786,7 +1804,7 @@ function estimationCourante() {
   if (!state.base || !state.loyerHC) return null;
   const meuble = selected(crit('location')).k === 'meuble';
   return {prix: Math.round(state.prix), loyer: Math.round(state.loyerHC), surf: state.base.surf, type: isAppart() ? 'appart' : 'maison',
-    meuble, mob: meuble ? Math.round(state.mob) : 0, label: document.getElementById('addr').value || 'Point choisi sur la carte', projet: state.projet || null};
+    meuble, mob: meuble ? Math.round(state.mob) : 0, dpe: selected(crit('dpe')).k, etat: selected(crit('etat')).k, label: document.getElementById('addr').value || 'Point choisi sur la carte', projet: state.projet || null};
 }
 function showTab(t, maj = true, mode = null) {
   const cash = t === 'cashflow';
