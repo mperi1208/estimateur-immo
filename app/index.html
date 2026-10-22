@@ -233,6 +233,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 14px;margin:12px 0}
 .invwrap .pj-chiffres span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
 .invwrap .pj-chiffres b{font-size:16px;font-variant-numeric:tabular-nums}
+.invwrap .pj-chiffres small{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .invwrap .pj-bas{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .invwrap .pj-date{font-size:12px;color:var(--muted)}
 body.discret #pj .pj-chiffres b{filter:blur(7px);user-select:none}
@@ -1404,7 +1405,7 @@ function renderWorks() {
   if (niveau === 'diviser' || niveau === 'amenager') return projetSurface(el, niveau, question, z, surf);
   if (niveau === 'non') {
     state.projet = null;
-    el.innerHTML = `${question}<div></div></div><button class="cta" onclick="showTab('cashflow')">Financer ce bien →</button>`;
+    el.innerHTML = `${question}<div></div></div><button class="cta" onclick="financerBien()">Financer ce bien →</button>`;
     bind(); renderSynth();
     return;
   }
@@ -1448,7 +1449,7 @@ function renderWorks() {
     </div>
     ${marge < 0 ? '<div class="warnbox">Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : à envisager plutôt pour louer longtemps que pour revendre.</div>' : ''}
     ${passoire ? '<div class="range">DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.</div>' : ''}
-    <div class="row"><button class="cta" onclick="showTab('cashflow', true, 'location')">Travaux + location →</button><button class="cta" onclick="showTab('cashflow', true, 'revente')">Travaux + revente →</button></div>
+    <div class="row"><button class="cta" onclick="financerBien('location')">Travaux + location →</button><button class="cta" onclick="financerBien('revente')">Travaux + revente →</button></div>
     <ol class="srcs"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}${mobilier ? `<li><a href="${SOURCES.mobilier[1]}" target="_blank" rel="noopener">${SOURCES.mobilier[0]}</a></li>` : ''}</ol>`;
   bind(); renderSynth();
 }
@@ -1519,7 +1520,7 @@ function projetSurface(el, niveau, question, z, surf) {
         <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
         <div><span>Rendement brut sur le coût total</span><b>${(loyer * 12 / (coutBien + mobilier) * 100).toFixed(1).replace('.', ',')} %</b></div>
       </div>
-      <div class="row"><button class="cta" onclick="showTab('cashflow', true, 'location')">Projet + location →</button><button class="cta" onclick="showTab('cashflow', true, 'revente')">Projet + revente →</button></div>`;
+      <div class="row"><button class="cta" onclick="financerBien('location')">Projet + location →</button><button class="cta" onclick="financerBien('revente')">Projet + revente →</button></div>`;
   } else state.projet = null;
   el.innerHTML = `${question}${champs}</div>
     <div class="hint">${NIVEAUX[niveau].d}</div>
@@ -2040,6 +2041,7 @@ function barreProjet(pr) {
   return `Projet <b>${esc(pr.nom)}</b>${r.surf ? ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²` : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
 }
 function sync(est, mode) {
+  if (mode) figee = undefined;   // « Travaux + location » et autres : demande explicite, on applique le projet
   const bar = $('bien'), cle = cleEst(est);
   let pr = projetCourantId ? PROJETS.liste.find(x => x.id === projetCourantId) : null;
   if (figee !== undefined && cle === figee) est = null; else figee = undefined;
@@ -2584,7 +2586,7 @@ $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxCons
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {sync, majScis, restaurer, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {sync, majScis, restaurer, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
 <script src="investissements.js?v=44"></script>
@@ -2605,7 +2607,7 @@ function carteProjet(pr) {
   const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
   const sous = [r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²` : '', revente ? 'achat-revente' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
   const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
-  const cases = [['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', eurP(r.prix)],
+  const cases = [['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
     [revente ? 'Prix pour gagner ' + eurP(r.visee) : 'Prix pour être rentable', r.prixCible != null ? eurP(r.prixCible) : 'aucun']];
   if (revente) cases.push(['Valeur après travaux', eurP(r.valeurApres)], ['Bénéfice net', `<b class="${signe(r.benefice)}">${eurP(r.benefice)}</b>`]);
   else cases.push(['Loyer hors charges', eurP(r.loyer) + '/mois'], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>`], ['Rendement brut', pctP(r.rendement)]);
@@ -2639,6 +2641,8 @@ document.getElementById('pj').addEventListener('click', e => {
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
   else if (t.dataset.a === 'suppr' && confirm('Supprimer ce projet ?')) { PROJETS.supprimer(id); if (projetCourantId === id) fixerProjet(null); }
 });
+// Boutons d'Estimer (« Financer ce bien », « Travaux + location »...) : repartent de l'estimation en cours, même après la réouverture d'un projet
+function financerBien(mode) { CF_APP.liberer(); showTab('cashflow', true, mode || null); }
 function showTab(t, maj = true, mode = null, sous = null) {
   const cash = t === 'cashflow';
   document.getElementById('estim').hidden = t !== 'estimation';
