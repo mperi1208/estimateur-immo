@@ -623,61 +623,66 @@ function vueListe() {
       <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   if (biens.length || scis.length) {
     h += kpisTotaux(totaux(biens));
-    if (scis.length) h += `<h2 class="sous-titre">Mes SCI</h2><div class="scis">${scis.map(x => {
+    if (scis.length) h += pli('scis', 'Mes SCI', scis.length, `<div class="scis">${scis.map(x => {
       const t = totaux(biens.filter(b => b.sciId === x.id && b.structure === 'sci'));
       return `<a class="sci" href="#investissements/sci:${encodeURIComponent(x.id)}"><div class="ico">${ICONE_SCI}</div>
         <div class="infos"><b>${esc(x.nom)}</b><span>SCI ${REGIMES[x.regime]} · ${t.n} bien${t.n > 1 ? 's' : ''}${x.associes.length ? ` · ${x.associes.length} associé${x.associes.length > 1 ? 's' : ''}` : ''}</span></div>
         <div class="chiffres"><div><span>Patrimoine net</span><b class="${t.V ? signe(t.net) : ''}">${t.V ? kEur(t.net) : '—'}</b></div><div><span>Cash-flow</span><b class="${signe(t.cf)}">${t.n ? eur(t.cf) + '/mois' : '—'}</b></div></div>
         <span class="chev" aria-hidden="true">›</span></a>`;
-    }).join('')}</div>`;
-    h += arbreHTML();
+    }).join('')}</div>`);
     // Filtre par détenteur
     const n = f => biens.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
     const choix = [['tout', 'Tous'], ['np', 'Nom propre'], ...scis.map(x => [x.id, x.nom])].filter(([f]) => f === 'tout' || n(f));
     const visibles = biens.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
-    h += `<div class="liste-tete"><h2 class="sous-titre">Mes biens</h2>${choix.length > 2 ? `<div class="filtres">${choix.map(([f, l]) => `<button data-a="filtre" data-f="${esc(f)}" class="${f === filtre ? 'on' : ''}">${esc(l)} <span>${n(f)}</span></button>`).join('')}</div>` : ''}</div>`;
+    const filtres = choix.length > 2 ? `<div class="filtres">${choix.map(([f, l]) => `<button data-a="filtre" data-f="${esc(f)}" class="${f === filtre ? 'on' : ''}">${esc(l)} <span>${n(f)}</span></button>`).join('')}</div>` : '';
     const cs = visibles.map(calculs);
-    h += visibles.length ? `<div class="liste">${visibles.map((b, i) => carte(b, cs[i])).join('')}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>';
+    h += pli('biens', 'Mes biens', biens.length, filtres + (visibles.length ? `<div class="liste">${visibles.map((b, i) => carte(b, cs[i])).join('')}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
+    h += arbreHTML();
   } else {
     h += `<div class="vide"><div class="ico">${icone('maison')}</div><h2>Ajoute ton premier investissement</h2>
       <p>Pour chaque bien : l'achat, le crédit, la location, les charges, et les plans. La rentabilité et ce qu'il reste à rembourser se calculent tout seuls. Tes SCI ont aussi leur fiche, avec leurs biens et leurs associés.</p>
       <div class="boutons centre"><button data-a="ajoutSci">+ Créer une SCI</button><button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   }
   racine.innerHTML = h;
-  vignettes();
+  vignettes(); centrerOrg();
 }
-// Arbre du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens
+// Organigramme du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens (montants à hauteur de la part détenue)
 function arbreHTML() {
   if (!biens.length) return '';
-  const chiffres = t => `<span class="chiffres-arbre">${t.V ? `<span>net <b class="${signe(t.net)}">${kEur(t.net)}</b></span>` : ''}${t.n ? `<span>cash-flow <b class="${signe(t.cf)}">${eur(t.cf)}/mois</b></span>` : ''}</span>`;
+  const chiffres = (net, cf) => `<span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${cf != null ? `<span><b class="${signe(cf)}">${eur(cf)}/mois</b></span>` : ''}</span>`;
+  const tot = t => chiffres(t.V ? t.net : null, t.n ? t.cf : null);
   const feuille = b => {
-    const c = calculs(b), k = partDe(b), net = c.patrimoine != null ? c.patrimoine * k : null;
+    const c = calculs(b), k = partDe(b);
     return `<li><a class="noeud bien-n" href="#investissements/${encodeURIComponent(b.id)}"><span class="ico-n">${icone(b.type)}</span>
-      <span class="nom-n">${esc(b.nom)}${k < 1 ? ` <small>${Math.round(k * 100)} %</small>` : ''}</span>
-      <span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${c.loue || c.mensuCredit ? `<span><b class="${signe(c.cfMois)}">${eur(c.cfMois * k)}/mois</b></span>` : ''}</span></a></li>`;
+      <span class="nom-n">${esc(b.nom)}</span>${k < 1 ? `<small>${Math.round(k * 100)} %</small>` : ''}
+      ${chiffres(c.patrimoine != null ? c.patrimoine * k : null, c.loue || c.mensuCredit ? c.cfMois * k : null)}</a></li>`;
   };
   const branches = [];
   const np = biens.filter(b => b.structure !== 'sci');
-  if (np.length) branches.push(`<li><span class="noeud groupe"><span class="ico-n">${OEIL_PERSO}</span><span class="nom-n">En nom propre</span>${chiffres(totaux(np))}</span>
+  if (np.length) branches.push(`<li><span class="noeud groupe"><span class="ico-n">${OEIL_PERSO}</span><span class="nom-n">En nom propre</span>${tot(totaux(np))}</span>
     <ul>${np.map(feuille).join('')}</ul></li>`);
   for (const x of scis) {
     const sb = biens.filter(b => b.structure === 'sci' && b.sciId === x.id);
-    const assoc = x.associes.filter(a => a.nom || a.parts).map(a => `${esc(a.nom || 'Associé')}${a.parts ? ' ' + String(a.parts).replace('.', ',') + ' %' : ''}`).join(' · ');
+    const assoc = x.associes.filter(a => a.nom || a.parts).map(a => `${esc(a.nom || 'Associé')}${a.parts ? ' ' + String(a.parts).replace('.', ',') + ' %' : ''}`).join(', ');
     branches.push(`<li><a class="noeud groupe" href="#investissements/sci:${encodeURIComponent(x.id)}"><span class="ico-n">${ICONE_SCI}</span>
-      <span class="nom-n">${esc(x.nom)} <small>SCI ${REGIMES[x.regime]}</small>${assoc ? `<small class="assoc">${assoc}</small>` : ''}</span>${chiffres(totaux(sb))}</a>
-      ${sb.length ? `<ul>${sb.map(feuille).join('')}</ul>` : '<ul><li><span class="noeud vide-n">Aucun bien rattaché</span></li></ul>'}</li>`);
+      <span class="nom-n">${esc(x.nom)}</span><small>SCI ${REGIMES[x.regime]}</small>${assoc ? `<small>${assoc}</small>` : ''}${sb.length ? tot(totaux(sb)) : '<small>Aucun bien</small>'}</a>
+      ${sb.length ? `<ul>${sb.map(feuille).join('')}</ul>` : ''}</li>`);
   }
-  return `<details class="orga"${orgaOuverte ? ' open' : ''}><summary><h2 class="sous-titre">Organisation</h2><span class="chevron" aria-hidden="true"></span></summary><div class="arbre">
-    <div class="noeud racine"><span class="nom-n">Mon patrimoine</span>${chiffres(totaux(biens))}</div>
-    <ul>${branches.join('')}</ul></div></details>`;
+  return pli('orga', 'Organisation', null, `<div class="org"><ul class="org-racine"><li><div class="noeud racine"><span class="nom-n">Mon patrimoine</span>${tot(totaux(biens))}</div>
+    ${branches.length ? `<ul>${branches.join('')}</ul>` : ''}</li></ul></div>`);
 }
-// Organisation repliable : réglage gardé sur l'appareil (l'événement toggle ne remonte pas, d'où l'écoute en capture)
-let orgaOuverte = true;
-try { orgaOuverte = localStorage.getItem('orga-repliee') !== '1'; } catch (e) {}
+// Sections de la liste repliables (Mes SCI, Mes biens, Organisation) : réglage gardé sur l'appareil
+let replies = new Set();
+try { replies = new Set(JSON.parse(localStorage.getItem('sections-repliees') || '[]')); } catch (e) {}
+const pli = (cle, titre, nb, contenu) => `<details class="pli" data-pli="${cle}"${replies.has(cle) ? '' : ' open'}><summary><h2 class="sous-titre">${titre}</h2>${nb != null ? `<span class="nb">${nb}</span>` : ''}<span class="chevron" aria-hidden="true"></span></summary>${contenu}</details>`;
+// Sur un petit écran l'organigramme défile de côté : on part du milieu, pour voir « Mon patrimoine »
+function centrerOrg() { const o = racine.querySelector('.org'); if (o) o.scrollLeft = (o.scrollWidth - o.clientWidth) / 2; }
+// L'événement toggle ne remonte pas, d'où l'écoute en capture
 document.addEventListener('toggle', e => {
-  if (!e.target.classList || !e.target.classList.contains('orga')) return;
-  orgaOuverte = e.target.open;
-  try { localStorage.setItem('orga-repliee', orgaOuverte ? '0' : '1'); } catch (e) {}
+  const cle = e.target.dataset && e.target.dataset.pli; if (!cle) return;
+  if (e.target.open) replies.delete(cle); else replies.add(cle);
+  if (cle === 'orga' && e.target.open) centrerOrg();
+  try { localStorage.setItem('sections-repliees', JSON.stringify([...replies])); } catch (e) {}
 }, true);
 const OEIL_PERSO = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
 function carte(b, c) {

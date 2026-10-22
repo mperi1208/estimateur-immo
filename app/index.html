@@ -215,31 +215,42 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap button.discret-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:50%;color:var(--muted)}
 .invwrap button.discret-btn svg{width:18px;height:18px}
 .invwrap button.discret-btn[aria-pressed="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
-/* Arbre du patrimoine */
-.invwrap details.orga{margin:0;border:0;padding:0;border-radius:0}
-.invwrap details.orga > summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;width:max-content;max-width:100%;margin:22px 0 10px}
-.invwrap details.orga > summary .sous-titre{margin:0}
-.invwrap details.orga > summary::-webkit-details-marker{display:none}
-.invwrap details.orga > summary .chevron{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-top:-4px;transition:transform .15s}
-.invwrap details.orga:not([open]) > summary .chevron{transform:rotate(-45deg);margin-top:0}
-.invwrap details.orga > summary:hover .chevron{border-color:var(--ink)}
-.invwrap .arbre{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;overflow-x:auto}
-.invwrap .arbre ul{list-style:none;margin:0;padding:0 0 0 18px}
-.invwrap .arbre li{position:relative;padding:5px 0 5px 22px}
-.invwrap .arbre li::before{content:"";position:absolute;left:0;top:0;bottom:0;border-left:1.5px solid var(--line)}
-.invwrap .arbre li:last-child::before{bottom:auto;height:24px}
-.invwrap .arbre li::after{content:"";position:absolute;left:0;top:24px;width:18px;border-top:1.5px solid var(--line)}
-.invwrap .arbre .noeud{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 12px;border-radius:10px;background:var(--bg);color:inherit;text-decoration:none;max-width:100%}
-.invwrap .arbre a.noeud:hover{background:var(--accent-soft)}
-.invwrap .arbre .racine{background:var(--accent-soft);font-weight:700;margin-bottom:4px}
-.invwrap .arbre .groupe .nom-n{font-weight:700}
-.invwrap .arbre .ico-n{display:inline-flex;color:var(--accent)}
-.invwrap .arbre .ico-n svg{width:20px;height:20px}
-.invwrap .arbre .nom-n small{font-weight:400;color:var(--muted);margin-left:4px}
-.invwrap .arbre .nom-n .assoc{display:block;margin:2px 0 0}
-.invwrap .arbre .chiffres-arbre{display:inline-flex;gap:12px;font-size:13px;color:var(--muted)}
-.invwrap .arbre .chiffres-arbre b{font-variant-numeric:tabular-nums;white-space:nowrap}
-.invwrap .arbre .vide-n{font-size:13px;color:var(--muted)}
+/* Sections repliables de la liste */
+.invwrap details.pli{margin:0;border:0;padding:0;border-radius:0}
+.invwrap details.pli > summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;width:max-content;max-width:100%;margin:22px 0 10px;user-select:none}
+.invwrap details.pli > summary::-webkit-details-marker{display:none}
+.invwrap details.pli > summary .sous-titre{margin:0}
+.invwrap details.pli > summary .nb{font-size:12px;font-weight:600;color:var(--muted);background:var(--line);border-radius:99px;padding:0 7px;line-height:20px}
+.invwrap details.pli > summary .chevron{width:8px;height:8px;margin:-4px 0 0 2px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+.invwrap details.pli:not([open]) > summary .chevron{transform:rotate(-45deg);margin-top:0}
+.invwrap details.pli > summary:hover .chevron{border-color:var(--ink)}
+.invwrap details.pli .filtres{margin-top:0}
+.invwrap details.pli:not([open]) > summary{margin-bottom:0}
+/* Organigramme du patrimoine (traits : chaque enfant trace sa moitié de la barre horizontale et sa descente) */
+.invwrap .org{--trait:color-mix(in srgb,var(--muted) 45%,transparent);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 10px;overflow-x:auto}
+.invwrap .org ul{display:flex;justify-content:center;list-style:none;margin:0;padding:18px 0 0;position:relative}
+.invwrap .org ul.org-racine{padding-top:0;width:max-content;margin:0 auto}
+.invwrap .org li{display:flex;flex-direction:column;align-items:center;position:relative;padding:18px 5px 0}
+.invwrap .org li::before,.invwrap .org li::after{content:"";position:absolute;top:0;right:50%;width:50%;height:18px;border-top:1.5px solid var(--trait)}
+.invwrap .org li::after{right:auto;left:50%;border-left:1.5px solid var(--trait)}
+.invwrap .org li:only-child{padding-top:0}
+.invwrap .org li:only-child::before,.invwrap .org li:only-child::after{display:none}
+.invwrap .org li:first-child::before,.invwrap .org li:last-child::after{border:0}
+.invwrap .org li:last-child::before{border-right:1.5px solid var(--trait);border-radius:0 8px 0 0}
+.invwrap .org li:first-child::after{border-radius:8px 0 0 0}
+.invwrap .org ul ul::before{content:"";position:absolute;top:0;left:50%;height:18px;border-left:1.5px solid var(--trait)}
+.invwrap .org .noeud{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:112px;max-width:170px;padding:9px 12px;border-radius:12px;background:var(--bg);border:1px solid transparent;color:inherit;text-decoration:none;text-align:center;font-size:12px;line-height:1.3}
+.invwrap .org a.noeud:hover{border-color:var(--accent);background:var(--accent-soft)}
+.invwrap .org .racine{background:var(--accent-soft);padding:10px 18px}
+.invwrap .org .groupe{background:var(--panel);border:1.5px solid var(--line)}
+.invwrap .org .ico-n{display:inline-flex;color:var(--accent);margin-bottom:2px}
+.invwrap .org .ico-n svg{width:20px;height:20px}
+.invwrap .org .nom-n{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.invwrap .org .racine .nom-n,.invwrap .org .groupe .nom-n{font-size:14px;font-weight:700}
+.invwrap .org small{color:var(--muted);font-size:12px}
+.invwrap .org .chiffres-arbre{display:flex;flex-direction:column;align-items:center;color:var(--muted);margin-top:3px}
+.invwrap .org .chiffres-arbre b{font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:600px){.invwrap .org .noeud{min-width:96px;padding:8px 9px}.invwrap .org li{padding-left:3px;padding-right:3px}}
 /* Mode discret : les montants (et les champs chiffrés) sont floutés */
 body.discret #invest :is(.chiffres-arbre b, .kpi .v, .kpi .d, .chiffres b, .mini b, .calc b, .auto-chiffres b, .auto-chiffres small, .deux-loyers b, .total, .ta-part, input[type=number], .reneg .aide, .vente .aide, .resume .aide, #inv_auto .aide, .tags, .part){filter:blur(7px);user-select:none}
 .invwrap .dethead-actions{margin-left:auto;flex-shrink:0}
@@ -268,7 +279,6 @@ body.discret #invest :is(.chiffres-arbre b, .kpi .v, .kpi .d, .chiffres b, .mini
 .invwrap .activite{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
 .invwrap .bloc > button{margin-top:10px}
 .invwrap .sous-titre{font-size:17px;margin:22px 0 10px}
-.invwrap .liste-tete{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .invwrap .filtres{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 10px}
 .invwrap .filtres button{padding:5px 12px;border-radius:99px;font-size:13px}
 .invwrap .filtres button span{color:var(--muted);margin-left:2px}
@@ -2346,7 +2356,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=39"></script>
+<script src="investissements.js?v=41"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
