@@ -20,3 +20,7 @@ Mise en place, une fois, dans le projet Supabase :
 2. **SQL Editor** : lancer [`supabase-partage-pari-ldc.sql`](supabase-partage-pari-ldc.sql), pour que les comptes créés depuis l'estimateur ne deviennent pas joueurs du pari.
 3. **Authentication → URL Configuration → Redirect URLs** : ajouter `https://mperi1208.github.io/estimateur-immo/**` (liens de confirmation et de mot de passe oublié).
 4. **SQL Editor** : lancer [`supabase-docs.sql`](supabase-docs.sql) (stockage privé `immo-docs` pour les plans et documents, chaque compte limité à son dossier).
+
+## Tests
+
+`node --test tests/calculs.test.js` : vérifie les calculs de crédit (mensualité, échéancier, différé, restant dû) et de rentabilité d'un bien (loyers, charges, rendements, terrain, colocation). Aucune dépendance.
