@@ -37,6 +37,11 @@ h1{font-size:20px;margin:0 0 2px}
 .recentes button.rec:hover{background:var(--accent-soft)}
 .recentes .rec b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .recentes .rec span{font-size:12px;color:var(--muted)}
+.sauveEst{margin-top:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.sauveEst .sauve-ligne{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sauveEst input{flex:1;min-width:180px}
+.sauveEst button.cta{width:auto;margin:0;padding:10px 16px}
+.sauveEst .hint{margin-top:6px}
 .recentes .rec-ligne{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
 .recentes .rec-ligne button.rec{width:auto;flex:1;min-width:0;border-bottom:0;text-align:left}
 .recentes button.rec-x{flex:0 0 40px;display:flex;align-items:center;justify-content:center;border:0;border-left:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;padding:0}
@@ -974,6 +979,7 @@ function render(r) {
   out.innerHTML = `
     <div class="synth" id="synth"><div class="empty">Calcul…</div></div>
     <div class="works" id="works"></div>
+    <div class="sauveEst" id="sauveEst"></div>
     <details class="detail"><summary>Détail du calcul, sources et ventes comparables</summary>
       <div class="result" id="res"></div>
       <div class="result rent" id="rent"></div>
@@ -987,6 +993,7 @@ function render(r) {
     map.setView([c.lat, c.lon], Math.max(map.getZoom(), 16));
     markers[+tr.dataset.k].openPopup();
   });
+  majSauveEst();
   updateResult();
 }
 
@@ -1743,6 +1750,26 @@ const ilYa = iso => {
   return min < 1 ? 'à l\'instant' : min < 60 ? f.format(-Math.round(min), 'minute') : min < 1440 ? f.format(-Math.round(min / 60), 'hour') : f.format(-Math.round(min / 1440), 'day');
 };
 const CROIX_X = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+// Bouton « Enregistrer mon estimation » : range l'estimation, avec le projet de travaux choisi (aménager, diviser, gamme...),
+// dans Mes projets sans passer par Financer. Sans compte : invitation à se connecter.
+function majSauveEst(msg) {
+  const el = document.getElementById('sauveEst'); if (!el) return;
+  const co = !!COMPTE.user || !COMPTE.actif();
+  el.innerHTML = co
+    ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet"><button class="cta" id="est_enreg">Enregistrer mon estimation</button></div>
+       <div class="hint" id="est_msg">${msg || 'Garde cette estimation, avec le projet de travaux choisi ci-dessus, dans « Mes projets ».'}</div>`
+    : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button></div>
+       <div class="hint">Avec un compte, tu peux enregistrer cette estimation dans « Mes projets » et la retrouver sur tous tes appareils.</div>`;
+  const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
+  const c = document.getElementById('est_connexion'); if (c) c.onclick = () => ouvrirCompte();
+}
+function enregistrerEstimation() {
+  const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
+  if (!est) { majSauveEst('Le loyer est encore en calcul : réessaie dans un instant.'); return; }
+  const nom = document.getElementById('est_nom').value.trim();
+  CF_APP.enregistrerEstimation(est, est.projet ? 'location' : null, nom);
+  majSauveEst('Enregistré dans <a href="#projets">Mes projets</a>. Tu peux en régler le financement dans l\'onglet Financer.');
+}
 function majRecentes() {
   const btn = document.getElementById('recentesBtn'), pan = document.getElementById('recentes');
   btn.hidden = !RECENTES.liste.length;
@@ -1884,6 +1911,7 @@ function majBoutonCompte() {
   document.body.classList.toggle('connecte', !!COMPTE.user || !COMPTE.actif());   // sans compte : seuls Estimer et Financer
   if (window.CF_APP && CF_APP.majCompte) CF_APP.majCompte();
   if (typeof verifierOnglet === 'function') verifierOnglet();
+  if (typeof majSauveEst === 'function') majSauveEst();
   document.getElementById('compteNom').textContent = COMPTE.user ? '' : 'Invité';
   b.hidden = !!COMPTE.user;   // connecté : la déconnexion se fait en cliquant sur l'icône du compte
 }
@@ -2567,6 +2595,13 @@ function recalculer(v, ex) {
     majScis();
   }
 }
+// Depuis Estimer : Financer s'aligne sur l'estimation (et son projet de travaux), comme « Financer ce bien », puis on enregistre
+function enregistrerEstimation(est, mode, nom) {
+  figee = undefined;
+  sync(est, mode);
+  nomTouche = !!nom; if (nom) $('nomProjet').value = nom;
+  enregistrerProjet(false);
+}
 // Rouvre un projet : champs, sections ouvertes et réglages comme à l'enregistrement
 function restaurer(v, cleBien) {
   v = v || {};
@@ -2630,10 +2665,10 @@ $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxCons
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=45"></script>
+<script src="investissements.js?v=46"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
