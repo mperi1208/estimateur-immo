@@ -138,8 +138,6 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap button.primaire{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 .invwrap button.danger{color:var(--bad)}
 .invwrap .lien{border:0;background:none;color:var(--accent);padding:0;text-decoration:underline;font-size:13px}
-.invwrap .compteEtat{margin:0 0 14px;padding:8px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line);font-size:13px}
-.invwrap .compteEtat.connecte{background:var(--accent-soft);border-color:transparent}
 .invwrap .kpis.six{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:16px}
 @media (max-width:900px){.invwrap .kpis.six{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:520px){.invwrap .kpis.six{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -207,7 +205,12 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pied{margin-top:20px;text-align:right}
 .invwrap .titre-discret{display:flex;align-items:center;gap:12px}
 .invwrap .titre-discret .retour{margin-bottom:0}
-.invwrap a.retour + .discret-btn,.invwrap .titre-discret + .compteEtat{margin-top:0}
+.invwrap a.retour + .discret-btn{margin-top:0}
+.invwrap button.etat-compte{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;margin-left:-4px;border-radius:50%;border:0;color:#fff;cursor:default}
+.invwrap button.etat-compte svg{width:13px;height:13px}
+.invwrap button.etat-compte.ok{background:var(--good)}
+.invwrap button.etat-compte.ko{background:var(--bad);cursor:pointer}
+.invwrap button.etat-compte.en-cours{opacity:.5}
 .invwrap .titre-discret:has(.retour){margin-bottom:12px}
 .invwrap button.discret-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:50%;color:var(--muted)}
 .invwrap button.discret-btn svg{width:18px;height:18px}
@@ -925,6 +928,7 @@ const eur = a => (a > 0 ? '+ ' : '− ') + fmtK(Math.abs(a));
 // Mode « moteur » : la page tourne dans un cadre caché pour estimer les biens de « Mes investissements »,
 // sans écran, sans toucher aux réglages enregistrés ni au compte
 const MOTEUR = new URLSearchParams(location.search).has('moteur');
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 let saved = {};
 try { saved = MOTEUR ? {} : JSON.parse(localStorage.getItem('criteres-v2') || '{}'); } catch (e) {}
 
@@ -1752,7 +1756,6 @@ const COMPTE = {
     if (error) throw error;
   },
 };
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 function majBoutonCompte() {
   const b = document.getElementById('compteBtn'), st = document.getElementById('compteStatut');
   st.classList.toggle('connecte', !!COMPTE.user);
@@ -2336,7 +2339,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=37"></script>
+<script src="investissements.js?v=38"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

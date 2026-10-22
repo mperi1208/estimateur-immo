@@ -225,7 +225,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) tire
 window.addEventListener('focus', tirer);
 setInterval(tirer, 30000);
 const contenu = () => ({version: 2, biens, scis, supprimes, recherches: typeof RECENTES !== 'undefined' ? RECENTES.liste : []});
-const majEtat = () => { const e = document.getElementById('inv_etat'); if (e) e.textContent = etatCompte; };
+const majEtat = () => document.querySelectorAll('#invest .etat-compte').forEach(x => x.outerHTML = pastilleCompte());
 
 // ---------- Fichiers : plans, photos, documents ----------
 const BUCKET = 'immo-docs', MAX = 10 * 1024 * 1024;
@@ -531,9 +531,15 @@ const mini = (items, cls = '') => {
 const dist = m => m < 1000 ? fmt(m) + ' m' : (m / 1000).toFixed(1).replace('.', ',') + ' km';
 const kpi = (k, v, d, cls = '') => `<div class="kpi"><div class="k">${k}</div><div class="v ${cls}">${v}</div>${d ? `<div class="d">${d}</div>` : ''}</div>`;
 const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
-const etatHTML = () => COMPTE.user
-  ? `<div class="compteEtat connecte">Connecté · <span id="inv_etat">${esc(etatCompte)}</span></div>`
-  : '<div class="compteEtat">Mode invité : tes biens restent sur cet appareil. <button class="lien" data-a="connexion">Se connecter</button> pour les retrouver partout.</div>';
+// Pastille à droite de l'œil : verte (coche) quand le compte est connecté et enregistré, rouge (croix) sinon
+const COCHE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const CROIX = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>';
+const erreurEtat = () => /^(Échec|Impossible)/.test(etatCompte);
+function pastilleCompte() {
+  const co = !!COMPTE.user, ok = co && !erreurEtat(), enCours = /…$/.test(etatCompte);
+  const texte = !co ? 'Non connecté : tes biens restent sur cet appareil. Cliquer pour se connecter.' : ok ? 'Connecté' + (etatCompte ? ' : ' + etatCompte.replace(/\.$/, '') : '') : etatCompte;
+  return `<button class="etat-compte ${ok ? 'ok' : 'ko'}${enCours ? ' en-cours' : ''}" data-a="etatCompte" title="${esc(texte)}" aria-label="${esc(texte)}">${ok ? COCHE : CROIX}</button>`;
+}
 let ouvert = null, filtre = 'tout';   // bien ou SCI (« sci:<id> ») affiché en détail ; détenteur filtré dans la liste
 
 // Le bien ou la SCI ouvert est celui de l'adresse de la page (#investissements/<id>) : quand les données du compte
@@ -611,10 +617,10 @@ const ICONE_SCI = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" strok
 function vueListe() {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   if (filtre !== 'tout' && filtre !== 'np' && !scis.some(x => x.id === filtre)) filtre = 'tout';
-  let h = `<div class="invhead"><div class="titre-discret"><h1>Mes investissements</h1>${boutonDiscret()}</div><div class="actions">
+  let h = `<div class="invhead"><div class="titre-discret"><h1>Mes investissements</h1>${boutonDiscret()}${pastilleCompte()}</div><div class="actions">
       ${est ? `<button data-a="ajoutEst" title="${esc(est.label)}">+ Ajouter le bien estimé</button>` : ''}
       <button data-a="ajoutSci">+ Créer une SCI</button>
-      <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>${etatHTML()}`;
+      <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   if (biens.length || scis.length) {
     h += kpisTotaux(totaux(biens));
     if (scis.length) h += `<h2 class="sous-titre">Mes SCI</h2><div class="scis">${scis.map(x => {
@@ -707,7 +713,7 @@ const section = (titre, corps, large = false) => `<section class="bloc${large ? 
 function vueDetail(b) {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   const opt = (o) => o;
-  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}</div>${etatHTML()}
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
       <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions"><button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button></div></div>
     <div id="inv_kpis"></div>
@@ -823,7 +829,7 @@ function revenusHTML(b) {
 function vueSci(x) {
   const sesBiens = biens.filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
   const totalParts = somme(x.associes, a => a.parts);
-  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}</div>${etatHTML()}
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand sciv">${ICONE_SCI}<span>SCI ${REGIMES[x.regime]}</span></div>
       <div><h1 id="inv_titre">${esc(x.nom)}</h1><div class="adr" id="inv_sous">${esc(['SCI ' + REGIMES[x.regime], x.siren ? 'SIREN ' + x.siren : '', x.siege].filter(Boolean).join(' · '))}</div></div></div>
     ${kpisTotaux(t)}
@@ -1122,6 +1128,7 @@ racine.addEventListener('click', async e => {
   const b = biens.find(x => x.id === ouvert), a = t.dataset.a;
   const sci = ouvert && ouvert.startsWith('sci:') ? scis.find(x => x.id === ouvert.slice(4)) : null;
   if (a === 'connexion') return ouvrirCompte();
+  if (a === 'etatCompte') { if (!COMPTE.user) return ouvrirCompte(); if (erreurEtat()) alert(etatCompte); return; }
   if (a === 'discret') {
     discret = !discret;
     try { localStorage.setItem('montants-masques', discret ? '1' : '0'); } catch (e) {}
