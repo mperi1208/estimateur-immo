@@ -92,7 +92,7 @@ function calculs(b) {
   const c = b.chargesAn;
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100;
   const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
-  const a = b.achat, cout = (a.prix || 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
+  const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
   const crd = somme(prets, x => x.e && x.e.crd), cfAn = loyersAn - chargesAn - creditAn;
   return {prets, loue, loyerMois, loyersAn, chargesAn, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
     mensuCredit: somme(actifs, x => x.e.pause ? 0 : x.e.M + x.e.assur), interetsAn: somme(actifs, x => x.e.interets + x.e.assur * x.e.payes),
@@ -702,9 +702,14 @@ function vueDetail(b) {
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
       ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
     ${section('Achat', `<div class="grille">
-      ${champ(b, 'achat.date', 'Date d\'achat', {type: 'month'})}${champ(b, 'achat.prix', 'Prix d\'achat (€)', {step: 1000})}
-      ${champ(b, 'achat.notaire', 'Frais de notaire (€)', {step: 100})}${champ(b, 'achat.travaux', 'Travaux (€)', {step: 500})}
-      ${champ(b, 'achat.mobilier', 'Mobilier (€)', {step: 100})}${champ(b, 'achat.frais', 'Autres frais (€)', {step: 100, aide: 'Agence, dossier, garantie…'})}
+      ${champ(b, 'achat.mode', 'Acquisition', {options: {existant: 'Achat d\'un bien', construction: 'Terrain + construction'}, large: true})}
+      ${b.achat.mode === 'construction' ? `${champ(b, 'achat.date', 'Achat du terrain', {type: 'month'})}${champ(b, 'achat.prix', 'Prix du terrain (€)', {step: 1000})}
+      ${champ(b, 'achat.notaire', 'Frais de notaire du terrain (€)', {step: 100})}${champ(b, 'achat.construction', 'Coût de la construction (€)', {step: 1000, aide: 'Constructeur, artisans, architecte : sur factures'})}
+      ${champ(b, 'achat.debutTravaux', 'Début des travaux', {type: 'month', aide: 'Déclaration d\'ouverture de chantier'})}${champ(b, 'achat.finTravaux', 'Fin de la construction', {type: 'month'})}
+      ${champ(b, 'achat.travaux', 'Travaux faits depuis (€)', {step: 500})}`
+      : `${champ(b, 'achat.date', 'Date d\'achat', {type: 'month'})}${champ(b, 'achat.prix', 'Prix d\'achat (€)', {step: 1000})}
+      ${champ(b, 'achat.notaire', 'Frais de notaire (€)', {step: 100})}${champ(b, 'achat.travaux', 'Travaux (€)', {step: 500})}`}
+      ${champ(b, 'achat.mobilier', 'Mobilier (€)', {step: 100})}${champ(b, 'achat.frais', 'Autres frais (€)', {step: 100, aide: b.achat.mode === 'construction' ? 'Raccordements, taxe d\'aménagement, dossier…' : 'Agence, dossier, garantie…'})}
     </div><div class="total" id="inv_cout"></div>`)}
     ${section('Crédit' + (b.prets.length > 1 ? 's' : ''), `<div class="prets">${b.prets.map((p, i) => pretHTML(b, p, i)).join('')}</div><button data-a="ajoutPret">+ Ajouter un prêt</button>`, true)}
     ${section('Charges du propriétaire (par an)', `<div class="grille">
@@ -833,8 +838,11 @@ function simulerVente(b) {
   const r = {mois, prix, frais, crd, ira, iraAuto, annees, regime, k, partBien, partSci, prets: prets.length};
   r.liquide = prix - frais - crd - ira;   // ce qui reste de la vente, avant impôt (pour le bien entier)
   if (regime === 'is') {
-    const acquisition = (a.prix || 0) + (v.fraisAchat ?? ((a.notaire || 0) + (a.frais || 0))) + (v.travaux ?? (a.travaux || 0));
-    const amortAuto = annees != null ? Math.round(((a.prix || 0) * 0.85 + (a.travaux || 0)) / 30 * annees) : 0;   // bâti ≈ 85 % du prix, sur 30 ans
+    const construit = a.mode === 'construction';
+    const acquisition = (a.prix || 0) + (construit ? a.construction || 0 : 0) + (v.fraisAchat ?? ((a.notaire || 0) + (a.frais || 0))) + (v.travaux ?? (a.travaux || 0));
+    // Amortissement : le bâti seulement (≈ 85 % du prix d'un bien acheté ; toute la construction pour une maison construite), sur 30 ans
+    const ansAmort = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : annees;
+    const amortAuto = ansAmort != null ? Math.round(((construit ? a.construction || 0 : (a.prix || 0) * 0.85) + (a.travaux || 0)) / 30 * ansAmort) : 0;
     r.amort = v.amort ?? amortAuto; r.amortAuto = amortAuto;
     r.vnc = Math.max(0, acquisition - r.amort);
     r.pv = prix - frais - r.vnc;
@@ -848,20 +856,32 @@ function simulerVente(b) {
     r.impots = r.is + r.pfu;
     r.pourToi = (r.dansSci - r.pfu) * partSci;
   } else {
-    const rp = regime === 'np' && b.location.statut === 'rp';
+    const rp = regime === 'np' && b.location.statut === 'rp', construit = a.mode === 'construction';
+    // Maison construite : prix d'acquisition = terrain + construction ; forfait de 15 % : 5 ans comptés depuis la fin de la construction
+    const acq = (a.prix || 0) + (construit ? a.construction || 0 : 0);
+    const ansForfait = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : annees;
     const fraisAchat = v.fraisAchat ?? Math.max((a.notaire || 0) + (a.frais || 0), 0.075 * (a.prix || 0));
-    const travaux = v.travaux ?? (annees != null && annees >= 5 ? Math.max(a.travaux || 0, 0.15 * (a.prix || 0)) : (a.travaux || 0));
-    r.fraisAchat = fraisAchat; r.travaux = travaux; r.rp = rp;
-    r.pv = prix - frais - ((a.prix || 0) + fraisAchat + travaux);
-    const pvPart = Math.max(0, r.pv) * k, n = annees ?? 0;
-    r.abIR = abatIR(n); r.abPS = abatPS(n);
-    r.ir = rp ? 0 : pvPart * (1 - r.abIR) * IR_PV;
-    r.ps = rp ? 0 : pvPart * (1 - r.abPS) * PS_PV;
-    r.surtaxe = rp ? 0 : surtaxePV(pvPart * (1 - r.abIR));
+    const travaux = v.travaux ?? (ansForfait != null && ansForfait >= 5 ? Math.max(a.travaux || 0, 0.15 * acq) : (a.travaux || 0));
+    r.fraisAchat = fraisAchat; r.travaux = travaux; r.rp = rp; r.construit = construit;
+    r.pv = prix - frais - (acq + fraisAchat + travaux);
+    const pvPart = Math.max(0, r.pv) * k;
+    // Abattements : la part de plus-value du terrain compte depuis l'achat du terrain, celle de la maison depuis le début des travaux
+    const tranches = construit && (a.construction || 0) > 0
+      ? [[(a.prix || 0) / acq, annees ?? 0], [(a.construction || 0) / acq, anneesEntre(a.debutTravaux || a.finTravaux, mois) ?? 0]]
+      : [[1, annees ?? 0]];
+    r.ir = 0; r.ps = 0; let baseSurtaxe = 0;
+    for (const [poids, n] of tranches) {
+      const pvT = pvPart * poids;
+      r.ir += pvT * (1 - abatIR(n)) * IR_PV; r.ps += pvT * (1 - abatPS(n)) * PS_PV; baseSurtaxe += pvT * (1 - abatIR(n));
+    }
+    r.abIR = pvPart ? 1 - r.ir / (pvPart * IR_PV) : abatIR(annees ?? 0); r.abPS = pvPart ? 1 - r.ps / (pvPart * PS_PV) : abatPS(annees ?? 0);   // abattements moyens
+    r.anneesMaison = construit ? anneesEntre(a.debutTravaux || a.finTravaux, mois) : null;
+    if (rp) { r.ir = 0; r.ps = 0; }
+    r.surtaxe = rp ? 0 : surtaxePV(baseSurtaxe);
     r.impots = r.ir + r.ps + r.surtaxe;
     r.pourToi = r.liquide * k - r.impots;
   }
-  r.manqueAchat = !(a.prix > 0) || !a.date;
+  r.manqueAchat = !(a.prix > 0) || !a.date || (a.mode === 'construction' && !(a.construction > 0));
   return r;
 }
 function venteHTML(b) {
@@ -905,10 +925,10 @@ function majVente(b) {
       ${ligne(`Prélèvements sociaux (17,2 %, abattement ${String(Math.round(r.abPS * 1000) / 10).replace('.', ',')} %)`, moins(r.ps))}
       ${r.surtaxe ? ligne('Surtaxe (plus-value de plus de 50 000 €)', moins(r.surtaxe)) : ''}`}
       ${ligne('<b>Ce qui te revient</b>', eur(r.pourToi), signe(r.pourToi))}</div>
-      ${mini([['Plus-value brute', eur(r.pv)], ['Frais d\'achat déduits', eur(r.fraisAchat)], ['Travaux déduits', eur(r.travaux)], ['Exonération totale', r.annees != null && !r.rp ? (r.annees >= 30 ? 'atteinte' : 'dans ' + (30 - r.annees) + ' ans') : null]], 'petit')}
-      <div class="aide">${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}Frais d'achat : réels ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention.</div>`;
+      ${mini([['Plus-value brute', eur(r.pv)], ['Frais d\'achat déduits', eur(r.fraisAchat)], ['Travaux déduits', eur(r.travaux)], ['Maison : détention', r.construit && r.anneesMaison != null ? r.anneesMaison + ' ans depuis le début des travaux' : null], ['Exonération totale', r.annees != null && !r.rp ? (n => n >= 30 ? 'atteinte' : 'dans ' + (30 - n) + ' ans')(r.construit && r.anneesMaison != null ? Math.min(r.annees, r.anneesMaison) : r.annees) : null]], 'petit')}
+      <div class="aide">${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}${r.construit ? 'Maison construite : prix d\'achat = terrain + construction ; la plus-value du terrain compte depuis son achat, celle de la maison depuis le début des travaux. ' : ''}Frais d'achat : réels ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention${r.construit ? ' (comptés depuis la fin de la construction)' : ''}.</div>`;
   }
-  if (r.manqueAchat) h += '<div class="warnbox">Renseigne le prix et la date d\'achat (bloc Achat) : sans eux, la plus-value et les abattements sont faux.</div>';
+  if (r.manqueAchat) h += `<div class="warnbox">${b.achat.mode === 'construction' ? 'Renseigne le prix et la date d\'achat du terrain, le coût et le début de la construction' : 'Renseigne le prix et la date d\'achat'} (bloc Achat) : sans eux, la plus-value et les abattements sont faux.</div>`;
   el.innerHTML = h;
 }
 function pretHTML(b, p, i) {
@@ -954,7 +974,8 @@ function majCalculs(b) {
   // Total des revenus d'un terrain, mis à jour sans reconstruire la section (pour garder le champ en cours)
   const rt = q('#inv_revTotal');
   if (rt) rt.innerHTML = c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
-  q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && b.achat.prix ? ` · ${fmt(b.achat.prix / b.surface)} €/m² à l'achat` : ''}` : '';
+  const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
+  q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
   b.prets.forEach((p, i) => { const r = racine.querySelector(`[data-resume="${i}"]`); if (r) r.innerHTML = resumePret(b, p, c.prets[i].e); });
 }
 function resumePret(b, p, e) {
@@ -1152,7 +1173,7 @@ racine.addEventListener('change', async e => {
   sauver(b);
   if (chemin.startsWith('vente.')) return majVente(b);
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature'].includes(chemin)) majAuto(b);
