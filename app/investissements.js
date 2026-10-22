@@ -459,9 +459,8 @@ function majAuto(b) {
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
         <div><span>Prix au m²</span><b>${e.ppm >= 10 ? fmt(e.ppm) : e.ppm.toFixed(2).replace('.', ',')} €</b><small>médiane des ventes ${NATURES[b.nature] ? 'de terrains « ' + NATURES[b.nature].toLowerCase() + ' »' : ''}</small></div>
         ${rev ? `<div><span>Rendement brut</span><b>${pct(rev / e.prix)}</b><small>revenus actuels, sur la valeur</small></div>` : ''}</div>
-      <div class="aide">${esc(e.fiabilite)} · ${e.ventes} ventes de terrains à moins de ${e.rayon < 1000 ? fmt(e.rayon) + ' m' : (e.rayon / 1000).toFixed(1).replace('.', ',') + ' km'} (${e.periode}, surface proche) · estimé le ${new Date(e.le).toLocaleDateString('fr-FR')}${b.geo ? ` · adresse reconnue : ${esc(b.geo.label)}` : ''}
-        ${e.ecartees ? `<br>${e.ecartees} vente${e.ecartees > 1 ? 's' : ''} au-dessus de ${fmt(e.seuil)} €/m² écartée${e.ecartees > 1 ? 's' : ''} : parcelles achetées pour construire.` : ''}
-        <br>Les prix des terrains varient beaucoup (constructibilité, accès, vue, viabilisation) : à confirmer par un notaire ou une agence.</div>
+      ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
+      <div class="aide">${e.ecartees ? `${e.ecartees} vente${e.ecartees > 1 ? 's' : ''} au-dessus de ${fmt(e.seuil)} €/m² écartée${e.ecartees > 1 ? 's' : ''} (parcelles achetées pour construire). ` : ''}À confirmer par un notaire ou une agence : accès, vue, viabilisation et zonage comptent beaucoup.</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
     </div>
     ${!a_jour ? '<div class="aide">Surface ou nature modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
@@ -475,8 +474,8 @@ function majAuto(b) {
         ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers${loue ? '' : ' egaux'}"><div class="${loue && !m ? 'actif' : ''}"><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div class="${loue && m ? 'actif' : ''}"><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div></div><small>hors charges/mois${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : ''}</small></div>
         ${loue ? `<div><span>Rendement brut</span><b>${pct(ref * 12 / e.prix)}</b><small>loué ${m ? 'meublé' : 'vide'}, sur la valeur</small></div>`
           : `<div><span>Rendement brut</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${rdt(L.vide)}</b></div><div><small>Meublé</small><b>${rdt(L.meuble)}</b></div></div><small>s'il était loué, sur la valeur</small></div>`}` : ''}</div>
-      <div class="aide">${esc(e.fiabilite)} · ${e.ventes} ventes à moins de ${e.rayon < 1000 ? fmt(e.rayon) + ' m' : (e.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}${e.periode ? ` (ventes ${e.periode})` : ''} · estimé le ${new Date(e.le).toLocaleDateString('fr-FR')}${b.geo ? ` · adresse reconnue : ${esc(b.geo.label)}` : ''}
-        ${loue && ref && b.location.loyer ? `<br>Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / ref - 1)} par rapport au marché ${m ? 'meublé' : 'vide'}.` : ''}</div>
+      ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
+      ${loue && ref && b.location.loyer ? `<div class="aide">Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / ref - 1)} par rapport au marché ${m ? 'meublé' : 'vide'}.</div>` : ''}
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
     </div>
     ${!a_jour ? '<div class="aide">Caractéristiques modifiées depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
@@ -521,6 +520,11 @@ const TYPES = {
 };
 const icone = t => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${(TYPES[t] || TYPES.appart).i}</svg>`;
 const STATUTS = {vide: 'Loué vide', meuble: 'Loué meublé', saisonnier: 'Location saisonnière', vacant: 'Vacant', rp: 'Résidence principale', secondaire: 'Résidence secondaire', travaux: 'En travaux'};
+const mini = (items, cls = '') => {
+  const l = items.filter(x => x && x[1] != null && x[1] !== '');
+  return l.length ? `<div class="mini ${cls}">${l.map(([k, v, c]) => `<div><span>${k}</span><b class="${c || ''}">${v}</b></div>`).join('')}</div>` : '';
+};
+const dist = m => m < 1000 ? fmt(m) + ' m' : (m / 1000).toFixed(1).replace('.', ',') + ' km';
 const kpi = (k, v, d, cls = '') => `<div class="kpi"><div class="k">${k}</div><div class="v ${cls}">${v}</div>${d ? `<div class="d">${d}</div>` : ''}</div>`;
 const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
 const etatHTML = () => COMPTE.user
@@ -755,7 +759,7 @@ function vueSci(x) {
 function majParts(x, t = totaux(biens.filter(b => b.structure === 'sci' && b.sciId === x.id))) {
   x.associes.forEach((a, i) => {
     const el = racine.querySelector(`[data-part="${i}"]`); if (!el) return;
-    el.textContent = a.parts > 0 ? `Sa part : ${t.V ? kEur(t.net * a.parts / 100) + ' de patrimoine net, ' : ''}${eur(t.cf * a.parts / 100)}/mois de cash-flow` : '';
+    el.innerHTML = a.parts > 0 ? mini([['Sa part du patrimoine net', t.V ? kEur(t.net * a.parts / 100) : null, signe(t.net)], ['Sa part du cash-flow', eur(t.cf * a.parts / 100) + '/mois', signe(t.cf)]], 'petit') : '';
   });
   const tp = somme(x.associes, a => a.parts), el = racine.querySelector('#inv_parts');
   if (el) el.textContent = x.associes.length && Math.abs(tp - 100) > 0.01 ? `Total des parts : ${String(Math.round(tp * 100) / 100).replace('.', ',')} % (devrait faire 100 %).` : '';
@@ -784,19 +788,22 @@ function majCalculs(b) {
     ${kpi('Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois) : '—', 'par mois, avant impôts', signe(c.cfMois))}
     ${kpi('Rendement brut', c.brut != null ? pct(c.brut) : '—', c.cout ? 'loyer annuel ÷ coût total' : 'renseigne l\'achat')}
     ${kpi('Plus-value latente', c.plusValue != null ? kEur(c.plusValue) : '—', 'valeur − coût total', c.plusValue != null ? signe(c.plusValue) : '')}</div>
-    ${partDe(b) < 1 ? (k => `<div class="okbox ta-part">Ta part (${Math.round(k * 100)} %) : valeur ${b.valeur ? kEur(b.valeur * k) : '—'} · restant dû ${c.crd ? kEur(c.crd * k) : '—'} · patrimoine net ${c.patrimoine != null ? kEur(c.patrimoine * k) : '—'} · cash-flow ${eur(c.cfMois * k)}/mois. Les chiffres ci-dessus sont ceux du bien entier.</div>`)(partDe(b)) : ''}`;
+    ${partDe(b) < 1 ? (k => `<div class="ta-part"><div class="ta-part-titre">Ta part : ${Math.round(k * 100)} % du bien</div>${mini([
+      ['Valeur', b.valeur ? kEur(b.valeur * k) : null], ['Restant dû', c.crd ? kEur(c.crd * k) : null],
+      ['Patrimoine net', c.patrimoine != null ? kEur(c.patrimoine * k) : null, signe(c.patrimoine)],
+      ['Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois * k) + '/mois' : null, signe(c.cfMois)]]) || '<div class="aide">Les totaux de la page comptent cette part.</div>'}</div>`)(partDe(b)) : ''}`;
   const ligne = (l, v, cls = '') => `<div><span>${l}</span><b class="${cls}">${v}</b></div>`;
   q('#inv_renta').innerHTML = `<div class="calc">
       ${ligne(b.type === 'terrain' ? 'Revenus encaissés' : 'Loyers encaissés', eur(c.loyersAn) + '/an', '')}
-      ${ligne('Charges du propriétaire', '−' + eur(c.chargesAn) + '/an')}
-      ${ligne('Crédit (mensualités et assurance)', '−' + eur(c.creditAn) + '/an')}
+      ${ligne('Charges du propriétaire', (c.chargesAn ? '−' : '') + eur(c.chargesAn) + '/an')}
+      ${ligne('Crédit (mensualités et assurance)', (c.creditAn ? '−' : '') + eur(c.creditAn) + '/an')}
       ${ligne('<b>Cash-flow</b>', eur(c.cfAn) + '/an · ' + eur(c.cfMois) + '/mois', signe(c.cfAn))}
-      ${ligne('Capital remboursé sur 12 mois', '+' + eur(c.capitalAn))}
+      ${ligne('Capital remboursé sur 12 mois', (c.capitalAn ? '+' : '') + eur(c.capitalAn))}
       ${ligne('<b>Enrichissement</b> (cash-flow + capital remboursé)', eur(c.cfAn + c.capitalAn) + '/an', signe(c.cfAn + c.capitalAn))}
       ${c.net != null ? ligne('Rendement net de charges', pct(c.net) + ' du coût total') : ''}
       ${c.cout && c.emprunte ? ligne('Apport', eur(Math.max(0, c.cout - c.emprunte)) + (c.cout - c.emprunte <= 0 ? ' (financé à 100 % ou plus)' : '')) : ''}
     </div>
-    <div class="aide">Avant impôts. ${!c.loue ? 'Bien non loué : pas de loyer compté. ' : ''}${Object.values(b.chargesAn).every(v => v == null) ? 'Charges pas encore renseignées. ' : ''}${!b.prets.length ? 'Aucun crédit renseigné.' : ''}</div>`;
+    <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
   // Total des revenus d'un terrain, mis à jour sans reconstruire la section (pour garder le champ en cours)
   const rt = q('#inv_revTotal');
   if (rt) rt.innerHTML = c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
@@ -804,15 +811,21 @@ function majCalculs(b) {
   b.prets.forEach((p, i) => { const r = racine.querySelector(`[data-resume="${i}"]`); if (r) r.innerHTML = resumePret(b, p, c.prets[i].e); });
 }
 function resumePret(b, p, e) {
-  if (!e) return '<div class="aide">Renseigne le montant, le taux, la durée et la 1re échéance (ou le restant dû relevé) pour voir où tu en es.</div>';
-  if (e.mois <= 0) return '<div class="okbox">Prêt remboursé.</div>';
+  if (!e) return '<div class="aide">Remplis le taux, la mensualité et le restant dû (ou le montant, la durée et la 1re échéance) pour voir où en est ce prêt.</div>';
+  if (e.mois <= 0) return '<div class="pret-etat"><b>Prêt remboursé</b></div>';
   const a = analyseReneg(p, e, b.structure !== 'np'), dejaPaye = p.montant > 0 ? 1 - e.crd / p.montant : null;
-  let h = `<div class="okbox">${e.pause ? `<b>En pause</b> jusqu'en ${libMois(e.reprise)} (différé : pas d'échéance, les intérêts s'ajoutent au capital). À la reprise : <b>${eur(e.crd)}</b> à rembourser en ${e.mois - e.pause} mois, mensualité ${eur(e.M)}${e.assur ? ` + ${eur(e.assur)} d'assurance` : ''}, fin en ${libMois(e.fin)}.` : `Aujourd'hui : <b>${eur(e.crd)}</b> restant dû, ${e.mois} mois restants (fin en ${libMois(e.fin)}). Mensualité ${eur(e.M)}${e.assur ? ` + ${eur(e.assur)} d'assurance` : ''}.`}
+  const taux = v => v.toFixed(2).replace('.', ',') + ' %';
+  let h = `<div class="pret-etat">
+    ${e.pause ? `<div class="pret-pause">En pause jusqu'en ${libMois(e.reprise)} : pas d'échéance, les intérêts s'ajoutent au capital.</div>` : ''}
+    ${mini([[e.pause ? 'À rembourser à la reprise' : 'Restant dû', eur(e.crd)], ['Mensualité', eur(e.M) + (e.assur ? ' + ' + eur(e.assur) + ' d\'assurance' : '')],
+      ['Fin du prêt', libMois(e.fin)], ['Mois restants', String(e.mois - (e.pause || 0))]])}
     ${dejaPaye != null ? `<div class="barre"><span style="width:${Math.max(0, Math.min(100, dejaPaye * 100)).toFixed(1)}%"></span></div><div class="aide">${pct(dejaPaye)} du capital remboursé</div>` : ''}
-    Sur les 12 prochains mois : ${e.pause ? `${e.payes} échéance${e.payes > 1 ? 's' : ''} après la reprise, ` : ''}${eur(e.interets)} d'intérêts et ${eur(e.capital)} de capital remboursé.</div>`;
-  if (a) h += `<div class="${a.netAvenant > 0 ? 'okbox' : 'warnbox'}">Au taux du marché (${T.TAUX_ACTUEL.mois}) : <b>${a.tNew.toFixed(2).replace('.', ',')} %</b>${b.structure !== 'np' ? ' (SCI)' : ''} contre ${String(p.taux).replace('.', ',')} % ; mensualité ${eur(a.mensu2)}, soit ${eur(a.gainMois)}/mois et ${eur(a.gainTotal)} d'intérêts ${a.gainTotal >= 0 ? 'en moins' : 'en plus'}.
-    Renégociation avec ta banque (avenant ≈ 600 €) : gain net ≈ <b>${eur(a.netAvenant)}</b>. Rachat par une autre banque (indemnités ≈ ${eur(a.ira)}) : gain net ≈ <b>${eur(a.netRachat)}</b>.
-    ${a.surprime ? `<br>Surprime payée à la signature (${libMois(a.offre)}) : <b>${a.surprime[0] >= 0 ? '+' : ''}${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à ' + (a.surprime[1] >= 0 ? '+' : '') + a.surprime[1].toFixed(2).replace('.', ',') : ''} point</b> par rapport au taux moyen du marché à durée égale.` : ''}</div>`;
+    ${mini([['Intérêts sur 12 mois', eur(e.interets)], ['Capital remboursé sur 12 mois', eur(e.capital)]], 'petit')}
+  </div>`;
+  if (a) h += `<div class="reneg ${a.netAvenant > 0 ? 'oui' : 'non'}"><div class="reneg-titre">Aux taux d'aujourd'hui : ${taux(a.tNew)}${b.structure !== 'np' ? ' (SCI)' : ''} au lieu de ${taux(p.taux)}</div>
+    ${mini([['Nouvelle mensualité', eur(a.mensu2)], ['Différence', (a.gainMois >= 0 ? '−' : '+') + eur(Math.abs(a.gainMois)) + '/mois', a.gainMois > 0 ? 'up' : 'down'],
+      ['Gain net : renégociation', '≈ ' + eur(a.netAvenant), signe(a.netAvenant)], ['Gain net : rachat', '≈ ' + eur(a.netRachat), signe(a.netRachat)]])}
+    <div class="aide">Renégociation avec ta banque : avenant ≈ 600 €. Rachat par une autre banque : indemnités ≈ ${eur(a.ira)}, plus dossier et garantie.${a.surprime ? ` Surprime payée en ${libMois(a.offre)} : ${a.surprime[0] >= 0 ? '+' : ''}${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à ' + (a.surprime[1] >= 0 ? '+' : '') + a.surprime[1].toFixed(2).replace('.', ',') : ''} point par rapport au marché de l'époque.` : ''}</div></div>`;
   return h;
 }
 function docsHTML(b) {

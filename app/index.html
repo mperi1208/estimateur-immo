@@ -203,7 +203,16 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .part-ligne{display:flex;align-items:center;gap:12px}
 .invwrap .part-ligne input[type=range]{flex:1;padding:0;border:0;background:none;accent-color:var(--accent);height:28px}
 .invwrap .part-ligne output{min-width:56px;text-align:right;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
-.invwrap .ta-part{margin:-6px 0 16px;font-size:14px}
+.invwrap .mini{display:flex;flex-wrap:wrap;gap:8px 22px;margin:6px 0}
+.invwrap .mini span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.invwrap .mini b{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.invwrap .mini.petit b{font-size:13px;font-weight:600}
+.invwrap .ta-part{margin:-6px 0 16px;padding:10px 14px;border-radius:12px;background:var(--accent-soft)}
+.invwrap .ta-part-titre{font-size:13px;font-weight:700;color:var(--accent)}
+.invwrap .pret-etat,.invwrap .reneg{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--bg)}
+.invwrap .reneg.oui{background:color-mix(in srgb,var(--good) 10%,transparent)}
+.invwrap .pret-pause,.invwrap .reneg-titre{font-size:13px;font-weight:600;margin-bottom:2px}
+.invwrap .pret-pause{color:var(--warn)}
 .invwrap .aide.parts{margin:-4px 0 8px}
 .invwrap .activite{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
 .invwrap .bloc > button{margin-top:10px}
@@ -2148,7 +2157,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=20"></script>
+<script src="investissements.js?v=22"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
