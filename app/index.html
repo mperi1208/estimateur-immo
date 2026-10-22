@@ -199,6 +199,8 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .doc .nom{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .invwrap .doc .meta{color:var(--muted)}
 .invwrap .pied{margin-top:20px;text-align:right}
+.invwrap #inv_carte{height:230px;border-radius:10px;border:1px solid var(--line);z-index:0}
+.invwrap .carte-bien .aide{margin-top:6px}
 .invwrap .part-bien{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .invwrap .part-ligne{display:flex;align-items:center;gap:12px}
 .invwrap .part-ligne input[type=range]{flex:1;padding:0;border:0;background:none;accent-color:var(--accent);height:28px}
@@ -1354,6 +1356,7 @@ function renderSynth() {
 // --- Carte ---
 const map = L.map('map').setView([46.6, 2.4], 6);
 if (!MOTEUR) L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
+map.attributionControl.setPrefix(false);
 layer.addTo(map);
 // Place le point sans lancer l'estimation (on règle d'abord les détails du bien)
 function placer(lat, lon, zoom, label) {
@@ -2157,7 +2160,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=22"></script>
+<script src="investissements.js?v=24"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

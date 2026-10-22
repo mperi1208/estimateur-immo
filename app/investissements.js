@@ -334,7 +334,7 @@ const meubleBien = b => ['meuble', 'saisonnier'].includes(b.location.statut);
 // Terrains : codes DVF (le filtre de l'API prend le début du code) — un terrain à bâtir se vend souvent
 // 50 à 100 fois plus cher au m² qu'un pré, d'où une comparaison seulement entre terrains de même nature
 const NATURE_DVF = {constructible: '21', agricole: '231', naturel: '232,233,239', loisirs: '22', stockage: '22', autre: '2'};
-const estimable = b => (TYPE_DVF[b.type] || (b.type === 'terrain' && NATURE_DVF[b.nature])) && b.adresse.trim().length >= 5 && b.surface >= (b.type === 'terrain' ? 50 : 9);
+const estimable = b => (TYPE_DVF[b.type] || (b.type === 'terrain' && NATURE_DVF[b.nature])) && (b.adresse.trim().length >= 5 || (b.geo && b.geo.manuel)) && b.surface >= (b.type === 'terrain' ? 50 : 9);
 function versTerrain(f) {
   const p = f.properties, prix = +p.valeurfonc, st = +p.sterr;
   if (!(prix > 500) || !(st >= 50) || +p.sbati > 0 || /^Echange|^Adjudication|^Expropriation/.test(p.libnatmut || '')) return null;
@@ -406,9 +406,9 @@ async function estimerBien(b0) {
   enCours.add(b.id); majAuto(b);
   const le = new Date().toISOString().slice(0, 10);
   try {
-    if (!b.geo || b.geo.pour !== b.adresse.trim()) {
+    if (!b.geo || (!b.geo.manuel && b.geo.pour !== b.adresse.trim())) {
       const f = (await geocode(b.adresse.trim()))[0];
-      if (!f) throw new Error('Adresse introuvable : ajoute la ville ou le code postal.');
+      if (!f) throw new Error('Adresse introuvable : place le bien sur la carte (sous l\'adresse), ou ajoute la ville ou le code postal.');
       b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
     }
     const res = b.type === 'terrain' ? await estimerTerrain(b.geo.lat, b.geo.lon, b.surface, b.nature)
@@ -538,7 +538,41 @@ function idDuHash() {
   const [t, sous] = location.hash.slice(1).split('/');
   return (t === 'investissements' || t === 'credits') && sous ? decodeURIComponent(sous) : null;
 }
+// ---------- Carte de la fiche : placer le bien à la main quand l'adresse n'est pas trouvée ----------
+let carteBien = null;
+function aideCarte(b) {
+  if (!b.geo) return 'Adresse introuvable ? Clique sur la carte à l\'endroit du bien.';
+  const pres = b.geo.label ? `, près de ${esc(b.geo.label)}` : '';
+  return (b.geo.manuel ? `Placé sur la carte${pres}.` : `Adresse reconnue : ${esc(b.geo.label)}.`) + ' Clique ou fais glisser le repère pour corriger.';
+}
+function initCarte(b) {
+  if (carteBien) { carteBien.remove(); carteBien = null; }
+  const el = racine.querySelector('#inv_carte'); if (!el || typeof L === 'undefined') return;
+  const g = b.geo;
+  carteBien = L.map(el, {scrollWheelZoom: false}).setView(g ? [g.lat, g.lon] : [46.6, 2.4], g ? 16 : 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(carteBien);
+  carteBien.attributionControl.setPrefix(false);   // pas de lien « Leaflet » qui ferait quitter le site d'un doigt
+  let repere = null;
+  const placer = async ll => {
+    if (!repere) repere = L.marker(ll, {draggable: true}).addTo(carteBien).on('dragend', e => placer(e.target.getLatLng()));
+    else repere.setLatLng(ll);
+    let label = '';
+    try { const f = (await getJSON(`https://data.geopf.fr/geocodage/reverse?lon=${ll.lng}&lat=${ll.lat}&limit=1`)).features[0]; if (f) label = f.properties.label; } catch (e) {}
+    const c = biens.find(x => x.id === b.id) || b;
+    if (!c.adresse.trim() && label) { c.adresse = label; const a = racine.querySelector('#inv_adresse'); if (a) a.value = label; }
+    c.geo = {lat: ll.lat, lon: ll.lng, label, pour: c.adresse.trim(), manuel: true};
+    sauver(c);
+    const aide = racine.querySelector('#inv_carteAide'); if (aide) aide.innerHTML = aideCarte(c);
+    majAuto(c);
+  };
+  if (g) repere = L.marker([g.lat, g.lon], {draggable: true}).addTo(carteBien).on('dragend', e => placer(e.target.getLatLng()));
+  carteBien.on('click', e => placer(e.latlng));
+  // Pas encore de point : on centre au moins sur ce que le géocodage comprend de l'adresse (la ville, souvent)
+  if (!g && b.adresse.trim().length >= 3) geocode(b.adresse.trim()).then(f => { if (f[0] && carteBien && !repere) carteBien.setView([f[0].geometry.coordinates[1], f[0].geometry.coordinates[0]], 15); }).catch(() => {});
+  setTimeout(() => carteBien && carteBien.invalidateSize(), 60);
+}
 function afficher(id = idDuHash()) {
+  if (carteBien) { carteBien.remove(); carteBien = null; }
   const sci = id && id.startsWith('sci:') ? scis.find(x => x.id === id.slice(4)) : null;
   ouvert = sci ? id : id && biens.some(b => b.id === id) ? id : null;
   if (sci) vueSci(sci); else if (ouvert) vueDetail(biens.find(b => b.id === ouvert)); else vueListe();
@@ -646,7 +680,8 @@ function vueDetail(b) {
       <div class="large sugg"><label for="inv_adresse">Adresse</label>
         <input id="inv_adresse" name="search" data-p="adresse" type="search" enterkeyhint="search" value="${esc(b.adresse)}" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="inv_sugg" aria-expanded="false">
         <ul id="inv_sugg" role="listbox" hidden></ul>
-        ${b.geo && b.geo.pour === b.adresse.trim() && b.geo.label !== b.adresse.trim() ? `<div class="aide">Adresse reconnue : ${esc(b.geo.label)}</div>` : ''}</div>
+        </div>
+      <div class="large carte-bien"><div id="inv_carte" aria-label="Carte : clique à l'endroit du bien"></div><div class="aide" id="inv_carteAide">${aideCarte(b)}</div></div>
       ${b.type === 'terrain' ? `${champ(b, 'surface', 'Surface (m²)', {aide: b.surface >= 10000 ? (b.surface / 10000).toFixed(2).replace('.', ',') + ' ha' : ''})}${champ(b, 'nature', 'Nature du terrain', {options: NATURES})}`
         : `${champ(b, 'surface', 'Surface (m²)')}${champ(b, 'pieces', 'Pièces')}
       ${champ(b, 'annee', 'Année de construction')}`}
@@ -684,7 +719,7 @@ function vueDetail(b) {
     </div>
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
-  majCalculs(b); docsHTML(b); vignettes(); majAuto(b);
+  majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b);
 }
 // Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Estimer)
 function critHTML(b) {
