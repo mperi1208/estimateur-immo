@@ -518,6 +518,7 @@ const SOURCES = {
   ext20: ["MeilleursAgents — effet de la taille de l'extérieur (2020)", 'https://edito.meilleursagents.com/terrasses-et-balcons-font-ils-grimper-les-prix-des-appartements'],
   reno: ['MeilleursAgents — prix rénové / à rénover à Paris (2022) + coûts de travaux usuels', 'https://edito.meilleursagents.com/immobilier-si-vous-preniez-la-bonne-resolution-de-renover'],
   park: ["Notaires du Grand Paris — prix médian d'un parking à Paris : 28 000 € (2024)", 'https://monimmeuble.com/actualite/prix-des-parkings-en-ile-de-france-combien-coute-une-place'],
+  parkto: ['Parkto — loyers à Paris par type de place : extérieure 60-150 €, sous-sol 80-210 €, box fermé 100-280 € (+20 à 40 %), 2026', 'https://parkto.fr/blog/prix-location-parking-paris-combien-louer'],
   vue: ['BienAvecVue — prime vue mer de +30 à +55 % sur le littoral (retenue ici avec prudence)', 'https://renseignementeconomique.fr/la-vue-mer-peut-doubler-le-prix-d-un-logement-sur-certaines-cotes-francaises'],
   te: ['MeilleursAgents — vue sur la tour Eiffel : +6 à +9 % dans les arrondissements centraux (2018)', 'https://monimmeuble.com/actualite/la-vue-sur-la-tour-eiffel-fait-senvoler-les-prix-de-limmobilier'],
   bruit: ['Études hédoniques sur le bruit : environ −0,5 % par décibel au-delà de 60 dB', 'https://www.senat.fr/questions/base/2003/qSEQ030607938.html'],
@@ -601,10 +602,13 @@ const CRITERES = [
     {k: 'normal', l: 'Normal', d: 1}, {k: 'calme', l: 'Très calme', p: 0.02, src: 'est'}]},
   {id: 'parking', label: 'Stationnement', pour: 'appart', options: [
     {k: 'aucun', l: 'Aucun', d: 1},
-    {k: '1', l: '1 place / box', abs: {paris: 28000}, p: {autre: 0.07}, src: {paris: 'park', autre: 'nf'}},
+    // Place couverte = référence (médiane parisienne des notaires) ; extérieure ≈ −25 %, box fermé ≈ +30 % (écart des loyers selon Parkto)
+    {k: 'ext', l: 'Place extérieure', abs: {paris: 21000}, p: {autre: 0.05}, src: {paris: 'parkto', autre: 'parkto'}},
+    {k: '1', l: 'Place couverte / en sous-sol', abs: {paris: 28000}, p: {autre: 0.07}, src: {paris: 'park', autre: 'nf'}},
+    {k: 'box', l: 'Box ou garage fermé', abs: {paris: 36000}, p: {autre: 0.09}, src: {paris: 'parkto', autre: 'parkto'}},
     {k: '2', l: '2 places ou plus', abs: {paris: 56000}, p: {autre: 0.12}, src: {paris: 'park', autre: 'nf'}}]},
   {id: 'garage', label: 'Stationnement', pour: 'maison', src: 'nf', options: [
-    {k: 'oui', l: 'Garage / parking', d: 1}, {k: 'non', l: 'Aucun', p: -0.05}]},
+    {k: 'oui', l: 'Garage fermé', d: 1}, {k: 'place', l: 'Place extérieure / abri', p: -0.025}, {k: 'non', l: 'Aucun', p: -0.05}]},
   {id: 'location', label: 'Location', pour: 'tous', special: true, cache: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}]},
   {id: 'chambre', label: 'Chambre séparée (≤ 40 m²)', pour: 'appart', check: true, p: 0.05, maxSurf: 40, src: 'chambre'},
   {id: 'cave', label: 'Cave', pour: 'appart', check: true, p: 0.01, src: 'est'},
@@ -1173,8 +1177,8 @@ function calcLoyer(r, lm, insee, facteurPrix, chambreEff, facteurHorsEtat) {
   const {f: actu, src: actuSrc} = recalage(insee);
   const factor = qual * (meuble ? 1 + MEUBLE[z] : 1);
   // Parking : à Paris il se loue à part (~150 €/mois) ; ailleurs il est déjà dans le facteur du bien
-  const nbPk = isAppart() ? {'1': 1, '2': 2}[selected(crit('parking')).k] || 0 : 0;
-  const pkM = z === 'paris' ? nbPk * 150 : 0;
+  // À Paris, le stationnement se loue à part : loyer mensuel selon le type (Parkto, Yespark : 148 € en moyenne)
+  const pkM = z === 'paris' && isAppart() ? {ext: 105, '1': 145, box: 190, '2': 290}[selected(crit('parking')).k] || 0 : 0;
   const cc = m2 => m2 * actu * factor * surf + pkM;
   const CC = cc(lm.m2), lo = cc((lm.m2 + lm.lo) / 2), hi = cc((lm.m2 + lm.hi) / 2);
   return {meuble, charges, qual, etatDpe, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC: CC - charges * surf};
@@ -2160,7 +2164,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=24"></script>
+<script src="investissements.js?v=25"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
