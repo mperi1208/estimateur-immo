@@ -199,6 +199,12 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .doc .nom{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .invwrap .doc .meta{color:var(--muted)}
 .invwrap .pied{margin-top:20px;text-align:right}
+.invwrap .part-bien{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.invwrap .part-ligne{display:flex;align-items:center;gap:12px}
+.invwrap .part-ligne input[type=range]{flex:1;padding:0;border:0;background:none;accent-color:var(--accent);height:28px}
+.invwrap .part-ligne output{min-width:56px;text-align:right;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.invwrap .ta-part{margin:-6px 0 16px;font-size:14px}
+.invwrap .aide.parts{margin:-4px 0 8px}
 .invwrap .activite{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
 .invwrap .bloc > button{margin-top:10px}
 .invwrap .sous-titre{font-size:17px;margin:22px 0 10px}
@@ -2142,7 +2148,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=17"></script>
+<script src="investissements.js?v=18"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

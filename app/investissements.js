@@ -459,15 +459,17 @@ function afficher(id = idDuHash()) {
   if (sci) vueSci(sci); else if (ouvert) vueDetail(biens.find(b => b.id === ouvert)); else vueListe();
 }
 // Totaux d'un ensemble de biens (patrimoine net : seulement sur les biens dont la valeur est renseignée)
+// Part du bien détenue (indivision, bien à plusieurs…) : 100 % par défaut
+const partDe = b => Math.max(1, Math.min(100, b.part || 100)) / 100;
 function totaux(liste) {
-  const cs = liste.map(calculs), estimes = liste.map((b, i) => [b, cs[i]]).filter(([b]) => b.valeur > 0);
-  const V = somme(estimes, ([b]) => b.valeur), Dv = somme(estimes, ([, c]) => c.crd), D = somme(cs, c => c.crd);
+  const cs = liste.map(calculs), avec = liste.map((b, i) => [b, cs[i], partDe(b)]), estimes = avec.filter(([b]) => b.valeur > 0);
+  const V = somme(estimes, ([b, , k]) => b.valeur * k), Dv = somme(estimes, ([, c, k]) => c.crd * k), D = somme(avec, ([, c, k]) => c.crd * k);
   return {cs, V, D, net: V - Dv, manque: liste.length - estimes.length, n: liste.length, nEst: estimes.length,
-    loyers: somme(cs, c => c.loyerMois), cf: somme(cs, c => c.cfMois)};
+    loyers: somme(avec, ([, c, k]) => c.loyerMois * k), cf: somme(avec, ([, c, k]) => c.cfMois * k), partiel: avec.some(([, , k]) => k < 1)};
 }
 function kpisTotaux(t) {
   const sur = t.manque ? `sur ${t.nEst} bien${t.nEst > 1 ? 's' : ''} estimé${t.nEst > 1 ? 's' : ''}` : '';
-  return `<div class="kpis six">${kpi('Biens', t.n, t.manque ? `${t.manque} sans valeur` : '')}${kpi('Valeur', t.V ? kEur(t.V) : '—', t.V ? sur || 'estimée' : 'à renseigner')}
+  return `${t.partiel ? '<div class="aide parts">Totaux calculés sur tes parts (biens détenus en partie).</div>' : ''}<div class="kpis six">${kpi('Biens', t.n, t.manque ? `${t.manque} sans valeur` : '')}${kpi('Valeur', t.V ? kEur(t.V) : '—', t.V ? sur || 'estimée' : 'à renseigner')}
     ${kpi('Restant dû', kEur(t.D), t.V && !t.manque ? Math.round(t.D / t.V * 100) + ' % de la valeur' : 'tous crédits')}
     ${kpi('Patrimoine net', t.V ? kEur(t.net) : '—', t.V ? sur || 'valeur − restant dû' : 'renseigne la valeur des biens', t.V ? signe(t.net) : '')}
     ${kpi('Loyers', eur(t.loyers), 'par mois')}${kpi('Cash-flow', eur(t.cf), 'par mois, avant impôts', signe(t.cf))}</div>`;
@@ -506,15 +508,16 @@ function vueListe() {
   vignettes();
 }
 function carte(b, c) {
-  const tags = [b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
+  const k = partDe(b), x = n => n * k;
+  const tags = [k < 1 ? `Part : ${Math.round(k * 100)} %` : '', b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
     b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b)].filter(Boolean);
   return `<a class="bien" href="#investissements/${encodeURIComponent(b.id)}">
     <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type] ? TYPES[b.type].l : ''}</span></div>
     <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || 'Adresse à renseigner')}</span><span class="tags">${tags.map(esc).join(' · ')}</span></div>
     <div class="chiffres">
-      <div><span>Valeur</span><b>${b.valeur ? kEur(b.valeur) : '—'}</b></div>
-      <div><span>Restant dû</span><b>${c.crd ? kEur(c.crd) : '—'}</b></div>
-      <div><span>Cash-flow</span><b class="${signe(c.cfMois)}">${c.loue || c.mensuCredit ? eur(c.cfMois) + '/mois' : '—'}</b></div>
+      <div><span>Valeur${k < 1 ? ' (ta part)' : ''}</span><b>${b.valeur ? kEur(x(b.valeur)) : '—'}</b></div>
+      <div><span>Restant dû${k < 1 ? ' (ta part)' : ''}</span><b>${c.crd ? kEur(x(c.crd)) : '—'}</b></div>
+      <div><span>Cash-flow${k < 1 ? ' (ta part)' : ''}</span><b class="${signe(c.cfMois)}">${c.loue || c.mensuCredit ? eur(x(c.cfMois)) + '/mois' : '—'}</b></div>
       <div><span>Rendement brut</span><b>${c.brut != null ? pct(c.brut) : '—'}</b></div>
     </div><span class="chev" aria-hidden="true">›</span></a>`;
 }
@@ -568,6 +571,9 @@ function vueDetail(b) {
         <option value="+">+ Créer une SCI…</option></select>
         ${sciDe(b) ? `<div class="aide"><a href="#investissements/sci:${encodeURIComponent(b.sciId)}">Voir la fiche de la SCI →</a></div>` : ''}</div>
     </div>
+    <div class="part-bien"><label for="inv_part">Part détenue ${sciDe(b) ? 'par la SCI' : 'par toi'}</label>
+      <div class="part-ligne"><input type="range" id="inv_part" data-p="part" min="1" max="100" step="1" value="${Math.round(partDe(b) * 100)}"><output id="inv_partVal" for="inv_part">${Math.round(partDe(b) * 100)} %</output></div>
+      <div class="aide">Pour un bien à plusieurs (indivision, famille…) : les totaux de « Mes investissements » ne comptent que cette part.</div></div>
     ${critHTML(b)}
     ${TYPE_DVF[b.type] ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
@@ -696,7 +702,8 @@ function majCalculs(b) {
     ${kpi('Patrimoine net', c.patrimoine != null ? kEur(c.patrimoine) : '—', 'valeur − restant dû', c.patrimoine != null ? signe(c.patrimoine) : '')}
     ${kpi('Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois) : '—', 'par mois, avant impôts', signe(c.cfMois))}
     ${kpi('Rendement brut', c.brut != null ? pct(c.brut) : '—', c.cout ? 'loyer annuel ÷ coût total' : 'renseigne l\'achat')}
-    ${kpi('Plus-value latente', c.plusValue != null ? kEur(c.plusValue) : '—', 'valeur − coût total', c.plusValue != null ? signe(c.plusValue) : '')}</div>`;
+    ${kpi('Plus-value latente', c.plusValue != null ? kEur(c.plusValue) : '—', 'valeur − coût total', c.plusValue != null ? signe(c.plusValue) : '')}</div>
+    ${partDe(b) < 1 ? (k => `<div class="okbox ta-part">Ta part (${Math.round(k * 100)} %) : valeur ${b.valeur ? kEur(b.valeur * k) : '—'} · restant dû ${c.crd ? kEur(c.crd * k) : '—'} · patrimoine net ${c.patrimoine != null ? kEur(c.patrimoine * k) : '—'} · cash-flow ${eur(c.cfMois * k)}/mois. Les chiffres ci-dessus sont ceux du bien entier.</div>`)(partDe(b)) : ''}`;
   const ligne = (l, v, cls = '') => `<div><span>${l}</span><b class="${cls}">${v}</b></div>`;
   q('#inv_renta').innerHTML = `<div class="calc">
       ${ligne(b.type === 'terrain' ? 'Revenus encaissés' : 'Loyers encaissés', eur(c.loyersAn) + '/an', '')}
@@ -766,6 +773,10 @@ racine.addEventListener('input', e => {
     const tour = ++suggTour;
     try { const feats = await geocode(q); if (tour === suggTour) montrerSugg(feats.slice(0, 6)); } catch (err) { montrerSugg([]); }
   }, 250);
+});
+racine.addEventListener('input', e => {
+  if (e.target.id !== 'inv_part') return;
+  const o = racine.querySelector('#inv_partVal'); if (o) o.textContent = e.target.value + ' %';
 });
 racine.addEventListener('keydown', e => {
   if (e.target.id !== 'inv_adresse' || !suggAdr.length) return;
