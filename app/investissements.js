@@ -185,7 +185,7 @@ async function envoyer() {
   majEtat();
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(minuteur); envoyer(); } });
-// Ce qui part dans le compte : les biens et les recherches récentes de l'onglet Estimer
+// Ce qui part dans le compte : les biens et les recherches récentes de l'onglet Mes projets
 // Fusion bien par bien (et SCI par SCI) : la version modifiée le plus récemment gagne ; les suppressions sont gardées 6 mois
 function fusionListes(locale, distante, sup) {
   const m = new Map();
@@ -287,7 +287,7 @@ async function supprimerDoc(doc) {
 const erreurDocs = e => /bucket not found|not found/i.test((e && e.message) || '') ? 'Le stockage des documents n\'est pas encore activé (script supabase-docs.sql à lancer).' : (e && e.message) || String(e);
 
 // ---------- Estimation automatique ----------
-// Le même moteur que l'onglet Estimer, chargé dans un cadre caché : il ne touche ni à la recherche en cours,
+// Le même moteur que l'onglet Mes projets, chargé dans un cadre caché : il ne touche ni à la recherche en cours,
 // ni aux réglages enregistrés. Une estimation à la fois.
 const moteur = {
   pret: null, cadre: null, file: Promise.resolve(),
@@ -758,7 +758,7 @@ function vueDetail(b) {
     ${TYPE_DVF[b.type] || b.type === 'terrain' ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
-      ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
+      ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans Mes projets →</button></div>` : ''}</div>`)}
     ${section('Achat', `<div class="grille">
       ${champ(b, 'achat.mode', 'Acquisition', {options: {existant: 'Achat d\'un bien', construction: 'Terrain + construction'}, large: true})}
       ${b.achat.mode === 'construction' ? `${champ(b, 'achat.date', 'Achat du terrain', {type: 'month'})}${champ(b, 'achat.prix', 'Prix du terrain (€)', {step: 1000})}
@@ -786,7 +786,7 @@ function vueDetail(b) {
   racine.innerHTML = h;
   majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b);
 }
-// Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Estimer)
+// Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Mes projets)
 function critHTML(b) {
   if (!TYPE_DVF[b.type]) return '';
   const pour = b.type === 'appart' ? 'appart' : 'maison';
@@ -1173,7 +1173,7 @@ racine.addEventListener('click', async e => {
   if (a === 'estimerAuto') estimerBien(b);
   if (a === 'valeurAuto' && b.estimation && b.estimation.prix) { b.valeurManuelle = false; b.valeur = b.estimation.prix; b.valeurLe = moisCourant(); sauver(b); vueDetail(b); }
   if (a === 'estimer' && estimable(b)) {
-    // Même recherche dans l'onglet Estimer (adresse, type, surface, caractéristiques), avec la carte et le détail du calcul
+    // Même recherche dans l'onglet Mes projets (adresse, type, surface, caractéristiques), avec la carte et le détail du calcul
     showTab('estimation');
     if (b.geo) reprendre({label: b.geo.label, lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, since: 'auto', criteres: criteresEffectifs(b)});
     else { document.getElementById('addr').value = b.adresse; document.getElementById('surf').value = b.surface; document.getElementById('go').click(); }

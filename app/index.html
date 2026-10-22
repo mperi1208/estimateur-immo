@@ -116,6 +116,7 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .synthbar .conf{margin-top:0}
 .louer{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
 .seg.mini button{padding:4px 10px;font-size:13px}
+.seg button:disabled{color:var(--muted);opacity:.55;cursor:not-allowed}
 .works{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
 .works .kpis{margin-top:8px}
 .works .kpi{background:var(--panel)}
@@ -342,7 +343,7 @@ html,body{overflow-x:clip;max-width:100%}
 .tabs .compte button{height:34px;padding:0 14px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
 .tabs .compte button.sortir{background:none;border:1px solid var(--line);color:var(--ink)}
 @media (max-width:420px){.tabs{gap:0;padding-left:10px;padding-right:10px}.tabs button{font-size:13px!important;padding:0 3px!important}.tabs .compte button{padding:0 9px!important;font-size:12px!important;height:30px}}
-@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
+@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte .statut.connecte{display:flex;padding:0 6px}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
 /* Mes investissements : onglets et compte alignés sur la colonne centrale (1040 px) au lieu des bords de la fenêtre */
 body[data-onglet="investissements"] .tabs{padding-left:max(16px, calc((100% - 1040px) / 2 + 4px));padding-right:max(16px, calc((100% - 1040px) / 2 + 16px))}
 #compteDlg{border:1px solid var(--line);border-radius:14px;padding:20px;width:min(380px,calc(100vw - 32px));background:var(--panel);color:var(--ink)}
@@ -411,9 +412,9 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <body>
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="investissements" aria-selected="false"><span class="long">Mes investissements</span><span class="court">Investissements</span></button>
-  <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
+  <button role="tab" data-tab="estimation" aria-selected="true"><span class="long">Mes projets</span><span class="court">Projets</span></button>
   <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
-  <div class="compte"><span class="statut" id="compteStatut"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog">Se connecter</button></div>
+  <div class="compte"><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog">Se connecter</button></div>
 </nav>
 <dialog id="compteDlg" aria-label="Compte">
   <form method="dialog" class="fermer"><button aria-label="Fermer">✕</button></form>
@@ -1014,10 +1015,15 @@ function majAffiner() {
 const louerMeuble = () => ['meuble', 'coloc'].includes(field('location').value);   // une colocation se loue meublée
 // Colocation : loyer total au-dessus d'une location meublée classique, d'autant plus qu'il y a de chambres
 // (exemple CPIM : T4 de 80 m², 1 250 € en meublé contre 1 850 € à quatre, soit +48 % ; on reste prudent)
-const colocActive = () => field('location').value === 'coloc';
+// Une chambre fait au moins 9 m² (décence), et il faut en plus les pièces communes (séjour, cuisine, salle d'eau) :
+// environ 34 m² pour 2 chambres, puis 10 m² par chambre de plus. En dessous, pas de colocation possible.
+const chambresMax = surf => Math.max(0, Math.min(10, Math.floor((surf - 14) / 10)));
+const colocPossible = surf => chambresMax(surf) >= 2;
+const colocActive = (surf = +document.getElementById('surf').value || 0) => field('location').value === 'coloc' && colocPossible(surf);
 const PRIME_COLOC = n => n >= 4 ? 0.30 : n === 3 ? 0.20 : 0.10;
 const chambresDefaut = surf => Math.max(2, Math.min(6, Math.round((surf - 15) / 15)));
-const nbChambres = surf => Math.max(2, Math.min(10, Math.round(+saved.chambresColoc || chambresDefaut(surf))));
+const chambresVoulues = surf => Math.round(+saved.chambresColoc || chambresDefaut(surf));
+const nbChambres = surf => Math.max(2, Math.min(chambresMax(surf), chambresVoulues(surf)));
 {
   const aff = document.getElementById('affiner');
   try { if (localStorage.getItem('details-ouverts') === '0') aff.open = false; } catch (e) {}
@@ -1519,6 +1525,8 @@ function renderSynth() {
   const alertes = [];
   if (dpe === 'G') alertes.push('<div class="alert">Classé G : <b>interdit à la location</b> tant que les travaux énergétiques ne sont pas faits.</div>');
   if (dpe === 'F') alertes.push('<div class="warnbox">Classé F : loyer gelé, location interdite à partir de 2028.</div>');
+  if (field('location').value === 'coloc' && !colocPossible(r.surf)) alertes.push(`<div class="warnbox"><b>Trop petit pour une colocation</b> : il faut au moins 9 m² par chambre, plus les pièces communes, soit environ 34 m² pour 2 chambres. Loyer calculé en meublé.</div>`);
+  else if (colocActive(r.surf) && chambresVoulues(r.surf) > nbChambres(r.surf)) alertes.push(`<div class="warnbox">Pas plus de ${nbChambres(r.surf)} chambres dans ${fmt(r.surf)} m² (9 m² minimum par chambre, plus les pièces communes) : loyer calculé pour ${nbChambres(r.surf)}.</div>`);
   if (state.atypique) alertes.push('<div class="warnbox">Bien atypique pour le secteur : fourchette élargie, détail dans « Détail du calcul ».</div>');
   if (r.elargie) alertes.push(`<div class="range">Peu de ventes récentes autour : ventes de ${r.anMin} à ${r.anMax} prises en compte, actualisées au prix d'aujourd'hui.</div>`);
   el.innerHTML = `
@@ -1533,8 +1541,9 @@ function renderSynth() {
     <div class="synthbar">
       <span class="conf" style="background:${state.confAff[1]}">${state.confAff[0]}</span>
       <span class="hint">${r.comps.length} ventes à moins de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}</span>
-      <span class="louer">Louer <span class="seg mini" id="louer">${['vide', 'meuble', 'coloc'].map(v => `<button data-v="${v}"${field('location').value === v || (v === 'vide' && !['meuble', 'coloc'].includes(field('location').value)) ? ' class="on"' : ''}>${{vide: 'Vide', meuble: 'Meublé', coloc: 'Colocation'}[v]}</button>`).join('')}</span>
-        ${colocActive() ? `<label class="chambres">Chambres <input type="number" id="nbChambres" min="2" max="10" value="${nbChambres(r.surf)}"></label>` : ''}</span>
+      <span class="louer">Louer <span class="seg mini" id="louer">${(loc => ['vide', 'meuble', 'coloc'].map(v => `<button data-v="${v}"${loc === v ? ' class="on"' : ''}${v === 'coloc' && !colocPossible(r.surf) ? ` disabled title="Trop petit : environ 34 m² minimum pour 2 chambres"` : ''}>${{vide: 'Vide', meuble: 'Meublé', coloc: 'Colocation'}[v]}</button>`).join(''))(
+          colocActive(r.surf) ? 'coloc' : louerMeuble() ? 'meuble' : 'vide')}</span>
+        ${colocActive(r.surf) ? `<label class="chambres">Chambres <input type="number" id="nbChambres" min="2" max="${chambresMax(r.surf)}" value="${nbChambres(r.surf)}"></label>` : ''}</span>
     </div>
     ${alertes.join('')}`;
   memoriser();
@@ -1717,7 +1726,7 @@ async function estimerPour(p) {
   if (state.lm) {
     const f = field('location'), avant = f.value;
     const hc = v => { f.value = v; return Math.round(calcLoyer(r, state.lm, state.insee, state.factor, state.chambreEff, state.factorHorsEtat).HC); };
-    try { loyerVide = hc('vide'); loyerMeuble = hc('meuble'); loyerColoc = hc('coloc'); } finally { f.value = avant; }
+    try { loyerVide = hc('vide'); loyerMeuble = hc('meuble'); loyerColoc = colocPossible(r.surf) ? hc('coloc') : null; } finally { f.value = avant; }
   }
   return {prix: Math.round(state.prix), lo: Math.round(state.prixLo), hi: Math.round(state.prixHi), loyerVide, loyerMeuble, loyerColoc, chambresColoc: nbChambres(p.surf),
     loyer: state.loyerHC != null ? Math.round(state.loyerHC) : null, fiabilite: state.confAff ? state.confAff[0] : '',
@@ -1776,10 +1785,9 @@ const COMPTE = {
 function majBoutonCompte() {
   const b = document.getElementById('compteBtn'), st = document.getElementById('compteStatut');
   st.classList.toggle('connecte', !!COMPTE.user);
-  st.title = COMPTE.user ? 'Connecté : ' + COMPTE.user.email : 'Mode invité : tout reste sur cet appareil';
+  st.title = COMPTE.user ? 'Mon compte (déconnexion)' : 'Mode invité : tout reste sur cet appareil';
   document.getElementById('compteNom').textContent = COMPTE.user ? '' : 'Invité';
-  b.textContent = COMPTE.user ? 'Déconnexion' : 'Se connecter';
-  b.classList.toggle('sortir', !!COMPTE.user);
+  b.hidden = !!COMPTE.user;   // connecté : la déconnexion se fait en cliquant sur l'icône du compte
 }
 // Messages de Supabase traduits
 function erreurCompte(e) {
@@ -1853,6 +1861,7 @@ function ouvrirCompte(mode = 'connexion') {
 // Invité : ouvre la connexion. Connecté : déconnecte directement.
 document.getElementById('compteBtn').onclick = () => COMPTE.user && COMPTE.client ? COMPTE.client.auth.signOut() : ouvrirCompte();
 document.getElementById('compteStatut').onclick = () => ouvrirCompte();
+document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrirCompte(); } };
 </script>
 <script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
 <script>
@@ -1926,14 +1935,14 @@ function majChips() {
     c.classList.toggle('on', on);
   }
 }
-// Reprend le bien estimé dans l'onglet Estimer (seulement s'il a changé depuis la dernière reprise,
+// Reprend le bien estimé dans l'onglet Mes projets (seulement s'il a changé depuis la dernière reprise,
 // pour ne pas écraser ce que tu as modifié à la main)
 let bienEst = null;
 function sync(est, mode) {
   bienEst = est;
   const bar = $('bien');
   if (!est) {
-    bar.innerHTML = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Estimer</a>, ou remplis les champs à la main.';
+    bar.innerHTML = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Mes projets</a>, ou remplis les champs à la main.';
     return rendre();
   }
   const cle = JSON.stringify([est.prix, est.loyer, est.surf, est.type, est.meuble, est.mob]);
@@ -2189,7 +2198,7 @@ function rendre() {
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
-  if (bienEst && (bienEst.dpe === 'G' || bienEst.etat === 'renover') && p.projet === 'simple') al += `<div class="alert">${bienEst.dpe === 'G' ? 'Classé G : <b>location interdite</b> sans travaux énergétiques' : 'À rénover entièrement : <b>pas louable en l\'état</b>'}. Ouvre « Travaux » (ou lance le projet depuis l'onglet Estimer) pour une simulation réaliste.</div>`;
+  if (bienEst && (bienEst.dpe === 'G' || bienEst.etat === 'renover') && p.projet === 'simple') al += `<div class="alert">${bienEst.dpe === 'G' ? 'Classé G : <b>location interdite</b> sans travaux énergétiques' : 'À rénover entièrement : <b>pas louable en l\'état</b>'}. Ouvre « Travaux » (ou lance le projet depuis l'onglet Mes projets) pour une simulation réaliste.</div>`;
   if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche en année ${a1.y}${a1.y > 1 ? ', la première année pleine de location' : ''}.</div>`;
   $('alerts').innerHTML = al;
   $('chartTitle').textContent = `Cash-flow annuel ${p.avecImpots ? 'après' : 'avant'} impôts (${s.horizon} ans)`;
@@ -2356,7 +2365,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=41"></script>
+<script src="investissements.js?v=42"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
