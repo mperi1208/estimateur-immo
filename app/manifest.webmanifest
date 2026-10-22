@@ -1,6 +1,6 @@
 {
-  "name": "Estimateur m²",
-  "short_name": "Estimateur",
+  "name": "Patrimoniu",
+  "short_name": "Patrimoniu",
   "start_url": "./index.html#estimation",
   "scope": "./",
   "display": "standalone",
