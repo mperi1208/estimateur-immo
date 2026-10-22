@@ -69,12 +69,26 @@ function analyseReneg(p, e, sci) {
 
 // ---------- Rentabilité d'un bien (avant impôts) ----------
 const LOUE = ['vide', 'meuble', 'saisonnier'];
+const STATUTS_TERRAIN = {loue: 'Loué (bail)', activites: 'Activités qui rapportent', perso: 'Usage personnel', libre: 'Non exploité'};
+const NATURES = {'': '—', constructible: 'Constructible', agricole: 'Agricole', naturel: 'Naturel / boisé', loisirs: 'Loisirs / agrément', stockage: 'Parking / stockage', autre: 'Autre'};
+const BAUX = {'': '—', rural: 'Bail rural (fermage)', commercial: 'Bail commercial', precaire: 'Convention d\'occupation précaire', parking: 'Location parking / stockage', autre: 'Autre'};
+const PERIODES = {mois: 'par mois', an: 'par an'};
+const annuel = (montant, periode) => (montant || 0) * (periode === 'an' ? 1 : 12);
+// Revenus annuels d'un terrain : le loyer du bail, ou la somme des activités
+function revenusTerrain(b) {
+  const L = b.location;
+  if (L.statut === 'loue') return annuel(L.loyer, L.periode) * (1 - Math.min(12, L.vacance || 0) / 12);
+  if (L.statut === 'activites') return somme(b.revenus || [], r => annuel(r.montant, r.periode));
+  return 0;
+}
+const statutLib = b => (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
 function calculs(b) {
   const prets = b.prets.map(p => ({p, e: etatPret(p)}));
   const actifs = prets.filter(x => x.e && x.e.mois > 0);
-  const loue = LOUE.includes(b.location.statut);
-  const loyerMois = loue ? b.location.loyer || 0 : 0;
-  const loyersAn = loyerMois * 12 * (1 - Math.min(12, b.location.vacance || 0) / 12);
+  const terrain = b.type === 'terrain';
+  const loue = terrain ? ['loue', 'activites'].includes(b.location.statut) : LOUE.includes(b.location.statut);
+  const loyersAn = terrain ? revenusTerrain(b) : (loue ? b.location.loyer || 0 : 0) * 12 * (1 - Math.min(12, b.location.vacance || 0) / 12);
+  const loyerMois = terrain ? loyersAn / 12 : loue ? b.location.loyer || 0 : 0;
   const c = b.chargesAn;
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100;
   const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
@@ -359,7 +373,7 @@ function majAuto(b) {
     btn.textContent = enCours.has(b.id) ? 'Estimation en cours…' : !estimable(b) ? 'Estimer ce bien (adresse et surface à remplir)' : e && !e.erreur && a_jour ? 'Estimer à nouveau' : 'Estimer ce bien';
   }
   let h;
-  if (!TYPE_DVF[b.type]) h = '<div class="aide">Estimation disponible pour les appartements et les maisons.</div>';
+  if (!TYPE_DVF[b.type]) h = `<div class="aide">${b.type === 'terrain' ? 'Pas d\'estimation automatique pour un terrain : renseigne sa valeur à la main (ventes de terrains voisins, avis d\'un notaire ou d\'une agence).' : 'Estimation automatique disponible pour les appartements et les maisons : renseigne la valeur à la main.'}</div>`;
   else if (enCours.has(b.id)) {
     const t0 = Date.now();
     h = '<div class="auto-cours"><span class="rond"></span>Recherche des ventes comparables… <span id="inv_chrono"></span></div>';
@@ -493,7 +507,7 @@ function vueListe() {
 }
 function carte(b, c) {
   const tags = [b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
-    sciDe(b) ? sciDe(b).nom : '', STATUTS[b.location.statut]].filter(Boolean);
+    b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b)].filter(Boolean);
   return `<a class="bien" href="#investissements/${encodeURIComponent(b.id)}">
     <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type] ? TYPES[b.type].l : ''}</span></div>
     <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || 'Adresse à renseigner')}</span><span class="tags">${tags.map(esc).join(' · ')}</span></div>
@@ -537,12 +551,7 @@ function vueDetail(b) {
     <div id="inv_kpis"></div>
     <div class="blocs">
     ${section('Rentabilité', '<div id="inv_renta"></div>')}
-    ${section('Location', `<div class="grille">
-      ${champ(b, 'location.statut', 'Situation', {options: STATUTS})}
-      ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
-      ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}
-      ${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}` : ''}
-    </div>`)}
+    ${b.type === 'terrain' ? revenusHTML(b) : locationHTML(b)}
     ${section('Le bien', `<div class="grille">
       ${champ(b, 'nom', 'Nom', {type: 'text', ph: 'ex. Studio Passy'})}
       ${champ(b, 'type', 'Type', {options: Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.l]))})}
@@ -550,8 +559,9 @@ function vueDetail(b) {
         <input id="inv_adresse" name="search" data-p="adresse" type="search" enterkeyhint="search" value="${esc(b.adresse)}" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="inv_sugg" aria-expanded="false">
         <ul id="inv_sugg" role="listbox" hidden></ul>
         ${b.geo && b.geo.pour === b.adresse.trim() && b.geo.label !== b.adresse.trim() ? `<div class="aide">Adresse reconnue : ${esc(b.geo.label)}</div>` : ''}</div>
-      ${champ(b, 'surface', 'Surface (m²)')}${champ(b, 'pieces', 'Pièces')}
-      ${champ(b, 'annee', 'Année de construction')}
+      ${b.type === 'terrain' ? `${champ(b, 'surface', 'Surface (m²)', {aide: b.surface >= 10000 ? (b.surface / 10000).toFixed(2).replace('.', ',') + ' ha' : ''})}${champ(b, 'nature', 'Nature du terrain', {options: NATURES})}`
+        : `${champ(b, 'surface', 'Surface (m²)')}${champ(b, 'pieces', 'Pièces')}
+      ${champ(b, 'annee', 'Année de construction')}`}
       <div><label for="inv_detention">Détenu par</label><select id="inv_detention" data-p="detention">
         <option value="np"${b.structure !== 'sci' ? ' selected' : ''}>Nom propre</option>
         ${scis.map(x => `<option value="${esc(x.id)}"${b.sciId === x.id && b.structure === 'sci' ? ' selected' : ''}>${esc(x.nom)} (SCI ${REGIMES[x.regime]})</option>`).join('')}
@@ -601,6 +611,30 @@ function critHTML(b) {
   const n = autres.filter(c => c.check ? b.criteres[c.id] : b.criteres[c.id] != null && String(b.criteres[c.id]) !== String((c.options || []).find(o => o.d)?.k ?? '')).length;
   return `<div class="crit-bien"><h4>Caractéristiques</h4><div class="grille">${ess.map(un).join('')}</div>
     <details class="plus-crit"${n ? ' open' : ''}><summary>Plus de caractéristiques${n ? ` (${n})` : ''}</summary><div class="grille">${autres.map(un).join('')}</div></details></div>`;
+}
+function locationHTML(b) {
+  return section('Location', `<div class="grille">
+      ${champ(b, 'location.statut', 'Situation', {options: STATUTS})}
+      ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
+      ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}
+      ${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}` : ''}
+    </div>`);
+}
+// Terrain : bail (loyer au mois ou à l'année) ou activités diverses (chacune avec son revenu)
+function revenusHTML(b) {
+  const L = b.location, st = L.statut;
+  let h = `<div class="grille">${champ(b, 'location.statut', 'Situation', {options: STATUTS_TERRAIN})}</div>`;
+  if (st === 'loue') h += `<div class="grille">
+      ${champ(b, 'location.typeBail', 'Type de bail', {options: BAUX})}${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}
+      ${champ(b, 'location.loyer', 'Loyer (€)', {step: 10})}${champ(b, 'location.periode', 'Payé', {options: PERIODES})}
+      ${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5})}</div>`;
+  if (st === 'activites') h += `<div class="activites">${(b.revenus || []).map((r, i) => `<div class="activite"><div class="grille">
+        ${champ(b, `revenus.${i}.libelle`, 'Activité', {type: 'text', ph: 'ex. location pour événements, camping, vente de bois, antenne relais…', large: true})}
+        ${champ(b, `revenus.${i}.montant`, 'Revenu (€)', {step: 10})}${champ(b, `revenus.${i}.periode`, 'Rapporté', {options: PERIODES})}</div>
+        <button class="lien" data-a="supprRevenu" data-i="${i}">Retirer</button></div>`).join('') || '<div class="aide">Aucune activité pour l\'instant.</div>'}</div>
+      <button data-a="ajoutRevenu">+ Ajouter une activité</button>`;
+  h += '<div class="total" id="inv_revTotal"></div>';
+  return section('Revenus du terrain', h);
 }
 function vueSci(x) {
   const sesBiens = biens.filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
@@ -665,7 +699,7 @@ function majCalculs(b) {
     ${kpi('Plus-value latente', c.plusValue != null ? kEur(c.plusValue) : '—', 'valeur − coût total', c.plusValue != null ? signe(c.plusValue) : '')}</div>`;
   const ligne = (l, v, cls = '') => `<div><span>${l}</span><b class="${cls}">${v}</b></div>`;
   q('#inv_renta').innerHTML = `<div class="calc">
-      ${ligne('Loyers encaissés', eur(c.loyersAn) + '/an', '')}
+      ${ligne(b.type === 'terrain' ? 'Revenus encaissés' : 'Loyers encaissés', eur(c.loyersAn) + '/an', '')}
       ${ligne('Charges du propriétaire', '−' + eur(c.chargesAn) + '/an')}
       ${ligne('Crédit (mensualités et assurance)', '−' + eur(c.creditAn) + '/an')}
       ${ligne('<b>Cash-flow</b>', eur(c.cfAn) + '/an · ' + eur(c.cfMois) + '/mois', signe(c.cfAn))}
@@ -675,6 +709,9 @@ function majCalculs(b) {
       ${c.cout && c.emprunte ? ligne('Apport', eur(Math.max(0, c.cout - c.emprunte)) + (c.cout - c.emprunte <= 0 ? ' (financé à 100 % ou plus)' : '')) : ''}
     </div>
     <div class="aide">Avant impôts. ${!c.loue ? 'Bien non loué : pas de loyer compté. ' : ''}${Object.values(b.chargesAn).every(v => v == null) ? 'Charges pas encore renseignées. ' : ''}${!b.prets.length ? 'Aucun crédit renseigné.' : ''}</div>`;
+  // Total des revenus d'un terrain, mis à jour sans reconstruire la section (pour garder le champ en cours)
+  const rt = q('#inv_revTotal');
+  if (rt) rt.innerHTML = c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
   q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && b.achat.prix ? ` · ${fmt(b.achat.prix / b.surface)} €/m² à l'achat` : ''}` : '';
   b.prets.forEach((p, i) => { const r = racine.querySelector(`[data-resume="${i}"]`); if (r) r.innerHTML = resumePret(b, p, c.prets[i].e); });
 }
@@ -789,6 +826,8 @@ racine.addEventListener('click', async e => {
     if (b.geo) reprendre({label: b.geo.label, lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, since: 'auto', criteres: criteresEffectifs(b)});
     else { document.getElementById('addr').value = b.adresse; document.getElementById('surf').value = b.surface; document.getElementById('go').click(); }
   }
+  if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
+  if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
   if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'fichier') racine.querySelector('#inv_fichier').click();
@@ -844,11 +883,16 @@ racine.addEventListener('change', async e => {
   // Prix et valeur tapés en milliers (« 819 ») : compris comme 819 000 €
   if (['valeur', 'achat.prix'].includes(chemin) && v > 0 && v < 2000) { v *= 1000; t.value = v; }
   ecrire(b, chemin, v);
+  if (chemin === 'type') {
+    const terrain = v === 'terrain', st = b.location.statut;
+    if (terrain && !STATUTS_TERRAIN[st]) b.location.statut = 'libre';
+    if (!terrain && !STATUTS[st]) b.location.statut = st === 'perso' ? 'rp' : st === 'loue' ? 'vide' : 'vacant';
+  }
   if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver(b);
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse'].includes(chemin) || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces'].includes(chemin)) majAuto(b);

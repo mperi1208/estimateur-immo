@@ -199,6 +199,8 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .doc .nom{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .invwrap .doc .meta{color:var(--muted)}
 .invwrap .pied{margin-top:20px;text-align:right}
+.invwrap .activite{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
+.invwrap .bloc > button{margin-top:10px}
 .invwrap .sous-titre{font-size:17px;margin:22px 0 10px}
 .invwrap .liste-tete{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .invwrap .filtres{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 10px}
@@ -327,9 +329,9 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 </head>
 <body>
 <nav class="tabs" role="tablist">
+  <button role="tab" data-tab="investissements" aria-selected="false"><span class="long">Mes investissements</span><span class="court">Investissements</span></button>
   <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
   <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
-  <button role="tab" data-tab="investissements" aria-selected="false"><span class="long">Mes investissements</span><span class="court">Investissements</span></button>
   <div class="compte"><span class="statut" id="compteStatut"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog">Se connecter</button></div>
 </nav>
 <dialog id="compteDlg" aria-label="Compte">
@@ -2140,7 +2142,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=16"></script>
+<script src="investissements.js?v=17"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -2168,7 +2170,8 @@ function lireHash() {
   return {t: t === 'credits' ? 'investissements' : t, sous: sous ? decodeURIComponent(sous) : null};
 }
 window.addEventListener('hashchange', () => { const {t, sous} = lireHash(); showTab(ONGLETS.includes(t) ? t : 'estimation', false, null, sous); });
-{ const {t, sous} = lireHash(); if (t === 'cashflow' || t === 'investissements') showTab(t, false, null, sous); }
+// Arrivée sur le site : « Mes investissements », sauf adresse d'un autre onglet (le cadre caché du moteur reste sur Estimer)
+{ const {t, sous} = lireHash(); if (t === 'cashflow' || t === 'investissements') showTab(t, false, null, sous); else if (t !== 'estimation' && !MOTEUR) showTab('investissements'); }
 </script>
 </body>
 </html>
