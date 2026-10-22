@@ -1,0 +1,14 @@
+{
+  "name": "Estimateur m²",
+  "short_name": "Estimateur",
+  "start_url": "./index.html#estimation",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0b0b",
+  "theme_color": "#0b0b0b",
+  "icons": [
+    {"src": "icone-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icone-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "logo.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}
