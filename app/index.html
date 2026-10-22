@@ -577,7 +577,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <main>
   <div class="seg scen" id="cf_scen"><button data-v="louer">Garder et louer</button><button data-v="revendre">Revendre</button></div>
   <div class="tiles" id="cf_tiles"></div>
-  <div class="card" id="cf_cible"><h2>Prix d'achat pour être rentable</h2>
+  <div class="card" id="cf_cible"><h2>Prix d'équilibre du cash-flow</h2>
     <div class="cible-ligne"><label for="cf_cibleVal" id="cf_cibleLabel">Cash-flow visé (€/mois)</label><input id="cf_cibleVal" type="number" step="10"></div>
     <div id="cf_cibleRes" class="hint"></div>
   </div>
@@ -2295,9 +2295,10 @@ function rendre() {
   const fin = s.annees[s.annees.length - 1];
   const patrimoine = s.valeur - fin.crd + fin.cumul;
   const coutRef = p.projet === 'location' ? s.coutTotal : p.prix;
+  const ac = anneeCroisiere(s), suiteDiffere = p.differe > 0 && ac.y !== a1.y ? ` · après le différé (année ${ac.y}) : <b>${eur(ac.cf / 12)}</b> par mois` : '';
   $('tiles').innerHTML = [
     ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}`],
-    ['Cash-flow / mois', eur(a1.cf / 12), p.avecImpots ? `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, impôts non comptés`],
+    ['Cash-flow / mois', eur(a1.cf / 12), (p.avecImpots ? `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, impôts non comptés`) + suiteDiffere],
     ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
     ['Rendement', pct(p.loyer * 12 / coutRef * 100) + ' brut', `loyer annuel ÷ ${p.projet === 'location' ? 'coût total (achat, travaux, frais)' : 'prix d\'achat'} · net de charges : ${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} du coût total${p.avecImpots ? `, ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
     ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
@@ -2444,15 +2445,19 @@ function tableau(s) {
 // ---------- Prix pour être rentable ----------
 // Année de référence : la première année pleine de location (le chantier et ses mois sans loyer faussent l'année 1)
 function anneeRef(s) { const p = s.p; return s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= p.debutLoc) || s.annees.find(a => a.loyers > 0) || s.annees[0]; }
+// Année de mesure du cash-flow d'équilibre : « au bout de 2 ans », c'est-à-dire la première année pleine de location à partir de l'année 2,
+// et une fois le différé et le chantier finis (le crédit s'amortit alors normalement). Pendant un différé on ne paie que les
+// intérêts : le cash-flow y est flatteur et ne dure pas.
+function anneeCroisiere(s) { const p = s.p, debut = Math.max(p.debutLoc, p.differe, 12); return s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= debut) || anneeRef(s); }
 let cible = {louer: 0, revendre: 0}, tCible = null;
 try { Object.assign(cible, JSON.parse(localStorage.getItem('cashflow-cible') || '{}')); } catch (e) {}
 const cleCible = () => get('scenario') === 'revendre' ? 'revendre' : 'louer';
 const cibleVisee = () => +cible[cleCible()] || 0;
-// Ce qu'on cherche à atteindre : cash-flow mensuel de l'année de référence (louer) ou bénéfice net de l'opération (revendre)
+// Ce qu'on cherche à atteindre : cash-flow mensuel de l'année de croisière (louer) ou bénéfice net de l'opération (revendre)
 function metrique(prix) {
   $('prix').value = prix;
   const s = simuler();
-  return s.p.projet === 'revente' ? bilanRevente(s).net : anneeRef(s).cf / 12;
+  return s.p.projet === 'revente' ? bilanRevente(s).net : anneeCroisiere(s).cf / 12;
 }
 // Prix d'achat le plus haut qui atteint l'objectif, tout le reste inchangé (apport, taux, loyer, travaux...) : recherche par dichotomie
 function prixCible(visee) {
@@ -2471,7 +2476,7 @@ function majCible() {
   $('cibleLabel').textContent = revente ? 'Bénéfice net visé (€)' : 'Cash-flow visé (€/mois)';
   if (document.activeElement !== $('cibleVal')) $('cibleVal').value = visee;
   const r = prixCible(visee), actuel = p.prix;
-  const quoi = revente ? `un bénéfice net de <b>${eur(visee)}</b> à la revente` : `un cash-flow de <b>${eur(visee)} par mois</b> (année ${anneeRef(s).y}, ${p.avecImpots ? 'après' : 'avant'} impôts)`;
+  const quoi = revente ? `un bénéfice net de <b>${eur(visee)}</b> à la revente` : `un cash-flow de <b>${eur(visee)} par mois</b> en année ${anneeCroisiere(s).y}${p.differe > 0 ? ' (une fois le différé terminé)' : ''}, ${p.avecImpots ? 'après' : 'avant'} impôts`;
   let h;
   if (r.impossible) h = `Pour ${quoi}, aucun prix ne suffit : ${revente ? 'la revente ne rapporte pas assez (valeur après travaux, frais et charges à revoir).' : 'les charges et le crédit dépassent le loyer même à très bas prix. Revois le loyer, les charges ou l\'apport.'}`;
   else if (r.sansLimite) h = `Pour ${quoi}, le prix n'est pas un frein : ça passe jusqu'à ${eur(r.prix)} au moins.`;
@@ -2505,7 +2510,8 @@ function instantane(ex) {
   if (revente) resume.benefice = Math.round(bilanRevente(s).net);
   else {
     const a1 = anneeRef(s), coutRef = p.projet === 'location' ? s.coutTotal : p.prix;
-    resume.cfMois = Math.round(a1.cf / 12); resume.rendement = coutRef ? p.loyer * 12 / coutRef * 100 : null; resume.mensualite = Math.round(s.ech.pmt + s.ech.assM);
+    const ac = anneeCroisiere(s);
+    resume.anneeCible = ac.y; resume.cfMois = Math.round(ac.cf / 12); resume.cfDiffere = p.differe > 0 && ac.y !== a1.y ? Math.round(a1.cf / 12) : null; resume.rendement = coutRef ? p.loyer * 12 / coutRef * 100 : null; resume.mensualite = Math.round(s.ech.pmt + s.ech.assM);
   }
   return {finance: etat(), resume};
 }
@@ -2608,9 +2614,9 @@ function carteProjet(pr) {
   const sous = [r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²` : '', revente ? 'achat-revente' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
   const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
   const cases = [['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
-    [revente ? 'Prix pour gagner ' + eurP(r.visee) : 'Prix pour être rentable', r.prixCible != null ? eurP(r.prixCible) : 'aucun']];
+    ['Prix d\'équilibre du cash-flow', `<b>${r.prixCible != null ? eurP(r.prixCible) : 'aucun'}</b><small>${revente ? 'bénéfice de ' + eurP(r.visee) : 'cash-flow de ' + eurP(r.visee) + '/mois' + (r.anneeCible ? ', année ' + r.anneeCible : '')}</small>`]];
   if (revente) cases.push(['Valeur après travaux', eurP(r.valeurApres)], ['Bénéfice net', `<b class="${signe(r.benefice)}">${eurP(r.benefice)}</b>`]);
-  else cases.push(['Loyer hors charges', eurP(r.loyer) + '/mois'], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>`], ['Rendement brut', pctP(r.rendement)]);
+  else cases.push(['Loyer hors charges', eurP(r.loyer) + '/mois'], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')], ['Rendement brut', pctP(r.rendement)]);
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
