@@ -68,7 +68,11 @@ function analyseReneg(p, e, sci) {
 }
 
 // ---------- Rentabilité d'un bien (avant impôts) ----------
-const LOUE = ['vide', 'meuble', 'saisonnier'];
+const LOUE = ['vide', 'meuble', 'saisonnier', 'colocation', 'lots'];
+const LISTES = {colocation: {cle: 'chambres', nom: 'Chambre', titre: 'Chambres louées', ajout: '+ Ajouter une chambre'},
+  lots: {cle: 'lots', nom: 'Logement', titre: 'Logements', ajout: '+ Ajouter un logement'}};
+// Loyer mensuel d'un logement : un seul loyer, ou la somme des chambres (colocation) ou des lots (bien divisé)
+const loyerLogement = b => LISTES[b.location.statut] ? somme(b[LISTES[b.location.statut].cle] || [], x => x.loyer) : b.location.loyer || 0;
 const STATUTS_TERRAIN = {loue: 'Loué (bail)', activites: 'Activités qui rapportent', perso: 'Usage personnel', libre: 'Non exploité'};
 const NATURES = {'': '—', constructible: 'Constructible', agricole: 'Agricole', naturel: 'Naturel / boisé', loisirs: 'Loisirs / agrément', stockage: 'Parking / stockage', autre: 'Autre'};
 const BAUX = {'': '—', rural: 'Bail rural (fermage)', commercial: 'Bail commercial', precaire: 'Convention d\'occupation précaire', parking: 'Location parking / stockage', autre: 'Autre'};
@@ -87,8 +91,8 @@ function calculs(b) {
   const actifs = prets.filter(x => x.e && x.e.mois > 0);
   const terrain = b.type === 'terrain';
   const loue = terrain ? ['loue', 'activites'].includes(b.location.statut) : LOUE.includes(b.location.statut);
-  const loyersAn = terrain ? revenusTerrain(b) : (loue ? b.location.loyer || 0 : 0) * 12 * (1 - Math.min(12, b.location.vacance || 0) / 12);
-  const loyerMois = terrain ? loyersAn / 12 : loue ? b.location.loyer || 0 : 0;
+  const loyersAn = terrain ? revenusTerrain(b) : (loue ? loyerLogement(b) : 0) * 12 * (1 - Math.min(12, b.location.vacance || 0) / 12);
+  const loyerMois = terrain ? loyersAn / 12 : loue ? loyerLogement(b) : 0;
   const c = b.chargesAn;
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100;
   const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
@@ -318,7 +322,8 @@ const moteur = {
 const TYPE_DVF = {appart: '121', maison: '111'};
 const EPOQUES = [[1914, 'av1914'], [1948, '1914'], [1970, '1948'], [1981, '1970'], [1992, '1981'], [Infinity, '1992']];
 function criteresEffectifs(b) {
-  const c = {...b.criteres, location: ['meuble', 'saisonnier'].includes(b.location.statut) ? 'meuble' : 'vide'};
+  const st = b.location.statut, c = {...b.criteres, location: st === 'colocation' ? 'coloc' : ['meuble', 'saisonnier'].includes(st) ? 'meuble' : 'vide'};
+  if (st === 'colocation' && (b.chambres || []).length >= 2) c.chambresColoc = b.chambres.length;
   if (b.annee > 1500) c.epoque = EPOQUES.find(([y]) => b.annee < y)[1];
   return c;
 }
@@ -328,9 +333,9 @@ const cleAncienne = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, cr
 function loyersMarche(e) {
   if (!e || e.erreur) return {};
   let loc = null; try { loc = JSON.parse(e.cle)[3].location; } catch (x) {}
-  return {vide: e.loyerVide ?? (loc !== 'meuble' ? e.loyer : null), meuble: e.loyerMeuble ?? (loc === 'meuble' ? e.loyer : null)};
+  return {vide: e.loyerVide ?? (loc !== 'meuble' ? e.loyer : null), meuble: e.loyerMeuble ?? (loc === 'meuble' ? e.loyer : null), coloc: e.loyerColoc ?? null, chambres: e.chambresColoc};
 }
-const meubleBien = b => ['meuble', 'saisonnier'].includes(b.location.statut);
+const meubleBien = b => ['meuble', 'saisonnier', 'colocation'].includes(b.location.statut);
 // Terrains : codes DVF (le filtre de l'API prend le début du code) — un terrain à bâtir se vend souvent
 // 50 à 100 fois plus cher au m² qu'un pré, d'où une comparaison seulement entre terrains de même nature
 const NATURE_DVF = {constructible: '21', agricole: '231', naturel: '232,233,239', loisirs: '22', stockage: '22', autre: '2'};
@@ -471,10 +476,10 @@ function majAuto(b) {
     const ref = m ? L.meuble ?? L.vide : L.vide ?? L.meuble, rdt = v => v != null ? pct(v * 12 / e.prix) : '—';
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
-        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div></div><small>hors charges/mois${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : ''}</small></div>
-        <div><span>Rendement brut</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${rdt(L.vide)}</b></div><div><small>Meublé</small><b>${rdt(L.meuble)}</b></div></div><small>sur la valeur estimée</small></div>` : ''}</div>
+        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div>${L.coloc ? `<div><small>Coloc. ${L.chambres} ch.</small><b>${eur(L.coloc)}</b></div>` : ''}</div><small>hors charges/mois${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : L.coloc ? ` · ${eur(L.coloc / L.chambres)} par chambre en colocation` : ''}</small></div>
+        <div><span>Rendement brut</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${rdt(L.vide)}</b></div><div><small>Meublé</small><b>${rdt(L.meuble)}</b></div>${L.coloc ? `<div><small>Coloc.</small><b>${rdt(L.coloc)}</b></div>` : ''}</div><small>sur la valeur estimée</small></div>` : ''}</div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
-      ${loue && ref && b.location.loyer ? `<div class="aide">Ton loyer : ${eur(b.location.loyer)}, soit ${pct(b.location.loyer / ref - 1)} par rapport au marché ${m ? 'meublé' : 'vide'}.</div>` : ''}
+      ${(rf => loue && rf && loyerLogement(b) && b.location.statut !== 'lots' ? `<div class="aide">Ton loyer : ${eur(loyerLogement(b))}, soit ${pct(loyerLogement(b) / rf - 1)} par rapport au marché ${b.location.statut === 'colocation' ? 'en colocation' : m ? 'meublé' : 'vide'}.</div>` : '')(b.location.statut === 'colocation' && L.coloc ? L.coloc : ref)}
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
     </div>
     ${!a_jour ? '<div class="aide">Caractéristiques modifiées depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
@@ -518,7 +523,7 @@ const TYPES = {
   terrain: {l: 'Terrain', i: '<path d="M3 20l6-9 4 5 3-4 5 8zM15 6a2 2 0 104 0 2 2 0 10-4 0"/>'},
 };
 const icone = t => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${(TYPES[t] || TYPES.appart).i}</svg>`;
-const STATUTS = {vide: 'Loué vide', meuble: 'Loué meublé', saisonnier: 'Location saisonnière', vacant: 'Vacant', rp: 'Résidence principale', secondaire: 'Résidence secondaire', travaux: 'En travaux'};
+const STATUTS = {vide: 'Loué vide', meuble: 'Loué meublé', colocation: 'Loué en colocation', lots: 'Divisé en plusieurs logements', saisonnier: 'Location saisonnière', vacant: 'Vacant', rp: 'Résidence principale', secondaire: 'Résidence secondaire', travaux: 'En travaux'};
 const mini = (items, cls = '') => {
   const l = items.filter(x => x && x[1] != null && x[1] !== '');
   return l.length ? `<div class="mini ${cls}">${l.map(([k, v, c]) => `<div><span>${k}</span><b class="${c || ''}">${v}</b></div>`).join('')}</div>` : '';
@@ -669,9 +674,8 @@ function vueDetail(b) {
   const opt = (o) => o;
   let h = `<a class="retour" href="#investissements">← Mes investissements</a>${etatHTML()}
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
-      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div></div>
+      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions"><button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button></div></div>
     <div id="inv_kpis"></div>
-    <div class="boutons vente-btn"><button data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la simulation de vente' : 'Simuler la vente →'}</button></div>
     ${venteOuverte.has(b.id) ? venteHTML(b) : ''}
     <div class="blocs">
     ${section('Rentabilité', '<div id="inv_renta"></div>')}
@@ -746,6 +750,18 @@ function critHTML(b) {
     <details class="plus-crit"${n ? ' open' : ''}><summary>Plus de caractéristiques${n ? ` (${n})` : ''}</summary><div class="grille">${autres.map(un).join('')}</div></details></div>`;
 }
 function locationHTML(b) {
+  const Lc = LISTES[b.location.statut];
+  if (Lc) {
+    const liste = b[Lc.cle] || [];
+    return section('Location', `<div class="grille">${champ(b, 'location.statut', 'Situation', {options: STATUTS})}</div>
+      <div class="activites">${liste.map((x, i) => `<div class="activite"><div class="grille">
+        ${champ(b, `${Lc.cle}.${i}.libelle`, Lc.nom, {type: 'text', ph: `${Lc.nom} ${i + 1}`})}${champ(b, `${Lc.cle}.${i}.loyer`, 'Loyer hors charges (€/mois)', {step: 10})}
+        ${Lc.cle === 'lots' ? champ(b, `lots.${i}.surface`, 'Surface (m²)') : ''}${champ(b, `${Lc.cle}.${i}.locataire`, 'Locataire', {type: 'text'})}</div>
+        <button class="lien" data-a="supprLigne" data-i="${i}">Retirer</button></div>`).join('') || `<div class="aide">Ajoute ${Lc.cle === 'lots' ? 'chaque logement' : 'chaque chambre'} avec son loyer.</div>`}</div>
+      <button data-a="ajoutLigne">${Lc.ajout}</button>
+      <div class="grille" style="margin-top:10px">${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}</div>
+      <div class="total" id="inv_revTotal"></div>`);
+  }
   return section('Location', `<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: STATUTS})}
       ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
@@ -973,7 +989,8 @@ function majCalculs(b) {
     <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
   // Total des revenus d'un terrain, mis à jour sans reconstruire la section (pour garder le champ en cours)
   const rt = q('#inv_revTotal');
-  if (rt) rt.innerHTML = c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
+  if (rt) rt.innerHTML = b.type !== 'terrain' && LISTES[b.location.statut] ? (n => n ? `${n} ${b.location.statut === 'lots' ? 'logement' : 'chambre'}${n > 1 ? 's' : ''} : <b>${eur(loyerLogement(b))}</b> par mois au total, ${eur(c.loyersAn)} par an après vacance.` : '')((b[LISTES[b.location.statut].cle] || []).length)
+    : c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
   const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
   q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
   b.prets.forEach((p, i) => { const r = racine.querySelector(`[data-resume="${i}"]`); if (r) r.innerHTML = resumePret(b, p, c.prets[i].e); });
@@ -1106,6 +1123,8 @@ racine.addEventListener('click', async e => {
     return;
   }
   if (a === 'venteSortir') { b.vente = b.vente || {}; b.vente.sortir = t.dataset.v === '1'; sauver(b); racine.querySelectorAll('.vente-sortie button').forEach(x => x.classList.toggle('on', x === t)); return majVente(b); }
+  if (a === 'ajoutLigne' && LISTES[b.location.statut]) { const k = LISTES[b.location.statut].cle; (b[k] = b[k] || []).push({id: uid(), libelle: '', loyer: null, locataire: ''}); sauver(b); return vueDetail(b); }
+  if (a === 'supprLigne' && LISTES[b.location.statut] && confirm('Retirer cette ligne ?')) { b[LISTES[b.location.statut].cle].splice(+t.dataset.i, 1); sauver(b); return vueDetail(b); }
   if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
   if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
@@ -1185,6 +1204,6 @@ racine.addEventListener('change', async e => {
 biens = biensLocaux(); scis = scisLocales(); normaliser();
 // Biens repris des anciens crédits : enregistrés tout de suite, pour garder les mêmes identifiants d'un chargement à l'autre
 try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
-window.INV = {afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
+window.INV = {estimerSurface: p => moteur.estimer(p), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
 COMPTE.init();
 })();

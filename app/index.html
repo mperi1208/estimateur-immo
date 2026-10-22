@@ -40,6 +40,12 @@ h1{font-size:20px;margin:0 0 2px}
 .recentes .bas{display:flex;justify-content:space-between;padding:6px 12px;font-size:12px;color:var(--muted)}
 .recentes .bas button{border:0;background:none;color:var(--muted);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
 #go{margin-top:14px;padding:12px;font-size:16px}
+.works .w-surfaces{grid-column:1/-1}
+.works .w-lots{display:flex;gap:8px;flex-wrap:wrap}
+.works .w-lots input{width:90px}
+#w_calc{margin-top:10px}
+.synthbar .chambres{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-left:8px}
+.synthbar .chambres input{width:56px;padding:4px 6px}
 label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 4px}
 input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -199,7 +205,8 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .doc .nom{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .invwrap .doc .meta{color:var(--muted)}
 .invwrap .pied{margin-top:20px;text-align:right}
-.invwrap .vente-btn{margin:-6px 0 16px}
+.invwrap .dethead-actions{margin-left:auto;flex-shrink:0}
+@media (max-width:600px){.invwrap .dethead{flex-wrap:wrap}.invwrap .dethead-actions{margin-left:0;width:100%}.invwrap .dethead-actions button{width:100%}}
 .invwrap .vente .vente-params{margin-bottom:12px}
 .invwrap .vente-sortie{max-width:460px;margin:4px 0 12px}
 .invwrap .vente-chiffres b{font-size:20px}
@@ -536,6 +543,7 @@ const SOURCES = {
   apur: ['Apur — écart de loyer meublé / vide à Paris (≈ +14 %, 2025)', 'https://www.apur.org/sites/default/files/2026-04/12p288_Encadrement_Loyers_Paris_2025.pdf'],
   calib: ['Effet des atouts sur le loyer = effet sur le prix atténué (puissance 0,7), calé sur Homepilot : balcon +5,3 % de loyer, rez-de-chaussée −6,8 %', 'https://www.zonebourse.com/actualite-bourse/Les-facteurs-cles-qui-determinent-le-loyer-d-un-logement-Balcon-orientation-etage-ascenseur-28707958/'],
   slcorse: ['SeLoger — loyers à Ajaccio (appartements 15,2 €/m², maisons 14,7) et Bastia (14,3 et 15,0), janv. 2026', 'https://www.seloger.com/prix-de-l-immo/location/corse/haute-corse/bastia/202033.htm'],
+  coloc: ['CPIM — colocation contre location classique (2026) : T4 de 80 m² à 1 250 € en meublé, 1 850 € en colocation à quatre (+48 %) ; repère LocService 2025 : chambre à 508 € CC en France, 747 € à Paris', 'https://www.cpim.fr/colocation-vs-location-classique-comparatif-2026/'],
   hestia: ['Hestia — baromètre des loyers à Paris, 1 378 annonces actives (mai 2026) : T1 20 m² 48,9 €/m², T2 39 m² 38,3 €/m², T2 par arrondissement', 'https://hestia.software/barometre-loyers/paris'],
   olap: ["Apur / OLAP — loyers de relocation à Paris : 28,30 €/m² hors charges début 2025, +4,4 % sur un an", 'https://www.apur.org/sites/default/files/2026-04/12p288_Encadrement_Loyers_Paris_2025.pdf'],
   slstudio: ['SeLoger — loyers Paris 16e par taille (oct. 2026) : 1 pièce 37,0 €/m² vide / 42,0 meublé, 2 pièces 32,1 / 36,9', 'https://www.seloger.com/prix-de-l-immo/location/ile-de-france/paris/paris-16eme/750116.htm'],
@@ -618,7 +626,7 @@ const CRITERES = [
     {k: '2', l: '2 places ou plus', abs: {paris: 56000}, p: {autre: 0.12}, src: {paris: 'park', autre: 'nf'}}]},
   {id: 'garage', label: 'Stationnement', pour: 'maison', src: 'nf', options: [
     {k: 'oui', l: 'Garage fermé', d: 1}, {k: 'place', l: 'Place extérieure / abri', p: -0.025}, {k: 'non', l: 'Aucun', p: -0.05}]},
-  {id: 'location', label: 'Location', pour: 'tous', special: true, cache: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}]},
+  {id: 'location', label: 'Location', pour: 'tous', special: true, cache: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}, {k: 'coloc', l: 'Colocation'}]},
   {id: 'chambre', label: 'Chambre séparée (≤ 40 m²)', pour: 'appart', check: true, p: 0.05, maxSurf: 40, src: 'chambre'},
   {id: 'cave', label: 'Cave', pour: 'appart', check: true, p: 0.01, src: 'est'},
   {id: 'soussol', label: 'Sous-sol', pour: 'maison', check: true, p: 0.03, src: 'nf'},
@@ -954,7 +962,13 @@ function majAffiner() {
   chip.textContent = n ? `${n} réglé${n > 1 ? 's' : ''}` : 'bien moyen du secteur';
   chip.classList.toggle('on', n > 0);
 }
-const louerMeuble = () => field('location').value === 'meuble';
+const louerMeuble = () => ['meuble', 'coloc'].includes(field('location').value);   // une colocation se loue meublée
+// Colocation : loyer total au-dessus d'une location meublée classique, d'autant plus qu'il y a de chambres
+// (exemple CPIM : T4 de 80 m², 1 250 € en meublé contre 1 850 € à quatre, soit +48 % ; on reste prudent)
+const colocActive = () => field('location').value === 'coloc';
+const PRIME_COLOC = n => n >= 4 ? 0.30 : n === 3 ? 0.20 : 0.10;
+const chambresDefaut = surf => Math.max(2, Math.min(6, Math.round((surf - 15) / 15)));
+const nbChambres = surf => Math.max(2, Math.min(10, Math.round(+saved.chambresColoc || chambresDefaut(surf))));
 {
   const aff = document.getElementById('affiner');
   try { if (localStorage.getItem('details-ouverts') === '0') aff.open = false; } catch (e) {}
@@ -1184,13 +1198,15 @@ function calcLoyer(r, lm, insee, facteurPrix, chambreEff, facteurHorsEtat) {
   const chambre = isAppart() && surf <= 40 && field('chambre').checked;
   if (chambre) qual *= 1.05;   // atout d'usage : compte en entier sur le loyer
   const {f: actu, src: actuSrc} = recalage(insee);
-  const factor = qual * (meuble ? 1 + MEUBLE[z] : 1);
+  const coloc = colocActive() ? {n: nbChambres(surf)} : null;
+  if (coloc) coloc.prime = PRIME_COLOC(coloc.n);
+  const factor = qual * (meuble ? 1 + MEUBLE[z] : 1) * (coloc ? 1 + coloc.prime : 1);
   // Parking : à Paris il se loue à part (~150 €/mois) ; ailleurs il est déjà dans le facteur du bien
   // À Paris, le stationnement se loue à part : loyer mensuel selon le type (Parkto, Yespark : 148 € en moyenne)
   const pkM = z === 'paris' && isAppart() ? {ext: 105, '1': 145, box: 190, '2': 290}[selected(crit('parking')).k] || 0 : 0;
   const cc = m2 => m2 * actu * factor * surf + pkM;
   const CC = cc(lm.m2), lo = cc((lm.m2 + lm.lo) / 2), hi = cc((lm.m2 + lm.hi) / 2);
-  return {meuble, charges, qual, etatDpe, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC: CC - charges * surf};
+  return {meuble, coloc, charges, qual, etatDpe, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC: CC - charges * surf};
 }
 
 function renderRent(el, r, lm, insee) {
@@ -1215,7 +1231,7 @@ function renderRent(el, r, lm, insee) {
 
   const m2 = v => v.toFixed(1).replace('.', ',');
   el.innerHTML = `
-    <h3>Loyer estimé — location ${meuble ? 'meublée' : 'vide'}</h3>
+    <h3>Loyer estimé — ${colocActive() ? `colocation à ${nbChambres(surf)} chambres` : 'location ' + (meuble ? 'meublée' : 'vide')}</h3>
     <div class="big">${fmt(CC)} € <small>/ mois charges comprises</small></div>
     <div class="ppm">${m2((CC - pkM) / surf)} €/m² · ≈ ${fmt(HC)} € hors charges</div>
     <div class="range">Fourchette : ${fmt(lo)} – ${fmt(hi)} € / mois</div>
@@ -1225,6 +1241,7 @@ function renderRent(el, r, lm, insee) {
       ${actu !== 1 ? `<div><span>Recalage sur les annonces récentes du secteur${ref(actuSrc)}</span><b class="${actu > 1 ? 'up' : 'down'}">${pct(actu - 1)}</b></div>` : ''}
       ${Math.abs(qual - 1) > 0.001 ? `<div><span>Atouts et défauts du bien${ref('calib')} <small class="raw">(${pct(state.factor - 1)} sur le prix${petit ? ', défauts d\'emplacement moitié moins pour un studio' : ''}${chambre ? ', chambre séparée +5 %' : ''})</small>${petit ? ref('et') : ''}</span><b class="${qual > 1 ? 'up' : 'down'}">${pct(qual - 1)}</b></div>` : ''}
       ${meuble ? `<div><span>Meublé${ref(z === 'paris' ? 'apur' : 'est')}</span><b class="up">${pct(MEUBLE[z])}</b></div>` : ''}
+      ${colocActive() ? (c => `<div><span>Colocation à ${c.n} chambres${ref('coloc')}</span><b class="up">${pct(PRIME_COLOC(c.n))}</b></div>`)({n: nbChambres(surf)}) : ''}
       ${pkM ? `<div><span>Parking loué avec${ref('yespark')}</span><b class="up">+ ${fmt(pkM)} €</b></div>` : ''}
     </div>
     ${alerts}
@@ -1240,7 +1257,14 @@ const NIVEAUX = {   // €/m², mêmes coûts que la décote « en l'état » ; 
   rafraichir: {l: 'Rafraîchissement (peinture, sols)', paris: 450, autre: 350, mois: 2, d: 'Peintures, sols, luminaires, petites reprises.'},
   travaux: {l: 'Gros travaux (cuisine, salle de bain, électricité)', paris: 900, autre: 700, mois: 4, d: 'Cuisine et salle de bain neuves, électricité remise aux normes, peintures et sols.'},
   renover: {l: 'Rénovation complète', paris: 1500, autre: 1100, mois: 6, d: 'Tous corps d\'état : électricité, plomberie, menuiseries, cloisons, cuisine, salle de bain, finitions.'},
+  diviser: {l: 'Diviser en plusieurs logements', paris: 0, autre: 0, mois: 6, d: 'Un logement découpé en 2 à 4 logements, chacun avec sa cuisine, sa salle d\'eau et ses compteurs.'},
+  amenager: {l: 'Aménager une surface en plus (sous-sol, combles…)', paris: 0, autre: 0, mois: 5, d: 'Transformer une surface inutilisée en pièces habitables : pour agrandir le logement, ou pour en créer un nouveau.'},
 };
+// Coûts (Crédit Agricole, homeselect : 30 000 à 50 000 € pour diviser à Paris ; géomètre 800 à 2 500 € ; Habitatpresto,
+// travaux.com : sous-sol 1 000 à 2 500 €/m² ; Construires : combles 650 à 1 600 €/m²)
+const COUT_LOT = {paris: 30000, autre: 22000}, FRAIS_DIVISION = 4000;   // par logement en plus ; géomètre, copropriété, mairie
+// Décote : une pièce en sous-sol ou sous les toits vaut moins au m² que le logement principal (lumière, hauteur, accès)
+const AMENAG = {soussol: {l: 'Sous-sol', m2: 1500, decote: 40}, combles: {l: 'Combles', m2: 1200, decote: 15}, autre: {l: 'Garage, grenier, autre', m2: 1300, decote: 25}};
 // Gamme des finitions : coût (haut de gamme ≈ 1,3-1,5 × le standard) et état obtenu après travaux
 const GAMMES = {
   eco: {l: 'Économique', mult: 0.75, etat: 'bon', d: 'bon état'},
@@ -1275,6 +1299,7 @@ function renderWorks() {
     if (g) g.onchange = e => { choixTravaux.gamme = e.target.value; save(); updateResult(); };
     if (d) d.onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
   };
+  if (niveau === 'diviser' || niveau === 'amenager') return projetSurface(el, niveau, question, z, surf);
   if (niveau === 'non') {
     state.projet = null;
     el.innerHTML = `${question}<div></div></div><button class="cta" onclick="showTab('cashflow')">Financer ce bien →</button>`;
@@ -1326,6 +1351,109 @@ function renderWorks() {
   bind(); renderSynth();
 }
 
+// --- Projets « diviser » et « aménager une surface en plus » ---
+// La valeur et le loyer de chaque logement obtenu viennent du moteur d'estimation (à sa propre surface : les petites
+// surfaces se vendent et se louent plus cher au m²). Calcul lancé par un bouton, gardé tant que rien ne change.
+function projetSurface(el, niveau, question, z, surf) {
+  const c = choixTravaux, save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
+  const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${String(k) === String(cur) ? ' selected' : ''}>${v}</option>`).join('');
+  const gamme = GAMMES[c.gamme] ? c.gamme : 'standard', meuble = louerMeuble();
+  const dpe = selected(crit('dpe')).k, passoire = 'EFG'.includes(dpe) && dpe !== '?';
+  const cible = c.dpe && ORDRE_DPE.includes(c.dpe) ? c.dpe : passoire ? 'C' : dpe;
+  let lots, couts, duree, champs, avertissement;
+  if (niveau === 'diviser') {
+    const n = Math.max(2, Math.min(4, +c.nbLots || 2));
+    lots = Array.from({length: n}, (_, i) => ({nom: 'Logement ' + (i + 1), surf: Math.max(9, +((c.surfaces || [])[i]) || Math.round(surf / n))}));
+    const renov = Math.round(NIVEAUX.travaux[z] * GAMMES[gamme].mult) * surf, energie = coutEnergie(dpe, cible, 'travaux') * surf;
+    couts = [[`Rénovation (gros travaux, gamme ${GAMMES[gamme].l.toLowerCase()}) : ${fmt(renov / surf)} €/m² × ${fmt(surf)} m²`, renov],
+      energie ? [`Énergie (DPE visé ${cible})`, energie] : null,
+      [`${n - 1} logement${n > 2 ? 's' : ''} en plus : cuisine, salle d'eau, cloisons, compteurs`, (n - 1) * COUT_LOT[z]],
+      ['Géomètre, règlement de copropriété, déclaration en mairie', FRAIS_DIVISION]].filter(Boolean);
+    duree = 6 + (n - 2) * 2;
+    champs = `<div><label>Nombre de logements</label><select id="w_nb">${opt({2: '2', 3: '3', 4: '4'}, n)}</select></div>
+      <div><label>Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
+      <div class="w-surfaces"><label>Surface de chaque logement (m²)</label><div class="w-lots">${lots.map((l, i) => `<input type="number" min="9" data-lot="${i}" value="${l.surf}">`).join('')}</div>
+        <div class="hint">Total ${fmt(lots.reduce((t, l) => t + l.surf, 0))} m² pour ${fmt(surf)} m² aujourd'hui.</div></div>`;
+    avertissement = 'Copropriété : accord de l\'assemblée générale (règlement et état descriptif de division). Chaque logement : au moins 9 m² et 2,20 m sous plafond. Déclaration préalable en mairie, parfois permis de construire ; certaines communes demandent un « permis de diviser ».';
+  } else {
+    const t = AMENAG[c.amenType] ? c.amenType : 'soussol', m2 = Math.max(5, +c.amenM2 || 20), cm2 = +c.amenCout || AMENAG[t].m2;
+    const dec = c.amenDecote != null && c.amenDecote !== '' ? Math.max(0, Math.min(80, +c.amenDecote)) : AMENAG[t].decote;
+    const usage = c.amenUsage === 'lot' ? 'lot' : 'agrandir', utile = Math.round(m2 * (1 - dec / 100));
+    // Agrandir : la surface gagnée vaut le prix au m² actuel, après décote ; le loyer suit la nouvelle surface (moteur)
+    // Logement à part : estimé à sa vraie surface, puis décoté (valeur ; loyer un peu moins)
+    lots = usage === 'agrandir' ? [{nom: `Logement agrandi : ${fmt(surf)} + ${fmt(m2)} m²`, surf: surf + m2, surfMoteur: surf + utile, agrandi: utile}]
+      : [{nom: 'Logement actuel', surf, actuel: true}, {nom: `Nouveau logement (${AMENAG[t].l.toLowerCase()})`, surf: Math.max(9, m2), decote: dec}];
+    couts = [[`Aménagement : ${fmt(cm2)} €/m² × ${fmt(m2)} m²`, m2 * cm2], usage === 'lot' ? ['Cuisine, entrée séparée, compteurs', COUT_LOT[z] / 2] : null, ['Architecte, déclaration en mairie', 3000]].filter(Boolean);
+    duree = 5;
+    champs = `<div><label>Surface à aménager (m²)</label><input type="number" id="w_m2" min="5" value="${m2}"></div>
+      <div><label>Où</label><select id="w_type">${opt(Object.fromEntries(Object.entries(AMENAG).map(([k, v]) => [k, v.l])), t)}</select></div>
+      <div><label>Pour</label><select id="w_usage">${opt({agrandir: 'Agrandir le logement', lot: 'Créer un logement à part'}, usage)}</select></div>
+      <div><label>Coût (€/m²)</label><input type="number" id="w_cout" min="300" step="50" value="${cm2}"></div>
+      <div><label>Décote de cette surface (%)</label><input type="number" id="w_decote" min="0" max="80" value="${dec}"><div class="hint">Moins de lumière, plafond plus bas : cette surface vaut ${dec} % de moins au m² que le logement principal.</div></div>`;
+    avertissement = 'Une pièce habitable doit avoir 2,20 m sous plafond et une fenêtre sur l\'extérieur : caves, sous-sols et combles non aménagés ne peuvent pas être loués comme logement. Changement de destination : déclaration préalable ou permis ; en copropriété, accord si des parties communes sont touchées. Prévoir le traitement de l\'humidité en sous-sol.';
+  }
+  const budget = Math.round(couts.reduce((t, x) => t + x[1], 0) / 500) * 500;
+  const mobilier = meuble ? lots.filter(l => !l.actuel).reduce((t, l) => t + budgetMobilier(l.surf, gamme), 0) : 0;
+  const criteresLot = l => ({...saved, ...(niveau === 'diviser' ? {etat: GAMMES[gamme].etat, dpe: cible} : {}), location: meuble ? 'meuble' : 'vide', chambre: false});
+  const cle = JSON.stringify([state.lat, state.lon, state.type, niveau, lots.map(l => [l.surf, !!l.actuel]), gamme, cible, meuble, saved]);
+  const calc = state.calcProjet && state.calcProjet.cle === cle ? state.calcProjet : null;
+  let res = '';
+  if (calc && calc.erreur) res = `<div class="warnbox">${calc.erreur}</div>`;
+  if (calc && calc.lots) {
+    const valeur = calc.lots.reduce((t, l) => t + l.prix, 0), loyer = calc.lots.reduce((t, l) => t + l.loyer, 0);
+    const notaire = state.prix * 0.08, coutBien = state.prix + notaire + budget, marge = valeur - coutBien;
+    state.projet = {travaux: budget, valeurApres: Math.round(valeur), loyerApres: Math.round(loyer), duree, niveau, dpe: cible, gamme, meuble, mobilier, lots: lots.length};
+    res = `<div class="kpis">
+        <div class="kpi"><div class="k">Valeur après projet</div><div class="v">${fmtK(valeur)}</div><div class="d">${lots.length > 1 ? lots.length + ' logements' : 'logement agrandi'}</div></div>
+        <div class="kpi"><div class="k">Loyers après projet</div><div class="v">${fmt(loyer)} €</div><div class="d">${meuble ? 'meublé' : 'vide'}, hors charges/mois · aujourd'hui ${fmt(state.loyerHC)} €</div></div>
+        <div class="kpi"><div class="k">Valeur créée</div><div class="v ${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+' : '−'}${fmtK(Math.abs(marge))}</div><div class="d">après achat, notaire et travaux</div></div>
+      </div>
+      <div class="calc">${calc.lots.map(l => `<div><span>${l.nom} · ${fmt(l.surf)} m²${l.actuel ? ' (inchangé)' : ''}</span><b>${fmtK(l.prix)} · ${fmt(l.loyer)} €/mois</b></div>`).join('')}</div>
+      <div class="calc">
+        <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
+        <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
+        ${couts.map(([l, v]) => `<div><span>${l}</span><b>${fmtK(v)}</b></div>`).join('')}
+        ${mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${fmtK(mobilier)}</b></div>` : ''}
+        <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
+        <div><span>Rendement brut sur le coût total</span><b>${(loyer * 12 / (coutBien + mobilier) * 100).toFixed(1).replace('.', ',')} %</b></div>
+      </div>
+      <div class="row"><button class="cta" onclick="showTab('cashflow', true, 'location')">Projet + location →</button><button class="cta" onclick="showTab('cashflow', true, 'revente')">Projet + revente →</button></div>`;
+  } else state.projet = null;
+  el.innerHTML = `${question}${champs}</div>
+    <div class="hint">${NIVEAUX[niveau].d}</div>
+    <button class="cta" id="w_calc"${calc && calc.lots ? ' hidden' : ''}>Estimer ${lots.length > 1 ? 'les logements' : 'le logement agrandi'}</button>
+    <div id="w_etat" class="hint"></div>${res}
+    <div class="range">${avertissement}</div>`;
+  // Réglages
+  const maj = () => { save(); state.calcProjet = null; renderWorks(); };
+  document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; maj(); };
+  const on = (id, f) => { const x = document.getElementById(id); if (x) x.onchange = e => { f(e.target.value); maj(); }; };
+  on('w_nb', v => { c.nbLots = +v; c.surfaces = []; }); on('w_gamme', v => c.gamme = v);
+  on('w_m2', v => c.amenM2 = +v); on('w_type', v => { c.amenType = v; c.amenCout = null; c.amenDecote = null; }); on('w_usage', v => c.amenUsage = v);
+  on('w_cout', v => c.amenCout = +v); on('w_decote', v => c.amenDecote = v);
+  el.querySelectorAll('[data-lot]').forEach(x => x.onchange = () => { c.surfaces = lots.map((l, i) => i === +x.dataset.lot ? +x.value : l.surf); maj(); });
+  // Estimation de chaque logement par le moteur
+  document.getElementById('w_calc').onclick = async () => {
+    const btn = document.getElementById('w_calc'), etat = document.getElementById('w_etat');
+    if (!window.INV || !INV.estimerSurface) { etat.textContent = 'Moteur d\'estimation indisponible : recharge la page.'; return; }
+    btn.disabled = true;
+    const out = [];
+    try {
+      for (const [i, l] of lots.entries()) {
+        if (l.actuel) { out.push({...l, prix: state.prix, loyer: state.loyerHC}); continue; }
+        etat.textContent = `Estimation ${lots.length > 1 ? `du logement ${i + 1} sur ${lots.length}` : 'du logement agrandi'}…`;
+        const e = await INV.estimerSurface({lat: state.lat, lon: state.lon, type: state.type, surf: l.surfMoteur || l.surf, criteres: criteresLot(l)});
+        if (e.erreur) throw new Error(e.erreur);
+        const loyer = meuble ? e.loyerMeuble ?? e.loyer : e.loyerVide ?? e.loyer, d = (l.decote || 0) / 100;
+        out.push({...l, prix: l.agrandi ? state.prix + l.agrandi * state.prix / surf : e.prix * (1 - d), loyer: loyer * (1 - 0.6 * d)});
+      }
+      state.calcProjet = {cle, lots: out};
+    } catch (err) { state.calcProjet = {cle, erreur: 'Estimation impossible : ' + (err.message || err)}; }
+    renderWorks();
+  };
+  renderSynth();
+}
+
 // --- Synthèse : les 3 chiffres qui comptent ---
 function renderSynth() {
   const el = document.getElementById('synth'), r = state.base;
@@ -1350,13 +1478,14 @@ function renderSynth() {
       ${loyerOk && nonLouable ? `
       <div class="kpi"><div class="k">Loyer</div><div class="v down txt">Non louable</div><div class="d">en l'état (${dpe === 'G' ? 'DPE G' : 'à rénover entièrement'})${pj ? ` · <b>${fmt(pj.loyerApres)} €</b> HC après travaux` : ' · voir « Travaux prévus ? »'}</div></div>
       <div class="kpi"><div class="k">Rendement brut</div><div class="v">${pj ? (pj.loyerApres * 12 / coutPj * 100).toFixed(1).replace('.', ',') + ' %' : '—'}</div><div class="d">${pj ? 'après travaux, sur le coût total (achat, notaire, travaux' + (pj.mobilier ? ', mobilier' : '') + ')' : 'pas de loyer en l\'état'}</div></div>` : `
-      <div class="kpi"><div class="k">Loyer</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'}</div><div class="d">${loyerOk ? `hors charges/mois · ${fmt(state.loyerCC)} € CC` : 'calcul en cours'}</div></div>
+      <div class="kpi"><div class="k">Loyer${colocActive() ? ' en colocation' : ''}</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'}</div><div class="d">${!loyerOk ? 'calcul en cours' : colocActive() ? `hors charges/mois, ${nbChambres(r.surf)} chambres : <b>${fmt(state.loyerHC / nbChambres(r.surf))} €</b> chacune (${fmt(state.loyerCC / nbChambres(r.surf))} € CC)` : `hors charges/mois · ${fmt(state.loyerCC)} € CC`}</div></div>
       <div class="kpi"><div class="k">Rendement brut</div><div class="v">${rdt != null ? (rdt * 100).toFixed(1).replace('.', ',') + ' %' : '…'}</div><div class="d">loyer annuel ÷ prix${meuble && state.mob ? ' + mobilier' : ''}</div></div>`}
     </div>
     <div class="synthbar">
       <span class="conf" style="background:${state.confAff[1]}">${state.confAff[0]}</span>
       <span class="hint">${r.comps.length} ventes à moins de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}</span>
-      <span class="louer">Louer <span class="seg mini" id="louer"><button data-v="vide"${meuble ? '' : ' class="on"'}>Vide</button><button data-v="meuble"${meuble ? ' class="on"' : ''}>Meublé</button></span></span>
+      <span class="louer">Louer <span class="seg mini" id="louer">${['vide', 'meuble', 'coloc'].map(v => `<button data-v="${v}"${field('location').value === v || (v === 'vide' && !['meuble', 'coloc'].includes(field('location').value)) ? ' class="on"' : ''}>${{vide: 'Vide', meuble: 'Meublé', coloc: 'Colocation'}[v]}</button>`).join('')}</span>
+        ${colocActive() ? `<label class="chambres">Chambres <input type="number" id="nbChambres" min="2" max="10" value="${nbChambres(r.surf)}"></label>` : ''}</span>
     </div>
     ${alertes.join('')}`;
   memoriser();
@@ -1364,6 +1493,12 @@ function renderSynth() {
     field('location').value = b.dataset.v;
     field('location').dispatchEvent(new Event('input'));
   });
+  const ch = el.querySelector('#nbChambres');
+  if (ch) ch.onchange = () => {
+    saved.chambresColoc = Math.max(2, Math.min(10, Math.round(+ch.value || 2)));
+    if (!MOTEUR) try { localStorage.setItem('criteres-v2', JSON.stringify(saved)); } catch (e) {}
+    updateResult();
+  };
 }
 
 // --- Carte ---
@@ -1529,13 +1664,13 @@ async function estimerPour(p) {
   for (let i = 0; i < 125 && state.loyerHC == null; i++) await new Promise(ok => setTimeout(ok, 200));   // loyer : jusqu'à 25 s
   const r = state.base;
   // Loyer de marché vide ET meublé (même bien, seule la location change)
-  let loyerVide = null, loyerMeuble = null;
+  let loyerVide = null, loyerMeuble = null, loyerColoc = null;
   if (state.lm) {
     const f = field('location'), avant = f.value;
     const hc = v => { f.value = v; return Math.round(calcLoyer(r, state.lm, state.insee, state.factor, state.chambreEff, state.factorHorsEtat).HC); };
-    try { loyerVide = hc('vide'); loyerMeuble = hc('meuble'); } finally { f.value = avant; }
+    try { loyerVide = hc('vide'); loyerMeuble = hc('meuble'); loyerColoc = hc('coloc'); } finally { f.value = avant; }
   }
-  return {prix: Math.round(state.prix), lo: Math.round(state.prixLo), hi: Math.round(state.prixHi), loyerVide, loyerMeuble,
+  return {prix: Math.round(state.prix), lo: Math.round(state.prixLo), hi: Math.round(state.prixHi), loyerVide, loyerMeuble, loyerColoc, chambresColoc: nbChambres(p.surf),
     loyer: state.loyerHC != null ? Math.round(state.loyerHC) : null, fiabilite: state.confAff ? state.confAff[0] : '',
     ventes: r.comps.length, rayon: Math.round(r.radius), periode: r.elargie ? `${r.anMin}–${r.anMax}` : ''};
 }
@@ -2173,13 +2308,13 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=30"></script>
+<script src="investissements.js?v=32"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
   if (!state.base || !state.loyerHC) return null;
-  const meuble = selected(crit('location')).k === 'meuble';
-  return {prix: Math.round(state.prix), loyer: Math.round(state.loyerHC), surf: state.base.surf, type: isAppart() ? 'appart' : 'maison',
+  const meuble = ['meuble', 'coloc'].includes(selected(crit('location')).k), coloc = colocActive() ? nbChambres(state.base.surf) : 0;
+  return {prix: Math.round(state.prix), loyer: Math.round(state.loyerHC), coloc, surf: state.base.surf, type: isAppart() ? 'appart' : 'maison',
     meuble, mob: meuble ? Math.round(state.mob) : 0, dpe: selected(crit('dpe')).k, etat: selected(crit('etat')).k, label: document.getElementById('addr').value || 'Point choisi sur la carte', projet: state.projet || null};
 }
 function showTab(t, maj = true, mode = null, sous = null) {
