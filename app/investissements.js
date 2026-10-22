@@ -624,6 +624,7 @@ function vueListe() {
         <div class="chiffres"><div><span>Patrimoine net</span><b class="${t.V ? signe(t.net) : ''}">${t.V ? kEur(t.net) : '—'}</b></div><div><span>Cash-flow</span><b class="${signe(t.cf)}">${t.n ? eur(t.cf) + '/mois' : '—'}</b></div></div>
         <span class="chev" aria-hidden="true">›</span></a>`;
     }).join('')}</div>`;
+    h += arbreHTML();
     // Filtre par détenteur
     const n = f => biens.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
     const choix = [['tout', 'Tous'], ['np', 'Nom propre'], ...scis.map(x => [x.id, x.nom])].filter(([f]) => f === 'tout' || n(f));
@@ -639,6 +640,32 @@ function vueListe() {
   racine.innerHTML = h;
   vignettes();
 }
+// Arbre du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens
+function arbreHTML() {
+  if (!biens.length) return '';
+  const chiffres = t => `<span class="chiffres-arbre">${t.V ? `<span>net <b class="${signe(t.net)}">${kEur(t.net)}</b></span>` : ''}${t.n ? `<span>cash-flow <b class="${signe(t.cf)}">${eur(t.cf)}/mois</b></span>` : ''}</span>`;
+  const feuille = b => {
+    const c = calculs(b), k = partDe(b), net = c.patrimoine != null ? c.patrimoine * k : null;
+    return `<li><a class="noeud bien-n" href="#investissements/${encodeURIComponent(b.id)}"><span class="ico-n">${icone(b.type)}</span>
+      <span class="nom-n">${esc(b.nom)}${k < 1 ? ` <small>${Math.round(k * 100)} %</small>` : ''}</span>
+      <span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${c.loue || c.mensuCredit ? `<span><b class="${signe(c.cfMois)}">${eur(c.cfMois * k)}/mois</b></span>` : ''}</span></a></li>`;
+  };
+  const branches = [];
+  const np = biens.filter(b => b.structure !== 'sci');
+  if (np.length) branches.push(`<li><span class="noeud groupe"><span class="ico-n">${OEIL_PERSO}</span><span class="nom-n">En nom propre</span>${chiffres(totaux(np))}</span>
+    <ul>${np.map(feuille).join('')}</ul></li>`);
+  for (const x of scis) {
+    const sb = biens.filter(b => b.structure === 'sci' && b.sciId === x.id);
+    const assoc = x.associes.filter(a => a.nom || a.parts).map(a => `${esc(a.nom || 'Associé')}${a.parts ? ' ' + String(a.parts).replace('.', ',') + ' %' : ''}`).join(' · ');
+    branches.push(`<li><a class="noeud groupe" href="#investissements/sci:${encodeURIComponent(x.id)}"><span class="ico-n">${ICONE_SCI}</span>
+      <span class="nom-n">${esc(x.nom)} <small>SCI ${REGIMES[x.regime]}</small>${assoc ? `<small class="assoc">${assoc}</small>` : ''}</span>${chiffres(totaux(sb))}</a>
+      ${sb.length ? `<ul>${sb.map(feuille).join('')}</ul>` : '<ul><li><span class="noeud vide-n">Aucun bien rattaché</span></li></ul>'}</li>`);
+  }
+  return `<h2 class="sous-titre">Organisation</h2><div class="arbre">
+    <div class="noeud racine"><span class="nom-n">Mon patrimoine</span>${chiffres(totaux(biens))}</div>
+    <ul>${branches.join('')}</ul></div>`;
+}
+const OEIL_PERSO = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
 function carte(b, c) {
   const k = partDe(b), x = n => n * k;
   const tags = [k < 1 ? `Part : ${Math.round(k * 100)} %` : '', b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
