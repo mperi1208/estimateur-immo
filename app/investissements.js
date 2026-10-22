@@ -595,6 +595,7 @@ function afficher(id = idDuHash()) {
   const sci = id && id.startsWith('sci:') ? scis.find(x => x.id === id.slice(4)) : null;
   ouvert = sci ? id : id && biens.some(b => b.id === id) ? id : null;
   if (sci) vueSci(sci); else if (ouvert) vueDetail(biens.find(b => b.id === ouvert)); else vueListe();
+  if (window.CF_APP && CF_APP.majScis) CF_APP.majScis();   // la liste « Dans quelle SCI » de Financer suit les SCI
 }
 // Totaux d'un ensemble de biens (patrimoine net : seulement sur les biens dont la valeur est renseignée)
 // Part du bien détenue (indivision, bien à plusieurs…) : 100 % par défaut
@@ -1266,6 +1267,6 @@ racine.addEventListener('change', async e => {
 biens = biensLocaux(); scis = scisLocales(); normaliser();
 // Biens repris des anciens crédits : enregistrés tout de suite, pour garder les mêmes identifiants d'un chargement à l'autre
 try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
-window.INV = {estimerSurface: p => moteur.estimer(p), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
+window.INV = {estimerSurface: p => moteur.estimer(p), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
 COMPTE.init();
 })();

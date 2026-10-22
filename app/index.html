@@ -471,6 +471,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div><label>Apport (€)</label><input id="cf_apport" type="number" min="0" step="1000"></div>
     <div><label>Durée du crédit (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
     <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
+    <div data-sci hidden><label>Dans quelle SCI</label><select id="cf_sciExist"><option value="">Une nouvelle SCI</option></select><div class="hint" id="cf_sciHint" hidden>Comptable et frais de la SCI déjà payés : pas comptés en plus.</div></div>
     <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
     <div><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
   </div><button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button></div>
@@ -1894,12 +1895,12 @@ const CF = document.getElementById('cf');
 const $ = id => document.getElementById('cf_' + id);
 const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier', 'struct', 'meuble', 'regime', 'tmi', 'terrain', 'distrib',
   'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'tf', 'copro', 'pno',
-  'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit',
+  'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit', 'sciExist',
   'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente'];
 const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
-  gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true,
+  gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true, sciExist: '',
   scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4};
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
@@ -1908,12 +1909,22 @@ function tauxConseille() {
   const sci = get('struct') !== 'np';
   return Math.round((tauxDuree(TAUX_ACTUEL, get('duree') * 12) + (sci ? SURPRIME_SCI : 0)) * 100) / 100;
 }
+// SCI déjà créées dans Mes investissements : y mettre le bien évite de recompter le comptable (déjà payé par la SCI)
+let sciVoulue = '';   // gardée tant que la liste des SCI n'est pas arrivée du compte
+const mesScis = () => window.INV && INV.scis ? INV.scis() : [];
+function majScis() {
+  const l = mesScis(), sel = $('sciExist'), v = sel.value || sciVoulue;
+  sel.innerHTML = '<option value="">Une nouvelle SCI</option>' + l.map(x => `<option value="${esc(x.id)}">${esc(x.nom)} (SCI ${x.regime === 'is' ? 'à l\'IS' : 'à l\'IR'})</option>`).join('');
+  sel.value = l.some(x => x.id === v) ? v : '';
+  afficherChamps();
+}
+const comptaDefaut = (meuble = get('meuble') === '1') => get('struct') !== 'np' && get('sciExist') ? 0 : {np: meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')];
 // Valeurs qui dépendent d'autres champs quand l'utilisateur ne les a pas fixées
 function defautsLies(v) {
   if (v.taux == null) v.taux = tauxConseille();
   if (v.tf == null) v.tf = Math.round(get('loyer') * 1.0 / 10) * 10;          // ≈ un mois de loyer
   if (v.copro == null) v.copro = get('type') === 'appart' ? Math.round(get('surf') * 8 / 10) * 10 : 0;
-  if (v.compta == null) v.compta = {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')];
+  if (v.compta == null) v.compta = comptaDefaut();
   return v;
 }
 
@@ -1922,6 +1933,7 @@ function charger() {
   try { saved = JSON.parse(localStorage.getItem('cashflow-v1') || '{}'); } catch (e) {}
   const v = {...DEFAUTS, ...saved};
   for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
+  sciVoulue = v.sciExist || '';
   const lies = defautsLies({taux: v.taux, tf: v.tf, copro: v.copro, compta: v.compta});
   for (const k in lies) set(k, lies[k]);
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
@@ -1939,7 +1951,7 @@ function majChips() {
 // pour ne pas écraser ce que tu as modifié à la main)
 let bienEst = null;
 function sync(est, mode) {
-  bienEst = est;
+  bienEst = est; majScis();
   const bar = $('bien');
   if (!est) {
     bar.innerHTML = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Mes projets</a>, ou remplis les champs à la main.';
@@ -1954,7 +1966,7 @@ function sync(est, mode) {
     set('meuble', est.meuble ? '1' : '0'); set('mobilier', est.mob || 0);
     set('tf', Math.round(est.loyer / 10) * 10);
     set('copro', est.type === 'appart' ? Math.round(est.surf * 8 / 10) * 10 : 0);
-    if (!flags.comptaManuel) set('compta', {np: est.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+    if (!flags.comptaManuel) set('compta', comptaDefaut(est.meuble));
     // Nouveau bien : on repart d'un achat simple (le projet travaux se relance depuis la carte « Projet travaux »)
     if (!mode) { $('boxProjet').open = false; majChips(); flags.loyers = null; set('scenario', 'louer'); set('travaux', 0); set('valeurApres', 0); if (flags.differeAuto) { set('differe', 0); flags.differeAuto = false; } }
     try { localStorage.setItem('cashflow-bien', cle); } catch (e) {}
@@ -1967,7 +1979,7 @@ function sync(est, mode) {
     if (get('differe') < pj.duree) { set('differe', pj.duree); set('typeDiff', 'partiel'); flags.differeAuto = true; }
     set('moisRevente', pj.duree + 6);
     set('loyer', pj.loyerApres); flags.loyers = {avant: est.loyer, apres: pj.loyerApres}; set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
-    if (!flags.comptaManuel) set('compta', {np: pj.meuble ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+    if (!flags.comptaManuel) set('compta', comptaDefaut(pj.meuble));
     bar.innerHTML += `<br>Projet : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b> ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
     sauver();
   }
@@ -1988,6 +2000,8 @@ function afficherChamps() {
   const is = st === 'is' || (st === 'ir' && meuble);
   CF.querySelectorAll('[data-meuble]').forEach(e => e.hidden = !meuble);
   CF.querySelectorAll('[data-np]').forEach(e => e.hidden = st !== 'np');
+  CF.querySelectorAll('[data-sci]').forEach(e => e.hidden = st === 'np' || !mesScis().length);
+  $('sciHint').hidden = st === 'np' || !get('sciExist');
   CF.querySelectorAll('[data-notis]').forEach(e => e.hidden = is);
   CF.querySelectorAll('[data-is]').forEach(e => e.hidden = !is);
   CF.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
@@ -2335,8 +2349,15 @@ $('form').addEventListener('input', e => {
   if (id === 'taux') flags.tauxManuel = true;
   if (id === 'compta') flags.comptaManuel = true;
   if (id === 'differe') flags.differeAuto = false;
-  if ((id === 'struct' || id === 'duree') && !flags.tauxManuel) set('taux', tauxConseille());
-  if ((id === 'struct' || id === 'meuble') && !flags.comptaManuel) set('compta', {np: get('meuble') === '1' ? 400 : 0, ir: 400, is: 1500}[get('struct')]);
+  if (id === 'sciExist') {   // SCI existante choisie : son régime, et le comptable n'est plus compté en plus
+    sciVoulue = get('sciExist');
+    const x = mesScis().find(y => y.id === sciVoulue);
+    if (x && get('struct') !== x.regime) set('struct', x.regime);
+    flags.comptaManuel = false;
+  }
+  if (id === 'struct') { const x = mesScis().find(y => y.id === get('sciExist')); if (x && x.regime !== get('struct')) { set('sciExist', ''); sciVoulue = ''; } }
+  if ((id === 'struct' || id === 'duree' || id === 'sciExist') && !flags.tauxManuel) set('taux', tauxConseille());
+  if ((id === 'struct' || id === 'meuble' || id === 'sciExist') && !flags.comptaManuel) set('compta', comptaDefaut());
   if (id === 'neuf') { set('notaire', get('neuf') === '1' ? 2.5 : 8); set('vieux', get('neuf') === '1' ? '0' : '1'); }
   if (id === 'dureeTravaux' && ouvert('projet') && get('differe') < get('dureeTravaux')) { set('differe', get('dureeTravaux')); set('typeDiff', 'partiel'); flags.differeAuto = true; }
   sauver(); rendre();
@@ -2362,10 +2383,11 @@ CF.querySelectorAll('details.opt').forEach(d => d.addEventListener('toggle', () 
 $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
-window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+$('sciExist').addEventListener('focus', majScis);
+window.CF_APP = {sync, majScis, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=42"></script>
+<script src="investissements.js?v=43"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
