@@ -205,6 +205,14 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .doc .nom{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .invwrap .doc .meta{color:var(--muted)}
 .invwrap .pied{margin-top:20px;text-align:right}
+.invwrap .titre-discret{display:flex;align-items:center;gap:12px}
+.invwrap .titre-discret .retour{margin-bottom:0}
+.invwrap a.retour + .discret-btn,.invwrap .titre-discret + .compteEtat{margin-top:0}
+.invwrap .titre-discret:has(.retour){margin-bottom:12px}
+.invwrap button.discret-btn{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;font-size:14px;letter-spacing:2px;color:var(--muted)}
+.invwrap button.discret-btn[aria-pressed="true"]{letter-spacing:0;background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
+/* Mode discret : les montants (et les champs chiffrés) sont floutés */
+body.discret #invest :is(.kpi .v, .kpi .d, .chiffres b, .mini b, .calc b, .auto-chiffres b, .auto-chiffres small, .deux-loyers b, .total, .ta-part, input[type=number], .reneg .aide, .vente .aide, .resume .aide, #inv_auto .aide, .tags, .part){filter:blur(7px);user-select:none}
 .invwrap .dethead-actions{margin-left:auto;flex-shrink:0}
 @media (max-width:600px){.invwrap .dethead{flex-wrap:wrap}.invwrap .dethead-actions{margin-left:0;width:100%}.invwrap .dethead-actions button{width:100%}}
 .invwrap .vente .vente-params{margin-bottom:12px}
@@ -2308,7 +2316,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=32"></script>
+<script src="investissements.js?v=33"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

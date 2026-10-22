@@ -543,6 +543,12 @@ function idDuHash() {
   return (t === 'investissements' || t === 'credits') && sous ? decodeURIComponent(sous) : null;
 }
 // ---------- Carte de la fiche : placer le bien à la main quand l'adresse n'est pas trouvée ----------
+// Mode discret : tous les montants floutés, pour montrer le site sans dévoiler ses chiffres (réglage gardé sur l'appareil)
+let discret = false;
+try { discret = localStorage.getItem('montants-masques') === '1'; } catch (e) {}
+document.body.classList.toggle('discret', discret);
+const OEIL = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const boutonDiscret = () => `<button class="discret-btn" data-a="discret" aria-pressed="${discret}" title="${discret ? 'Afficher les montants' : 'Flouter les montants (pour montrer le site)'}">${discret ? OEIL + ' Afficher' : '✱✱✱'}</button>`;
 let carteBien = null;
 const venteOuverte = new Set();   // fiches où la simulation de vente est ouverte (le temps de la visite)
 function aideCarte(b) {
@@ -603,7 +609,7 @@ const ICONE_SCI = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" strok
 function vueListe() {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   if (filtre !== 'tout' && filtre !== 'np' && !scis.some(x => x.id === filtre)) filtre = 'tout';
-  let h = `<div class="invhead"><h1>Mes investissements</h1><div class="actions">
+  let h = `<div class="invhead"><div class="titre-discret"><h1>Mes investissements</h1>${boutonDiscret()}</div><div class="actions">
       ${est ? `<button data-a="ajoutEst" title="${esc(est.label)}">+ Ajouter le bien estimé</button>` : ''}
       <button data-a="ajoutSci">+ Créer une SCI</button>
       <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>${etatHTML()}`;
@@ -672,7 +678,7 @@ const section = (titre, corps, large = false) => `<section class="bloc${large ? 
 function vueDetail(b) {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   const opt = (o) => o;
-  let h = `<a class="retour" href="#investissements">← Mes investissements</a>${etatHTML()}
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}</div>${etatHTML()}
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
       <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions"><button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button></div></div>
     <div id="inv_kpis"></div>
@@ -788,7 +794,7 @@ function revenusHTML(b) {
 function vueSci(x) {
   const sesBiens = biens.filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
   const totalParts = somme(x.associes, a => a.parts);
-  let h = `<a class="retour" href="#investissements">← Mes investissements</a>${etatHTML()}
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}</div>${etatHTML()}
     <div class="dethead"><div class="vignette grand sciv">${ICONE_SCI}<span>SCI ${REGIMES[x.regime]}</span></div>
       <div><h1 id="inv_titre">${esc(x.nom)}</h1><div class="adr" id="inv_sous">${esc(['SCI ' + REGIMES[x.regime], x.siren ? 'SIREN ' + x.siren : '', x.siege].filter(Boolean).join(' · '))}</div></div></div>
     ${kpisTotaux(t)}
@@ -1087,6 +1093,13 @@ racine.addEventListener('click', async e => {
   const b = biens.find(x => x.id === ouvert), a = t.dataset.a;
   const sci = ouvert && ouvert.startsWith('sci:') ? scis.find(x => x.id === ouvert.slice(4)) : null;
   if (a === 'connexion') return ouvrirCompte();
+  if (a === 'discret') {
+    discret = !discret;
+    try { localStorage.setItem('montants-masques', discret ? '1' : '0'); } catch (e) {}
+    document.body.classList.toggle('discret', discret);
+    racine.querySelectorAll('.discret-btn').forEach(x => x.outerHTML = boutonDiscret());
+    return;
+  }
   if (a === 'ajout') return ajouter();
   if (a === 'filtre') { filtre = t.dataset.f; return vueListe(); }
   if (a === 'ajoutSci') { const x = nouvelleSci(); scis.push(x); sauver(x); location.hash = '#investissements/sci:' + x.id; return; }
