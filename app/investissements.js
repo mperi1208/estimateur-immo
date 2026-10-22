@@ -1,4 +1,4 @@
-// Mes investissements : chaque bien avec son achat, ses crédits, sa location, ses charges, sa rentabilité,
+// Mon patrimoine : chaque bien avec son achat, ses crédits, sa location, ses charges, sa rentabilité,
 // ses plans et documents. Invité : tout reste sur cet appareil (localStorage, fichiers dans IndexedDB).
 // Connecté : dans le compte (Supabase : liste des biens dans immo_profils, fichiers dans le stockage « immo-docs »).
 (() => {
@@ -620,7 +620,7 @@ const ICONE_SCI = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" strok
 function vueListe() {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   if (filtre !== 'tout' && filtre !== 'np' && !scis.some(x => x.id === filtre)) filtre = 'tout';
-  let h = `<div class="invhead"><div class="titre-discret"><h1>Mes investissements</h1>${boutonDiscret()}${pastilleCompte()}</div><div class="actions">
+  let h = `<div class="invhead"><div class="titre-discret"><h1>Mon patrimoine</h1>${boutonDiscret()}${pastilleCompte()}</div><div class="actions">
       ${est ? `<button data-a="ajoutEst" title="${esc(est.label)}">+ Ajouter le bien estimé</button>` : ''}
       <button data-a="ajoutSci">+ Créer une SCI</button>
       <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
@@ -729,7 +729,7 @@ const section = (titre, corps, large = false) => `<section class="bloc${large ? 
 function vueDetail(b) {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   const opt = (o) => o;
-  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}${pastilleCompte()}</div>
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
       <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions"><button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button></div></div>
     <div id="inv_kpis"></div>
@@ -756,7 +756,7 @@ function vueDetail(b) {
     </div>
     <div class="part-bien"><label for="inv_part">Part détenue ${sciDe(b) ? 'par la SCI' : 'par toi'}</label>
       <div class="part-ligne"><input type="range" id="inv_part" data-p="part" min="1" max="100" step="1" value="${Math.round(partDe(b) * 100)}"><output id="inv_partVal" for="inv_part">${Math.round(partDe(b) * 100)} %</output></div>
-      <div class="aide">Pour un bien à plusieurs (indivision, famille…) : les totaux de « Mes investissements » ne comptent que cette part.</div></div>
+      <div class="aide">Pour un bien à plusieurs (indivision, famille…) : les totaux de « Mon patrimoine » ne comptent que cette part.</div></div>
     ${critHTML(b)}
     ${TYPE_DVF[b.type] || b.type === 'terrain' ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
@@ -845,7 +845,7 @@ function revenusHTML(b) {
 function vueSci(x) {
   const sesBiens = biens.filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
   const totalParts = somme(x.associes, a => a.parts);
-  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes investissements</a>${boutonDiscret()}${pastilleCompte()}</div>
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand sciv">${ICONE_SCI}<span>SCI ${REGIMES[x.regime]}</span></div>
       <div><h1 id="inv_titre">${esc(x.nom)}</h1><div class="adr" id="inv_sous">${esc(['SCI ' + REGIMES[x.regime], x.siren ? 'SIREN ' + x.siren : '', x.siege].filter(Boolean).join(' · '))}</div></div></div>
     ${kpisTotaux(t)}
