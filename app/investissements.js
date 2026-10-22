@@ -539,6 +539,7 @@ function idDuHash() {
 }
 // ---------- Carte de la fiche : placer le bien à la main quand l'adresse n'est pas trouvée ----------
 let carteBien = null;
+const venteOuverte = new Set();   // fiches où la simulation de vente est ouverte (le temps de la visite)
 function aideCarte(b) {
   if (!b.geo) return 'Adresse introuvable ? Clique sur la carte à l\'endroit du bien.';
   const pres = b.geo.label ? `, près de ${esc(b.geo.label)}` : '';
@@ -670,6 +671,8 @@ function vueDetail(b) {
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
       <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div></div>
     <div id="inv_kpis"></div>
+    <div class="boutons vente-btn"><button data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la simulation de vente' : 'Simuler la vente →'}</button></div>
+    ${venteOuverte.has(b.id) ? venteHTML(b) : ''}
     <div class="blocs">
     ${section('Rentabilité', '<div id="inv_renta"></div>')}
     ${b.type === 'terrain' ? revenusHTML(b) : locationHTML(b)}
@@ -718,7 +721,7 @@ function vueDetail(b) {
     </div>
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
-  majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b);
+  majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b);
 }
 // Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Estimer)
 function critHTML(b) {
@@ -797,6 +800,116 @@ function majParts(x, t = totaux(biens.filter(b => b.structure === 'sci' && b.sci
   });
   const tp = somme(x.associes, a => a.parts), el = racine.querySelector('#inv_parts');
   if (el) el.textContent = x.associes.length && Math.abs(tp - 100) > 0.01 ? `Total des parts : ${String(Math.round(tp * 100) / 100).replace('.', ',')} % (devrait faire 100 %).` : '';
+}
+// ---------- Simulation de vente (règles 2026) ----------
+// Plus-value des particuliers (et des associés d'une SCI à l'IR) : 19 % d'impôt + 17,2 % de prélèvements sociaux,
+// abattements pour durée de détention (exonération d'impôt après 22 ans, de prélèvements après 30 ans), surtaxe
+// au-delà de 50 000 € avec lissage. SCI à l'IS : plus-value = prix − valeur nette comptable (après amortissements),
+// à l'IS (15 % jusqu'à 42 500 €, 25 % au-delà), puis flat tax 31,4 % sur ce qui est distribué en dividendes.
+const IR_PV = 0.19, PS_PV = 0.172, PFU_2026 = 0.314, IS_TAUX_REDUIT = 0.15, IS_TAUX = 0.25, IS_PLAFOND = 42500;
+const abatIR = n => n < 6 ? 0 : n < 22 ? (n - 5) * 0.06 : 1;
+const abatPS = n => n < 6 ? 0 : n <= 21 ? (n - 5) * 0.0165 : n === 22 ? 0.28 : n < 30 ? 0.28 + (n - 22) * 0.09 : 1;
+function surtaxePV(pv) {
+  const t = [[50000, 60000, 0.02, 1 / 20], [100000, 110000, 0.03, 1 / 10], [150000, 160000, 0.04, 0.15], [200000, 210000, 0.05, 0.20], [250000, 260000, 0.06, 0.25]];
+  if (pv <= 50000) return 0;
+  for (let i = t.length - 1; i >= 0; i--) {
+    const [bas, haut, taux, lissage] = t[i];
+    if (pv > haut) return pv * taux;
+    if (pv > bas) return pv * taux - (haut - pv) * lissage;
+  }
+  return 0;
+}
+const anneesEntre = (de, a) => de && a ? Math.floor(ecartMois(de, a) / 12) : null;
+function simulerVente(b) {
+  const v = b.vente || {}, a = b.achat, sci = sciDe(b), regime = sci ? sci.regime : 'np';
+  const mois = v.mois || moisCourant(), prix = v.prix ?? b.valeur ?? 0, frais = prix * (v.frais ?? 4) / 100;
+  // Crédits soldés à la vente : restant dû à la date de vente, et indemnités (plafond légal : 6 mois d'intérêts, 3 % du restant dû)
+  const prets = b.prets.map(p => ({p, e: etatPret(p, mois)})).filter(x => x.e && x.e.crd > 0);
+  const crd = somme(prets, x => x.e.crd);
+  const iraAuto = somme(prets, x => Math.min(0.03 * x.e.crd, 6 * x.e.crd * (x.p.taux || 0) / 1200));
+  const ira = v.ira ?? iraAuto;
+  const annees = anneesEntre(a.date, mois);
+  const partBien = partDe(b), partSci = sci ? Math.max(0, Math.min(100, v.parts ?? 100)) / 100 : 1, k = partBien * partSci;
+  const r = {mois, prix, frais, crd, ira, iraAuto, annees, regime, k, partBien, partSci, prets: prets.length};
+  r.liquide = prix - frais - crd - ira;   // ce qui reste de la vente, avant impôt (pour le bien entier)
+  if (regime === 'is') {
+    const acquisition = (a.prix || 0) + (v.fraisAchat ?? ((a.notaire || 0) + (a.frais || 0))) + (v.travaux ?? (a.travaux || 0));
+    const amortAuto = annees != null ? Math.round(((a.prix || 0) * 0.85 + (a.travaux || 0)) / 30 * annees) : 0;   // bâti ≈ 85 % du prix, sur 30 ans
+    r.amort = v.amort ?? amortAuto; r.amortAuto = amortAuto;
+    r.vnc = Math.max(0, acquisition - r.amort);
+    r.pv = prix - frais - r.vnc;
+    const base = Math.max(0, r.pv) * partBien;   // la SCI ne vend que sa part du bien
+    r.is = IS_TAUX_REDUIT * Math.min(base, IS_PLAFOND) + IS_TAUX * Math.max(0, base - IS_PLAFOND);
+    r.dansSci = r.liquide * partBien - r.is;
+    r.sortir = !!v.sortir;
+    // Sortie : le bénéfice de la vente part en dividendes (flat tax) ; le reste rembourse tes apports (compte courant), sans impôt
+    r.dividendes = r.sortir ? Math.max(0, Math.min(r.dansSci, base - r.is)) : 0;
+    r.pfu = r.dividendes * PFU_2026;
+    r.impots = r.is + r.pfu;
+    r.pourToi = (r.dansSci - r.pfu) * partSci;
+  } else {
+    const rp = regime === 'np' && b.location.statut === 'rp';
+    const fraisAchat = v.fraisAchat ?? Math.max((a.notaire || 0) + (a.frais || 0), 0.075 * (a.prix || 0));
+    const travaux = v.travaux ?? (annees != null && annees >= 5 ? Math.max(a.travaux || 0, 0.15 * (a.prix || 0)) : (a.travaux || 0));
+    r.fraisAchat = fraisAchat; r.travaux = travaux; r.rp = rp;
+    r.pv = prix - frais - ((a.prix || 0) + fraisAchat + travaux);
+    const pvPart = Math.max(0, r.pv) * k, n = annees ?? 0;
+    r.abIR = abatIR(n); r.abPS = abatPS(n);
+    r.ir = rp ? 0 : pvPart * (1 - r.abIR) * IR_PV;
+    r.ps = rp ? 0 : pvPart * (1 - r.abPS) * PS_PV;
+    r.surtaxe = rp ? 0 : surtaxePV(pvPart * (1 - r.abIR));
+    r.impots = r.ir + r.ps + r.surtaxe;
+    r.pourToi = r.liquide * k - r.impots;
+  }
+  r.manqueAchat = !(a.prix > 0) || !a.date;
+  return r;
+}
+function venteHTML(b) {
+  const sci = sciDe(b), regime = sci ? sci.regime : 'np', v = b.vente || {};
+  return `<section class="bloc large vente" id="inv_vente"><h3>Si je vends ce bien</h3>
+    <div class="grille vente-params">
+      ${champ(b, 'vente.prix', 'Prix de vente (€)', {step: 1000, ph: b.valeur ? fmt(b.valeur) + ' (valeur actuelle)' : ''})}
+      ${champ(b, 'vente.mois', 'Vendu en', {type: 'month', ph: moisCourant()})}
+      ${champ(b, 'vente.frais', 'Frais de vente (%)', {step: 0.5, ph: '4', aide: 'Agence et diagnostics à ta charge'})}
+      ${champ(b, 'vente.ira', 'Indemnités du crédit (€)', {step: 100, ph: 'calculées', aide: 'Remboursement anticipé (IRA)'})}
+      ${regime === 'is' ? `${champ(b, 'vente.amort', 'Amortissements déjà déduits (€)', {step: 1000, ph: 'estimés', aide: 'Voir le bilan de la SCI'})}
+        ${champ(b, 'vente.parts', 'Tes parts dans la SCI (%)', {step: 1, ph: '100'})}`
+        : `${champ(b, 'vente.fraisAchat', 'Frais d\'achat à déduire (€)', {step: 100, ph: 'réels ou 7,5 %'})}
+        ${champ(b, 'vente.travaux', 'Travaux à déduire (€)', {step: 500, ph: 'factures ou 15 %'})}
+        ${regime === 'ir' ? champ(b, 'vente.parts', 'Tes parts dans la SCI (%)', {step: 1, ph: '100'}) : ''}`}
+    </div>
+    ${regime === 'is' ? `<div class="seg mini vente-sortie"><button data-a="venteSortir" data-v="0" class="${v.sortir ? '' : 'on'}">Garder l'argent dans la SCI</button><button data-a="venteSortir" data-v="1" class="${v.sortir ? 'on' : ''}">Le sortir (dividendes)</button></div>` : ''}
+    <div id="inv_venteRes"></div></section>`;
+}
+function majVente(b) {
+  const el = racine.querySelector('#inv_venteRes'); if (!el) return;
+  const r = simulerVente(b), ligne = (l, val, cls = '') => `<div><span>${l}</span><b class="${cls}">${val}</b></div>`;
+  const moins = x => x ? '−' + eur(x) : eur(0), partTxt = r.k < 1 ? ` (ta part : ${String(Math.round(r.k * 1000) / 10).replace('.', ',')} %)` : '';
+  let h = mini([[r.regime === 'is' && !r.sortir ? 'Reste dans la SCI' + (r.partSci < 1 ? ' (ta part)' : '') : 'Ce qui te revient', eur(r.regime === 'is' && !r.sortir ? r.dansSci * r.partSci : r.pourToi), (r.regime === 'is' && !r.sortir ? r.dansSci : r.pourToi) >= 0 ? 'up' : 'down'],
+    ['Impôts', eur(r.impots)], ['Plus-value', eur(r.pv), signe(r.pv)], ['Détention', r.annees != null ? r.annees + ' an' + (r.annees > 1 ? 's' : '') : null]], 'vente-chiffres');
+  h += `<div class="calc">
+    ${ligne('Prix de vente', eur(r.prix))}
+    ${ligne(`Frais de vente`, moins(r.frais))}
+    ${r.prets ? ligne(`Crédit remboursé (restant dû en ${libMois(r.mois)})`, moins(r.crd)) : ''}
+    ${r.ira ? ligne(`Indemnités de remboursement anticipé${b.vente && b.vente.ira != null ? '' : ' (plafond légal)'}`, moins(r.ira)) : ''}`;
+  if (r.regime === 'is') {
+    h += `${r.partBien < 1 ? ligne(`Part de la SCI dans le bien (${Math.round(r.partBien * 100)} %)`, eur(r.liquide * r.partBien)) : ''}
+      ${ligne('Impôt sur les sociétés sur la plus-value', moins(r.is))}
+      ${ligne('<b>Reste dans la SCI</b>', eur(r.dansSci), signe(r.dansSci))}
+      ${r.sortir ? `${ligne('Flat tax 31,4 % sur les dividendes', moins(r.pfu))}${r.partSci < 1 ? ligne(`Tes parts (${Math.round(r.partSci * 100)} %)`, '× ' + Math.round(r.partSci * 100) + ' %') : ''}${ligne('<b>Ce qui te revient</b>', eur(r.pourToi), signe(r.pourToi))}` : ''}</div>
+      ${mini([['Valeur nette comptable', eur(r.vnc)], ['Amortissements déduits', eur(r.amort) + (b.vente && b.vente.amort != null ? '' : ' (estimés)')], ['Plus-value imposable', eur(Math.max(0, r.pv))], ['Dividendes distribués', r.sortir ? eur(r.dividendes) : null]], 'petit')}
+      <div class="aide">${r.sortir ? 'Le bénéfice de la vente sort en dividendes (flat tax 31,4 %) ; le reste rembourse tes apports en compte courant, sans impôt.' : 'Tant que l\'argent reste dans la SCI, pas de flat tax : elle ne s\'applique qu\'aux dividendes que tu sortiras.'} Amortissements, compte courant et IS dépendent des comptes de la SCI : à valider avec ton comptable.</div>`;
+  } else {
+    h += `${r.k < 1 ? ligne(`Ta part${partTxt}`, eur(r.liquide * r.k)) : ''}
+      ${r.rp ? ligne('Résidence principale : plus-value exonérée', eur(0)) : `${ligne(`Impôt sur la plus-value (19 %, abattement ${Math.round(r.abIR * 100)} %)`, moins(r.ir))}
+      ${ligne(`Prélèvements sociaux (17,2 %, abattement ${String(Math.round(r.abPS * 1000) / 10).replace('.', ',')} %)`, moins(r.ps))}
+      ${r.surtaxe ? ligne('Surtaxe (plus-value de plus de 50 000 €)', moins(r.surtaxe)) : ''}`}
+      ${ligne('<b>Ce qui te revient</b>', eur(r.pourToi), signe(r.pourToi))}</div>
+      ${mini([['Plus-value brute', eur(r.pv)], ['Frais d\'achat déduits', eur(r.fraisAchat)], ['Travaux déduits', eur(r.travaux)], ['Exonération totale', r.annees != null && !r.rp ? (r.annees >= 30 ? 'atteinte' : 'dans ' + (30 - r.annees) + ' ans') : null]], 'petit')}
+      <div class="aide">${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}Frais d'achat : réels ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention.</div>`;
+  }
+  if (r.manqueAchat) h += '<div class="warnbox">Renseigne le prix et la date d\'achat (bloc Achat) : sans eux, la plus-value et les abattements sont faux.</div>';
+  el.innerHTML = h;
 }
 function pretHTML(b, p, i) {
   const c = `prets.${i}.`;
@@ -965,6 +1078,13 @@ racine.addEventListener('click', async e => {
     if (b.geo) reprendre({label: b.geo.label, lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, since: 'auto', criteres: criteresEffectifs(b)});
     else { document.getElementById('addr').value = b.adresse; document.getElementById('surf').value = b.surface; document.getElementById('go').click(); }
   }
+  if (a === 'vente') {
+    if (venteOuverte.has(b.id)) venteOuverte.delete(b.id); else { venteOuverte.add(b.id); b.vente = b.vente || {}; }
+    vueDetail(b);
+    if (venteOuverte.has(b.id)) racine.querySelector('#inv_vente').scrollIntoView({behavior: 'smooth', block: 'start'});
+    return;
+  }
+  if (a === 'venteSortir') { b.vente = b.vente || {}; b.vente.sortir = t.dataset.v === '1'; sauver(b); racine.querySelectorAll('.vente-sortie button').forEach(x => x.classList.toggle('on', x === t)); return majVente(b); }
   if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
   if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
@@ -1030,11 +1150,13 @@ racine.addEventListener('change', async e => {
   if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver(b);
+  if (chemin.startsWith('vente.')) return majVente(b);
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
   if (['type', 'location.statut', 'adresse', 'surface', 'nature'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature'].includes(chemin)) majAuto(b);
+  majVente(b);
   majCalculs(b);
 });
 
