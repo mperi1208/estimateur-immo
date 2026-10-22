@@ -667,10 +667,18 @@ function arbreHTML() {
       <span class="nom-n">${esc(x.nom)} <small>SCI ${REGIMES[x.regime]}</small>${assoc ? `<small class="assoc">${assoc}</small>` : ''}</span>${chiffres(totaux(sb))}</a>
       ${sb.length ? `<ul>${sb.map(feuille).join('')}</ul>` : '<ul><li><span class="noeud vide-n">Aucun bien rattaché</span></li></ul>'}</li>`);
   }
-  return `<h2 class="sous-titre">Organisation</h2><div class="arbre">
+  return `<details class="orga"${orgaOuverte ? ' open' : ''}><summary><h2 class="sous-titre">Organisation</h2><span class="chevron" aria-hidden="true"></span></summary><div class="arbre">
     <div class="noeud racine"><span class="nom-n">Mon patrimoine</span>${chiffres(totaux(biens))}</div>
-    <ul>${branches.join('')}</ul></div>`;
+    <ul>${branches.join('')}</ul></div></details>`;
 }
+// Organisation repliable : réglage gardé sur l'appareil (l'événement toggle ne remonte pas, d'où l'écoute en capture)
+let orgaOuverte = true;
+try { orgaOuverte = localStorage.getItem('orga-repliee') !== '1'; } catch (e) {}
+document.addEventListener('toggle', e => {
+  if (!e.target.classList || !e.target.classList.contains('orga')) return;
+  orgaOuverte = e.target.open;
+  try { localStorage.setItem('orga-repliee', orgaOuverte ? '0' : '1'); } catch (e) {}
+}, true);
 const OEIL_PERSO = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
 function carte(b, c) {
   const k = partDe(b), x = n => n * k;

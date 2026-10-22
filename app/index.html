@@ -216,6 +216,13 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap button.discret-btn svg{width:18px;height:18px}
 .invwrap button.discret-btn[aria-pressed="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
 /* Arbre du patrimoine */
+.invwrap details.orga{margin:0;border:0;padding:0;border-radius:0}
+.invwrap details.orga > summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;width:max-content;max-width:100%;margin:22px 0 10px}
+.invwrap details.orga > summary .sous-titre{margin:0}
+.invwrap details.orga > summary::-webkit-details-marker{display:none}
+.invwrap details.orga > summary .chevron{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-top:-4px;transition:transform .15s}
+.invwrap details.orga:not([open]) > summary .chevron{transform:rotate(-45deg);margin-top:0}
+.invwrap details.orga > summary:hover .chevron{border-color:var(--ink)}
 .invwrap .arbre{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;overflow-x:auto}
 .invwrap .arbre ul{list-style:none;margin:0;padding:0 0 0 18px}
 .invwrap .arbre li{position:relative;padding:5px 0 5px 22px}
@@ -2339,7 +2346,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=38"></script>
+<script src="investissements.js?v=39"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
