@@ -322,7 +322,7 @@ function criteresEffectifs(b) {
   if (b.annee > 1500) c.epoque = EPOQUES.find(([y]) => b.annee < y)[1];
   return c;
 }
-const cleEstimation = b => { const c = criteresEffectifs(b); delete c.location; return JSON.stringify([b.adresse.trim(), b.type, b.surface, c]); };
+const cleEstimation = b => { if (b.type === 'terrain') return JSON.stringify([b.adresse.trim(), 'terrain', b.surface, b.nature || '']); const c = criteresEffectifs(b); delete c.location; return JSON.stringify([b.adresse.trim(), b.type, b.surface, c]); };
 const cleAncienne = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);   // estimations faites avant (location comprise)
 // Loyers de marché d'une estimation : vide et meublé (les anciennes n'en ont qu'un, celui de la location d'alors)
 function loyersMarche(e) {
@@ -331,7 +331,73 @@ function loyersMarche(e) {
   return {vide: e.loyerVide ?? (loc !== 'meuble' ? e.loyer : null), meuble: e.loyerMeuble ?? (loc === 'meuble' ? e.loyer : null)};
 }
 const meubleBien = b => ['meuble', 'saisonnier'].includes(b.location.statut);
-const estimable = b => TYPE_DVF[b.type] && b.adresse.trim().length >= 5 && b.surface >= 9;
+// Terrains : codes DVF (le filtre de l'API prend le début du code) — un terrain à bâtir se vend souvent
+// 50 à 100 fois plus cher au m² qu'un pré, d'où une comparaison seulement entre terrains de même nature
+const NATURE_DVF = {constructible: '21', agricole: '231', naturel: '232,233,239', loisirs: '22', stockage: '22', autre: '2'};
+const estimable = b => (TYPE_DVF[b.type] || (b.type === 'terrain' && NATURE_DVF[b.nature])) && b.adresse.trim().length >= 5 && b.surface >= (b.type === 'terrain' ? 50 : 9);
+function versTerrain(f) {
+  const p = f.properties, prix = +p.valeurfonc, st = +p.sterr;
+  if (!(prix > 500) || !(st >= 50) || +p.sbati > 0 || /^Echange|^Adjudication|^Expropriation/.test(p.libnatmut || '')) return null;
+  const ring = f.geometry?.coordinates?.[0]?.[0]; if (!ring) return null;
+  return {id: p.idopendata, prix, st, ppm: prix / st, date: p.datemut, code: p.codtypbien,
+    lon: ring.reduce((t, c) => t + c[0], 0) / ring.length, lat: ring.reduce((t, c) => t + c[1], 0) / ring.length};
+}
+async function boiteTerrains(lon0, lat0, lon1, lat1, codes, anMin) {
+  let url = `${API}?in_bbox=${[lon0, lat0, lon1, lat1].map(v => v.toFixed(5)).join(',')}&codtypbien=${codes}&anneemut_min=${anMin}&page_size=500`;
+  const out = [];
+  for (let k = 0; url && k < 6; k++) { const js = await getJSON(url); out.push(...js.features.map(versTerrain).filter(Boolean)); url = js.next; }
+  return out;
+}
+const medianePonderee = (l, q = 0.5) => {
+  const t = [...l].sort((a, b) => a[0] - b[0]), tot = t.reduce((s, x) => s + x[1], 0);
+  let c = 0; for (const [v, w] of t) { c += w; if (c >= tot * q) return v; } return t.length ? t[t.length - 1][0] : null;
+};
+async function estimerTerrain(lat, lon, surf, nature) {
+  const codes = NATURE_DVF[nature], kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540, an = new Date().getFullYear();
+  let comps = [], periode = 5, rayon = 0;
+  for (const p of [5, 10]) {
+    periode = p;
+    const vus = new Map();
+    for (const boites of searchSteps(lat, lon)) {
+      for (const v of (await Promise.all(boites.map(bx => boiteTerrains(...bx, codes, an - p)))).flat()) {
+        if (vus.has(v.id)) continue;
+        v.d = Math.hypot((v.lon - lon) * kx, (v.lat - lat) * ky);
+        if (v.d <= 12000) vus.set(v.id, v);
+      }
+      comps = [...vus.values()].filter(v => v.st / surf > 1 / 3 && v.st / surf < 3);
+      if (comps.length >= 20) break;
+    }
+    if (comps.length >= 10) break;
+  }
+  if (comps.length < 3) return {erreur: `Pas assez de ventes de terrains ${nature === 'autre' ? '' : 'de cette nature '}autour (${comps.length} en 10 ans, surface proche). Renseigne la valeur à la main.`};
+  // Agricole / naturel : le cadastre classe « terre et pré » des parcelles achetées pour bâtir (zones à urbaniser),
+  // vendues 20 à 100 fois plus cher. On écarte les ventes au-delà du quart du prix des terrains à bâtir du secteur.
+  let ecartees = 0, seuil = null;
+  if (['agricole', 'naturel'].includes(nature)) {
+    const tab = new Map();
+    for (const boites of searchSteps(lat, lon)) {
+      for (const v of (await Promise.all(boites.map(bx => boiteTerrains(...bx, NATURE_DVF.constructible, an - 5)))).flat()) tab.set(v.id, v);
+      if (tab.size >= 15) break;
+    }
+    const tabMed = tab.size >= 5 ? medianePonderee([...tab.values()].map(v => [v.ppm, 1])) : null;
+    seuil = tabMed ? tabMed / 4 : 30;
+    const avant = comps.length;
+    comps = comps.filter(v => v.ppm <= seuil);
+    ecartees = avant - comps.length;
+    if (comps.length < 3) return {erreur: `Pas assez de ventes de terrains ${NATURES[nature].toLowerCase()}s non constructibles autour (${comps.length}). Renseigne la valeur à la main.`};
+  }
+  // Poids : plus proche, surface plus semblable et vente plus récente = plus de poids ; puis on écarte les prix aberrants
+  const poids = v => 1 / (1 + v.d / 1500) / (1 + Math.abs(Math.log(v.st / surf))) / (1 + Math.max(0, an - +v.date.slice(0, 4)) / 6);
+  let l = comps.map(v => [v.ppm, poids(v), v]);
+  const m0 = medianePonderee(l);
+  l = l.filter(([x]) => x > m0 / 3 && x < m0 * 3);
+  const med = medianePonderee(l), lo = medianePonderee(l, 0.25), hi = medianePonderee(l, 0.75);
+  rayon = Math.max(...l.map(x => x[2].d));
+  const disp = hi / Math.max(lo, 1e-9);
+  return {prix: Math.round(med * surf), lo: Math.round(lo * surf), hi: Math.round(hi * surf), ppm: med, ventes: l.length, rayon: Math.round(rayon),
+    periode: `${an - periode}–${an}`, terrain: true, ecartees, seuil: seuil && Math.round(seuil),
+    fiabilite: nature === 'autre' ? 'Fiabilité faible (toutes natures mêlées)' : l.length >= 20 && disp < 3 ? 'Fiabilité bonne' : l.length >= 8 && disp < 5 ? 'Fiabilité moyenne' : 'Fiabilité faible'};
+}
 const enCours = new Set();
 async function estimerBien(b0) {
   let b = b0;
@@ -345,7 +411,8 @@ async function estimerBien(b0) {
       if (!f) throw new Error('Adresse introuvable : ajoute la ville ou le code postal.');
       b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
     }
-    const res = await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
+    const res = b.type === 'terrain' ? await estimerTerrain(b.geo.lat, b.geo.lon, b.surface, b.nature)
+      : await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
     // Le bien a pu être remplacé entre-temps par sa version du compte (autre page) : on écrit dans la version actuelle
     const geo = b.geo; b = biens.find(x => x.id === b.id) || b; if (!b.geo || b.geo.pour !== geo.pour) b.geo = geo;
     b.estimation = res.erreur ? {erreur: res.erreur, cle, le} : {...res, cle, le};
@@ -370,10 +437,11 @@ function majAuto(b) {
   // Le bouton en bas des caractéristiques : seul moyen de lancer l'estimation
   if (btn) {
     btn.disabled = !estimable(b) || enCours.has(b.id);
-    btn.textContent = enCours.has(b.id) ? 'Estimation en cours…' : !estimable(b) ? 'Estimer ce bien (adresse et surface à remplir)' : e && !e.erreur && a_jour ? 'Estimer à nouveau' : 'Estimer ce bien';
+    btn.textContent = enCours.has(b.id) ? 'Estimation en cours…' : !estimable(b) ? (b.type === 'terrain' && !NATURE_DVF[b.nature] ? 'Estimer ce terrain (choisis sa nature)' : 'Estimer ce bien (adresse et surface à remplir)') : e && !e.erreur && a_jour ? 'Estimer à nouveau' : 'Estimer ce bien';
   }
   let h;
-  if (!TYPE_DVF[b.type]) h = `<div class="aide">${b.type === 'terrain' ? 'Pas d\'estimation automatique pour un terrain : renseigne sa valeur à la main (ventes de terrains voisins, avis d\'un notaire ou d\'une agence).' : 'Estimation automatique disponible pour les appartements et les maisons : renseigne la valeur à la main.'}</div>`;
+  if (b.type === 'terrain' && !NATURE_DVF[b.nature]) h = '<div class="aide">Choisis la nature du terrain (constructible, agricole…) : l\'estimation compare avec les ventes de terrains de même nature, dont les prix au m² n\'ont rien à voir d\'une nature à l\'autre.</div>';
+  else if (!TYPE_DVF[b.type] && b.type !== 'terrain') h = '<div class="aide">Estimation automatique disponible pour les appartements, les maisons et les terrains : renseigne la valeur à la main.</div>';
   else if (enCours.has(b.id)) {
     const t0 = Date.now();
     h = '<div class="auto-cours"><span class="rond"></span>Recherche des ventes comparables… <span id="inv_chrono"></span></div>';
@@ -385,6 +453,19 @@ function majAuto(b) {
   }
   else if (!e) h = `<div class="aide">${estimable(b) ? 'Règle les caractéristiques, puis clique sur « Estimer ce bien ».' : 'Renseigne l\'adresse et la surface, règle les caractéristiques, puis clique sur « Estimer ce bien ».'}</div>`;
   else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)}</div>`;
+  else if (e.terrain) {
+    const rev = calculs(b).loyersAn;
+    h = `<div class="auto-res${a_jour ? '' : ' perime'}">
+      <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
+        <div><span>Prix au m²</span><b>${e.ppm >= 10 ? fmt(e.ppm) : e.ppm.toFixed(2).replace('.', ',')} €</b><small>médiane des ventes ${NATURES[b.nature] ? 'de terrains « ' + NATURES[b.nature].toLowerCase() + ' »' : ''}</small></div>
+        ${rev ? `<div><span>Rendement brut</span><b>${pct(rev / e.prix)}</b><small>revenus actuels, sur la valeur</small></div>` : ''}</div>
+      <div class="aide">${esc(e.fiabilite)} · ${e.ventes} ventes de terrains à moins de ${e.rayon < 1000 ? fmt(e.rayon) + ' m' : (e.rayon / 1000).toFixed(1).replace('.', ',') + ' km'} (${e.periode}, surface proche) · estimé le ${new Date(e.le).toLocaleDateString('fr-FR')}${b.geo ? ` · adresse reconnue : ${esc(b.geo.label)}` : ''}
+        ${e.ecartees ? `<br>${e.ecartees} vente${e.ecartees > 1 ? 's' : ''} au-dessus de ${fmt(e.seuil)} €/m² écartée${e.ecartees > 1 ? 's' : ''} : parcelles achetées pour construire.` : ''}
+        <br>Les prix des terrains varient beaucoup (constructibilité, accès, vue, viabilisation) : à confirmer par un notaire ou une agence.</div>
+      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
+    </div>
+    ${!a_jour ? '<div class="aide">Surface ou nature modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
+  }
   else {
     // Bien loué : on met en avant le loyer de sa location (vide ou meublé) ; sinon (habité, vacant…) aucun des deux
     const loue = LOUE.includes(b.location.statut), L = loyersMarche(e), m = meubleBien(b);
@@ -575,10 +656,10 @@ function vueDetail(b) {
       <div class="part-ligne"><input type="range" id="inv_part" data-p="part" min="1" max="100" step="1" value="${Math.round(partDe(b) * 100)}"><output id="inv_partVal" for="inv_part">${Math.round(partDe(b) * 100)} %</output></div>
       <div class="aide">Pour un bien à plusieurs (indivision, famille…) : les totaux de « Mes investissements » ne comptent que cette part.</div></div>
     ${critHTML(b)}
-    ${TYPE_DVF[b.type] ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
+    ${TYPE_DVF[b.type] || b.type === 'terrain' ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
-      <div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div></div>`)}
+      ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
     ${section('Achat', `<div class="grille">
       ${champ(b, 'achat.date', 'Date d\'achat', {type: 'month'})}${champ(b, 'achat.prix', 'Prix d\'achat (€)', {step: 1000})}
       ${champ(b, 'achat.notaire', 'Frais de notaire (€)', {step: 100})}${champ(b, 'achat.travaux', 'Travaux (€)', {step: 500})}
@@ -906,7 +987,7 @@ racine.addEventListener('change', async e => {
   if (['type', 'location.statut', 'adresse', 'surface', 'nature'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
-  if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces'].includes(chemin)) majAuto(b);
+  if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature'].includes(chemin)) majAuto(b);
   majCalculs(b);
 });
 
