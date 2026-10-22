@@ -548,7 +548,9 @@ let discret = false;
 try { discret = localStorage.getItem('montants-masques') === '1'; } catch (e) {}
 document.body.classList.toggle('discret', discret);
 const OEIL = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-const boutonDiscret = () => `<button class="discret-btn" data-a="discret" aria-pressed="${discret}" title="${discret ? 'Afficher les montants' : 'Flouter les montants (pour montrer le site)'}">${discret ? OEIL + ' Afficher' : '✱✱✱'}</button>`;
+const OEIL_BARRE = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0112 5c6.4 0 10 7 10 7a17.6 17.6 0 01-3.2 4.2M6.6 6.6C3.9 8.3 2 12 2 12s3.6 7 10 7a9.7 9.7 0 005.4-1.6M9.9 9.9a3 3 0 004.2 4.2"/></svg>';
+// Œil ouvert : montants visibles (un clic les floute) ; œil barré : montants floutés (un clic les affiche)
+const boutonDiscret = () => `<button class="discret-btn" data-a="discret" aria-pressed="${discret}" aria-label="${discret ? 'Afficher les montants' : 'Flouter les montants'}" title="${discret ? 'Montants floutés : cliquer pour les afficher' : 'Flouter les montants (pour montrer le site)'}">${discret ? OEIL_BARRE : OEIL}</button>`;
 let carteBien = null;
 const venteOuverte = new Set();   // fiches où la simulation de vente est ouverte (le temps de la visite)
 function aideCarte(b) {
