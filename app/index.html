@@ -1612,9 +1612,19 @@ if (!MOTEUR) L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 map.attributionControl.setPrefix(false);
 layer.addTo(map);
 // Place le point sans lancer l'estimation (on règle d'abord les détails du bien)
-function placer(lat, lon, zoom, label) {
+// Zone (Paris, Corse, reste de la France) : elle décide des choix proposés (vue mer, monument...) ; on la fixe dès que
+// l'adresse est placée, sans attendre « Rechercher » (sinon elle restait celle de la recherche précédente)
+const zoneDe = code => /^75/.test(code) ? 'paris' : /^2[AB]/.test(code) ? 'corse' : code ? 'autre' : null;
+async function majZone(lat, lon, code) {
+  const run = state.run;
+  try { code = code || await cityCode(lat, lon); } catch (e) { return; }
+  const z = zoneDe(String(code || ''));
+  if (z && run === state.run && z !== state.zone) { state.zone = z; fillOptions(); majAffiner(); }
+}
+function placer(lat, lon, zoom, label, code) {
   choixTravaux = {}; try { localStorage.removeItem('travaux-choix'); } catch (e) {}
   state.lat = lat; state.lon = lon; state.adresse = label; state.lance = false; state.base = null; state.run++;
+  majZone(lat, lon, code);
   if (pin) pin.remove();
   pin = L.marker([lat, lon]).addTo(map);
   layer.clearLayers(); if (circle) { circle.remove(); circle = null; }
@@ -1643,7 +1653,7 @@ async function localiser(q, lancerApres) {
     const close = feats.filter(g => f.properties.score - g.properties.score < 0.05);
     if (close.length > 1) { showSuggestions(close, 'Plusieurs adresses correspondent, choisis la bonne :', lancerApres); return false; }
     addr.value = f.properties.label;
-    placer(f.geometry.coordinates[1], f.geometry.coordinates[0], 16, f.properties.label);
+    placer(f.geometry.coordinates[1], f.geometry.coordinates[0], 16, f.properties.label, f.properties.citycode);
     return true;
   } catch (e) { out.innerHTML = '<div class="empty">Recherche d\'adresse indisponible : clique sur la carte.</div>'; return false; }
 }
@@ -1661,7 +1671,7 @@ function showSuggestions(feats, title, lancerApres = false) {
   sugg.querySelectorAll('li[data-k]').forEach(li => li.onclick = () => {
     const f = feats[+li.dataset.k];
     addr.value = f.properties.label; sugg.hidden = true;
-    placer(f.geometry.coordinates[1], f.geometry.coordinates[0], 16, f.properties.label);
+    placer(f.geometry.coordinates[1], f.geometry.coordinates[0], 16, f.properties.label, f.properties.citycode);
     if (lancerApres) { state.lance = true; estimate(); }
   });
 }
