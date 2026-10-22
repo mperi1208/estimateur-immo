@@ -268,19 +268,23 @@ details.plus{margin-top:12px;border-style:dashed}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;height:auto}#map{height:50vh}aside{border-right:0;padding:16px}}
 
 [hidden]{display:none!important}
-.tabs{position:sticky;top:0;z-index:1100;display:flex;align-items:stretch;gap:4px;height:48px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+/* Jamais de défilement de côté : un élément trop large ne décale plus toute la page (clip garde la barre d'onglets collante) */
+html,body{overflow-x:clip;max-width:100%}
+.tabs{position:sticky;top:0;z-index:1100;display:flex;align-items:stretch;gap:4px;height:48px;padding:0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));min-width:0;background:var(--panel);border-bottom:1px solid var(--line)}
 .tabs .brand{display:flex;align-items:center;font-weight:700;margin-right:12px}
 .tabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:0 12px;cursor:pointer;border-bottom:3px solid transparent}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .tabs .court{display:none}
 @media (max-width:520px){.tabs .long{display:none}.tabs .court{display:inline}}
-.tabs .compte{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tabs .compte{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;padding-left:8px}
 .tabs .compte .statut{cursor:pointer;display:flex;align-items:center;gap:5px;color:var(--muted);font-size:14px;font-weight:600;max-width:220px;min-width:0}
 .tabs .compte .statut span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tabs .compte .statut.connecte{color:var(--accent)}
 .tabs .compte button{height:34px;padding:0 14px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
 .tabs .compte button.sortir{background:none;border:1px solid var(--line);color:var(--ink)}
 @media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
+/* Mes investissements : onglets et compte alignés sur la colonne centrale (1040 px) au lieu des bords de la fenêtre */
+body[data-onglet="investissements"] .tabs{padding-left:max(16px, calc((100% - 1040px) / 2 + 4px));padding-right:max(16px, calc((100% - 1040px) / 2 + 16px))}
 #compteDlg{border:1px solid var(--line);border-radius:14px;padding:20px;width:min(380px,calc(100vw - 32px));background:var(--panel);color:var(--ink)}
 #compteDlg::backdrop{background:rgba(0,0,0,.35)}
 #compteDlg .fermer{position:absolute;top:10px;right:10px;margin:0}
@@ -2164,7 +2168,7 @@ rendre();
 window.CF_APP = {sync, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=26"></script>
+<script src="investissements.js?v=27"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -2178,6 +2182,7 @@ function showTab(t, maj = true, mode = null, sous = null) {
   document.getElementById('estim').hidden = t !== 'estimation';
   document.getElementById('cf').hidden = !cash;
   document.getElementById('invest').hidden = t !== 'investissements';
+  document.body.dataset.onglet = t;   // la barre du haut s'aligne sur la colonne de « Mes investissements »
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   if (maj && location.hash !== '#' + t && !(sous && location.hash.startsWith('#' + t + '/'))) history.replaceState(null, '', '#' + t);
   if (cash) window.CF_APP && CF_APP.sync(estimationCourante(), mode);
