@@ -19,11 +19,12 @@ vm.runInContext([
   bloc(idx, '// ---------- Affichage', 'function rendre()'),
   bloc(idx, '// ---------- Achat + travaux + revente', 'function rendreRevente'),
   bloc(idx, '// ---------- Prix pour être rentable', 'function programmerCible'),
-  'this.X = {FIELDS, DEFAUTS, set, simuler, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere};',
+  'this.X = {FIELDS, DEFAUTS, set, simuler, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS};',
 ].join('\n'), ctx);
-const {FIELDS, DEFAUTS, set, simuler, bilanRevente, surtaxe, prixCible, metrique, anneeRef} = ctx.X;
+const {FIELDS, DEFAUTS, set, simuler, bilanRevente, surtaxe, prixCible, metrique, anneeRef, abatIR, abatPS} = ctx.X;
 // Surtaxe de Mon patrimoine, pour vérifier que les deux onglets calculent pareil
 const pat = vm.createContext({}); vm.runInContext(bloc(inv, 'function surtaxePV', 'const anneesEntre') + 'this.surtaxePV = surtaxePV;', pat);
+const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 'function surtaxePV') + 'this.abatIR = abatIR; this.abatPS = abatPS;', patAbat);
 
 // Formulaire : valeurs par défaut de l'appli, sections fermées, puis réglages du test
 function formulaire(v = {}, ouverts = {}) {
@@ -127,4 +128,134 @@ test('saisonnier : valeurs de départ', () => {
   const r = z.X.saisonnier({nuit: 100, occupation: 60, sejour: 3, menage: 30, plateforme: 15, conciergerie: 5, charges: 100});
   proche(r.pctFrais, 20 + 10, 0.001);                          // 30 € de ménage pour 300 € de séjour = 10 %
   proche(r.netAn, 21900 * 0.7 - 1200, 0.01);
+});
+// ---------- Crédit et apport ----------
+test('frais de notaire hors crédit : l\'apport doit au moins les couvrir (mise de départ relevée)', () => {
+  const s = formulaire({prix: 200000, notaire: 8, apport: 5000, notaireCredit: false});
+  assert.equal(s.apportEff, 16000); assert.match(s.notes.join(' '), /au moins 16\s000\s€ d'apport/);
+  proche(s.pret, (200000 + 16000 + 1000 - 16000) / 0.985, 0.01);
+});
+test('travaux hors crédit : payés par l\'apport, seulement quand la section Travaux est ouverte', () => {
+  const s = formulaire({prix: 150000, apport: 0, travaux: 30000, travauxCredit: false}, {projet: true});
+  assert.equal(s.apportEff, 30000);
+  assert.equal(formulaire({prix: 150000, apport: 0, travaux: 30000, travauxCredit: false}).apportEff, 0);   // section fermée : pas de travaux
+});
+test('apport plus grand que le coût : pas de prêt, mise de départ = coût du projet (sans frais bancaires)', () => {
+  const s = formulaire({prix: 100000, notaire: 8, apport: 300000});
+  assert.equal(s.pret, 0); assert.equal(s.fraisGarantie, 0);
+  assert.equal(s.apportEff, 108000);                    // pas 300 000 € : le reste de l'apport n'est pas dépensé
+  assert.equal(s.coutTotal, 108000);
+  assert.ok(s.annees.every(a => a.credit === 0));
+});
+test('durée du crédit, différé et horizon : fin du crédit arrondie à l\'année, 5 ans de plus affichés', () => {
+  const s = formulaire({duree: 20, differe: 6});
+  assert.equal(s.finCredit, 21); assert.equal(s.horizon, 26); assert.equal(s.annees.length, 26);
+  assert.equal(s.ech.rows.length, 246);
+  assert.equal(s.annees[25].credit, 0);
+});
+test('différé partiel : intérêts seuls pendant le différé, puis mensualité pleine', () => {
+  const s = formulaire({prix: 200000, apport: 0, differe: 12, typeDiff: 'partiel', assur: 0});
+  const a1 = s.annees[0], a2 = s.annees[1];
+  assert.equal(a1.capital, 0); proche(a1.interets, s.pret * 0.0339, 0.5);
+  proche(a2.credit, 12 * s.ech.pmt, 0.01);
+});
+test('cumul de trésorerie : départ = −mise de départ, puis somme des cash-flows', () => {
+  const s = formulaire({apport: 25000});
+  let c = -25000; s.annees.forEach(a => { c += a.cf; proche(a.cumul, c, 1e-6); });
+});
+test('charges : fixes + gestion et entretien en % des loyers ; CFE seulement en meublé', () => {
+  const v = {loyer: 1000, vacance: 0, tf: 900, copro: 600, pno: 150, compta: 0, cfe: 300, gestion: 7, entretien: 3};
+  proche(formulaire(v).annees[0].charges, 1650 + 12000 * 0.10);
+  proche(formulaire({...v, meuble: '1'}).annees[0].charges, 1650 + 300 + 12000 * 0.10);
+});
+test('évolutions fermées : loyers, charges et prix constants même si des hausses sont saisies', () => {
+  const s = formulaire({loyer: 1000, gLoyer: 3, gCharges: 3, gPrix: 3});
+  assert.equal(s.annees[9].loyers, s.annees[0].loyers); assert.equal(s.valeur, s.base);
+  const o = formulaire({loyer: 1000, gLoyer: 3, gCharges: 3, gPrix: 2}, {evol: true});
+  proche(o.annees[9].loyers, o.annees[0].loyers * Math.pow(1.03, 9)); proche(o.valeur, o.base * Math.pow(1.02, o.horizon));
+});
+
+// ---------- Fiscalité ----------
+test('impôts fermés : aucun impôt compté', () => {
+  const s = formulaire({loyer: 2000, regime: 'reel'});
+  assert.ok(s.annees.every(a => a.impots === 0)); assert.equal(s.regime, 'impôts non comptés');
+});
+test('micro-foncier : 70 % des loyers × (TMI + 17,2 %)', () => {
+  const s = formulaire({loyer: 800, tmi: '30', regime: 'micro'}, {impots: true});
+  proche(s.annees[1].impots, s.annees[1].loyers * 0.7 * (0.30 + 0.172));
+});
+test('LMNP micro-BIC : 50 % d\'abattement ; au-delà de 77 700 € de loyers, réel forcé', () => {
+  const m = formulaire({loyer: 900, meuble: '1', regime: 'micro', tmi: '30'}, {impots: true});
+  assert.match(m.regime, /micro-BIC/); proche(m.annees[1].impots, m.annees[1].loyers * 0.5 * (0.30 + 0.186));
+  const gros = formulaire({prix: 1500000, loyer: 7000, meuble: '1', regime: 'micro'}, {impots: true});
+  assert.match(gros.regime, /au réel/);
+});
+test('LMNP au réel : l\'amortissement efface l\'impôt les premières années, jamais d\'impôt négatif', () => {
+  const s = formulaire({prix: 200000, loyer: 900, meuble: '1', mobilier: 5000, regime: 'reel', tmi: '30'}, {impots: true});
+  assert.match(s.regime, /LMNP au réel/);
+  assert.ok(s.annees.slice(0, 5).every(a => a.impots === 0));
+  assert.ok(s.annees.every(a => a.impots >= 0));
+});
+test('SCI à l\'IR en meublé : passe à l\'IS (avec une note)', () => {
+  const s = formulaire({struct: 'ir', meuble: '1'}, {impots: true});
+  assert.equal(s.st, 'is'); assert.match(s.notes.join(' '), /passe d'office à l'IS/);
+});
+test('SCI à l\'IS : flat tax sur ce qui est distribué', () => {
+  const garde = formulaire({prix: 100000, loyer: 2000, struct: 'is'}, {impots: true});
+  const distrib = formulaire({prix: 100000, loyer: 2000, struct: 'is', distrib: true}, {impots: true});
+  const a = garde.annees[10], b = distrib.annees[10];
+  assert.ok(a.is > 0); assert.equal(a.pfu, 0);
+  proche(b.pfu, b.benef * 0.314, 0.01); proche(b.impots, b.is + b.pfu + b.crl, 0.01);
+});
+test('SCI à l\'IR : revenus fonciers au réel (pas de micro-foncier en SCI)', () => {
+  const s = formulaire({loyer: 700, struct: 'ir', regime: 'micro'}, {impots: true});
+  assert.match(s.regime, /SCI à l'IR, revenus fonciers au réel/);
+});
+
+// ---------- Revente ----------
+const revente = (v, ouverts = {}) => { formulaire({prix: 150000, travaux: 30000, dureeTravaux: 6, valeurApres: 240000, scenario: 'revendre', fraisRevente: 5, ...v}, {projet: true, ...ouverts}); return bilanRevente(simuler()); };
+test('revente : impôt sur la plus-value (36,2 %) en nom propre, rien si moins-value', () => {
+  const b = revente({moisRevente: 12, notaire: 8}, {impots: true});
+  const pv = 240000 * 0.95 - (150000 + 12000 + 30000);
+  proche(b.impot, pv * 0.362 + 0, 0.5);
+  const perte = revente({moisRevente: 12, valeurApres: 150000}, {impots: true});
+  assert.equal(perte.impot, 0); assert.match(perte.detail, /pas de plus-value/);
+});
+test('revente après plus de 5 ans : abattements pour durée de détention', () => {
+  const court = revente({moisRevente: 60}, {impots: true}), long = revente({moisRevente: 120}, {impots: true});
+  const pv = 240000 * 0.95 - (150000 + 12000 + 30000);
+  proche(court.impot, pv * 0.362, 0.5);
+  for (const n of [0, 5, 6, 12, 21, 22, 23, 29, 30, 40]) { proche(abatIR(n), patAbat.abatIR(n), 1e-12); proche(abatPS(n), patAbat.abatPS(n), 1e-12); }                                         // 5 ans : aucun abattement
+  proche(long.impot, pv * (0.19 * (1 - 0.30) + 0.172 * (1 - 0.0825)), 0.5);    // 10 ans : 30 % (impôt), 8,25 % (prélèvements)
+});
+test('revente : intérêts et capital sur la durée de l\'opération ; IRA plafonnées', () => {
+  const b = revente({moisRevente: 18, differe: 6});
+  proche(b.ira, Math.min(0.03 * b.crd, 6 * b.crd * 0.0339 / 12), 0.01);
+  assert.ok(b.crd > 0 && b.n === 18);
+  proche(b.encaisse, b.prixVente - b.fraisVente - b.crd - b.ira, 1e-6);
+});
+test('revente en SCI à l\'IS : IS sur la marge, flat tax si distribuée', () => {
+  const b = revente({moisRevente: 12, struct: 'is', distrib: true}, {impots: true});
+  const r = Math.max(0, b.margeBrute), is = 0.15 * Math.min(r, 42500) + 0.25 * Math.max(0, r - 42500);
+  proche(b.impot, is + (r - is) * 0.314, 0.01);
+});
+
+// ---------- Prix d'équilibre et années de référence ----------
+test('prix d\'équilibre : impossible quand les charges dépassent le loyer ; sans limite quand le loyer est énorme', () => {
+  formulaire({loyer: 50, tf: 3000});
+  assert.equal(prixCible(0).impossible, true);
+  formulaire({prix: 100000, loyer: 20000});
+  assert.equal(prixCible(0).sansLimite, true);
+});
+test('prix d\'équilibre en revente : le bénéfice net visé est atteint au prix trouvé', () => {
+  formulaire({prix: 150000, travaux: 30000, dureeTravaux: 6, valeurApres: 260000, scenario: 'revendre', moisRevente: 12}, {projet: true});
+  const r = prixCible(10000);
+  assert.ok(!r.impossible && !r.sansLimite);
+  assert.ok(metrique(r.prix) >= 10000 && metrique(r.prix + 1000) < 10000);
+});
+test('année de croisière : après le différé et au moins en année 2', () => {
+  const {anneeCroisiere} = ctx.X;
+  assert.equal(anneeCroisiere(formulaire({differe: 24})).y, 3);
+  assert.equal(anneeCroisiere(formulaire({})).y, 2);
+  assert.equal(anneeRef(formulaire({})).y, 1);
 });

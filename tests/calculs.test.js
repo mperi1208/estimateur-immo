@@ -20,7 +20,7 @@ vm.runInContext([
   bloc(inv, '// ---------- Mois', '// ---------- Données'),
   'var STATUTS = {};',
   bloc(idx, 'function echeancier', '// ---------- Simulation'),
-  'this.X = {pmt, solde, etatPret, analyseReneg, calculs, echeancier, ecartMois, decalerMois, normMois};',
+  'this.X = {pmt, solde, etatPret, analyseReneg, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
 ].join('\n'), ctx);
 const {pmt, solde, etatPret, calculs, echeancier, ecartMois, decalerMois, normMois} = ctx.X;
 const proche = (a, b, eps = 0.01) => assert.ok(Math.abs(a - b) <= eps, `${a} ≠ ${b}`);
@@ -104,4 +104,86 @@ test('rentabilité : construction ajoutée au coût, patrimoine = valeur − res
     prets: [{montant: 100000, taux: 0, duree: 100, debut: '2024-01', mensualite: 1000}]}));
   assert.equal(c.cout, 236000); assert.equal(c.emprunte, 100000);
   assert.equal(c.patrimoine, 300000 - c.crd); assert.equal(c.plusValue, 64000);
+});
+
+// ---------- Crédit : cas limites ----------
+const auj = ctx.X.moisCourant ? ctx.X.moisCourant() : null;
+test('mensualité : le solde est nul au bout de la durée, pour plusieurs taux et durées', () => {
+  for (const t of [0.5, 1.2, 3.39, 5, 8]) for (const n of [12, 84, 180, 300]) {
+    const r = t / 1200, M = pmt(250000, r, n);
+    proche(solde(250000, r, M, n), 0, 0.01);
+    assert.ok(M * n > 250000);                                   // on rembourse plus que le capital
+  }
+});
+test('échéancier à taux nul : capital / durée chaque mois, aucun intérêt', () => {
+  const e = echeancier(120000, 0, 240, 0, 'partiel', 0);
+  proche(e.pmt, 500); assert.ok(e.rows.every(r => r.i === 0)); proche(e.rows[239].crd, 0, 1e-6);
+});
+test('échéancier : différé total = capital augmenté des intérêts, mensualité calculée dessus', () => {
+  const r = 0.03 / 12, e = echeancier(100000, 3, 120, 6, 'total', 0);
+  proche(e.rows[5].crd, 100000 * Math.pow(1 + r, 6), 0.01);
+  proche(e.pmt, pmt(100000 * Math.pow(1 + r, 6), r, 120), 0.001);
+  proche(e.rows[e.rows.length - 1].crd, 0, 0.01);
+});
+test('prêt : mensualité saisie (différente du calcul) utilisée telle quelle', () => {
+  const e = etatPret({montant: 100000, taux: 2, duree: 120, debut: '2020-01', mensualite: 1000}, '2020-12');
+  assert.equal(e.M, 1000); proche(e.crd, solde(100000, 2 / 1200, 1000, 12), 0.01);
+});
+test('prêt : sur 12 mois, intérêts + capital = 12 mensualités, capital = baisse du restant dû', () => {
+  const p = {montant: 200000, taux: 3.5, duree: 300, debut: '2022-03'}, e = etatPret(p, '2025-06');
+  proche(e.interets + e.capital, 12 * e.M, 0.01);
+  proche(e.capital, e.crd - etatPret(p, '2026-06').crd, 0.01);
+});
+test('prêt : relevé plus vieux que les mois restants = soldé', () => {
+  const e = etatPret({crd: 20000, mois: 10, crdLe: '2024-01', taux: 2}, '2025-06');
+  assert.equal(e.crd, 0); assert.equal(e.mois, 0); assert.equal(e.payes, 0);
+});
+test('prêt dont la 1re échéance est dans 6 mois : rien à payer avant, 7 échéances sur les 12 prochains mois', () => {
+  const debut = decalerMois('2026-01', 6), p = {montant: 100000, taux: 3, duree: 240, debut};
+  const e = etatPret(p, '2026-01');
+  assert.equal(e.crd, 100000);
+  assert.equal(e.payes, 7);                                      // juillet 2026 à janvier 2027
+  assert.equal(e.fin, decalerMois(debut, 239));                  // dernière échéance : 240e à partir de la 1re
+  const demain = etatPret({...p, debut: '2026-02'}, '2026-01');   // 1re échéance le mois prochain : 12 échéances
+  assert.equal(demain.payes, 12); assert.equal(demain.fin, decalerMois('2026-02', 239));
+});
+test('prêt en pause (relevé à venir) : pas de mensualité comptée tant qu\'il ne reprend pas', () => {
+  const b = bien({prets: [{crd: 100000, mois: 120, crdLe: decalerMois(auj, 4), taux: 3}]});
+  const c = calculs(b), e = c.prets[0].e;
+  assert.equal(e.pause, 4); assert.equal(c.mensuCredit, 0);
+  proche(c.creditAn, e.M * 8, 0.01);                             // 8 échéances sur les 12 prochains mois
+});
+test('rentabilité avec crédit : cash-flow = loyers − charges − crédit ; intérêts + capital = crédit (sans assurance)', () => {
+  const c = calculs(bien({prets: [{montant: 150000, taux: 3, duree: 240, debut: decalerMois(auj, -12)}]}));
+  proche(c.cfAn, c.loyersAn - c.chargesAn - c.creditAn, 1e-6);
+  proche(c.interetsAn + c.capitalAn, c.creditAn, 0.01);
+  proche(c.cfMois * 12, c.cfAn, 1e-9);
+  assert.equal(c.emprunte, 150000);
+});
+test('rentabilité : assurance du prêt dans la mensualité et le crédit annuel', () => {
+  const c = calculs(bien({prets: [{montant: 100000, taux: 2, duree: 240, debut: decalerMois(auj, -1), assurance: 25}]}));
+  proche(c.mensuCredit, c.prets[0].e.M + 25, 1e-9); proche(c.creditAn, (c.prets[0].e.M + 25) * 12, 0.01);
+});
+test('rentabilité : vacance plafonnée à 12 mois, coût nul = pas de rendement', () => {
+  assert.equal(calculs(bien({location: {statut: 'vide', loyer: 800, vacance: 15}})).loyersAn, 0);
+  const sansAchat = calculs(bien({achat: {}}));
+  assert.equal(sansAchat.brut, null); assert.equal(sansAchat.net, null); assert.equal(sansAchat.plusValue, null);
+});
+test('renégociation : nouvelle mensualité au taux du marché, indemnités plafonnées, rien sous 1 000 €', () => {
+  const src = idx;
+  vm.runInContext(bloc(src, 'const TAUX_ACTUEL =', 'const GAMMES_CF') + bloc(src, 'function tauxDuree', '// ---------- Fiscalité')
+    + 'T.TAUX_ACTUEL = TAUX_ACTUEL; T.HISTO = HISTO; T.tauxDuree = tauxDuree; T.SURPRIME_SCI = 0.3;', ctx);
+  const p = {montant: 200000, taux: 4.5, duree: 300, debut: '2023-06', offre: '2023-06'};
+  const e = etatPret(p, '2026-01'), a = ctx.X.analyseReneg(p, e, false);
+  const n = e.mois, t = ctx.T.tauxDuree(ctx.T.TAUX_ACTUEL, n);
+  proche(a.tNew, t, 1e-9); proche(a.mensu2, pmt(e.crd, t / 1200, n), 0.01);
+  proche(a.gainMois, e.M - a.mensu2, 1e-6); proche(a.ira, Math.min(0.03 * e.crd, 6 * e.crd * 4.5 / 1200), 0.01);
+  assert.ok(a.surprime && a.surprime[0] > 0);                    // 4,5 % en juin 2023 : au-dessus du marché d'alors
+  proche(ctx.X.analyseReneg(p, e, true).tNew, t + 0.3, 1e-9);    // SCI : surprime
+  assert.equal(ctx.X.analyseReneg(p, {...e, crd: 500}, false), null);
+});
+test('taux du marché par durée : interpolé entre 15, 20 et 25 ans', () => {
+  const {tauxDuree, TAUX_ACTUEL: R} = ctx.T;
+  assert.equal(tauxDuree(R, 120), R[15]); assert.equal(tauxDuree(R, 240), R[20]); assert.equal(tauxDuree(R, 360), R[25]);
+  proche(tauxDuree(R, 270), (R[20] + R[25]) / 2, 1e-9);
 });

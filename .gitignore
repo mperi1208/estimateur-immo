@@ -1,3 +1,5 @@
 .claude/
 .DS_Store
 app/mes-credits.js
+tests/e2e/node_modules/
+tests/e2e/captures/

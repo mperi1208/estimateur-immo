@@ -33,24 +33,26 @@ const solde = (P, r, M, k) => r ? P * Math.pow(1 + r, k) - M * (Math.pow(1 + r, 
 // compte des différés et remboursements anticipés), ou l'offre (montant, durée, 1re échéance).
 function etatPret(p, auj = moisCourant()) {
   const r = (p.taux || 0) / 1200;
-  let crd, mois, M, pause = 0;
+  let crd, mois, M, pause = 0, reprise = null;
   if (p.crd > 0 && p.mois > 0 && p.crdLe) {
     M = p.mensualite || pmt(p.crd, r, p.mois);
     const ecart = ecartMois(p.crdLe, auj);
     // Relevé à une date à venir : prêt en pause (différé) jusque-là, remboursement de ce restant dû ensuite
-    if (ecart < 0) { pause = -ecart; crd = p.crd; mois = p.mois + pause; }
+    if (ecart < 0) { pause = -ecart; crd = p.crd; mois = p.mois + pause; reprise = p.crdLe; }
     else { const k = Math.min(p.mois, ecart); crd = solde(p.crd, r, M, k); mois = p.mois - k; }
   } else if (p.montant > 0 && p.duree > 0 && p.debut) {
     M = p.mensualite || pmt(p.montant, r, p.duree);
-    const k = Math.min(p.duree, Math.max(0, ecartMois(p.debut, auj) + 1));   // échéances déjà payées
-    crd = solde(p.montant, r, M, k); mois = p.duree - k;
+    const ecart = ecartMois(p.debut, auj);
+    // 1re échéance dans plusieurs mois (achat récent, différé) : rien à payer d'ici là
+    if (ecart < -1) { pause = -ecart - 1; crd = p.montant; mois = p.duree + pause; reprise = p.debut; }
+    else { const k = Math.min(p.duree, ecart + 1); crd = solde(p.montant, r, M, k); mois = p.duree - k; }   // k : échéances déjà payées
   } else return null;
-  crd = Math.max(0, crd);
+  crd = mois > 0 && crd > 0.005 ? crd : 0;   // prêt soldé : pas de reste d'arrondi
   // 12 prochains mois : intérêts et capital remboursé (rien pendant la pause : les intérêts s'ajoutent au capital)
   let c = crd, interets = 0, capital = 0;
   const payes = Math.max(0, Math.min(12, mois) - pause);
   for (let i = 0; i < payes; i++) { const it = c * r; interets += it; capital += M - it; c -= M - it; }
-  return {crd, mois, M, pause, payes, reprise: pause ? p.crdLe : null, assur: p.assurance || 0, fin: decalerMois(auj, mois), interets, capital};
+  return {crd, mois, M, pause, payes, reprise, debutFutur: reprise === p.debut, assur: p.assurance || 0, fin: decalerMois(auj, mois), interets, capital};
 }
 // Renégociation ou rachat aux taux d'aujourd'hui (même calcul que l'ancien onglet « Mes crédits »)
 function analyseReneg(p, e, sci) {
@@ -201,17 +203,27 @@ async function envoyer() {
     await COMPTE.ecrire(contenu());
     etatCompte = 'Enregistré dans ton compte.';
     if (JSON.stringify([biens, scis]) !== avant) rafraichir();
+    setTimeout(tirer, 1500);   // une autre page a pu écrire juste après nous et effacer ce changement : on vérifie
   } catch (e) { etatCompte = 'Échec de l\'enregistrement : ' + erreurCompte(e); }
   majEtat();
+}
+// Ce que cette page a et que le compte n'a pas (deux pages qui enregistrent en même temps : la dernière écriture
+// efface celle de l'autre) : à renvoyer, sinon le changement resterait seulement sur cet appareil
+function enAvance(brut) {
+  if (!brut || Array.isArray(brut)) return false;
+  const plus = (l, d) => { const m = new Map((Array.isArray(d) ? d : []).filter(x => x && x.id).map(x => [x.id, x.maj || 0])); return l.some(x => !m.has(x.id) || (x.maj || 0) > m.get(x.id)); };
+  return plus(biens, brut.biens) || plus(scis, brut.scis) || (typeof PROJETS !== 'undefined' && plus(PROJETS.liste, brut.projets))
+    || Object.keys(supprimes).some(k => !(brut.supprimes || {})[k]);
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(minuteur); envoyer(); } });
 // Ce qui part dans le compte : les biens et les recherches récentes de l'onglet Estimer
 // Fusion bien par bien (et SCI par SCI) : la version modifiée le plus récemment gagne ; les suppressions sont gardées 6 mois
 function fusionListes(locale, distante, sup) {
   const m = new Map();
-  for (const x of distante || []) if (!sup[x.id]) m.set(x.id, x);
+  distante = (Array.isArray(distante) ? distante : []).filter(x => x && x.id);   // entrée abîmée dans le compte : écartée
+  for (const x of distante) if (!sup[x.id]) m.set(x.id, x);
   for (const x of locale) { if (sup[x.id]) continue; const y = m.get(x.id); if (!y || (x.maj || 0) >= (y.maj || 0)) m.set(x.id, x); }
-  return [...new Set([...locale.map(x => x.id), ...(distante || []).map(x => x.id)])].filter(id => m.has(id)).map(id => m.get(id));
+  return [...new Set([...locale.map(x => x.id), ...distante.map(x => x.id)])].filter(id => m.has(id)).map(id => m.get(id));
 }
 function fusionnerDistant(brut) {
   if (!brut || Array.isArray(brut)) return;
@@ -236,9 +248,10 @@ async function tirer() {
   if (!COMPTE.user || !compteCharge || lectureEnCours || enAttente || document.hidden) return;
   lectureEnCours = true;
   try {
-    const avant = JSON.stringify([biens, scis]);
-    fusionnerDistant(await COMPTE.lire());
+    const avant = JSON.stringify([biens, scis]), brut = await COMPTE.lire();
+    fusionnerDistant(brut);
     if (JSON.stringify([biens, scis]) !== avant) rafraichir();
+    if (enAvance(brut)) sauver();
   } catch (e) { console.warn('Relecture du compte :', e); }
   lectureEnCours = false;
 }
@@ -1471,7 +1484,7 @@ function resumePret(b, p, e) {
   const a = analyseReneg(p, e, b.structure !== 'np'), dejaPaye = p.montant > 0 ? 1 - e.crd / p.montant : null;
   const taux = v => v.toFixed(2).replace('.', ',') + ' %';
   let h = `<div class="pret-etat">
-    ${e.pause ? `<div class="pret-pause">En pause jusqu'en ${libMois(e.reprise)} : pas d'échéance, les intérêts s'ajoutent au capital.</div>` : ''}
+    ${e.pause ? `<div class="pret-pause">${e.debutFutur ? `1re échéance en ${libMois(e.reprise)} : rien à payer d'ici là.` : `En pause jusqu'en ${libMois(e.reprise)} : pas d'échéance, les intérêts s'ajoutent au capital.`}</div>` : ''}
     ${mini([[e.pause ? 'À rembourser à la reprise' : 'Restant dû', eur(e.crd)], ['Mensualité', eur(e.M) + (e.assur ? ' + ' + eur(e.assur) + ' d\'assurance' : '')],
       ['Fin du prêt', libMois(e.fin)], ['Mois restants', String(e.mois - (e.pause || 0))]])}
     ${dejaPaye != null ? `<div class="barre"><span style="width:${Math.max(0, Math.min(100, dejaPaye * 100)).toFixed(1)}%"></span></div><div class="aide">${pct(dejaPaye)} du capital remboursé</div>` : ''}

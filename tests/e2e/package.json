@@ -1,0 +1,12 @@
+{
+  "name": "patrimoniu-e2e",
+  "private": true,
+  "description": "Parcours dans le navigateur (Playwright), réseau simulé : DVF, carte des loyers, adresses, comptes",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 *.e2e.js"
+  },
+  "devDependencies": {
+    "leaflet": "1.9.4",
+    "playwright": "1.63.0"
+  }
+}
