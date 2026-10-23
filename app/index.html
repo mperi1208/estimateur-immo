@@ -1726,7 +1726,8 @@ function renderSaison() {
     <div class="hint">Prix et occupation à caler sur les annonces voisines (Airbnb, Booking) : le prix proposé part du loyer meublé du secteur.</div>
     <div class="crit">${CHAMPS_SAISON.map(([k, l, st]) => `<div><label for="s_${k}">${l}</label><input type="number" id="s_${k}" min="0" step="${st}" value="${k === 'nuit' && ps.auto ? '' : ps[k]}"${k === 'nuit' ? ` placeholder="${ps.nuit}"` : ''}></div>`).join('')}
       <div><label for="s_classe">Classement</label><select id="s_classe"><option value="0"${ps.classe ? '' : ' selected'}>Non classé</option><option value="1"${ps.classe ? ' selected' : ''}>Meublé de tourisme classé</option></select></div></div>
-    <div id="saisonRes"></div>`;
+    <div id="saisonRes"></div>
+    <div class="row"><button class="cta" onclick="financerBien()">Financer en location saisonnière →</button></div>`;   // hors de #saisonRes : quitter un champ le recalcule, le clic ne doit pas tomber sur un bouton remplacé
   el.querySelectorAll('input, select').forEach(i => i.onchange = () => {
     const k = i.id.slice(2);
     choixSaison[k] = k === 'classe' ? i.value === '1' : i.value === '' ? null : Math.max(0, +i.value);
@@ -1753,7 +1754,7 @@ function majSaisonRes() {
     </div>
     <div class="range">Impôts (micro-BIC) : ${Math.round(m.abattement * 100)} % des recettes non imposés ${ps.classe ? 'pour un meublé classé' : 'sans classement'}, jusqu'à ${fmt(m.plafond)} € de recettes par an${sz.brutAn > m.plafond ? ` : <b>dépassé</b> (${fmt(sz.brutAn)} €), régime réel obligatoire` : ''} ; un meublé classique garde 50 %.${ps.classe ? '' : ' Faire classer le logement (1 à 5 étoiles) relève l\'abattement à 50 %.'}</div>
     <div class="warnbox">À vérifier avant de te lancer : déclaration en mairie, résidence principale limitée à 120 nuits par an (90 si la commune le décide, comme Paris), changement d'usage souvent obligatoire dans les grandes villes pour un autre logement, règlement de copropriété, et DPE : au moins E pour un nouveau meublé de tourisme là où une autorisation est demandée, D partout en 2034 (<a href="${SOURCES.lemeur[1]}" target="_blank" rel="noopener">loi Le Meur</a>).</div>
-    <div class="row"><button class="cta" onclick="financerBien()">Financer en location saisonnière →</button></div>`;
+`;
 }
 
 // --- Synthèse : les 3 chiffres qui comptent ---

@@ -203,8 +203,17 @@ async function envoyer() {
     await COMPTE.ecrire(contenu());
     etatCompte = 'Enregistré dans ton compte.';
     if (JSON.stringify([biens, scis]) !== avant) rafraichir();
+    setTimeout(tirer, 1500);   // une autre page a pu écrire juste après nous et effacer ce changement : on vérifie
   } catch (e) { etatCompte = 'Échec de l\'enregistrement : ' + erreurCompte(e); }
   majEtat();
+}
+// Ce que cette page a et que le compte n'a pas (deux pages qui enregistrent en même temps : la dernière écriture
+// efface celle de l'autre) : à renvoyer, sinon le changement resterait seulement sur cet appareil
+function enAvance(brut) {
+  if (!brut || Array.isArray(brut)) return false;
+  const plus = (l, d) => { const m = new Map((Array.isArray(d) ? d : []).filter(x => x && x.id).map(x => [x.id, x.maj || 0])); return l.some(x => !m.has(x.id) || (x.maj || 0) > m.get(x.id)); };
+  return plus(biens, brut.biens) || plus(scis, brut.scis) || (typeof PROJETS !== 'undefined' && plus(PROJETS.liste, brut.projets))
+    || Object.keys(supprimes).some(k => !(brut.supprimes || {})[k]);
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(minuteur); envoyer(); } });
 // Ce qui part dans le compte : les biens et les recherches récentes de l'onglet Estimer
@@ -239,9 +248,10 @@ async function tirer() {
   if (!COMPTE.user || !compteCharge || lectureEnCours || enAttente || document.hidden) return;
   lectureEnCours = true;
   try {
-    const avant = JSON.stringify([biens, scis]);
-    fusionnerDistant(await COMPTE.lire());
+    const avant = JSON.stringify([biens, scis]), brut = await COMPTE.lire();
+    fusionnerDistant(brut);
     if (JSON.stringify([biens, scis]) !== avant) rafraichir();
+    if (enAvance(brut)) sauver();
   } catch (e) { console.warn('Relecture du compte :', e); }
   lectureEnCours = false;
 }
