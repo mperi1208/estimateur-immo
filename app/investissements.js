@@ -73,7 +73,9 @@ const LISTES = {colocation: {cle: 'chambres', nom: 'Chambre', titre: 'Chambres l
   lots: {cle: 'lots', nom: 'Logement', titre: 'Logements', ajout: '+ Ajouter un loyer'}};
 // Loyer mensuel d'un logement : un seul loyer, ou la somme des chambres (colocation) ou des lots (bien divisé, annexe louée à part)
 const lignesLoyer = b => LISTES[b.location.statut] ? b[LISTES[b.location.statut].cle] || [] : null;
-const loyerLogement = b => lignesLoyer(b) ? somme(lignesLoyer(b), x => x.loyer) : b.location.loyer || 0;
+// Location saisonnière : prix par nuit × nuits louées par an, ramené au mois (sans prix par nuit : recettes saisies au mois)
+const nuitee = b => b.location.statut === 'saisonnier' && b.location.nuit > 0;
+const loyerLogement = b => lignesLoyer(b) ? somme(lignesLoyer(b), x => x.loyer) : nuitee(b) ? b.location.nuit * (b.location.nuitsAn || 0) / 12 : b.location.loyer || 0;
 // Chaque chambre ou lot peut avoir son propre début de loyer (logement créé, garage aménagé…) : sans date, il est déjà loué.
 // Mois de loyer sur les 12 prochains mois, et loyer encaissé ce mois-ci
 const moisDeLoyer = (debut, auj = moisCourant()) => (debut = normMois(debut)) ? Math.max(0, Math.min(12, 12 - ecartMois(auj, debut))) : 12;
@@ -99,12 +101,13 @@ function calculs(b) {
   const actifs = prets.filter(x => x.e && x.e.mois > 0);
   const terrain = b.type === 'terrain';
   const loue = terrain ? ['loue', 'activites'].includes(b.location.statut) : LOUE.includes(b.location.statut);
-  const lignes = lignesLoyer(b), vac = 1 - Math.min(12, b.location.vacance || 0) / 12;
+  const lignes = lignesLoyer(b), vac = nuitee(b) ? 1 : 1 - Math.min(12, b.location.vacance || 0) / 12;   // à la nuitée, les nuits louées comptent déjà les creux
   const loyersAn = terrain ? revenusTerrain(b) : !loue ? 0 : lignes ? somme(lignes, x => (x.loyer || 0) * moisDeLoyer(x.debut)) * vac : loyerLogement(b) * moisDeLoyer(debutBailFutur(b)) * vac;
   const loyerMois = terrain ? loyersAn / 12 : loue ? loyerActuel(b) : 0;
   const loyerPlein = terrain ? loyerMois : loue ? loyerLogement(b) : 0;   // tous les loyers commencés : pour le rendement
   const c = b.chargesAn;
-  const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100;
+  const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
+    + (b.location.statut === 'saisonnier' && !terrain ? loyersAn * (b.location.fraisSaison || 0) / 100 : 0);   // plateforme, conciergerie, ménage
   const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
   const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
   const crd = somme(prets, x => x.e && x.e.crd), cfAn = loyersAn - chargesAn - creditAn;
@@ -560,7 +563,8 @@ function majAuto(b) {
         ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div>${L.coloc ? `<div><small>Coloc. ${L.chambres} ch.</small><b>${eur(L.coloc)}</b></div>` : ''}</div><small>hors charges/mois${e.loyerAvec ? ` · avec ${esc(e.loyerAvec)}, loué avec le bien` : ''}${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : L.coloc ? ` · ${eur(L.coloc / L.chambres)} par chambre en colocation` : ''}</small></div>
         <div><span>Rendement brut</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${rdt(L.vide)}</b></div><div><small>Meublé</small><b>${rdt(L.meuble)}</b></div>${L.coloc ? `<div><small>Coloc.</small><b>${rdt(L.coloc)}</b></div>` : ''}</div><small>sur la valeur estimée</small></div>` : ''}</div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
-      ${(rf => loue && rf && loyerLogement(b) && b.location.statut !== 'lots' ? `<div class="aide">Ton loyer : ${eur(loyerLogement(b))}, soit ${pct(loyerLogement(b) / rf - 1)} par rapport au marché ${b.location.statut === 'colocation' ? 'en colocation' : m ? 'meublé' : 'vide'}.</div>` : '')(b.location.statut === 'colocation' && L.coloc ? L.coloc : ref)}
+      ${b.location.statut === 'saisonnier' && L.meuble && loyerLogement(b) ? (net => `<div class="aide">À la nuitée : ${eur(loyerLogement(b))} de recettes par mois, ${eur(net)} après frais, soit ${pct(net / L.meuble - 1)} par rapport au meublé classique du marché (${eur(L.meuble)} hors charges).</div>`)(loyerLogement(b) * (1 - (b.location.fraisSaison || 0) / 100)) : ''}
+      ${(rf => loue && rf && loyerLogement(b) && !['lots', 'saisonnier'].includes(b.location.statut) ? `<div class="aide">Ton loyer : ${eur(loyerLogement(b))}, soit ${pct(loyerLogement(b) / rf - 1)} par rapport au marché ${b.location.statut === 'colocation' ? 'en colocation' : m ? 'meublé' : 'vide'}.</div>` : '')(b.location.statut === 'colocation' && L.coloc ? L.coloc : ref)}
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
     </div>
     ${!a_jour ? '<div class="aide">Caractéristiques modifiées depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
@@ -955,6 +959,17 @@ function locationHTML(b) {
       <button data-a="ajoutLigne">${Lc.ajout}</button>
       <div class="grille" style="margin-top:10px">${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}</div>
       <div class="total" id="inv_revTotal"></div>`);
+  }
+  if (b.location.statut === 'saisonnier') {
+    const m = loyersMarche(b.estimation).meuble;
+    return section('Location', `<div class="grille">
+      ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
+      ${champ(b, 'location.nuit', 'Prix moyen par nuit (€)', {step: 5, aide: m ? `Point de départ : ≈ ${eur(nuitConseillee(m))} (loyer meublé du marché ÷ 9)` : ''})}
+      ${champ(b, 'location.nuitsAn', 'Nuits louées par an', {step: 10, aide: '≈ 220 pour 60 % d\'occupation · 120 au plus pour une résidence principale'})}
+      ${champ(b, 'location.fraisSaison', 'Frais (% des recettes)', {step: 1, aide: 'Plateforme, conciergerie et ménage (souvent 20 à 35 %)'})}
+      ${champ(b, 'location.loyer', 'Ou recettes moyennes (€/mois)', {step: 10, aide: 'Compté seulement sans prix par nuit'})}
+      ${champ(b, 'location.debutBail', 'Loué à partir de', {type: 'month', aide: 'Vide : déjà en location'})}
+    </div><div class="total" id="inv_revTotal"></div>`);
   }
   return section('Location', `<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
@@ -1443,7 +1458,8 @@ function majCalculs(b) {
     <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? lieSimple(b) ? ' Achat, crédit et charges comptés avec ' + esc(principalDe(b).nom) + '.' : ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
   // Total des revenus d'un terrain, mis à jour sans reconstruire la section (pour garder le champ en cours)
   const rt = q('#inv_revTotal');
-  if (rt) rt.innerHTML = b.type !== 'terrain' && LISTES[b.location.statut] ? (l => l.length ? `${l.length} ${b.location.statut === 'lots' ? 'loyer' : 'chambre'}${l.length > 1 ? 's' : ''} : <b>${eur(loyerLogement(b))}</b> par mois au total${(a => a.length ? ` (dont ${a.map(x => `${eur(x.loyer || 0)} à partir de ${libMois(normMois(x.debut))}`).join(', ')})` : '')(l.filter(x => !commence(x)))}, ${eur(c.loyersAn)} sur les 12 prochains mois après vacance.` : '')(lignesLoyer(b))
+  if (rt && b.location.statut === 'saisonnier') rt.innerHTML = c.loyersAn ? `Recettes : <b>${eur(loyerLogement(b))}</b> par mois en moyenne${nuitee(b) ? ` (${eur(b.location.nuit)} × ${fmt(b.location.nuitsAn || 0)} nuits ÷ 12)` : ''}, ${eur(c.loyersAn)} sur les 12 prochains mois${b.location.fraisSaison ? `, dont ${eur(c.loyersAn * b.location.fraisSaison / 100)} de frais (${b.location.fraisSaison} %)` : ''}.` : 'Renseigne le prix par nuit et les nuits louées par an.';
+  else if (rt) rt.innerHTML = b.type !== 'terrain' && LISTES[b.location.statut] ? (l => l.length ? `${l.length} ${b.location.statut === 'lots' ? 'loyer' : 'chambre'}${l.length > 1 ? 's' : ''} : <b>${eur(loyerLogement(b))}</b> par mois au total${(a => a.length ? ` (dont ${a.map(x => `${eur(x.loyer || 0)} à partir de ${libMois(normMois(x.debut))}`).join(', ')})` : '')(l.filter(x => !commence(x)))}, ${eur(c.loyersAn)} sur les 12 prochains mois après vacance.` : '')(lignesLoyer(b))
     : c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
   const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
   if (q('#inv_cout')) q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
@@ -1567,7 +1583,8 @@ racine.addEventListener('click', async e => {
     const est = estimationCourante(); if (!est) return;
     return ajouter({nom: est.label.split(' ').slice(0, 4).join(' '), adresse: est.label, type: est.type, surface: est.surf,
       criteres: Object.fromEntries(Object.entries(saved).filter(([k]) => k !== 'location')), geo: state.lat != null ? {lat: state.lat, lon: state.lon, label: est.label, pour: est.label} : null,
-      valeur: est.prix, valeurLe: moisCourant(), location: {statut: est.meuble ? 'meuble' : 'vide', loyer: est.loyer, charges: null, locataire: '', debutBail: '', vacance: 0}});
+      valeur: est.prix, valeurLe: moisCourant(), location: {statut: est.saison ? 'saisonnier' : est.meuble ? 'meuble' : 'vide', loyer: est.loyer, charges: null, locataire: '', debutBail: '', vacance: 0,
+        ...(est.saison ? (z => ({nuit: est.saison.nuit, nuitsAn: Math.round(z.nuits), fraisSaison: Math.round(z.pctFrais)}))(saisonnier(est.saison)) : {})}});
   }
   if (!b) return;
   if (a === 'estimerAuto') estimerBien(b);

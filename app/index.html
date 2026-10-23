@@ -127,7 +127,8 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .seg button:disabled{color:var(--muted);opacity:.55;cursor:not-allowed}
 .works{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
 .works .kpis{margin-top:8px}
-.works.garage-est{background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.works.garage-est,.works.saison{background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.works.saison h3{margin:0 0 4px;font-size:15px}
 .works .kpi{background:var(--panel)}
 .works .row{margin-top:10px}
 .detail{margin-top:14px}
@@ -448,6 +449,10 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf button{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
 #cf .seg.scen button{border:0;border-radius:0;padding:9px}
 #cf .seg.scen button.on{background:var(--accent);color:#fff}
+#cf .loc-mode .seg{margin-top:2px}
+#cf .loc-mode .seg button{border:0;border-radius:0;padding:9px 6px;white-space:nowrap}
+#cf .loc-mode .seg button.on{background:var(--accent);color:#fff}
+#cf .grid .plein{grid-column:1/-1}
 #cf .bienbar{padding:10px 20px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-size:14px}
 #cf .voir{display:none;margin-left:8px;padding:3px 10px;font-size:13px}
 #cf .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
@@ -547,7 +552,11 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
     <div data-sci hidden><label>Dans quelle SCI</label><select id="cf_sciExist"><option value="">Une nouvelle SCI</option></select><div class="hint" id="cf_sciHint" hidden>Comptable et frais de la SCI déjà payés : pas comptés en plus.</div></div>
     <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
-    <div><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
+    <div class="loc-mode"><label>Loyer</label><div class="seg mini" id="cf_locSeg"><button data-v="mois">Au mois</button><button data-v="nuit">À la nuitée</button></div><select id="cf_locMode" hidden><option value="mois">mois</option><option value="nuit">nuit</option></select></div>
+    <div data-mois><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
+    <div data-nuit hidden><label>Prix par nuit (€)</label><input id="cf_nuit" type="number" min="0" step="5"></div>
+    <div data-nuit hidden><label>Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"></div>
+    <div data-nuit hidden class="plein"><div class="hint" id="cf_saisonHint"></div></div>
     <div><label>2e loyer (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="facultatif"><div class="hint">Division, garage ou annexe louée à part</div></div>
     <div data-loyer2 hidden><label>1er loyer à partir du mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"><div class="hint" id="cf_debutLoyer1Hint">Vide : après le chantier</div></div>
     <div data-loyer2 hidden><label>2e loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
@@ -608,6 +617,14 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
       <div><label>Entretien (% loyers)</label><input id="cf_entretien" type="number" min="0" step="0.5"></div>
       <div><label>Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
       <div data-meuble><label>CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
+    </div>
+    <h4 data-nuit hidden>Location saisonnière</h4><div class="grid" data-nuit hidden>
+      <div><label>Nuits par séjour</label><input id="cf_sejour" type="number" min="1" step="1"></div>
+      <div><label>Ménage par séjour (€)</label><input id="cf_menage" type="number" min="0" step="5"></div>
+      <div><label>Plateforme (% recettes)</label><input id="cf_plateforme" type="number" min="0" step="1"></div>
+      <div><label>Conciergerie (% recettes)</label><input id="cf_conciergerie" type="number" min="0" step="1"></div>
+      <div><label>Charges du logement (€/mois)</label><input id="cf_chargesSaison" type="number" min="0" step="10"><div class="hint">Copropriété, énergie, internet : à ta charge</div></div>
+      <div><label>Classement</label><select id="cf_classe"><option value="0">Non classé</option><option value="1">Meublé de tourisme classé</option></select></div>
     </div>
   </details>
   <select id="cf_scenario" hidden><option value="louer">louer</option><option value="revendre">revendre</option></select>
@@ -692,6 +709,7 @@ const SOURCES = {
   slstudio: ['SeLoger — loyers Paris 16e par taille (oct. 2026) : 1 pièce 37,0 €/m² vide / 42,0 meublé, 2 pièces 32,1 / 36,9', 'https://www.seloger.com/prix-de-l-immo/location/ile-de-france/paris/paris-16eme/750116.htm'],
   hp: ['Homepilot — balcon, étage et ascenseur : effet sur les loyers', 'https://www.zonebourse.com/actualite-bourse/Les-facteurs-cles-qui-determinent-le-loyer-d-un-logement-Balcon-orientation-etage-ascenseur-28707958/'],
   yespark: ['Yespark — location moyenne d\'une place de parking à Paris : 148 €/mois', 'https://www.yespark.fr/prix-parking'],
+  lemeur: ['Loi Le Meur (19 novembre 2024) — meublés de tourisme : micro-BIC 30 % jusqu\'à 15 000 € (non classé), 50 % jusqu\'à 77 700 € (classé), DPE, 120 nuits pour une résidence principale', 'https://www.actu-juridique.fr/fiscalite/fiscal-finances/locations-touristiques-ce-que-change-la-loi-le-meur/'],
   loi: ['Loi Climat et résilience — calendrier DPE pour la location (G 2025, F 2028, E 2034)', 'https://www.pap.fr/actualites/loi-climat-les-proprietaires-bailleurs-face-a-la-lutte-contre-les-passoires-energetiques/a22519'],
   chambre: ['Estimation : à surface égale, une vraie chambre se loue et se vend mieux qu\'une pièce unique (écart non chiffré par les études, +5 % retenu)', ''],
   couts: ['Coûts de travaux 2026 (rénovateurs) : rafraîchissement 220-500 €/m², rénovation complète 700-1 100 €/m² (Paris +20 à 40 %)', 'https://renovbox.fr/prix/renovation/appartement/'],
@@ -769,7 +787,7 @@ const CRITERES = [
     {k: '2', l: '2 places ou plus', abs: {paris: 56000}, p: {autre: 0.12}, src: {paris: 'park', autre: 'nf'}}]},
   {id: 'garage', label: 'Stationnement', pour: 'maison', src: 'nf', options: [
     {k: 'oui', l: 'Garage fermé', d: 1}, {k: 'place', l: 'Place extérieure / abri', p: -0.025}, {k: 'non', l: 'Aucun', p: -0.05}]},
-  {id: 'location', label: 'Location', pour: 'tous', special: true, cache: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}, {k: 'coloc', l: 'Colocation'}]},
+  {id: 'location', label: 'Location', pour: 'tous', special: true, cache: true, options: [{k: 'vide', l: 'Vide', d: 1}, {k: 'meuble', l: 'Meublée'}, {k: 'coloc', l: 'Colocation'}, {k: 'saison', l: 'Saisonnière'}]},
   {id: 'chambre', label: 'Chambre séparée (≤ 40 m²)', pour: 'appart', check: true, p: 0.05, maxSurf: 40, src: 'chambre'},
   {id: 'cave', label: 'Cave', pour: 'appart', check: true, p: 0.01, src: 'est'},
   {id: 'soussol', label: 'Sous-sol', pour: 'maison', check: true, p: 0.03, src: 'nf'},
@@ -1043,6 +1061,7 @@ function render(r) {
   if (r.zone !== state.zone) { state.zone = r.zone; fillOptions(); }
   out.innerHTML = `
     <div class="synth" id="synth"><div class="empty">Calcul…</div></div>
+    <div class="works saison" id="saison" hidden></div>
     <div class="works garage-est" id="garageEst" hidden></div>
     <div class="works" id="works"></div>
     <div class="sauveEst" id="sauveEst"></div>
@@ -1140,7 +1159,8 @@ function majAffiner() {
   chip.textContent = n ? `${n} réglé${n > 1 ? 's' : ''}` : 'bien moyen du secteur';
   chip.classList.toggle('on', n > 0);
 }
-const louerMeuble = () => ['meuble', 'coloc'].includes(field('location').value);   // une colocation se loue meublée
+const louerMeuble = () => ['meuble', 'coloc', 'saison'].includes(field('location').value);   // une colocation ou une location saisonnière se loue meublée
+const saisonActive = () => field('location').value === 'saison';
 // Colocation : loyer total au-dessus d'une location meublée classique, d'autant plus qu'il y a de chambres
 // (exemple CPIM : T4 de 80 m², 1 250 € en meublé contre 1 850 € à quatre, soit +48 % ; on reste prudent)
 // Une chambre fait au moins 9 m² (décence), et il faut en plus les pièces communes (séjour, cuisine, salle d'eau) :
@@ -1300,6 +1320,29 @@ function updateResult() {
     ${used.length ? `<ol class="srcs">${used.map(k => `<li>${SOURCES[k][1] ? `<a href="${SOURCES[k][1]}" target="_blank" rel="noopener">${SOURCES[k][0]}</a>` : SOURCES[k][0]}</li>`).join('')}</ol>` : ''}`;
 }
 
+// ---------- Location saisonnière ----------
+// Location à la nuitée (Airbnb, Booking…) ramenée au mois, pour la comparer à un loyer classique : sert à Estimer, Financer et Mon patrimoine.
+// Prix par nuit par défaut ≈ loyer meublé hors charges ÷ 9 : simple point de départ, à caler sur les annonces voisines.
+// Occupation par défaut 60 % (≈ 220 nuits par an) pour un logement loué toute l'année.
+const SAISON_DEFAUTS = {occupation: 60, sejour: 3, menage: 30, plateforme: 15, conciergerie: 0, classe: false};
+// Loi Le Meur (revenus 2025) : micro-BIC à 30 % jusqu'à 15 000 € de recettes pour un meublé de tourisme non classé,
+// 50 % jusqu'à 77 700 € s'il est classé ; au-delà, régime réel
+const MICRO_SAISON = {classe: {abattement: 0.5, plafond: 77700}, non: {abattement: 0.3, plafond: 15000}};
+const microSaison = classe => MICRO_SAISON[classe ? 'classe' : 'non'];
+const nuitConseillee = loyerMeubleHC => Math.max(20, Math.round(loyerMeubleHC / 9 / 5) * 5);
+// Charges payées par le propriétaire : celles qu'un locataire paierait (copropriété), plus énergie, internet et abonnements
+const chargesSaisonDefaut = (surf, appart = true) => Math.round(((appart ? 2 : 0.5) * surf + 1.5 * surf + 30) / 10) * 10;
+function saisonnier(s) {
+  const occ = Math.min(100, Math.max(0, +s.occupation || 0)) / 100, nuits = 365 * occ;
+  const brutAn = (+s.nuit || 0) * nuits, sejours = nuits / Math.max(1, +s.sejour || 1);
+  const commissions = brutAn * ((+s.plateforme || 0) + (+s.conciergerie || 0)) / 100, menage = sejours * (+s.menage || 0);
+  const fixes = 12 * (+s.charges || 0);
+  // Plateforme, conciergerie et ménage suivent les recettes : en % des recettes
+  const pctFrais = brutAn ? (commissions + menage) / brutAn * 100 : 0;
+  const netAn = brutAn - commissions - menage - fixes;
+  return {nuits, sejours, brutAn, brutMois: brutAn / 12, commissions, menage, fixes, pctFrais, netAn, netMois: netAn / 12};
+}
+
 // --- Loyer : carte officielle des loyers (toute la France), ajustée selon les atouts du bien ---
 const LOYERS_API = 'https://tabular-api.data.gouv.fr/api/resources/';
 const CARTE = {   // ressources de la carte des loyers 2025 (loyers d'annonce charges comprises, logements vides)
@@ -1423,7 +1466,7 @@ function renderRent(el, r, lm, insee) {
   state.lm = lm; state.insee = insee;
   const {meuble, charges, qual, petit, chambre, actu, actuSrc, pkM, CC, lo, hi, HC} = calcLoyer(r, lm, insee, state.factor, state.chambreEff, state.factorHorsEtat);
   state.loyerHC = HC; state.loyerCC = CC;
-  setTimeout(renderWorks);
+  setTimeout(renderWorks); setTimeout(renderSaison);
   const prixRef = state.prix + (meuble ? state.mob : 0);
 
   const rdt = HC * 12 / prixRef;
@@ -1440,7 +1483,7 @@ function renderRent(el, r, lm, insee) {
 
   const m2 = v => v.toFixed(1).replace('.', ',');
   el.innerHTML = `
-    <h3>Loyer estimé — ${colocActive() ? `colocation à ${nbChambres(surf)} chambres` : 'location ' + (meuble ? 'meublée' : 'vide')}</h3>
+    <h3>Loyer estimé — ${colocActive() ? `colocation à ${nbChambres(surf)} chambres` : 'location ' + (meuble ? 'meublée' : 'vide')}${saisonActive() ? ' (base de la location saisonnière)' : ''}</h3>
     <div class="big">${fmt(CC)} € <small>/ mois charges comprises</small></div>
     <div class="ppm">${m2((CC - pkM) / surf)} €/m² · ≈ ${fmt(HC)} € hors charges</div>
     <div class="range">Fourchette : ${fmt(lo)} – ${fmt(hi)} € / mois</div>
@@ -1663,13 +1706,64 @@ function projetSurface(el, niveau, question, z, surf) {
   renderSynth();
 }
 
+// --- Location saisonnière : réglages (prix par nuit vide = calculé depuis le loyer meublé), recettes et comparaison ---
+let choixSaison = {};
+try { choixSaison = JSON.parse(localStorage.getItem('saison-choix') || '{}'); } catch (e) {}
+function paramsSaison() {
+  const r = state.base, c = {...SAISON_DEFAUTS, ...choixSaison};
+  return {...c, auto: !(c.nuit > 0), nuit: c.nuit > 0 ? c.nuit : nuitConseillee(state.loyerHC || 0),
+    charges: c.charges != null && c.charges !== '' ? c.charges : chargesSaisonDefaut(r ? r.surf : 0, isAppart())};
+}
+const CHAMPS_SAISON = [['nuit', 'Prix par nuit (€)', 5], ['occupation', 'Taux d\'occupation (%)', 5], ['sejour', 'Nuits par séjour', 1], ['menage', 'Ménage par séjour (€)', 5],
+  ['plateforme', 'Plateforme (% des recettes)', 1], ['conciergerie', 'Conciergerie (% des recettes)', 1], ['charges', 'Charges du logement (€/mois)', 10]];
+function renderSaison() {
+  const el = document.getElementById('saison'), r = state.base;
+  if (!el) return;
+  el.hidden = !saisonActive() || !r || state.loyerHC == null;
+  if (el.hidden) return;
+  const ps = paramsSaison();
+  el.innerHTML = `<h3>Location saisonnière (à la nuitée)</h3>
+    <div class="hint">Prix et occupation à caler sur les annonces voisines (Airbnb, Booking) : le prix proposé part du loyer meublé du secteur.</div>
+    <div class="crit">${CHAMPS_SAISON.map(([k, l, st]) => `<div><label for="s_${k}">${l}</label><input type="number" id="s_${k}" min="0" step="${st}" value="${k === 'nuit' && ps.auto ? '' : ps[k]}"${k === 'nuit' ? ` placeholder="${ps.nuit}"` : ''}></div>`).join('')}
+      <div><label for="s_classe">Classement</label><select id="s_classe"><option value="0"${ps.classe ? '' : ' selected'}>Non classé</option><option value="1"${ps.classe ? ' selected' : ''}>Meublé de tourisme classé</option></select></div></div>
+    <div id="saisonRes"></div>`;
+  el.querySelectorAll('input, select').forEach(i => i.onchange = () => {
+    const k = i.id.slice(2);
+    choixSaison[k] = k === 'classe' ? i.value === '1' : i.value === '' ? null : Math.max(0, +i.value);
+    if (k === 'occupation') choixSaison.occupation = Math.min(100, choixSaison.occupation ?? SAISON_DEFAUTS.occupation);
+    try { localStorage.setItem('saison-choix', JSON.stringify(choixSaison)); } catch (e) {}
+    majSaisonRes(); renderSynth();
+  });
+  majSaisonRes();
+}
+function majSaisonRes() {
+  const el = document.getElementById('saisonRes'); if (!el) return;
+  const ps = paramsSaison(), sz = saisonnier(ps), HC = state.loyerHC, m = microSaison(ps.classe);
+  const ecart = HC > 0 ? sz.netMois / HC - 1 : null;
+  el.innerHTML = `<div class="kpis">
+      <div class="kpi"><div class="k">Recettes</div><div class="v">${fmt(sz.brutMois)} €</div><div class="d">par mois en moyenne · ${fmt(sz.brutAn)} € sur ${fmt(sz.nuits)} nuits par an</div></div>
+      <div class="kpi"><div class="k">Après frais</div><div class="v">${fmt(sz.netMois)} €</div><div class="d">par mois, avant crédit, taxe foncière et impôts</div></div>
+      <div class="kpi"><div class="k">Meublé classique</div><div class="v">${fmt(HC)} €</div><div class="d">hors charges/mois${ecart != null ? ` · la nuitée rapporte <b class="${ecart >= 0 ? 'up' : 'down'}">${pct(ecart)}</b>` : ''}</div></div></div>
+    <div class="calc">
+      <div><span>Recettes : ${fmt(ps.nuit)} € × ${fmt(sz.nuits)} nuits (${fmt(ps.occupation)} % de l'année)</span><b>${fmt(sz.brutAn)} €/an</b></div>
+      ${sz.commissions ? `<div><span>Plateforme et conciergerie (${fmt((+ps.plateforme || 0) + (+ps.conciergerie || 0))} %)</span><b class="down">− ${fmt(sz.commissions)} €</b></div>` : ''}
+      ${sz.menage ? `<div><span>Ménage : ${fmt(sz.sejours)} séjours × ${fmt(ps.menage)} €</span><b class="down">− ${fmt(sz.menage)} €</b></div>` : ''}
+      ${sz.fixes ? `<div><span>Charges du logement (copropriété, énergie, internet)</span><b class="down">− ${fmt(sz.fixes)} €</b></div>` : ''}
+      <div class="tot"><span>Reste avant crédit, taxe foncière et impôts</span><b>${fmt(sz.netAn)} €/an</b></div>
+    </div>
+    <div class="range">Impôts (micro-BIC) : ${Math.round(m.abattement * 100)} % des recettes non imposés ${ps.classe ? 'pour un meublé classé' : 'sans classement'}, jusqu'à ${fmt(m.plafond)} € de recettes par an${sz.brutAn > m.plafond ? ` : <b>dépassé</b> (${fmt(sz.brutAn)} €), régime réel obligatoire` : ''} ; un meublé classique garde 50 %.${ps.classe ? '' : ' Faire classer le logement (1 à 5 étoiles) relève l\'abattement à 50 %.'}</div>
+    <div class="warnbox">À vérifier avant de te lancer : déclaration en mairie, résidence principale limitée à 120 nuits par an (90 si la commune le décide, comme Paris), changement d'usage souvent obligatoire dans les grandes villes pour un autre logement, règlement de copropriété, et DPE : au moins E pour un nouveau meublé de tourisme là où une autorisation est demandée, D partout en 2034 (<a href="${SOURCES.lemeur[1]}" target="_blank" rel="noopener">loi Le Meur</a>).</div>
+    <div class="row"><button class="cta" onclick="financerBien()">Financer en location saisonnière →</button></div>`;
+}
+
 // --- Synthèse : les 3 chiffres qui comptent ---
 function renderSynth() {
   const el = document.getElementById('synth'), r = state.base;
   if (!el || !r || state.prix == null) return;
   const loyerOk = state.loyerHC != null && state.lm;
   const dpe = selected(crit('dpe')).k, meuble = louerMeuble();
-  const rdt = loyerOk ? state.loyerHC * 12 / (state.prix + (meuble ? state.mob : 0)) : null;
+  const sz = loyerOk && saisonActive() ? saisonnier(paramsSaison()) : null;
+  const rdt = loyerOk ? (sz ? sz.brutAn : state.loyerHC * 12) / (state.prix + (meuble ? state.mob : 0)) : null;
   // G : location interdite (nouveaux baux depuis 2025) ; à rénover entièrement : pas décent en l'état
 
   const etat = selected(crit('etat')).k;
@@ -1689,14 +1783,14 @@ function renderSynth() {
       ${loyerOk && nonLouable ? `
       <div class="kpi"><div class="k">Loyer</div><div class="v down txt">Non louable</div><div class="d">en l'état (${dpe === 'G' ? 'DPE G' : 'à rénover entièrement'})${pj ? ` · <b>${fmt(pj.loyerApres)} €</b> HC après travaux` : ' · voir « Travaux prévus ? »'}</div></div>
       <div class="kpi"><div class="k">Rendement brut</div><div class="v">${pj ? (pj.loyerApres * 12 / coutPj * 100).toFixed(1).replace('.', ',') + ' %' : '—'}</div><div class="d">${pj ? 'après travaux, sur le coût total (achat, notaire, travaux' + (pj.mobilier ? ', mobilier' : '') + ')' : 'pas de loyer en l\'état'}</div></div>` : `
-      <div class="kpi"><div class="k">Loyer${colocActive() ? ' en colocation' : ''}</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'}</div><div class="d">${!loyerOk ? 'calcul en cours' : colocActive() ? `hors charges/mois, ${nbChambres(r.surf)} chambres : <b>${fmt(state.loyerHC / nbChambres(r.surf))} €</b> chacune (${fmt(state.loyerCC / nbChambres(r.surf))} € CC)` : `hors charges/mois · ${fmt(state.loyerCC)} € CC`}</div></div>
-      <div class="kpi"><div class="k">Rendement brut</div><div class="v">${rdt != null ? (rdt * 100).toFixed(1).replace('.', ',') + ' %' : '…'}</div><div class="d">loyer annuel ÷ prix${meuble && state.mob ? ' + mobilier' : ''}</div></div>`}
+      ${sz ? `<div class="kpi"><div class="k">Location saisonnière</div><div class="v">${fmt(sz.brutMois)} €</div><div class="d">recettes/mois en moyenne (${fmt(paramsSaison().nuit)} €/nuit, ${fmt(paramsSaison().occupation)} % d'occupation) · <b>${fmt(sz.netMois)} €</b> après frais · meublé classique ${fmt(state.loyerHC)} € HC</div></div>` : `<div class="kpi"><div class="k">Loyer${colocActive() ? ' en colocation' : ''}</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'}</div><div class="d">${!loyerOk ? 'calcul en cours' : colocActive() ? `hors charges/mois, ${nbChambres(r.surf)} chambres : <b>${fmt(state.loyerHC / nbChambres(r.surf))} €</b> chacune (${fmt(state.loyerCC / nbChambres(r.surf))} € CC)` : `hors charges/mois · ${fmt(state.loyerCC)} € CC`}</div></div>`}
+      <div class="kpi"><div class="k">Rendement brut</div><div class="v">${rdt != null ? (rdt * 100).toFixed(1).replace('.', ',') + ' %' : '…'}</div><div class="d">${sz ? 'recettes' : 'loyer'} annuel${sz ? 'les' : ''} ÷ prix${meuble && state.mob ? ' + mobilier' : ''}</div></div>`}
     </div>
     <div class="synthbar">
       <span class="conf" style="background:${state.confAff[1]}">${state.confAff[0]}</span>
       <span class="hint">${r.comps.length} ventes à moins de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}</span>
-      <span class="louer">Louer <span class="seg mini" id="louer">${(loc => ['vide', 'meuble', 'coloc'].map(v => `<button data-v="${v}"${loc === v ? ' class="on"' : ''}${v === 'coloc' && !colocPossible(r.surf) ? ` disabled title="Trop petit : environ 34 m² minimum pour 2 chambres"` : ''}>${{vide: 'Vide', meuble: 'Meublé', coloc: 'Colocation'}[v]}</button>`).join(''))(
-          colocActive(r.surf) ? 'coloc' : louerMeuble() ? 'meuble' : 'vide')}</span>
+      <span class="louer">Louer <span class="seg mini" id="louer">${(loc => ['vide', 'meuble', 'coloc', 'saison'].map(v => `<button data-v="${v}"${loc === v ? ' class="on"' : ''}${v === 'coloc' && !colocPossible(r.surf) ? ` disabled title="Trop petit : environ 34 m² minimum pour 2 chambres"` : ''}>${{vide: 'Vide', meuble: 'Meublé', coloc: 'Colocation', saison: 'À la nuitée'}[v]}</button>`).join(''))(
+          colocActive(r.surf) ? 'coloc' : saisonActive() ? 'saison' : louerMeuble() ? 'meuble' : 'vide')}</span>
         ${colocActive(r.surf) ? `<label class="chambres">Chambres <input type="number" id="nbChambres" min="2" max="${chambresMax(r.surf)}" value="${nbChambres(r.surf)}"></label>` : ''}</span>
     </div>
     ${alertes.join('')}`;
@@ -1730,6 +1824,7 @@ async function majZone(lat, lon, code) {
 }
 function placer(lat, lon, zoom, label, code) {
   choixTravaux = {}; try { localStorage.removeItem('travaux-choix'); } catch (e) {}
+  if (choixSaison.nuit != null || choixSaison.charges != null) { choixSaison = {...choixSaison, nuit: null, charges: null}; try { localStorage.setItem('saison-choix', JSON.stringify(choixSaison)); } catch (e) {} }   // propres à l'ancien bien
   state.lat = lat; state.lon = lon; state.adresse = label; state.lance = false; state.base = null; state.run++;
   majZone(lat, lon, code);
   if (pin) pin.remove();
@@ -1826,7 +1921,7 @@ function rechercheCourante() {
     surf: +document.getElementById('surf').value, since: document.getElementById('since').value, criteres: {...saved},
     prix: Math.round(state.prix), loyer: state.loyerHC ? Math.round(state.loyerHC) : null, quand: new Date().toISOString(),
     // « Travaux prévus ? » et, pour une division ou un aménagement, le calcul des logements (pour ne pas le relancer)
-    travaux: {...choixTravaux}, calcProjet: state.calcProjet && state.calcProjet.lots ? state.calcProjet : null};
+    travaux: {...choixTravaux}, saison: {...choixSaison}, calcProjet: state.calcProjet && state.calcProjet.lots ? state.calcProjet : null};
 }
 function memoriser() {
   if (MOTEUR) return;
@@ -1893,6 +1988,7 @@ function reprendre(r) {
   placer(r.lat, r.lon, 16, addr.value.trim());
   // placer() efface le projet de travaux : on remet celui de la recherche (niveau, gamme, surfaces, aménagement...)
   choixTravaux = {...(r.travaux || {})}; state.calcProjet = r.calcProjet || null;
+  if (r.saison) { choixSaison = {...r.saison}; try { localStorage.setItem('saison-choix', JSON.stringify(choixSaison)); } catch (e) {} }
   try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {}
   state.lance = true; estimate();
   window.scrollTo(0, 0);
@@ -2134,14 +2230,18 @@ const $ = id => document.getElementById('cf_' + id);
 const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier', 'struct', 'meuble', 'regime', 'tmi', 'terrain', 'distrib',
   'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'tf', 'copro', 'pno',
   'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit', 'sciExist',
-  'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2', 'debutLoyer1'];
+  'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2', 'debutLoyer1',
+  'locMode', 'nuit', 'occupation', 'sejour', 'menage', 'plateforme', 'conciergerie', 'chargesSaison', 'classe'];
 // 2e loyer (bien divisé, annexe louée à part) : absent des projets enregistrés avant lui, donc remis à zéro à leur réouverture
 const SANS_LOYER2 = {loyer2: '', debutLoyer2: 1, debutLoyer1: ''};
+// Location saisonnière (à la nuitée) : absente des anciens projets, qui restent au mois
+const SANS_SAISON = {locMode: 'mois', nuit: '', occupation: SAISON_DEFAUTS.occupation, sejour: SAISON_DEFAUTS.sejour, menage: SAISON_DEFAUTS.menage,
+  plateforme: SAISON_DEFAUTS.plateforme, conciergerie: SAISON_DEFAUTS.conciergerie, chargesSaison: '', classe: '0'};
 const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
   gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true, sciExist: '',
-  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4, ...SANS_LOYER2};
+  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4, ...SANS_LOYER2, ...SANS_SAISON};
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
 
@@ -2193,7 +2293,14 @@ let bienEst = null, bienUtile = null;
 // Projet rouvert depuis « Mes projets » : tant que l'estimation en cours (celle d'une autre recherche, ou aucune) ne change pas,
 // on garde le financement du projet au lieu de l'écraser avec elle
 let figee;
-const cleEst = est => est ? JSON.stringify([est.prix, est.loyer, est.surf, est.type, est.meuble, est.mob]) : '';
+const cleEst = est => est ? JSON.stringify([est.prix, est.loyer, est.surf, est.type, est.meuble, est.mob, ...(est.saison ? [est.saison] : [])]) : '';
+// Passe en location à la nuitée avec les réglages d'Estimer, ou des valeurs de départ tirées du loyer et de la surface
+function mettreSaison(sz) {
+  set('locMode', 'nuit'); set('meuble', '1');
+  if (sz) { for (const k of ['nuit', 'occupation', 'sejour', 'menage', 'plateforme', 'conciergerie']) set(k, sz[k]); set('chargesSaison', sz.charges); set('classe', sz.classe ? '1' : '0'); }
+  if (!get('nuit')) set('nuit', nuitConseillee(get('loyer')));
+  if ($('chargesSaison').value === '') set('chargesSaison', chargesSaisonDefaut(get('surf'), get('type') === 'appart'));
+}
 function barreProjet(pr) {
   const r = pr.resume || {};
   return `Projet <b>${esc(pr.nom)}</b>${r.surf ? ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²` : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
@@ -2217,13 +2324,15 @@ function sync(est, mode) {
     majSauvegarde(pr);
     return rendre();
   }
-  bar.innerHTML = `<b>${est.label}</b> · ${est.type === 'appart' ? 'appartement' : 'maison'} de ${est.surf} m²${est.meuble ? ' meublé' : ''} · prix estimé <b>${eur(est.prix)}</b> · loyer estimé <b>${eur(est.loyer)}</b> hors charges/mois. <a href="#estimation">Modifier l'estimation</a><button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
+  bar.innerHTML = `<b>${est.label}</b> · ${est.type === 'appart' ? 'appartement' : 'maison'} de ${est.surf} m²${est.meuble ? ' meublé' : ''} · prix estimé <b>${eur(est.prix)}</b> · loyer estimé <b>${eur(est.loyer)}</b> hors charges/mois${est.saison ? `, en saisonnier <b>${eur(est.saison.nuit)}</b> la nuit (${est.saison.occupation} % d'occupation)` : ''}. <a href="#estimation">Modifier l'estimation</a><button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
   let last = null;
   try { last = localStorage.getItem('cashflow-bien'); } catch (e) {}
   if (cle !== last) {
     set('prix', est.prix); set('loyer', est.loyer); set('surf', est.surf); set('type', est.type);
     for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);   // le 2e loyer d'un autre bien ne suit pas
     set('meuble', est.meuble ? '1' : '0'); set('mobilier', est.mob || 0);
+    for (const k in SANS_SAISON) set(k, SANS_SAISON[k]);
+    if (est.saison) mettreSaison(est.saison);
     set('tf', Math.round(est.loyer / 10) * 10);
     set('copro', est.type === 'appart' ? Math.round(est.surf * 8 / 10) * 10 : 0);
     if (!flags.comptaManuel) set('compta', comptaDefaut(est.meuble));
@@ -2241,7 +2350,7 @@ function sync(est, mode) {
     set('moisRevente', pj.duree + 6);
     // Plusieurs logements : le premier en loyer, les autres en 2e loyer (à partir de la fin du chantier)
     const [l1, ...autres] = pj.loyers && pj.loyers.length > 1 ? pj.loyers : [pj.loyerApres], l2 = autres.reduce((t, x) => t + x, 0);
-    set('loyer', l1); flags.loyers = {avant: est.loyer, apres: l1, loyer2: l2 || null}; set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
+    set('loyer', l1); flags.loyers = {avant: est.loyer, apres: l1, loyer2: l2 || null}; set('meuble', pj.meuble || get('locMode') === 'nuit' ? '1' : '0'); set('mobilier', pj.mobilier || 0);
     if (l2) { set('loyer2', l2); set('debutLoyer2', pj.duree + 1); set('debutLoyer1', ''); } else for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
     if (!flags.comptaManuel) set('compta', comptaDefaut(pj.meuble));
     sauver();
@@ -2276,6 +2385,11 @@ function afficherChamps() {
   CF.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
   CF.querySelectorAll('[data-revente]').forEach(e => e.hidden = get('scenario') !== 'revendre');
   CF.querySelectorAll('[data-loyer2]').forEach(e => e.hidden = !(get('loyer2') > 0));
+  const nuit = get('locMode') === 'nuit';
+  CF.querySelectorAll('[data-nuit]').forEach(e => e.hidden = !nuit);
+  CF.querySelectorAll('[data-mois]').forEach(e => e.hidden = nuit);
+  CF.querySelectorAll('#cf_locSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === (nuit ? 'nuit' : 'mois')));
+  $('meuble').disabled = nuit;   // une location à la nuitée est toujours meublée
   $('debutLoyer1').placeholder = ouvert('projet') ? String(get('dureeTravaux') + 1) : '1';
   $('debutLoyer1Hint').textContent = ouvert('projet') ? `Vide : après le chantier (mois ${get('dureeTravaux') + 1}). 1 = déjà loué pendant les travaux` : '1 = dès l\'achat';
   CF.querySelectorAll('#cf_scen button').forEach(b => b.classList.toggle('on', b.dataset.v === get('scenario')));
@@ -2302,6 +2416,15 @@ function echeancier(capital, tauxAn, mois, differe, typeDiff, assAn) {
 // ---------- Simulation ----------
 function simuler() {
   const p = {}; for (const k of FIELDS) p[k] = get(k);
+  // À la nuitée : le 1er loyer devient les recettes moyennes du mois ; l'occupation remplace la vacance,
+  // plateforme, conciergerie et ménage suivent les recettes, et le logement est forcément meublé
+  p.saison = p.locMode === 'nuit';
+  let sz = null;
+  if (p.saison) {
+    sz = saisonnier({nuit: p.nuit, occupation: p.occupation, sejour: p.sejour, menage: p.menage, plateforme: p.plateforme, conciergerie: p.conciergerie, charges: p.chargesSaison});
+    p.loyer = sz.brutMois; p.meuble = '1';
+  }
+  const vac1 = p.saison ? 0 : p.vacance;
   // Sections fermées = non comptées
   // Travaux : comptés seulement si la section est ouverte ; le loyer démarre à la fin du chantier
   const travauxOn = ouvert('projet');
@@ -2342,11 +2465,17 @@ function simuler() {
 
   const annees = [];
   for (let y = 1; y <= horizon; y++) {
-    let loyers = 0;
-    for (let m = 12 * (y - 1); m < 12 * y; m++) loyers += ((m >= p.debutLoc ? p.loyer : 0) + (m >= p.debutLoc2 ? p.loyer2 : 0)) * (1 - p.vacance / 12) * Math.pow(1 + p.gLoyer / 100, y - 1);
+    let loyers = 0, loyers1 = 0, moisLoues = 0;
+    for (let m = 12 * (y - 1); m < 12 * y; m++) {
+      const hausse = Math.pow(1 + p.gLoyer / 100, y - 1), l1 = m >= p.debutLoc ? p.loyer * (1 - vac1 / 12) * hausse : 0;
+      loyers1 += l1; loyers += l1 + (m >= p.debutLoc2 ? p.loyer2 : 0) * (1 - p.vacance / 12) * hausse;
+      if (m >= p.debutLoc) moisLoues++;
+    }
     const infl = Math.pow(1 + p.gCharges / 100, y - 1);
     const fixes = (p.tf + p.copro + p.pno + p.compta + (meuble ? p.cfe : 0)) * infl;
-    const charges = fixes + loyers * (p.gestion + p.entretien) / 100;
+    // Saisonnier : frais en % des recettes de la nuitée, charges du logement pendant les mois d'exploitation
+    const fraisSaison = sz ? loyers1 * sz.pctFrais / 100 + p.chargesSaison * moisLoues * infl : 0;
+    const charges = fixes + loyers * (p.gestion + p.entretien) / 100 + fraisSaison;
     const rows = ech.rows.slice(12 * (y - 1), 12 * y);
     const interets = rows.reduce((s, r) => s + r.i, 0), assurance = rows.reduce((s, r) => s + r.ass, 0);
     const capital = rows.reduce((s, r) => s + r.cap, 0);
@@ -2380,7 +2509,9 @@ function simuler() {
   }
   const avecNotes = (arr, note) => Object.assign(arr, {notes: arr.map(() => note)});
   const impotsMicroFoncier = () => avecNotes(annees.map(a => a.loyers * 0.7 * (tmi + PS_FONCIER)), 'micro-foncier : 30 % des loyers non imposés');
-  const impotsMicroBic = () => avecNotes(annees.map(a => a.loyers * 0.5 * (tmi + PS_BIC)), 'micro-BIC : 50 % des loyers non imposés');
+  // Meublé de tourisme (loi Le Meur) : abattement et plafond selon le classement ; meublé classique : 50 % jusqu'à 77 700 €
+  const microReg = p.saison ? microSaison(p.classe === '1') : {abattement: 0.5, plafond: MICRO_BIC};
+  const impotsMicroBic = () => avecNotes(annees.map(a => a.loyers * (1 - microReg.abattement) * (tmi + PS_BIC)), `micro-BIC : ${Math.round(microReg.abattement * 100)} % des ${p.saison ? 'recettes' : 'loyers'} non imposés`);
   function impotsLmnpReel() {
     let deficit = 0, amortStock = 0;
     const notes = [];
@@ -2417,10 +2548,11 @@ function simuler() {
   } else if (meuble) {
     const micro = impotsMicroBic(), reel = impotsLmnpReel();
     const sum = arr => arr.reduce((s, x) => s + x, 0);
-    const okMicro = p.loyerTotal * 12 * (1 - p.vacance / 12) <= MICRO_BIC;
+    const okMicro = (p.loyer * (1 - vac1 / 12) + p.loyer2 * (1 - p.vacance / 12)) * 12 <= microReg.plafond;
     const choix = p.regime === 'micro' && okMicro ? 'micro' : p.regime === 'reel' || !okMicro ? 'reel' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
     impots = choix === 'micro' ? micro : reel;
-    regime = 'LMNP ' + (choix === 'micro' ? 'micro-BIC (abattement 50 %)' : 'au réel (avec amortissement)');
+    regime = (p.saison ? 'Meublé de tourisme ' + (p.classe === '1' ? 'classé' : 'non classé') + ', ' : 'LMNP ') + (choix === 'micro' ? `micro-BIC (abattement ${Math.round(microReg.abattement * 100)} %)` : 'au réel (avec amortissement)')
+      + (p.saison && !okMicro ? ` : recettes au-dessus de ${microReg.plafond.toLocaleString('fr-FR')} €, réel obligatoire` : '');
   } else {
     const reel = impotsFoncierReel();
     if (st === 'np' && p.regime !== 'reel' && p.loyerTotal * 12 * (1 - p.vacance / 12) <= MICRO_FONCIER) {
@@ -2443,7 +2575,7 @@ function simuler() {
   });
   const base = p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix;   // valeur de départ : après travaux s'il y en a
   const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
-  return {p, st, regime, notes, pret, apportEff, base, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble};
+  return {p, st, regime, notes, pret, apportEff, base, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
 }
 
 // ---------- Affichage ----------
@@ -2477,7 +2609,7 @@ function rendre() {
     ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}`],
     ['Cash-flow / mois', eur(a1.cf / 12), (p.avecImpots ? `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, impôts non comptés`) + suiteDiffere],
     ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
-    ['Rendement', pct(p.loyerTotal * 12 / coutRef * 100) + ' brut', `loyer${p.loyer2 > 0 ? 's' : ''} annuel${p.loyer2 > 0 ? 's' : ''} ÷ ${p.projet === 'location' ? 'coût total (achat, travaux, frais)' : 'prix d\'achat'} · net de charges : ${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} du coût total${p.avecImpots ? `, ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
+    ['Rendement', pct(p.loyerTotal * 12 / coutRef * 100) + ' brut', `${p.saison ? 'recettes annuelles' : `loyer${p.loyer2 > 0 ? 's' : ''} annuel${p.loyer2 > 0 ? 's' : ''}`} ÷ ${p.projet === 'location' ? 'coût total (achat, travaux, frais)' : 'prix d\'achat'} · net de charges : ${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} du coût total${p.avecImpots ? `, ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
     ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
@@ -2487,6 +2619,12 @@ function rendre() {
   al += `<div class="hint">Le graphique continue 5 ans après la fin du crédit (année ${s.finCredit}) pour montrer l'après-crédit.</div>`;
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
   if (p.projet === 'location') al += `<div class="okbox">Travaux : <b>${eur(p.travaux)}</b> ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois${p.differe ? ` (intérêts seuls pendant ${p.differe} mois)` : ''}, loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.pret * p.taux / 1200 + s.ech.assM)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
+  if (s.saison) {
+    const z = s.saison;
+    $('saisonHint').innerHTML = `≈ <b>${eur(z.brutMois)}</b> de recettes par mois (${fmt(z.nuits)} nuits par an), <b>${eur(z.netMois)}</b> après frais et charges du logement. Frais détaillés dans « Réglages détaillés ».`;
+    al += `<div class="okbox">Location saisonnière : <b>${eur(p.nuit)}</b> la nuit, ${fmt(p.occupation)} % d'occupation (${fmt(z.nuits)} nuits, ${fmt(z.sejours)} séjours par an), soit <b>${eur(z.brutMois)}</b> de recettes par mois en moyenne. Plateforme, conciergerie et ménage : ${pct(z.pctFrais)} des recettes ; charges du logement ${eur(p.chargesSaison)}/mois. La vacance est remplacée par le taux d'occupation.</div>`;
+    al += `<div class="warnbox">Avant de louer à la nuitée : déclaration en mairie, 120 nuits par an au plus pour une résidence principale (90 dans certaines villes, dont Paris), changement d'usage souvent exigé dans les grandes villes, règlement de copropriété et DPE minimum (loi Le Meur).</div>`;
+  }
   if (p.loyer2 > 0) al += `<div class="okbox">Deux loyers : <b>${eur(p.loyer)}</b> à partir du mois ${p.debutLoc + 1} et <b>${eur(p.loyer2)}</b> à partir du mois ${p.debutLoc2 + 1}, soit <b>${eur(p.loyerTotal)}</b> par mois quand les deux sont loués.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
@@ -2701,6 +2839,7 @@ function instantane(ex, recalcul) {
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
     prix: p.prix, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
+    saison: p.saison ? {nuit: p.nuit, occupation: p.occupation, net: Math.round(s.saison.netMois)} : null,
     travaux: ouvert('projet') ? p.travaux : 0, valeurApres: ouvert('projet') ? p.valeurApres : 0, impots: p.avecImpots};
   if (revente) resume.benefice = Math.round(bilanRevente(s).net);
   else {
@@ -2728,7 +2867,7 @@ function enregistrerProjet(nouveau) {
 }
 // Recalcule le résumé d'un projet enregistré avec ses réglages, sans toucher à ce que montre Financer
 function recalculer(v, ex) {
-  v = {...SANS_LOYER2, ...v};
+  v = {...SANS_LOYER2, ...SANS_SAISON, ...v};
   const avant = etat(), ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
   try {
     majScis();
@@ -2778,7 +2917,7 @@ function enregistrerAmenagement(a) {
 }
 // Rouvre un projet : champs, sections ouvertes et réglages comme à l'enregistrement
 function restaurer(v, cleBien) {
-  v = {...SANS_LOYER2, ...v};
+  v = {...SANS_LOYER2, ...SANS_SAISON, ...v};
   for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
   flags = {tauxManuel: false, comptaManuel: false, differeAuto: false, ...(v.flags || {})};
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
@@ -2836,6 +2975,11 @@ $('boxProjet').addEventListener('toggle', () => {
   }
 });
 CF.querySelectorAll('#cf_scen button').forEach(b => b.onclick = () => { set('scenario', b.dataset.v); sauver(); rendre(); });
+CF.querySelectorAll('#cf_locSeg button').forEach(b => b.onclick = () => {
+  if (b.dataset.v === 'nuit') mettreSaison(); else set('locMode', 'mois');
+  if (!flags.comptaManuel) set('compta', comptaDefaut());
+  sauver(); rendre();
+});
 CF.querySelectorAll('details.opt').forEach(d => d.addEventListener('toggle', () => { majChips(); sauver(); rendre(); }));
 $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
@@ -2844,14 +2988,15 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=60"></script>
+<script src="investissements.js?v=61"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
   if (!state.base || !state.loyerHC) return null;
-  const meuble = ['meuble', 'coloc'].includes(selected(crit('location')).k), coloc = colocActive() ? nbChambres(state.base.surf) : 0;
+  const meuble = ['meuble', 'coloc', 'saison'].includes(selected(crit('location')).k), coloc = colocActive() ? nbChambres(state.base.surf) : 0;
   return {prix: Math.round(state.prix), loyer: Math.round(state.loyerHC), coloc, surf: state.base.surf, type: isAppart() ? 'appart' : 'maison',
-    meuble, mob: meuble ? Math.round(state.mob) : 0, dpe: selected(crit('dpe')).k, etat: selected(crit('etat')).k, label: document.getElementById('addr').value || 'Point choisi sur la carte', projet: state.projet || null};
+    meuble, mob: meuble ? Math.round(state.mob) : 0, dpe: selected(crit('dpe')).k, etat: selected(crit('etat')).k, label: document.getElementById('addr').value || 'Point choisi sur la carte', projet: state.projet || null,
+    saison: saisonActive() ? (({auto, ...x}) => x)(paramsSaison()) : null};
 }
 // --- Onglet « Mes projets » ---
 const eurP = n => n == null || isNaN(n) ? '—' : (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
@@ -2861,12 +3006,13 @@ function carteProjet(pr) {
   if (pr.amenag) return carteAmenagement(pr);
   const r = pr.resume || {}, revente = r.scenario === 'revendre';
   const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
-  const sous = [r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²` : '', revente ? 'achat-revente' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
+  const sous = [r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²` : '', revente ? 'achat-revente' : r.saison ? 'location saisonnière' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
   const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
   const cases = [!revente && r.travaux > 0 && r.valeurApres > 0 ? ['Prix estimé après projet', `<b>${eurP(r.valeurApres)}</b>` + (r.prixEstime != null ? `<small>${eurP(r.prixEstime)} aujourd'hui</small>` : '')] : ['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
     ['Prix d\'équilibre', `<b>${r.prixCible != null ? eurP(r.prixCible) : 'aucun'}</b><small>${revente ? 'bénéfice de ' + eurP(r.visee) : 'cash-flow de ' + eurP(r.visee) + '/mois' + (r.anneeCible ? ', année ' + r.anneeCible : '')}</small>`]];
   if (revente) cases.push(['Valeur après travaux', eurP(r.valeurApres)], ['Bénéfice net', `<b class="${signe(r.benefice)}">${eurP(r.benefice)}</b>`]);
-  else cases.push(['Loyer hors charges', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0))}/mois</b>` + (r.loyer2 ? `<small>${eurP(r.loyer)} + ${eurP(r.loyer2)} (2e loyer)</small>` : '')], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')], ['Rendement brut', pctP(r.rendement)]);
+  else cases.push(r.saison ? ['Location saisonnière', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0))}/mois</b><small>recettes moyennes : ${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation${r.loyer2 ? ` · dont ${eurP(r.loyer2)} de 2e loyer` : ''}</small>`]
+      : ['Loyer hors charges', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0))}/mois</b>` + (r.loyer2 ? `<small>${eurP(r.loyer)} + ${eurP(r.loyer2)} (2e loyer)</small>` : '')], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')], ['Rendement brut', pctP(r.rendement)]);
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
