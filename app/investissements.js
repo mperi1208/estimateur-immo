@@ -877,7 +877,7 @@ function vueDetail(b) {
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
       ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
     ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
-    ${section('Achat', `${repriseAchatHTML(b)}<div class="grille">
+    ${lieSimple(b) ? lieSimpleHTML(b) : `${section('Achat', `${repriseAchatHTML(b)}<div class="grille">
       ${champ(b, 'achat.mode', 'Acquisition', {options: {existant: 'Achat d\'un bien', construction: 'Terrain + construction'}, large: true})}
       ${b.achat.mode === 'construction' ? `${champ(b, 'achat.date', 'Achat du terrain', {type: 'month'})}${champ(b, 'achat.prix', 'Prix du terrain (€)', {step: 1000})}
       ${champ(b, 'achat.notaire', 'Frais de notaire du terrain (€)', {step: 100})}${champ(b, 'achat.construction', 'Coût de la construction (€)', {step: 1000, aide: 'Constructeur, artisans, architecte : sur factures'})}
@@ -893,7 +893,7 @@ function vueDetail(b) {
       ${champ(b, 'chargesAn.pno', 'Assurance PNO (€)', {step: 10})}${champ(b, 'chargesAn.gestion', 'Gestion (% des loyers)', {step: 0.5})}
       ${champ(b, 'chargesAn.entretien', 'Entretien (% des loyers)', {step: 0.5})}${champ(b, 'chargesAn.compta', 'Comptable (€)', {step: 50})}
       ${champ(b, 'chargesAn.cfe', 'CFE (€)', {step: 50})}${champ(b, 'chargesAn.autres', 'Autres (€)', {step: 50})}
-    </div>`)}
+    </div>`)}`}
     ${section('Notes', champ(b, 'notes', '', {zone: true, ph: 'Travaux à prévoir, contacts, échéances…'}))}
     ${section('Plans et documents', `<div class="docs" id="inv_docs"></div>
       <input type="file" id="inv_fichier" accept="image/*,application/pdf" multiple hidden>
@@ -1010,6 +1010,14 @@ function repriseAchat(b) {
   const r = !a.prix ? 0 : p.valeur && b.valeur ? b.valeur / (p.valeur + b.valeur) : partSuggeree(p);
   const prix = Math.round((a.prix || 0) * r / 100) * 100;
   return {p, date: a.date, r, prix, notaire: Math.round((a.notaire || 0) * r), frais: Math.round((a.frais || 0) * r)};
+}
+// Bien associé sans achat, crédit ni charges à lui : tout est compté dans la fiche du bien principal, rien à saisir
+const lieSimple = b => !!principalDe(b) && !b.saisieAPart && !b.achat.prix && !b.achat.date && !b.prets.length && Object.values(b.chargesAn).every(v => v == null);
+function lieSimpleHTML(b) {
+  const p = principalDe(b), r = repriseAchat(b);
+  return section('Achat, crédit et charges', `<div class="aide">Compris dans la fiche de <a href="#investissements/${encodeURIComponent(p.id)}">${esc(p.nom)}</a> : rien à remplir ici.</div>
+    ${r && r.prix ? `<div class="aide" style="margin-top:8px">Pour simuler sa vente seul, il lui faut sa part du prix d'achat : ${eur(r.prix)}, au prorata des valeurs.</div>` : ''}
+    <div class="boutons">${r && r.prix ? `<button data-a="copierAchat">Reprendre sa part du prix</button>` : ''}<button data-a="saisirAPart">Saisir à part</button></div>`, true);
 }
 function repriseAchatHTML(b) {
   const r = repriseAchat(b); if (!r) return '';
@@ -1310,13 +1318,13 @@ function majCalculs(b) {
       ${c.net != null ? ligne('Rendement net de charges', pct(c.net) + ' du coût total') : ''}
       ${c.cout && c.emprunte ? ligne('Apport', eur(Math.max(0, c.cout - c.emprunte)) + (c.cout - c.emprunte <= 0 ? ' (financé à 100 % ou plus)' : '')) : ''}
     </div>
-    <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
+    <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? lieSimple(b) ? ' Achat, crédit et charges comptés avec ' + esc(principalDe(b).nom) + '.' : ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
   // Total des revenus d'un terrain, mis à jour sans reconstruire la section (pour garder le champ en cours)
   const rt = q('#inv_revTotal');
   if (rt) rt.innerHTML = b.type !== 'terrain' && LISTES[b.location.statut] ? (l => l.length ? `${l.length} ${b.location.statut === 'lots' ? 'loyer' : 'chambre'}${l.length > 1 ? 's' : ''} : <b>${eur(loyerLogement(b))}</b> par mois au total${(a => a.length ? ` (dont ${a.map(x => `${eur(x.loyer || 0)} à partir de ${libMois(normMois(x.debut))}`).join(', ')})` : '')(l.filter(x => !commence(x)))}, ${eur(c.loyersAn)} sur les 12 prochains mois après vacance.` : '')(lignesLoyer(b))
     : c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
   const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
-  q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
+  if (q('#inv_cout')) q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
   b.prets.forEach((p, i) => { const r = racine.querySelector(`[data-resume="${i}"]`); if (r) r.innerHTML = resumePret(b, p, c.prets[i].e); });
 }
 function resumePret(b, p, e) {
@@ -1500,6 +1508,7 @@ racine.addEventListener('click', async e => {
     if (r.prix) { const a = r.p.achat; a.prix -= r.prix; if (r.notaire) a.notaire -= r.notaire; if (r.frais) a.frais -= r.frais; }
     sauver(b, r.p); return vueDetail(b);
   }
+  if (a === 'saisirAPart') { b.saisieAPart = true; sauver(b); return vueDetail(b); }
   if (a === 'copierCharges') {
     const p = principalDe(b); if (!p) return;
     for (const k of ['gestion', 'entretien']) if (b.chargesAn[k] == null && p.chargesAn[k] != null) b.chargesAn[k] = p.chargesAn[k];
