@@ -12,16 +12,20 @@ vm.runInContext([
   'var STATUTS = {}, biens = [], scis = [];',
   bloc(inv, 'function nouveauBien', '// Ancien onglet'),
   bloc(idx, 'const CRITERES = [', 'const fmt = n =>'),
+  bloc(idx, 'const COUT_LOT =', '// Gamme des finitions'), bloc(idx, 'const budgetMobilier =', 'const ORDRE_DPE'),
+  'const fmt = n => String(Math.round(n));',
+  bloc(inv, 'const TYPE_DVF =', 'const cleEstimation'),
   bloc(inv, 'const sciDe =', 'const REGIMES'),
   bloc(inv, 'const partDe =', '// Biens vendus'),
   bloc(inv, '// ---------- Garage, parking, annexe', 'function annexeHTML'),
-  'const sauver = () => {}, venteOuverte = new Set(), cleEstimation = () => "";',
+  'const sauver = () => {}, venteOuverte = new Set(), cleEstimation = () => "", enCours = new Set();',
   bloc(inv, 'function detacher', '// Bandeaux en haut'),
   bloc(inv, '// ---------- Simulation de vente', 'function venteHTML'),
-  'this.X = {calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS};',
+  bloc(inv, 'function totaux', 'function kpisTotaux'),
+  'this.X = {cleAmenag, planAmenag, nouvelEspace, amenagTermine, totaux, calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS};',
   'this.setBiens = l => { biens = l; }; this.setScis = l => { scis = l; };',
 ].join('\n'), ctx);
-const {calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS} = ctx.X;
+const {cleAmenag, planAmenag, nouvelEspace, amenagTermine, totaux, calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS} = ctx.X;
 const dans = k => decalerMois(moisCourant(), k);   // mois relatif à aujourd'hui
 const sansCharges = {tf: 0, copro: 0, pno: 0, gestion: 0, entretien: 0, compta: 0, cfe: 0, autres: 0};
 
@@ -152,4 +156,43 @@ test('vente en SCI à l\'IS : amortissements plafonnés au coût du bâti et des
   const recent = simulerVente(aVendre({structure: 'sci', sciId: 'S', achat: {mode: 'existant', date: dans(-60), prix: 100000, notaire: 8000, travaux: 15000}}));
   assert.equal(recent.amortAuto, Math.round(85000 * 5 / 30 + 15000 * 5 / 15));
   ctx.setScis([]);
+});
+
+// ---------- Espace à aménager (sous-sol, combles…) ----------
+const maison = () => nouveauBien({id: 'M', nom: 'Maison', type: 'maison', adresse: '1 route, 20166 Porticcio', surface: 110, valeur: 600000, chargesAn: sansCharges, location: {statut: 'secondaire'}});
+test('espace à aménager : associé, sans valeur, hors du nombre de biens', () => {
+  const m = maison(), e = nouvelEspace(m);
+  ctx.setBiens([m, e]);
+  assert.equal(e.lieA, 'M'); assert.equal(e.nom, 'Sous-sol · Maison'); assert.equal(e.location.statut, 'avec');
+  const t = totaux([m, e]);
+  assert.equal(t.n, 1); assert.equal(t.manque, 0); assert.equal(t.V, 600000);
+});
+test('espace à aménager : coût, valeur et loyer une fois fait (mêmes hypothèses que l\'onglet Estimer)', () => {
+  const m = maison(), e = nouvelEspace(m);
+  ctx.setBiens([m, e]);
+  Object.assign(e.amenag, {m2: 40, debut: '2027-03'});
+  let q = planAmenag(e);
+  assert.equal(q.travaux, Math.round((40 * 1500 + 11000 + 3000) / 500) * 500);   // sous-sol hors Paris
+  assert.equal(q.valeur, null);                                                 // pas encore estimé
+  e.amenag.estimation = {prix: 160000, loyerVide: 600, loyerMeuble: 700, cle: cleAmenag(e)};   // la clé suit le bien principal et la surface
+  q = planAmenag(e);
+  assert.equal(q.valeur, 96000);                       // − 40 % (sous-sol)
+  assert.equal(q.loyer, Math.round(600 * 0.76 / 10) * 10);
+  assert.equal(q.loyerDes, '2027-08');                 // 5 mois de chantier par défaut
+  e.amenag.meuble = '1'; e.amenag.decote = 0;
+  q = planAmenag(e);
+  assert.equal(q.loyer, 700); assert.equal(q.valeur, 160000); assert.ok(q.mobilier > 0);
+  e.amenag.m2 = 50;                                    // surface changée : estimation à refaire
+  assert.equal(planAmenag(e).valeur, null);
+});
+test('espace à aménager : travaux terminés, il devient un logement compté à part', () => {
+  const m = maison(), e = nouvelEspace(m);
+  ctx.setBiens([m, e]);
+  Object.assign(e.amenag, {m2: 40});
+  e.amenag.estimation = {prix: 160000, loyerVide: 600, loyerMeuble: 700, cle: cleAmenag(e)};
+  amenagTermine(e);
+  assert.equal(e.valeur, 96000); assert.equal(e.surface, 40); assert.equal(e.location.statut, 'vide');
+  assert.equal(e.achat.travaux, planAmenag(e).travaux);
+  const t = totaux([m, e]);
+  assert.equal(t.n, 2); assert.equal(t.V, 696000);
 });

@@ -2717,8 +2717,9 @@ function enregistrerProjet(nouveau) {
   const nom = $('nomProjet').value.trim() || (r ? r.label : 'Mon projet');
   const inst = instantane(ex);
   inst.resume.label = r ? r.label : ex && ex.resume ? ex.resume.label : '';
+  if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
   const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(),
-    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume};
+    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {})};
   PROJETS.ajouter(pr);
   fixerProjet(pr.id);
   nomTouche = false;
@@ -2746,6 +2747,34 @@ function enregistrerEstimation(est, mode, nom) {
   sync(est, mode);
   nomTouche = !!nom; if (nom) $('nomProjet').value = nom;
   enregistrerProjet(false);
+}
+// Depuis Mon patrimoine : aménager un espace d'un bien déjà à toi (sous-sol, combles…). Rien à acheter : le projet ne
+// compte que les travaux (financés par le crédit), avec le loyer et la valeur une fois aménagé. Financer n'est pas touché.
+function enregistrerAmenagement(a) {
+  const avant = etat(), ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)])), flagsAvant = flags;
+  let pr;
+  try {
+    const ex = a.id ? PROJETS.liste.find(x => x.id === a.id) : null;
+    const v = ex && ex.finance ? {...DEFAUTS, ...ex.finance} : {...DEFAUTS, struct: a.struct, sciExist: a.sciExist, tf: Math.round(a.loyer / 10) * 10, copro: 0, pno: 0};
+    Object.assign(v, {prix: 0, notaire: 0, neuf: '0', type: a.type, surf: a.surf, travaux: a.travaux, valeurApres: a.valeurApres, dureeTravaux: a.duree, travauxCredit: ex ? v.travauxCredit : true,
+      scenario: 'louer', loyer: a.loyer, meuble: a.meuble ? '1' : '0', mobilier: a.mobilier || 0, ...SANS_LOYER2});
+    if (v.differe < a.duree) { v.differe = a.duree; v.typeDiff = 'partiel'; }
+    for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
+    if (!ex) set('taux', tauxConseille());
+    if (!ex) set('compta', comptaDefaut(a.meuble));
+    for (const k in BOXES) $(BOXES[k]).open = k === 'projet' || !!(ex && ex.finance.ouverts && ex.finance.ouverts[k]);
+    flags = {tauxManuel: false, comptaManuel: false, differeAuto: true};
+    const inst = instantane(ex, true);
+    Object.assign(inst.resume, {label: a.principal, amenag: {principal: a.principal, debut: a.debut, loyerDes: a.loyerDes}});
+    pr = {id: ex ? ex.id : nouvelId(), nom: ex ? ex.nom : a.nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(),
+      recherche: null, bien: '', finance: inst.finance, resume: inst.resume, amenag: {bien: a.bien}};
+  } finally {
+    for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]);
+    for (const k in BOXES) $(BOXES[k]).open = ouverts[k];
+    flags = flagsAvant; majScis();
+  }
+  PROJETS.ajouter(pr);
+  return pr.id;
 }
 // Rouvre un projet : champs, sections ouvertes et réglages comme à l'enregistrement
 function restaurer(v, cleBien) {
@@ -2812,10 +2841,10 @@ $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxCons
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=59"></script>
+<script src="investissements.js?v=60"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -2829,6 +2858,7 @@ const eurP = n => n == null || isNaN(n) ? '—' : (n < 0 ? '−' : '') + Math.ro
 const pctP = n => n == null || isNaN(n) ? '—' : n.toFixed(1).replace('.', ',') + ' %';
 const dateP = t => new Date(t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'});
 function carteProjet(pr) {
+  if (pr.amenag) return carteAmenagement(pr);
   const r = pr.resume || {}, revente = r.scenario === 'revendre';
   const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
   const sous = [r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²` : '', revente ? 'achat-revente' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
@@ -2842,6 +2872,22 @@ function carteProjet(pr) {
     <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
       <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+}
+// Aménagement d'un espace d'un bien déjà à toi : pas de prix d'achat, seulement les travaux, puis le loyer
+const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y && m ? new Date(y, m - 1, 1).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : ''; };
+function carteAmenagement(pr) {
+  const r = pr.resume || {}, am = r.amenag || {}, signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
+  const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
+  const sous = [`Aménagement${am.principal ? ' de ' + esc(am.principal) : ''}`, r.surf ? `${r.surf} m²` : '', r.meuble ? 'location meublée' : 'location vide', qui].join(' · ');
+  const cases = [['Valeur une fois aménagé', `<b>${eurP(r.valeurApres)}</b>`], ['Travaux', `<b>${eurP(r.travaux)}</b>` + (am.debut ? `<small>à partir de ${moisP(am.debut)}</small>` : '')],
+    ['Loyer hors charges', `<b>${eurP(r.loyer)}/mois</b>` + (am.loyerDes ? `<small>dès ${moisP(am.loyerDes)}</small>` : '')],
+    ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')],
+    ['Mensualité', `<b>${eurP(r.mensualite)}/mois</b><small>crédit des travaux</small>`], ['Rendement brut', pctP(r.rendement)]];
+  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
+    <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
+    <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
+    <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
+      <div class="boutons"><button data-a="fiche">Voir la fiche</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
 // Les projets enregistrés avant le nouveau calcul (cash-flow pendant le différé) sont recalculés une fois
 function rafraichirResumes() {
@@ -2874,6 +2920,7 @@ document.getElementById('pj').addEventListener('click', e => {
   const id = (t.closest('.pj') || {dataset: {}}).dataset.id;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
+  else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
   else if (t.dataset.a === 'suppr' && confirm('Supprimer ce projet ?')) { PROJETS.supprimer(id); if (projetCourantId === id) fixerProjet(null); }
 });
