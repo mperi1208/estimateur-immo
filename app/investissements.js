@@ -469,6 +469,14 @@ async function estimerBien(b0) {
     const res = b.type === 'parking' ? await estimerDependance(b.geo.lat, b.geo.lon)
       : b.type === 'terrain' ? await estimerTerrain(b.geo.lat, b.geo.lon, b.surface, b.nature)
       : await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
+    // Garage associé loué avec le bien (pas de loyer à lui) : valeur sans le garage, loyers de marché avec
+    const g = garageLoueAvec(b);
+    if (g && !res.erreur && TYPE_DVF[b.type]) {
+      const crit = criteresEffectifs(b), cle = b.type === 'appart' ? 'parking' : 'garage';
+      crit[cle] = b.parkingAssocie || (b.type === 'appart' ? 'box' : 'oui');
+      const r2 = await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: crit}).catch(() => null);
+      if (r2 && !r2.erreur) { for (const k of ['loyer', 'loyerVide', 'loyerMeuble', 'loyerColoc']) res[k] = r2[k]; res.loyerAvec = g.nom; }
+    }
     // Le bien a pu être remplacé entre-temps par sa version du compte (autre page) : on écrit dans la version actuelle
     const geo = b.geo; b = biens.find(x => x.id === b.id) || b; if (!b.geo || b.geo.pour !== geo.pour) b.geo = geo;
     delete res.comps;
@@ -540,7 +548,7 @@ function majAuto(b) {
     const ref = m ? L.meuble ?? L.vide : L.vide ?? L.meuble, rdt = v => v != null ? pct(v * 12 / e.prix) : '—';
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
-        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div>${L.coloc ? `<div><small>Coloc. ${L.chambres} ch.</small><b>${eur(L.coloc)}</b></div>` : ''}</div><small>hors charges/mois${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : L.coloc ? ` · ${eur(L.coloc / L.chambres)} par chambre en colocation` : ''}</small></div>
+        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div>${L.coloc ? `<div><small>Coloc. ${L.chambres} ch.</small><b>${eur(L.coloc)}</b></div>` : ''}</div><small>hors charges/mois${e.loyerAvec ? ` · avec ${esc(e.loyerAvec)}, loué avec le bien` : ''}${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : L.coloc ? ` · ${eur(L.coloc / L.chambres)} par chambre en colocation` : ''}</small></div>
         <div><span>Rendement brut</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${rdt(L.vide)}</b></div><div><small>Meublé</small><b>${rdt(L.meuble)}</b></div>${L.coloc ? `<div><small>Coloc.</small><b>${rdt(L.coloc)}</b></div>` : ''}</div><small>sur la valeur estimée</small></div>` : ''}</div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
       ${(rf => loue && rf && loyerLogement(b) && b.location.statut !== 'lots' ? `<div class="aide">Ton loyer : ${eur(loyerLogement(b))}, soit ${pct(loyerLogement(b) / rf - 1)} par rapport au marché ${b.location.statut === 'colocation' ? 'en colocation' : m ? 'meublé' : 'vide'}.</div>` : '')(b.location.statut === 'colocation' && L.coloc ? L.coloc : ref)}
@@ -833,7 +841,6 @@ function vueDetail(b) {
     <div class="blocs">
     ${section('Rentabilité', '<div id="inv_renta"></div>')}
     ${b.type === 'terrain' ? revenusHTML(b) : locationHTML(b)}
-    ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
     ${section('Le bien', `<div class="grille">
       ${champ(b, 'nom', 'Nom', {type: 'text', ph: 'ex. Studio Passy'})}
       ${champ(b, 'type', 'Type', {options: Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.l]))})}
@@ -859,6 +866,7 @@ function vueDetail(b) {
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
       ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
+    ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
     ${section('Achat', `<div class="grille">
       ${champ(b, 'achat.mode', 'Acquisition', {options: {existant: 'Achat d\'un bien', construction: 'Terrain + construction'}, large: true})}
       ${b.achat.mode === 'construction' ? `${champ(b, 'achat.date', 'Achat du terrain', {type: 'month'})}${champ(b, 'achat.prix', 'Prix du terrain (€)', {step: 1000})}
@@ -950,7 +958,8 @@ const ANNEXE_POUR = ['appart', 'maison', 'immeuble', 'local'];
 const TYPES_ANNEXE = {parking: 'Garage, box ou parking', local: 'Local, atelier, cave…', appart: 'Logement (annexe aménagée)'};
 const associesA = b => biens.filter(x => x.lieA === b.id && x.id !== b.id);
 const principalDe = b => b.lieA ? biens.find(x => x.id === b.lieA) || null : null;
-const detacheOuvert = new Set();   // fiches où le formulaire « sortir un garage » est ouvert
+const detacheOuvert = new Set();
+const garageLoueAvec = b => associesA(b).find(x => x.type === 'parking' && !x.vendu && !LOUE.includes(x.location.statut));   // fiches où le formulaire « sortir un garage » est ouvert
 // Part de la valeur que représente le stationnement (mêmes écarts que l'estimation : box ≈ +9 % sur un appartement,
 // garage ≈ 5 % d'une maison) : sert de suggestion quand la valeur du garage n'est pas saisie
 function partSuggeree(b) {
@@ -1039,6 +1048,8 @@ function detacher(b) {
   else if (loyer && d.deduire && b.location.loyer) b.location.loyer = Math.max(0, b.location.loyer - loyer);
   // Caractéristiques d'estimation : le stationnement ne fait plus partie du bien
   if ((d.type || 'parking') === 'parking') {
+    // Le type de stationnement est gardé : il compte encore dans le loyer de marché tant que le garage est loué avec le bien
+    b.parkingAssocie = b.type === 'appart' ? (b.criteres.parking && b.criteres.parking !== 'aucun' ? (b.criteres.parking === '2' ? '1' : b.criteres.parking) : b.parkingAssocie) : 'oui';
     if (b.type === 'appart' && b.criteres.parking && b.criteres.parking !== 'aucun') b.criteres.parking = b.criteres.parking === '2' ? '1' : 'aucun';
     if (b.type === 'maison' && (b.criteres.garage || 'oui') === 'oui') b.criteres.garage = 'non';
   }
