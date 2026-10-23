@@ -515,6 +515,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div data-sci hidden><label>Dans quelle SCI</label><select id="cf_sciExist"><option value="">Une nouvelle SCI</option></select><div class="hint" id="cf_sciHint" hidden>Comptable et frais de la SCI déjà payés : pas comptés en plus.</div></div>
     <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
     <div><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
+    <div><label>2e loyer (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="facultatif"><div class="hint">Division, garage ou annexe louée à part</div></div>
+    <div data-loyer2 hidden><label>2e loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
   </div><button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button></div>
 
   <div class="sect" data-revente><h3>Revente</h3><div class="grid">
@@ -2019,12 +2021,14 @@ const $ = id => document.getElementById('cf_' + id);
 const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier', 'struct', 'meuble', 'regime', 'tmi', 'terrain', 'distrib',
   'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'tf', 'copro', 'pno',
   'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit', 'sciExist',
-  'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente'];
+  'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2'];
+// 2e loyer (bien divisé, annexe louée à part) : absent des projets enregistrés avant lui, donc remis à zéro à leur réouverture
+const SANS_LOYER2 = {loyer2: '', debutLoyer2: 1};
 const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
   gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true, sciExist: '',
-  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4};
+  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4, ...SANS_LOYER2};
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
 
@@ -2101,6 +2105,7 @@ function sync(est, mode) {
   try { last = localStorage.getItem('cashflow-bien'); } catch (e) {}
   if (cle !== last) {
     set('prix', est.prix); set('loyer', est.loyer); set('surf', est.surf); set('type', est.type);
+    for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);   // le 2e loyer d'un autre bien ne suit pas
     set('meuble', est.meuble ? '1' : '0'); set('mobilier', est.mob || 0);
     set('tf', Math.round(est.loyer / 10) * 10);
     set('copro', est.type === 'appart' ? Math.round(est.surf * 8 / 10) * 10 : 0);
@@ -2146,6 +2151,7 @@ function afficherChamps() {
   CF.querySelectorAll('[data-is]').forEach(e => e.hidden = !is);
   CF.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
   CF.querySelectorAll('[data-revente]').forEach(e => e.hidden = get('scenario') !== 'revendre');
+  CF.querySelectorAll('[data-loyer2]').forEach(e => e.hidden = !(get('loyer2') > 0));
   CF.querySelectorAll('#cf_scen button').forEach(b => b.classList.toggle('on', b.dataset.v === get('scenario')));
 }
 
@@ -2175,6 +2181,10 @@ function simuler() {
   const travauxOn = ouvert('projet');
   if (!travauxOn) { p.travaux = 0; p.valeurApres = 0; p.dureeTravaux = 0; }
   p.debutLoc = travauxOn ? p.dureeTravaux : 0;
+  // 2e loyer : son propre début (mois 1 = dès l'achat) ; tous les loyers tournent à partir de debutPlein
+  p.debutLoc2 = Math.max(0, Math.round(p.debutLoyer2 || 1) - 1);
+  p.loyerTotal = p.loyer + p.loyer2;
+  p.debutPlein = p.loyer2 > 0 ? Math.max(p.debutLoc, p.debutLoc2) : p.debutLoc;
   p.projet = p.scenario === 'revendre' ? 'revente' : travauxOn ? 'location' : 'simple';
   if (!ouvert('evol')) { p.gLoyer = 0; p.gPrix = 0; p.gCharges = 0; }
   p.avecImpots = ouvert('impots');
@@ -2207,7 +2217,7 @@ function simuler() {
   const annees = [];
   for (let y = 1; y <= horizon; y++) {
     let loyers = 0;
-    for (let m = 12 * (y - 1); m < 12 * y; m++) if (m >= p.debutLoc) loyers += p.loyer * (1 - p.vacance / 12) * Math.pow(1 + p.gLoyer / 100, y - 1);
+    for (let m = 12 * (y - 1); m < 12 * y; m++) loyers += ((m >= p.debutLoc ? p.loyer : 0) + (m >= p.debutLoc2 ? p.loyer2 : 0)) * (1 - p.vacance / 12) * Math.pow(1 + p.gLoyer / 100, y - 1);
     const infl = Math.pow(1 + p.gCharges / 100, y - 1);
     const fixes = (p.tf + p.copro + p.pno + p.compta + (meuble ? p.cfe : 0)) * infl;
     const charges = fixes + loyers * (p.gestion + p.entretien) / 100;
@@ -2281,13 +2291,13 @@ function simuler() {
   } else if (meuble) {
     const micro = impotsMicroBic(), reel = impotsLmnpReel();
     const sum = arr => arr.reduce((s, x) => s + x, 0);
-    const okMicro = p.loyer * 12 * (1 - p.vacance / 12) <= MICRO_BIC;
+    const okMicro = p.loyerTotal * 12 * (1 - p.vacance / 12) <= MICRO_BIC;
     const choix = p.regime === 'micro' && okMicro ? 'micro' : p.regime === 'reel' || !okMicro ? 'reel' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
     impots = choix === 'micro' ? micro : reel;
     regime = 'LMNP ' + (choix === 'micro' ? 'micro-BIC (abattement 50 %)' : 'au réel (avec amortissement)');
   } else {
     const reel = impotsFoncierReel();
-    if (st === 'np' && p.regime !== 'reel' && p.loyer * 12 * (1 - p.vacance / 12) <= MICRO_FONCIER) {
+    if (st === 'np' && p.regime !== 'reel' && p.loyerTotal * 12 * (1 - p.vacance / 12) <= MICRO_FONCIER) {
       const micro = impotsMicroFoncier(), sum = arr => arr.reduce((s, x) => s + x, 0);
       const choix = p.regime === 'micro' ? 'micro' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
       impots = choix === 'micro' ? micro : reel;
@@ -2341,7 +2351,7 @@ function rendre() {
     ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}`],
     ['Cash-flow / mois', eur(a1.cf / 12), (p.avecImpots ? `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, impôts non comptés`) + suiteDiffere],
     ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
-    ['Rendement', pct(p.loyer * 12 / coutRef * 100) + ' brut', `loyer annuel ÷ ${p.projet === 'location' ? 'coût total (achat, travaux, frais)' : 'prix d\'achat'} · net de charges : ${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} du coût total${p.avecImpots ? `, ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
+    ['Rendement', pct(p.loyerTotal * 12 / coutRef * 100) + ' brut', `loyer${p.loyer2 > 0 ? 's' : ''} annuel${p.loyer2 > 0 ? 's' : ''} ÷ ${p.projet === 'location' ? 'coût total (achat, travaux, frais)' : 'prix d\'achat'} · net de charges : ${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} du coût total${p.avecImpots ? `, ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
     ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
@@ -2351,6 +2361,7 @@ function rendre() {
   al += `<div class="hint">Le graphique continue 5 ans après la fin du crédit (année ${s.finCredit}) pour montrer l'après-crédit.</div>`;
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
   if (p.projet === 'location') al += `<div class="okbox">Travaux : <b>${eur(p.travaux)}</b> ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois${p.differe ? ` (intérêts seuls pendant ${p.differe} mois)` : ''}, loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.pret * p.taux / 1200 + s.ech.assM)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
+  if (p.loyer2 > 0) al += `<div class="okbox">Deux loyers : <b>${eur(p.loyer)}</b> à partir du mois ${p.debutLoc + 1} et <b>${eur(p.loyer2)}</b> à partir du mois ${p.debutLoc2 + 1}, soit <b>${eur(p.loyerTotal)}</b> par mois quand les deux sont loués.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
@@ -2485,11 +2496,11 @@ function tableau(s) {
 
 // ---------- Prix pour être rentable ----------
 // Année de référence : la première année pleine de location (le chantier et ses mois sans loyer faussent l'année 1)
-function anneeRef(s) { const p = s.p; return s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= p.debutLoc) || s.annees.find(a => a.loyers > 0) || s.annees[0]; }
+function anneeRef(s) { const p = s.p; return s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= p.debutPlein) || s.annees.find(a => a.loyers > 0) || s.annees[0]; }
 // Année de mesure du cash-flow d'équilibre : « au bout de 2 ans », c'est-à-dire la première année pleine de location à partir de l'année 2,
 // et une fois le différé et le chantier finis (le crédit s'amortit alors normalement). Pendant un différé on ne paie que les
 // intérêts : le cash-flow y est flatteur et ne dure pas.
-function anneeCroisiere(s) { const p = s.p, debut = Math.max(p.debutLoc, p.differe, 12); return s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= debut) || anneeRef(s); }
+function anneeCroisiere(s) { const p = s.p, debut = Math.max(p.debutPlein, p.differe, 12); return s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= debut) || anneeRef(s); }
 let cible = {louer: 0, revendre: 0}, tCible = null;
 try { Object.assign(cible, JSON.parse(localStorage.getItem('cashflow-cible') || '{}')); } catch (e) {}
 const cleCible = () => get('scenario') === 'revendre' ? 'revendre' : 'louer';
@@ -2554,13 +2565,13 @@ function instantane(ex, recalcul) {
   const resume = {v: 2, type: p.type, surf: p.surf, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
-    prix: p.prix, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, apport: p.apport,
+    prix: p.prix, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
     travaux: ouvert('projet') ? p.travaux : 0, valeurApres: ouvert('projet') ? p.valeurApres : 0, impots: p.avecImpots};
   if (revente) resume.benefice = Math.round(bilanRevente(s).net);
   else {
     const a1 = anneeRef(s), coutRef = p.projet === 'location' ? s.coutTotal : p.prix;
     const ac = anneeCroisiere(s);
-    resume.anneeCible = ac.y; resume.cfMois = Math.round(ac.cf / 12); resume.cfDiffere = p.differe > 0 && ac.y !== a1.y ? Math.round(a1.cf / 12) : null; resume.rendement = coutRef ? p.loyer * 12 / coutRef * 100 : null; resume.mensualite = Math.round(s.ech.pmt + s.ech.assM);
+    resume.anneeCible = ac.y; resume.cfMois = Math.round(ac.cf / 12); resume.cfDiffere = p.differe > 0 && ac.y !== a1.y ? Math.round(a1.cf / 12) : null; resume.rendement = coutRef ? p.loyerTotal * 12 / coutRef * 100 : null; resume.mensualite = Math.round(s.ech.pmt + s.ech.assM);
   }
   return {finance: etat(), resume};
 }
@@ -2581,6 +2592,7 @@ function enregistrerProjet(nouveau) {
 }
 // Recalcule le résumé d'un projet enregistré avec ses réglages, sans toucher à ce que montre Financer
 function recalculer(v, ex) {
+  v = {...SANS_LOYER2, ...v};
   const avant = etat(), ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
   try {
     majScis();
@@ -2602,7 +2614,7 @@ function enregistrerEstimation(est, mode, nom) {
 }
 // Rouvre un projet : champs, sections ouvertes et réglages comme à l'enregistrement
 function restaurer(v, cleBien) {
-  v = v || {};
+  v = {...SANS_LOYER2, ...v};
   for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
   flags = {tauxManuel: false, comptaManuel: false, differeAuto: false, ...(v.flags || {})};
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
@@ -2666,7 +2678,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=46"></script>
+<script src="investissements.js?v=47"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -2687,7 +2699,7 @@ function carteProjet(pr) {
   const cases = [['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
     ['Prix d\'équilibre', `<b>${r.prixCible != null ? eurP(r.prixCible) : 'aucun'}</b><small>${revente ? 'bénéfice de ' + eurP(r.visee) : 'cash-flow de ' + eurP(r.visee) + '/mois' + (r.anneeCible ? ', année ' + r.anneeCible : '')}</small>`]];
   if (revente) cases.push(['Valeur après travaux', eurP(r.valeurApres)], ['Bénéfice net', `<b class="${signe(r.benefice)}">${eurP(r.benefice)}</b>`]);
-  else cases.push(['Loyer hors charges', eurP(r.loyer) + '/mois'], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')], ['Rendement brut', pctP(r.rendement)]);
+  else cases.push(['Loyer hors charges', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0))}/mois</b>` + (r.loyer2 ? `<small>${eurP(r.loyer)} + ${eurP(r.loyer2)} (2e loyer)</small>` : '')], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')], ['Rendement brut', pctP(r.rendement)]);
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
