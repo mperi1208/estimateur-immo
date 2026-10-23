@@ -145,8 +145,11 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   // Coût total saisi à la main et location à la nuitée
   await champ('amenag.total', 42000);
   await page.waitForFunction(() => /Montant que tu as saisi/i.test(document.getElementById('inv_amenagRes').innerText));
-  await champ('amenag.meuble', 'nuit');
+  // « Pour le louer » : trois boutons visibles, dont « À la nuitée »
+  assert.deepEqual(await page.locator('#inv [data-cible="inv_amenag_meuble"]').allInnerTexts(), ['Vide', 'Meublé', 'À la nuitée']);
+  await page.click('#inv [data-cible="inv_amenag_meuble"][data-v="nuit"]');
   await page.waitForSelector('#inv [data-p="amenag.nuit"]');
+  assert.equal(await page.locator('#inv [data-cible="inv_amenag_meuble"].on').innerText(), 'À la nuitée');
   await champ('amenag.nuit', 80);
   await page.waitForFunction(() => /À la nuitée/i.test(document.getElementById('inv_amenagRes').innerText));
   const res2 = await page.locator('#inv_amenagRes').innerText();
