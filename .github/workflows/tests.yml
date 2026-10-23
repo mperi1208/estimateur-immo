@@ -20,6 +20,7 @@ jobs:
 
   parcours:
     runs-on: ubuntu-latest
+    timeout-minutes: 15   # un téléchargement du navigateur bloqué ne doit pas tourner des heures
     defaults:
       run:
         working-directory: tests/e2e
@@ -29,6 +30,8 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # Chrome est déjà sur les machines GitHub : pas de téléchargement du navigateur (il restait parfois bloqué)
       - name: Parcours dans un navigateur (réseau simulé)
         run: npm test
+        env:
+          PW_CANAL: chrome

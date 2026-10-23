@@ -170,6 +170,11 @@ test('location saisonnière dans Estimer : recettes à la nuitée, frais, compar
   const d = await page.evaluate(() => ({nuit: paramsSaison().nuit, meuble: state.loyerHC}));
   assert.ok(d.meuble > e.loyer);                                                   // base : le loyer meublé
   assert.equal(d.nuit, Math.max(20, Math.round(d.meuble / 9 / 5) * 5));            // point de départ : loyer meublé ÷ 9
+  assert.equal(await page.locator('#s_periode').inputValue(), 'annee');
+  await page.selectOption('#s_periode', 'ete');                                     // loué seulement l'été
+  const ete = await page.evaluate(() => paramsSaison());
+  assert.equal(ete.occupation, 27); assert.ok(ete.nuit > d.nuit);                   // moins de nuits, plus chères
+  assert.match(await page.locator('#saisonRes').innerText(), /99 nuits/);
   await page.fill('#s_nuit', '90'); await page.dispatchEvent('#s_nuit', 'change');
   await page.fill('#s_occupation', '50'); await page.dispatchEvent('#s_occupation', 'change');
   const txt = await page.locator('#saisonRes').innerText();
@@ -181,6 +186,11 @@ test('saisonnier → Financer : à la nuitée, meublé forcé, recettes et fisca
   await page.click('#saison .row button.cta');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(await valeur('locMode'), 'nuit'); assert.equal(+await valeur('nuit'), 90); assert.equal(+await valeur('occupation'), 50);
+  assert.equal(await page.locator('#cf_periode').inputValue(), '');                // 50 % : taux saisi, pas une période
+  await page.selectOption('#cf_periode', 'juilaout');
+  await page.waitForFunction(() => +document.getElementById('cf_occupation').value === 15);
+  assert.match(await page.locator('#cf_alerts').innerText(), /15 % d'occupation/);
+  await page.fill('#cf_occupation', '50'); await page.dispatchEvent('#cf_occupation', 'input');
   assert.equal(await valeur('meuble'), '1'); assert.equal(await page.locator('#cf_meuble').isDisabled(), true);
   assert.match(await page.locator('#cf_alerts').innerText(), /Location saisonnière : 90 € la nuit/);
   await page.click('#cf_boxImpots summary');

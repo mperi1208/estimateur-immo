@@ -367,3 +367,18 @@ test('espace à aménager : à la nuitée, recettes du saisonnier et fiche en lo
   assert.equal(e.location.statut, 'saisonnier'); assert.equal(e.location.nuit, 90); assert.equal(e.location.nuitsAn, 183);
   assert.ok(calculs(e).loyerMois > 0);
 });
+test('espace à aménager à la nuitée, loué seulement l\'été : moins de nuits, prix par nuit plus haut', () => {
+  const m = maison(), e = nouvelEspace(m);
+  ctx.setBiens([m, e]);
+  Object.assign(e.amenag, {m2: 40, meuble: 'nuit'});
+  e.amenag.estimation = {prix: 160000, loyerVide: 600, loyerMeuble: 700, cle: cleAmenag(e)};
+  const an = planAmenag(e);
+  assert.equal(an.occupation, 60);
+  e.amenag.periode = 'ete';
+  const ete = planAmenag(e);
+  assert.equal(ete.occupation, 27); proche(ete.sz.nuits, 365 * 0.27, 1e-9);
+  assert.ok(ete.nuit > an.nuit);                       // haute saison : nuit plus chère
+  assert.ok(ete.loyer < an.loyer);                     // mais moins de recettes sur l'année
+  e.amenag.occupation = 30;                            // taux saisi : il prime sur la période
+  assert.equal(planAmenag(e).occupation, 30);
+});
