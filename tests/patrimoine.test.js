@@ -207,3 +207,133 @@ test('location saisonnière : prix par nuit × nuits louées, frais en % des rec
   b.location.nuit = null;                                      // sans prix par nuit : recettes saisies au mois
   proche(calculs(b).loyersAn, 700 * 10, 0.01);
 });
+// ---------- Totaux de Mon patrimoine ----------
+test('totaux : valeur, restant dû et patrimoine net ; biens sans valeur comptés à part', () => {
+  const a = nouveauBien({valeur: 300000, chargesAn: sansCharges, location: {statut: 'vide', loyer: 1000, vacance: 0},
+    prets: [{montant: 200000, taux: 3, duree: 240, debut: dans(-24)}]});
+  const b = nouveauBien({valeur: null, chargesAn: sansCharges, location: {statut: 'vide', loyer: 500, vacance: 0},
+    prets: [{montant: 50000, taux: 2, duree: 120, debut: dans(-12)}]});
+  const t = totaux([a, b]), ca = calculs(a), cb = calculs(b);
+  assert.equal(t.n, 2); assert.equal(t.nEst, 1); assert.equal(t.manque, 1);
+  assert.equal(t.V, 300000);
+  proche(t.D, ca.crd + cb.crd, 1e-6);
+  proche(t.net, 300000 - ca.crd, 1e-6);                 // le prêt du bien sans valeur n'est pas déduit d'une valeur inconnue
+  assert.equal(t.loyers, 1500);
+  proche(t.cf, ca.cfMois + cb.cfMois, 1e-9);
+});
+test('totaux : bien détenu à 50 % (indivision) = la moitié de tout ; part bornée entre 1 et 100 %', () => {
+  const plein = nouveauBien({valeur: 200000, chargesAn: sansCharges, location: {statut: 'vide', loyer: 1000, vacance: 0}});
+  const moitie = {...plein, part: 50}, t = totaux([moitie]);
+  assert.equal(t.V, 100000); assert.equal(t.loyers, 500); assert.equal(t.partiel, true);
+  assert.equal(totaux([{...plein, part: 0}]).V, 200000);   // part vide : 100 %
+  assert.equal(totaux([{...plein, part: 250}]).V, 200000);
+});
+test('totaux : garage associé compté une seule fois (valeur répartie entre les deux fiches)', () => {
+  const b = appart({location: {statut: 'vide', loyer: 1000, vacance: 0}});
+  ctx.setBiens([b]);
+  const avant = totaux([b]);
+  b.detache = {mode: 'separer', type: 'parking', valeur: 25000};
+  const g = detacher(b), apres = totaux([b, g]);
+  assert.equal(apres.V, avant.V); assert.equal(apres.loyers, avant.loyers); proche(apres.cf, avant.cf, 1e-9);
+});
+
+// ---------- Garage : autres cas de sortie ----------
+test('maison : garage sorti, critère « garage » passé à « non » et gardé pour le loyer de marché', () => {
+  const m = appart({type: 'maison', criteres: {}});
+  ctx.setBiens([m]);
+  m.detache = {mode: 'separer', type: 'parking'};
+  const g = detacher(m);
+  assert.equal(m.criteres.garage, 'non'); assert.equal(m.parkingAssocie, 'oui');
+  assert.equal(g.valeur + m.valeur, 300000); proche(g.valeur, Math.round(300000 * 0.05 / 500) * 500);
+});
+test('appartement avec 2 places : une sort, il en reste une', () => {
+  const b = appart({criteres: {parking: '2'}});
+  ctx.setBiens([b]);
+  b.detache = {mode: 'separer', type: 'parking', valeur: 20000};
+  detacher(b);
+  assert.equal(b.criteres.parking, '1'); assert.equal(b.parkingAssocie, '1');
+});
+test('annexe (local) sortie sans loyer : vacante, pas « avec le bien », et critères de stationnement intacts', () => {
+  const b = appart();
+  ctx.setBiens([b]);
+  b.detache = {mode: 'separer', type: 'local', valeur: 15000};
+  const a = detacher(b);
+  assert.equal(a.location.statut, 'vacant'); assert.equal(b.criteres.parking, 'box'); assert.equal(garageLoueAvec(b), undefined);
+});
+test('garage sorti pour être vendu : la vente est préparée sur sa fiche', () => {
+  const b = appart();
+  ctx.setBiens([b]);
+  b.detache = {mode: 'vendre', type: 'parking', valeur: 20000, prixVente: 22000, moisVente: '2026-09'};
+  const g = detacher(b);
+  assert.deepEqual({...g.vente}, {prix: 22000, mois: '2026-09'});
+  const r = simulerVente(g);
+  assert.equal(r.prix, 22000); assert.equal(r.annees, anneesDepuis('2018-05', '2026-09'));
+  assert.ok(!r.petite && r.impots > 0);                // plus de 15 000 € : plus-value imposée
+});
+const anneesDepuis = (a, b) => Math.floor(((+b.slice(0, 4) - +a.slice(0, 4)) * 12 + +b.slice(5) - +a.slice(5)) / 12);
+test('maison construite : prix du terrain et de la construction répartis', () => {
+  const m = nouveauBien({id: 'M', type: 'maison', valeur: 400000, chargesAn: sansCharges, criteres: {},
+    achat: {mode: 'construction', date: '2015-01', prix: 80000, construction: 220000, notaire: 6000}});
+  ctx.setBiens([m]);
+  m.detache = {mode: 'separer', type: 'parking', valeur: 20000};
+  const p = planDetache(m);
+  assert.equal(p.base, 300000); assert.equal(p.prix, 15000);
+  const g = detacher(m);
+  proche(m.achat.prix + m.achat.construction + g.achat.prix, 300000, 1);
+});
+
+// ---------- Simulation de vente : autres cas ----------
+test('vente : prix, frais (%) et indemnités saisis remplacent les valeurs calculées', () => {
+  const r = simulerVente(aVendre({vente: {prix: 320000, frais: 5, ira: 1000}, prets: [{montant: 100000, taux: 3, duree: 240, debut: dans(-24)}]}));
+  assert.equal(r.prix, 320000); assert.equal(r.frais, 16000); assert.equal(r.ira, 1000);
+  proche(r.liquide, 320000 - 16000 - r.crd - 1000, 1e-6);
+});
+test('vente avant 5 ans : travaux réels seulement (pas de forfait 15 %), frais d\'achat 7,5 % minimum', () => {
+  const r = simulerVente(aVendre({achat: {mode: 'existant', date: dans(-36), prix: 200000, notaire: 9000, travaux: 5000}}));
+  assert.equal(r.annees, 3); assert.equal(r.travaux, 5000); assert.equal(r.fraisAchat, 15000);
+  proche(r.ir, r.pv * 0.19); proche(r.ps, r.pv * 0.172);
+});
+test('vente après 30 ans : plus-value exonérée d\'impôt et de prélèvements', () => {
+  const r = simulerVente(aVendre({achat: {mode: 'existant', date: dans(-12 * 31), prix: 50000}}));
+  assert.equal(r.ir, 0); assert.equal(r.ps, 0); assert.equal(r.surtaxe, 0); proche(r.pourToi, 300000);
+});
+test('vente d\'un bien détenu à moitié : impôts et argent sur la part', () => {
+  const plein = simulerVente(aVendre()), moitie = simulerVente(aVendre({part: 50}));
+  proche(moitie.impots, plein.impots / 2, 0.01); proche(moitie.pourToi, plein.pourToi / 2, 0.01);
+});
+test('vente d\'un garage à moitié : seuil de 15 000 € apprécié sur la part vendue', () => {
+  const g = simulerVente(aVendre({type: 'parking', valeur: 24000, part: 50, achat: {mode: 'existant', date: dans(-36), prix: 10000}}));
+  assert.equal(g.petite, true); assert.equal(g.impots, 0);
+});
+test('maison construite : plus-value du terrain depuis son achat, de la maison depuis le début des travaux', () => {
+  const r = simulerVente(aVendre({type: 'maison', valeur: 500000, achat: {mode: 'construction', date: dans(-12 * 25), prix: 100000, construction: 200000,
+    debutTravaux: dans(-12 * 8), finTravaux: dans(-12 * 7)}}));
+  assert.equal(r.annees, 25); assert.equal(r.anneesMaison, 8); assert.equal(r.construit, true);
+  const pvPart = Math.max(0, r.pv), t = pvPart / 3, m = pvPart * 2 / 3;
+  proche(r.ir, t * 0 * 0.19 + m * (1 - abatIR(8)) * 0.19, 0.01);               // terrain : 25 ans, exonéré d'impôt
+  proche(r.ps, t * (1 - abatPS(25)) * 0.172 + m * (1 - abatPS(8)) * 0.172, 0.01);
+  assert.equal(r.travaux, Math.max(0, 0.15 * 300000));                         // forfait : 5 ans depuis la fin de la construction
+});
+test('SCI à l\'IR : plus-value imposée sur tes parts', () => {
+  ctx.setScis([{id: 'S', regime: 'ir'}]);
+  const r = simulerVente(aVendre({structure: 'sci', sciId: 'S', vente: {parts: 40, frais: 0}}));
+  const np = simulerVente(aVendre());
+  proche(r.impots, np.impots * 0.4, 0.01); proche(r.pourToi, np.pourToi * 0.4, 0.01);
+  ctx.setScis([]);
+});
+test('SCI à l\'IS : argent gardé dans la SCI ou sorti en dividendes (flat tax 31,4 %)', () => {
+  ctx.setScis([{id: 'S', regime: 'is'}]);
+  const b = o => aVendre({structure: 'sci', sciId: 'S', achat: {mode: 'existant', date: dans(-120), prix: 200000, notaire: 15000}, ...o});
+  const garde = simulerVente(b()), sortie = simulerVente(b({vente: {frais: 0, sortir: true}}));
+  const base = Math.max(0, garde.pv);
+  proche(garde.is, 0.15 * Math.min(base, 42500) + 0.25 * Math.max(0, base - 42500), 0.01);
+  assert.equal(garde.pfu, 0); proche(garde.dansSci, garde.liquide - garde.is, 0.01);
+  proche(sortie.dividendes, Math.min(sortie.dansSci, base - sortie.is), 0.01);
+  proche(sortie.pfu, sortie.dividendes * 0.314, 0.01);
+  proche(sortie.pourToi, sortie.dansSci - sortie.pfu, 0.01);
+  ctx.setScis([]);
+});
+test('vente : achat manquant signalé', () => {
+  assert.equal(simulerVente(aVendre({achat: {mode: 'existant'}})).manqueAchat, true);
+  assert.equal(simulerVente(aVendre()).manqueAchat, false);
+});

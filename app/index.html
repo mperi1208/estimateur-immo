@@ -836,7 +836,7 @@ async function fetchBox(lon0, lat0, lon1, lat1, type, yearMin) {
 function toSale(f) {
   const p = f.properties;
   const prix = +p.valeurfonc, surf = +p.sbati;
-  if (!(prix > 1000) || !(surf >= 9) || p.libnatmut.startsWith('Echange') || p.libnatmut === 'Adjudication') return null;
+  if (!(prix > 1000) || !(surf >= 9) || /^Echange|^Adjudication|^Expropriation/.test(p.libnatmut || '')) return null;   // pas des prix de marché
   // centre de la (première) parcelle
   const ring = f.geometry?.coordinates?.[0]?.[0];
   if (!ring) return null;
@@ -1905,11 +1905,13 @@ const RECENTES = {
   // Fusion avec celles du compte : la plus récente de chaque recherche gagne (sauf si elle a été supprimée depuis)
   fusionner(autres, sup = {}) {
     const m = new Map();
-    [...this.liste, ...(Array.isArray(autres) ? autres : [])].forEach(r => {
-      if (sup[r.cle] && sup[r.cle] >= Date.parse(r.quand)) return;
-      const x = m.get(r.cle); if (!x || x.quand < r.quand) m.set(r.cle, r);
+    // Une entrée abîmée (sans clé ni date) est écartée : elle ne doit pas empêcher de lire le compte
+    [...this.liste, ...(Array.isArray(autres) ? autres : [])].filter(r => r && r.cle).forEach(r => {
+      const quand = String(r.quand || '');
+      if (sup[r.cle] && sup[r.cle] >= (Date.parse(quand) || 0)) return;
+      const x = m.get(r.cle); if (!x || String(x.quand || '') < quand) m.set(r.cle, r);
     });
-    this.liste = [...m.values()].sort((a, b) => b.quand.localeCompare(a.quand)).slice(0, 20);
+    this.liste = [...m.values()].sort((a, b) => String(b.quand || '').localeCompare(String(a.quand || ''))).slice(0, 20);
     this.garder();
   },
 };
@@ -2448,7 +2450,9 @@ function simuler() {
   // Frais de notaire hors crédit : l'apport doit au moins les couvrir.
   const travauxHors = p.projet !== 'simple' && !p.travauxCredit ? p.travaux : 0;
   const horsCredit = (p.notaireCredit ? 0 : fraisNotaire) + travauxHors;
-  const apportEff = Math.max(p.apport, horsCredit);
+  // Apport qui couvre tout : pas de prêt, donc ni frais de dossier ni garantie, et seul le coût du projet est dépensé
+  if (coutHorsBanque <= Math.max(p.apport, horsCredit)) p.dossier = 0;
+  const apportEff = Math.min(Math.max(p.apport, horsCredit), coutHorsBanque + p.dossier);
   if (p.apport < horsCredit) notes.push(`${[!p.notaireCredit && 'Frais de notaire', travauxHors && 'travaux'].filter(Boolean).join(' et ')} hors crédit : il faut au moins ${Math.round(horsCredit).toLocaleString('fr-FR')} € d'apport, contre ${Math.round(p.apport).toLocaleString('fr-FR')} € saisis. La simulation compte ${Math.round(horsCredit).toLocaleString('fr-FR')} € de mise de départ.`);
   const besoin = Math.max(0, coutHorsBanque + p.dossier - apportEff);
   const pret = besoin / (1 - p.garantie / 100);
@@ -2648,6 +2652,9 @@ function surtaxe(pv) {
   }
   return 0;
 }
+// Abattements pour durée de détention : impôt (exonéré après 22 ans) et prélèvements sociaux (après 30 ans)
+const abatIR = n => n < 6 ? 0 : n < 22 ? (n - 5) * 0.06 : 1;
+const abatPS = n => n < 6 ? 0 : n <= 21 ? (n - 5) * 0.0165 : n === 22 ? 0.28 : n < 30 ? 0.28 + (n - 22) * 0.09 : 1;
 function bilanRevente(s) {
   const p = s.p, n = Math.max(1, Math.round(p.moisRevente));
   const rows = s.ech.rows.slice(0, n);
@@ -2674,12 +2681,13 @@ function bilanRevente(s) {
     impot = is + pfu;
     detail = `IS sur le résultat de l'opération${p.distrib ? ', puis flat tax 31,4 % sur la distribution' : ' (bénéfice gardé dans la SCI)'}`;
   } else {
-    // Plus-value des particuliers (aussi pour une SCI à l'IR) : frais d'acquisition réels ou forfait 7,5 %, travaux sur factures
+    // Plus-value des particuliers (aussi pour une SCI à l'IR) : frais d'acquisition réels ou forfait 7,5 %, travaux sur factures,
+    // abattements pour durée de détention à partir de la 6e année (mêmes règles que la vente dans Mon patrimoine)
     const pv = prixVente - fraisVente - (p.prix + Math.max(s.fraisNotaire, 0.075 * p.prix) + p.travaux);
     if (pv > 0) {
-      const sur = surtaxe(pv);
-      impot = pv * (0.19 + PS_FONCIER) + sur;
-      detail = `plus-value de ${eur(pv)} × 36,2 %${sur ? ` + surtaxe ${eur(sur)}` : ''}, sans abattement avant 6 ans`;
+      const ans = Math.floor(n / 12), abIR = abatIR(ans), abPS = abatPS(ans), sur = surtaxe(pv * (1 - abIR));
+      impot = pv * ((1 - abIR) * 0.19 + (1 - abPS) * PS_FONCIER) + sur;
+      detail = `plus-value de ${eur(pv)}${ans < 6 ? ' × 36,2 %' : ''}${sur ? ` + surtaxe ${eur(sur)}` : ''}, ${ans < 6 ? 'sans abattement avant 6 ans' : `abattements de ${Math.round(abIR * 100)} % (impôt) et ${String(Math.round(abPS * 1000) / 10).replace('.', ',')} % (prélèvements) pour ${ans} ans de détention`}`;
     } else detail = 'pas de plus-value imposable';
   }
   return {n, interets, assurance, capital, crd, chargesFixes, chargesVar, loyers, prixVente, fraisVente, ira, coutAchat,
