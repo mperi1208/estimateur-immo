@@ -91,7 +91,7 @@ function revenusTerrain(b) {
   if (L.statut === 'activites') return somme(b.revenus || [], r => annuel(r.montant, r.periode));
   return 0;
 }
-const statutLib = b => (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
+const statutLib = b => b.location.statut === 'avec' ? (p => p ? 'Avec ' + p.nom : '')(principalDe(b)) : (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
 function calculs(b) {
   const prets = b.prets.map(p => ({p, e: etatPret(p)}));
   const actifs = prets.filter(x => x.e && x.e.mois > 0);
@@ -156,6 +156,13 @@ function normaliser() {
       if (b.valeur) b.valeurManuelle = true;   // valeur saisie avant l'estimation automatique : on la garde
     }
     delete b.dpe; delete b.etage;
+  }
+  // Garage associé : « vacant » voulait dire loué ou habité avec le bien principal (statut « avec » depuis)
+  for (const b of biens) {
+    const p = b.lieA && biens.find(x => x.id === b.lieA);
+    if (p && b.type === 'parking' && !b.avecVu && b.location.statut === 'vacant') b.location.statut = 'avec';
+    if (p) b.avecVu = true;
+    if (!p && b.location.statut === 'avec') b.location.statut = 'vacant';
   }
 }
 const sciDe = b => b.structure === 'sci' ? scis.find(x => x.id === b.sciId) : null;
@@ -596,7 +603,7 @@ const TYPES = {
   terrain: {l: 'Terrain', i: '<path d="M3 20l6-9 4 5 3-4 5 8zM15 6a2 2 0 104 0 2 2 0 10-4 0"/>'},
 };
 const icone = t => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${(TYPES[t] || TYPES.appart).i}</svg>`;
-const STATUTS = {vide: 'Loué vide', meuble: 'Loué meublé', colocation: 'Loué en colocation', lots: 'Plusieurs loyers (bien divisé, annexe…)', saisonnier: 'Location saisonnière', vacant: 'Vacant', rp: 'Résidence principale', secondaire: 'Résidence secondaire', travaux: 'En travaux'};
+const STATUTS = {vide: 'Loué vide', meuble: 'Loué meublé', colocation: 'Loué en colocation', lots: 'Plusieurs loyers (bien divisé, annexe…)', saisonnier: 'Location saisonnière', avec: 'Va avec le bien principal', vacant: 'Vacant', rp: 'Résidence principale', secondaire: 'Résidence secondaire', travaux: 'En travaux'};
 const mini = (items, cls = '') => {
   const l = items.filter(x => x && x[1] != null && x[1] !== '');
   return l.length ? `<div class="mini ${cls}">${l.map(([k, v, c]) => `<div><span>${k}</span><b class="${c || ''}">${v}</b></div>`).join('')}</div>` : '';
@@ -734,8 +741,11 @@ function arbreHTML() {
     if (b.lieA && l.some(x => x.id === b.lieA)) return '';   // dessiné sous son bien principal
     return `<li><a class="noeud bien-n" href="#investissements/${encodeURIComponent(b.id)}"><span class="ico-n">${icone(b.type)}</span>
       <span class="nom-n">${esc(b.nom)}</span>${k < 1 ? `<small>${Math.round(k * 100)} %</small>` : ''}
-      ${chiffres(c.patrimoine != null ? c.patrimoine * k : null, c.loue || c.mensuCredit ? c.cfMois * k : null)}</a>${enfants.length ? `<ul>${enfants.map(x => feuille({...x, lieA: null}, 0, [])).join('')}</ul>` : ''}</li>`;
+      ${chiffres(c.patrimoine != null ? c.patrimoine * k : null, c.loue || c.mensuCredit ? c.cfMois * k : null)}</a>${enfants.length ? `<ul class="annexes-n">${enfants.map(annexeNoeud).join('')}</ul>` : ''}</li>`;
   };
+  // Bien associé (garage…) : petite étiquette sous son bien principal
+  const annexeNoeud = x => { const c = calculs(x), k = partDe(x), v = c.patrimoine != null ? c.patrimoine * k : null;
+    return `<li><a class="noeud annexe-n" href="#investissements/${encodeURIComponent(x.id)}"><span class="ico-n">${icone(x.type)}</span><span class="nom-n">${esc(x.nom)}</span>${v != null ? `<b class="${signe(v)}">${kEur(v)}</b>` : ''}</a></li>`; };
   const branches = [];
   const np = biens.filter(b => b.structure !== 'sci');
   if (np.length) branches.push(`<li><span class="noeud groupe"><span class="ico-n">${OEIL_PERSO}</span><span class="nom-n">En nom propre</span>${tot(totaux(np))}</span>
@@ -867,7 +877,7 @@ function vueDetail(b) {
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
       ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
     ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
-    ${section('Achat', `<div class="grille">
+    ${section('Achat', `${repriseAchatHTML(b)}<div class="grille">
       ${champ(b, 'achat.mode', 'Acquisition', {options: {existant: 'Achat d\'un bien', construction: 'Terrain + construction'}, large: true})}
       ${b.achat.mode === 'construction' ? `${champ(b, 'achat.date', 'Achat du terrain', {type: 'month'})}${champ(b, 'achat.prix', 'Prix du terrain (€)', {step: 1000})}
       ${champ(b, 'achat.notaire', 'Frais de notaire du terrain (€)', {step: 100})}${champ(b, 'achat.construction', 'Coût de la construction (€)', {step: 1000, aide: 'Constructeur, artisans, architecte : sur factures'})}
@@ -878,7 +888,7 @@ function vueDetail(b) {
       ${champ(b, 'achat.mobilier', 'Mobilier (€)', {step: 100})}${champ(b, 'achat.frais', 'Autres frais (€)', {step: 100, aide: b.achat.mode === 'construction' ? 'Raccordements, taxe d\'aménagement, dossier…' : 'Agence, dossier, garantie…'})}
     </div><div class="total" id="inv_cout"></div>`)}
     ${section('Crédit' + (b.prets.length > 1 ? 's' : ''), `<div class="prets">${b.prets.map((p, i) => pretHTML(b, p, i)).join('')}</div><button data-a="ajoutPret">+ Ajouter un prêt</button>`, true)}
-    ${section('Charges du propriétaire (par an)', `<div class="grille">
+    ${section('Charges du propriétaire (par an)', `${(p => p && ['gestion', 'entretien'].some(k => b.chargesAn[k] == null && p.chargesAn[k] != null) ? `<div class="reprise"><button data-a="copierCharges">Reprendre les % de ${esc(p.nom)}</button><div class="aide">Gestion et entretien, en % des loyers. Taxe foncière, assurance et copropriété restent sur la fiche de ${esc(p.nom)}.</div></div>` : '')(principalDe(b))}<div class="grille">
       ${champ(b, 'chargesAn.tf', 'Taxe foncière (€)', {step: 50})}${champ(b, 'chargesAn.copro', 'Copropriété non récupérable (€)', {step: 50})}
       ${champ(b, 'chargesAn.pno', 'Assurance PNO (€)', {step: 10})}${champ(b, 'chargesAn.gestion', 'Gestion (% des loyers)', {step: 0.5})}
       ${champ(b, 'chargesAn.entretien', 'Entretien (% des loyers)', {step: 0.5})}${champ(b, 'chargesAn.compta', 'Comptable (€)', {step: 50})}
@@ -914,11 +924,17 @@ function critHTML(b) {
   return `<div class="crit-bien"><h4>Caractéristiques</h4><div class="grille">${ess.map(un).join('')}</div>
     <details class="plus-crit"${n ? ' open' : ''}><summary>Plus de caractéristiques${n ? ` (${n})` : ''}</summary><div class="grille">${autres.map(un).join('')}</div></details></div>`;
 }
+// « Va avec le bien principal » n'est proposé qu'à un bien associé
+function statutsDe(b) {
+  const p = principalDe(b), o = {...STATUTS};
+  if (p) o.avec = `Avec ${p.nom} (loué ou habité ensemble)`; else delete o.avec;
+  return o;
+}
 function locationHTML(b) {
   const Lc = LISTES[b.location.statut];
   if (Lc) {
     const liste = b[Lc.cle] || [];
-    return section('Location', `<div class="grille">${champ(b, 'location.statut', 'Situation', {options: STATUTS})}</div>
+    return section('Location', `<div class="grille">${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}</div>
       <div class="activites">${liste.map((x, i) => `<div class="activite"><div class="grille">
         ${champ(b, `${Lc.cle}.${i}.libelle`, Lc.nom, {type: 'text', ph: Lc.cle === 'lots' ? `Loyer ${i + 1} (ex. appartement, garage aménagé)` : `${Lc.nom} ${i + 1}`})}${champ(b, `${Lc.cle}.${i}.loyer`, 'Loyer hors charges (€/mois)', {step: 10})}
         ${Lc.cle === 'lots' ? champ(b, `lots.${i}.surface`, 'Surface (m²)') : ''}${champ(b, `${Lc.cle}.${i}.locataire`, 'Locataire', {type: 'text'})}
@@ -929,11 +945,11 @@ function locationHTML(b) {
       <div class="total" id="inv_revTotal"></div>`);
   }
   return section('Location', `<div class="grille">
-      ${champ(b, 'location.statut', 'Situation', {options: STATUTS})}
+      ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
       ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
       ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}
       ${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}` : ''}
-    </div>`);
+    </div>${b.location.statut === 'avec' && principalDe(b) ? `<div class="aide">${(p => LOUE.includes(p.location.statut) ? `Pas de loyer à part : il est compris dans celui de ${esc(p.nom)}, et son loyer de marché compte le ${b.type === 'parking' ? 'garage' : 'bien'}.` : `Utilisé avec ${esc(p.nom)}, sans loyer à part.`)(principalDe(b))}</div>` : ''}`);
 }
 // Terrain : bail (loyer au mois ou à l'année) ou activités diverses (chacune avec son revenu)
 function revenusHTML(b) {
@@ -958,8 +974,9 @@ const ANNEXE_POUR = ['appart', 'maison', 'immeuble', 'local'];
 const TYPES_ANNEXE = {parking: 'Garage, box ou parking', local: 'Local, atelier, cave…', appart: 'Logement (annexe aménagée)'};
 const associesA = b => biens.filter(x => x.lieA === b.id && x.id !== b.id);
 const principalDe = b => b.lieA ? biens.find(x => x.id === b.lieA) || null : null;
-const detacheOuvert = new Set();
-const garageLoueAvec = b => associesA(b).find(x => x.type === 'parking' && !x.vendu && !LOUE.includes(x.location.statut));   // fiches où le formulaire « sortir un garage » est ouvert
+const detacheOuvert = new Set();   // fiches où le formulaire « sortir un garage » est ouvert
+// Garage associé sans loyer à part : loué (ou habité) avec le bien principal
+const garageLoueAvec = b => associesA(b).find(x => x.type === 'parking' && !x.vendu && x.location.statut === 'avec');
 // Part de la valeur que représente le stationnement (mêmes écarts que l'estimation : box ≈ +9 % sur un appartement,
 // garage ≈ 5 % d'une maison) : sert de suggestion quand la valeur du garage n'est pas saisie
 function partSuggeree(b) {
@@ -984,6 +1001,20 @@ function planDetache(b) {
   return {d, val, valSugg, prix, prixSugg, r, base, construit, lot, loyer,
     notaire: Math.round((a.notaire || 0) * r), frais: Math.round((a.frais || 0) * r),
     valeurApres: b.valeur ? Math.max(0, b.valeur - (val || 0)) : null, baseApres: base - prix};
+}
+// Fiche associée sans achat : reprendre la date du bien principal et sa part du prix (au prorata des valeurs),
+// retirée du bien principal pour ne pas compter deux fois le même prix
+function repriseAchat(b) {
+  const p = principalDe(b), a = p && p.achat;
+  if (!p || b.achat.prix || p.achat.mode === 'construction' || !(a.date || a.prix)) return null;
+  const r = !a.prix ? 0 : p.valeur && b.valeur ? b.valeur / (p.valeur + b.valeur) : partSuggeree(p);
+  const prix = Math.round((a.prix || 0) * r / 100) * 100;
+  return {p, date: a.date, r, prix, notaire: Math.round((a.notaire || 0) * r), frais: Math.round((a.frais || 0) * r)};
+}
+function repriseAchatHTML(b) {
+  const r = repriseAchat(b); if (!r) return '';
+  return `<div class="reprise"><button data-a="copierAchat">Reprendre de ${esc(r.p.nom)}</button>
+    <div class="aide">${r.date ? 'Acheté en ' + libMois(r.date) : 'Même achat'}${r.prix ? `, pour ${eur(r.prix)}${r.notaire ? ' + ' + eur(r.notaire) + ' de notaire' : ''} : sa part du prix de ${esc(r.p.nom)} au prorata des valeurs, retirée de celui-ci (${eur(r.p.achat.prix)} → ${eur(r.p.achat.prix - r.prix)}).` : '.'} Tu peux corriger ensuite.</div></div>`;
 }
 function annexeHTML(b) {
   const lies = associesA(b), ouvert_ = detacheOuvert.has(b.id), d = b.detache || {};
@@ -1034,7 +1065,7 @@ function detacher(b) {
     valeur: p.val || null, valeurLe: p.val ? moisCourant() : '', valeurManuelle: !!p.val,
     achat: {mode: 'existant', date: a.date || '', prix: p.prix || null, notaire: p.notaire || null, travaux: null, mobilier: null, frais: p.frais || null},
     location: loyer ? {statut: 'vide', loyer, charges: null, locataire: lot ? lot.locataire || '' : '', debutBail: lot && normMois(lot.debut) ? normMois(lot.debut) : '', vacance: 0}
-      : {statut: 'vacant', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0},
+      : {statut: (d.type || 'parking') === 'parking' ? 'avec' : 'vacant', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0}, avecVu: true,
     notes: `Sorti de « ${b.nom} » en ${libMois(moisCourant())}.`});
   // Le bien principal perd ce qui part dans la nouvelle fiche
   if (p.base && p.r) {
@@ -1462,7 +1493,18 @@ racine.addEventListener('click', async e => {
   }
   if (a === 'detacheFermer') { detacheOuvert.delete(b.id); delete b.detache; sauver(b); return vueDetail(b); }
   if (a === 'detacher') { const n = detacher(b); location.hash = '#investissements/' + n.id; return; }
-  if (a === 'dissocier' && confirm('Dissocier ce bien ? Il reste dans ta liste, sans lien avec l\'autre.')) { delete b.lieA; sauver(b); return vueDetail(b); }
+  if (a === 'dissocier' && confirm('Dissocier ce bien ? Il reste dans ta liste, sans lien avec l\'autre.')) { delete b.lieA; if (b.location.statut === 'avec') b.location.statut = 'vacant'; sauver(b); return vueDetail(b); }
+  if (a === 'copierAchat') {
+    const r = repriseAchat(b); if (!r) return;
+    Object.assign(b.achat, {mode: 'existant', date: b.achat.date || r.date, prix: r.prix || b.achat.prix, notaire: b.achat.notaire ?? (r.notaire || null), frais: b.achat.frais ?? (r.frais || null)});
+    if (r.prix) { const a = r.p.achat; a.prix -= r.prix; if (r.notaire) a.notaire -= r.notaire; if (r.frais) a.frais -= r.frais; }
+    sauver(b, r.p); return vueDetail(b);
+  }
+  if (a === 'copierCharges') {
+    const p = principalDe(b); if (!p) return;
+    for (const k of ['gestion', 'entretien']) if (b.chargesAn[k] == null && p.chargesAn[k] != null) b.chargesAn[k] = p.chargesAn[k];
+    sauver(b); return vueDetail(b);
+  }
   if (a === 'venteSortir') { b.vente = b.vente || {}; b.vente.sortir = t.dataset.v === '1'; sauver(b); racine.querySelectorAll('.vente-sortie button').forEach(x => x.classList.toggle('on', x === t)); return majVente(b); }
   if (a === 'ajoutLigne' && LISTES[b.location.statut]) { const k = LISTES[b.location.statut].cle; (b[k] = b[k] || []).push({id: uid(), libelle: '', loyer: null, locataire: '', debut: ''}); sauver(b); return vueDetail(b); }
   if (a === 'supprLigne' && LISTES[b.location.statut] && confirm('Retirer cette ligne ?')) { b[LISTES[b.location.statut].cle].splice(+t.dataset.i, 1); sauver(b); return vueDetail(b); }
@@ -1509,7 +1551,7 @@ racine.addEventListener('change', async e => {
   }
   if (e.target.dataset.x === 'associer') {
     const x = biens.find(y => y.id === e.target.value);
-    if (x) { x.lieA = b.id; sauver(x); vueDetail(b); }
+    if (x) { x.lieA = b.id; x.avecVu = true; if (x.type === 'parking' && !LOUE.includes(x.location.statut)) x.location.statut = 'avec'; sauver(x); vueDetail(b); }
     return;
   }
   if (e.target.id === 'inv_fichier') {
