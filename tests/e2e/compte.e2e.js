@@ -142,22 +142,34 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   const res = await page.locator('#inv_amenagRes').innerText();
   const valeur = nombre(res.match(/Valeur une fois aménagé\s*\n\s*([^\n]+)/i)[1]) * 1000, loyer = nombre(res.match(/Loyer possible\s*\n\s*([^\n]+)/i)[1]);
   assert.ok(valeur > 30000 && loyer > 150, `valeur ${valeur}, loyer ${loyer}`);
+  // Coût total saisi à la main et location à la nuitée
+  await champ('amenag.total', 42000);
+  await page.waitForFunction(() => /Montant que tu as saisi/i.test(document.getElementById('inv_amenagRes').innerText));
+  await champ('amenag.meuble', 'nuit');
+  await page.waitForSelector('#inv [data-p="amenag.nuit"]');
+  await champ('amenag.nuit', 80);
+  await page.waitForFunction(() => /À la nuitée/i.test(document.getElementById('inv_amenagRes').innerText));
+  const res2 = await page.locator('#inv_amenagRes').innerText();
+  assert.match(res2, /80 € × 219 nuits/); assert.match(res2, /42\s000 €/);
   // Totaux : tant que ce n'est pas fait, l'espace ne compte pas comme un bien de plus
   await page.click('#inv [data-a="amenagProjet"]');
-  await page.waitForFunction(() => /Ajouté dans/.test(document.getElementById('inv_amenagRes').innerText));
+  await page.waitForFunction(() => /Ajouté dans/.test(document.getElementById('inv_amenagMsg').innerText));
   const c = await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Sous-sol · Studio Test'));
   const pr = c.projets.find(x => x.nom === 'Sous-sol · Studio Test');
-  assert.equal(pr.finance.prix, 0); assert.ok(pr.finance.travaux > 0); assert.equal(pr.amenag.bien, bienDuCompte('Sous-sol · Studio Test').id);
+  assert.equal(pr.finance.prix, 0); assert.equal(pr.finance.travaux, 42000); assert.equal(pr.finance.mobilier, 0); assert.equal(pr.amenag.bien, bienDuCompte('Sous-sol · Studio Test').id);
+  assert.equal(pr.finance.locMode, 'nuit'); assert.equal(pr.finance.nuit, 80); assert.equal(pr.resume.saison.nuit, 80);
   await page.click('.tabs [data-tab="projets"]');
   const carte = page.locator('#pj .pj', {hasText: 'Sous-sol · Studio Test'});
   await carte.waitFor();
+  const txt = await carte.innerText();                              // la carte dans Mes projets : travaux saisis, recettes à la nuitée
+  assert.match(txt, /location saisonnière/i); assert.match(txt, /42\s000 €/); assert.match(txt, /80 € la nuit, 60 % d'occupation/);
   await carte.locator('[data-a="fiche"]').click();                 // « Voir la fiche » ramène dans Mon patrimoine
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && /^Sous-sol/.test((document.getElementById('inv_titre') || {}).textContent));
   await page.click('#inv [data-a="amenagFait"]');                  // confirm() accepté par le banc
   await page.waitForFunction(() => !document.getElementById('inv_amenagRes'));
   const b = (await attendreCompte(() => bienDuCompte('Sous-sol · Studio Test').amenag.fait)).biens.find(x => x.nom === 'Sous-sol · Studio Test');
   assert.ok(Math.abs(b.valeur - valeur) < 1000, `valeur ${b.valeur} ≈ ${valeur}`);
-  assert.ok(b.achat.travaux > 0);
+  assert.equal(b.achat.travaux, 42000); assert.equal(b.location.statut, 'saisonnier'); assert.equal(b.location.nuit, 80);
   await page.click('#inv a.retour');
   await page.waitForSelector('#inv .invhead');
   const t = await page.locator('#inv .kpis').first().innerText();

@@ -1150,24 +1150,33 @@ const zoneDe = b => /\b75\d{3}\b|\bparis\b/i.test(b.adresse || '') ? 'paris' : '
 const cleAmenag = b => { const p = principalDe(b) || b, c = criteresEffectifs(p); delete c.location; return JSON.stringify([p.adresse.trim(), p.type, p.surface, b.amenag && b.amenag.m2, c]); };
 function planAmenag(b) {
   const a = b.amenag || {}, t = AMENAG[a.ou] ? a.ou : 'soussol', p = principalDe(b) || b;
-  const m2 = a.m2 > 0 ? a.m2 : null, coutM2 = a.cout > 0 ? a.cout : AMENAG[t].m2;
+  const m2 = a.m2 > 0 ? a.m2 : null, coutM2 = AMENAG[t].m2;
   const decote = a.decote != null && a.decote !== '' ? Math.max(0, Math.min(80, +a.decote)) : AMENAG[t].decote, d = decote / 100;
-  const meuble = a.meuble === '1', duree = a.duree > 0 ? Math.round(a.duree) : 5;
+  const saison = a.meuble === 'nuit', meuble = a.meuble === '1' || saison, duree = a.duree > 0 ? Math.round(a.duree) : 5;
   const postes = m2 ? [[`Aménagement : ${fmt(coutM2)} €/m² × ${fmt(m2)} m²`, m2 * coutM2], ['Cuisine, entrée séparée, compteurs', COUT_LOT[zoneDe(p)] / 2], ['Architecte, déclaration en mairie', 3000]] : [];
-  const travaux = m2 ? Math.round(somme(postes, x => x[1]) / 500) * 500 : null;
-  const mobilier = meuble && m2 ? budgetMobilier(m2, 'standard') : 0;
+  // Coût total saisi (devis, budget) : il remplace l'estimation au m² et comprend tout, mobilier compris
+  const suggere = m2 ? Math.round(somme(postes, x => x[1]) / 500) * 500 : null, mobSuggere = meuble && m2 ? budgetMobilier(m2, 'standard') : 0;
+  const saisi = a.total > 0, travaux = saisi ? a.total : suggere, mobilier = saisi ? 0 : mobSuggere;
   const e = a.estimation && !a.estimation.erreur && a.estimation.cle === cleAmenag(b) ? a.estimation : null;
   const brut = e ? (meuble ? e.loyerMeuble ?? e.loyer : e.loyerVide ?? e.loyer) : null;
-  const valeur = e ? Math.round(e.prix * (1 - d) / 500) * 500 : null, loyer = brut != null ? Math.round(brut * (1 - 0.6 * d) / 10) * 10 : null;
+  const valeur = e ? Math.round(e.prix * (1 - d) / 500) * 500 : null, loyerMois = brut != null ? Math.round(brut * (1 - 0.6 * d) / 10) * 10 : null;
+  // À la nuitée : recettes moyennes du mois (prix par nuit × nuits louées), frais d'Estimer par défaut ; sert de « loyer »
+  let sz = null, nuit = null, occupation = null, charges = null;
+  if (saison && loyerMois != null) {
+    nuit = a.nuit > 0 ? a.nuit : nuitConseillee(loyerMois); occupation = a.occupation > 0 ? Math.min(100, a.occupation) : SAISON_DEFAUTS.occupation;
+    charges = chargesSaisonDefaut(m2 || 0, p.type !== 'maison');
+    sz = saisonnier({...SAISON_DEFAUTS, nuit, occupation, charges});
+  }
+  const loyer = sz ? Math.round(sz.brutMois / 10) * 10 : loyerMois;
   const debut = normMois(a.debut) || '';
-  return {t, m2, coutM2, decote, postes, travaux, mobilier, duree, meuble, e, valeur, loyer, debut, loyerDes: debut ? decalerMois(debut, duree) : '',
+  return {t, m2, coutM2, decote, postes, suggere, mobSuggere, saisi, travaux, mobilier, duree, meuble, saison, sz, nuit, occupation, charges, e, valeur, loyer, debut, loyerDes: debut ? decalerMois(debut, duree) : '',
     rendement: travaux && loyer ? loyer * 12 / (travaux + mobilier) : null, creee: valeur != null && travaux ? valeur - travaux : null};
 }
 function nouvelEspace(b) {
   return nouveauBien({nom: NOMS_ESPACE.soussol + ' · ' + b.nom, type: b.type === 'maison' ? 'maison' : 'appart', adresse: b.adresse, geo: b.geo ? {...b.geo} : null,
     structure: b.structure, sciId: b.sciId, part: b.part, lieA: b.id, avecVu: true,
     location: {statut: 'avec', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0},
-    amenag: {ou: 'soussol', m2: null, cout: null, decote: null, meuble: '', debut: '', duree: null}});
+    amenag: {ou: 'soussol', m2: null, total: null, decote: null, meuble: '', nuit: null, occupation: null, debut: '', duree: null}});
 }
 // Travaux terminés : l'espace devient un logement à part, avec sa valeur, son coût (les travaux) et son loyer
 function amenagTermine(b) {
@@ -1175,44 +1184,47 @@ function amenagTermine(b) {
   b.amenag.fait = moisCourant();
   Object.assign(b, {surface: q.m2, criteres: p ? {...p.criteres} : b.criteres, valeur: q.valeur, valeurLe: q.valeur ? moisCourant() : '', valeurManuelle: !!q.valeur});
   b.achat = {...b.achat, mode: 'existant', date: b.achat.date || moisCourant(), travaux: q.travaux, mobilier: q.mobilier || null};
-  b.location = {...b.location, statut: q.loyer ? (q.meuble ? 'meuble' : 'vide') : 'vacant', loyer: q.loyer, debutBail: ''};
+  b.location = {...b.location, statut: q.loyer ? (q.saison ? 'saisonnier' : q.meuble ? 'meuble' : 'vide') : 'vacant', loyer: q.saison ? null : q.loyer, debutBail: '',
+    ...(q.sz ? {nuit: q.nuit, nuitsAn: Math.round(q.sz.nuits), fraisSaison: Math.round(q.sz.pctFrais)} : {})};
   return b;
 }
-let messageAmenag = '';
 function amenagHTML(b) {
   const a = b.amenag, q = planAmenag(b), p = principalDe(b), cours = enCours.has('am:' + b.id);
   return section('Projet d\'aménagement', `<div class="aide">Pas encore habitable : sa valeur est comprise dans celle de ${p ? `<a href="#investissements/${encodeURIComponent(p.id)}">${esc(p.nom)}</a>` : 'ton bien'}. Estime ce qu'il vaudrait et ce qu'il se louerait une fois aménagé en logement à part, puis ajoute-le à Mes projets.</div>
     <div class="grille">
       ${champ(b, 'amenag.ou', 'Où', {options: Object.fromEntries(Object.entries(AMENAG).map(([k, v]) => [k, v.l]))})}
       ${champ(b, 'amenag.m2', 'Surface à aménager (m²)', {ph: 'ex. 40'})}
-      ${champ(b, 'amenag.cout', 'Coût des travaux (€/m²)', {step: 50, ph: fmt(AMENAG[q.t].m2) + ' (habituel)'})}
+      ${champ(b, 'amenag.total', 'Coût total des travaux (€)', {step: 1000, ph: q.suggere ? fmt(q.suggere + q.mobSuggere) + ' (estimé)' : 'ton devis ou ton budget', aide: 'Tout compris (mobilier aussi). Vide : estimé au m²'})}
       ${champ(b, 'amenag.decote', 'Décote de cette surface (%)', {ph: AMENAG[q.t].decote + ' (habituel)', aide: 'Moins de lumière, plafond plus bas : vaut moins au m² qu\'un logement classique'})}
-      ${champ(b, 'amenag.meuble', 'Pour le louer', {options: {'': 'Vide', 1: 'Meublé'}})}
+      ${champ(b, 'amenag.meuble', 'Pour le louer', {options: {'': 'Vide', 1: 'Meublé', nuit: 'À la nuitée (saisonnier)'}})}
+      ${q.saison ? `${champ(b, 'amenag.nuit', 'Prix moyen par nuit (€)', {step: 5, ph: q.nuit ? fmt(q.nuit) + ' (conseillé)' : 'après l\'estimation', aide: 'Point de départ : loyer meublé du marché ÷ 9, à caler sur les annonces voisines'})}
+      ${champ(b, 'amenag.occupation', 'Occupation (% des nuits)', {step: 5, ph: String(SAISON_DEFAUTS.occupation), aide: '60 % ≈ 220 nuits louées par an'})}` : ''}
       ${champ(b, 'amenag.debut', 'Début des travaux', {type: 'month'})}
       ${champ(b, 'amenag.duree', 'Durée du chantier (mois)', {ph: '5'})}
     </div>
     <div class="boutons"><button class="primaire" data-a="amenagEstimer"${cours || !p || !q.m2 ? ' disabled' : ''}>${cours ? 'Estimation en cours…' : !q.m2 ? 'Estimer (surface à remplir)' : q.e ? 'Estimer à nouveau' : 'Estimer une fois aménagé'}</button></div>
     <div id="inv_amenagRes"></div>
+    ${q.e ? `<div class="boutons"><button class="primaire" data-a="amenagProjet">${a.projet && typeof PROJETS !== 'undefined' && PROJETS.liste.some(x => x.id === a.projet) ? 'Mettre à jour dans Mes projets' : 'Ajouter à Mes projets'}</button><button data-a="amenagOnglet">Voir le détail dans l'onglet Estimer →</button><button data-a="amenagFait">Travaux terminés</button></div>
+    <div class="aide" id="inv_amenagMsg"></div>` : ''}
     <div class="aide">Une pièce habitable doit avoir 2,20 m sous plafond et une fenêtre sur l'extérieur. Changement de destination : déclaration préalable ou permis ; prévoir le traitement de l'humidité en sous-sol.</div>`, true);
 }
 function majAmenag(b) {
   const el = racine.querySelector('#inv_amenagRes'); if (!el) return;
   const a = b.amenag, q = planAmenag(b), ex = a.estimation;
-  const pr = typeof PROJETS !== 'undefined' && a.projet ? PROJETS.liste.find(x => x.id === a.projet) : null;
   if (ex && ex.erreur) { el.innerHTML = `<div class="warnbox">${esc(ex.erreur)}</div>`; return; }
   if (!q.e) { el.innerHTML = ex ? '<div class="aide">Surface ou bien principal modifié depuis l\'estimation : clique sur « Estimer à nouveau ».</div>' : ''; return; }
   const mois = q.loyerDes ? 'dès ' + libMois(q.loyerDes) : `après ${q.duree} mois de chantier`;
   el.innerHTML = `<div class="auto-res"><div class="auto-chiffres">
       <div><span>Valeur une fois aménagé</span><b>${kEur(q.valeur)}</b><small>logement de ${fmt(q.m2)} m² estimé ${kEur(q.e.prix)}, moins ${q.decote} % (${esc(AMENAG[q.t].l.toLowerCase())})</small></div>
-      <div><span>Loyer possible</span><b>${q.loyer != null ? eur(q.loyer) + '/mois' : '—'}</b><small>${q.meuble ? 'meublé' : 'vide'}, hors charges · ${mois}</small></div>
-      <div><span>Rendement brut</span><b>${q.rendement != null ? pct(q.rendement) : '—'}</b><small>loyer sur le coût des travaux${q.mobilier ? ' et du mobilier' : ''}</small></div></div></div>
-    <div class="calc">${q.postes.map(([l, v]) => `<div><span>${l}</span><b>${kEur(v)}</b></div>`).join('')}
-      ${q.mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${kEur(q.mobilier)}</b></div>` : ''}
+      ${q.sz ? `<div><span>À la nuitée</span><b>${eur(q.loyer)}/mois</b><small>recettes moyennes : ${eur(q.nuit)} × ${fmt(q.sz.nuits)} nuits par an ; ${eur(q.sz.netMois)}/mois après plateforme, ménage et charges · ${mois}</small></div>`
+        : `<div><span>Loyer possible</span><b>${q.loyer != null ? eur(q.loyer) + '/mois' : '—'}</b><small>${q.meuble ? 'meublé' : 'vide'}, hors charges · ${mois}</small></div>`}
+      <div><span>Rendement brut</span><b>${q.rendement != null ? pct(q.rendement) : '—'}</b><small>${q.sz ? 'recettes' : 'loyer'} sur le coût des travaux${q.mobilier ? ' et du mobilier' : ''}</small></div></div></div>
+    <div class="calc">${q.saisi ? `<div><span>Montant que tu as saisi${q.suggere ? ` (estimé au m² : ${kEur(q.suggere + q.mobSuggere)})` : ''}</span><b>${kEur(q.travaux)}</b></div>`
+      : `${q.postes.map(([l, v]) => `<div><span>${l}</span><b>${kEur(v)}</b></div>`).join('')}
+      ${q.mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${kEur(q.mobilier)}</b></div>` : ''}`}
       <div class="tot"><span><b>Coût des travaux</b>, chantier d'environ ${q.duree} mois${q.debut ? ' à partir de ' + libMois(q.debut) : ''}</span><b>${eur(q.travaux + q.mobilier)}</b></div>
       <div><span>Valeur créée</span><b>${q.creee >= 0 ? '+' : '−'}${kEur(Math.abs(q.creee))}</b></div></div>
-    <div class="boutons"><button class="primaire" data-a="amenagProjet">${pr ? 'Mettre à jour dans Mes projets' : 'Ajouter à Mes projets'}</button><button data-a="amenagOnglet">Voir le détail dans l'onglet Estimer →</button><button data-a="amenagFait">Travaux terminés</button></div>
-    ${messageAmenag ? `<div class="aide">${messageAmenag}</div>` : ''}`;
-  messageAmenag = '';
+`;
 }
 async function estimerAmenag(b0) {
   const p = principalDe(b0), cle = 'am:' + b0.id;
@@ -1240,12 +1252,15 @@ function amenagVersProjet(b) {
   const q = planAmenag(b), p = principalDe(b); if (!q.e || !p || !window.CF_APP || !CF_APP.enregistrerAmenagement) return;
   const sci = p.structure === 'sci' ? scis.find(x => x.id === p.sciId) : null;
   const id = CF_APP.enregistrerAmenagement({id: b.amenag.projet, nom: b.nom, principal: p.nom, bien: b.id, type: p.type === 'maison' ? 'maison' : 'appart', surf: q.m2,
-    travaux: q.travaux, mobilier: q.mobilier, valeurApres: q.valeur, loyer: q.loyer || 0, meuble: q.meuble, duree: q.duree, debut: q.debut, loyerDes: q.loyerDes,
+    travaux: q.travaux, mobilier: q.mobilier, valeurApres: q.valeur, loyer: q.loyer || 0, meuble: q.meuble, duree: q.duree,
+    saison: q.sz ? {nuit: q.nuit, occupation: q.occupation, charges: q.charges} : null, debut: q.debut, loyerDes: q.loyerDes,
     struct: sci ? sci.regime : 'np', sciExist: sci ? sci.id : ''});
   const deja = !!b.amenag.projet;
   b.amenag.projet = id; sauver(b);
-  messageAmenag = `${deja ? 'Mis à jour' : 'Ajouté'} dans <a href="#projets">Mes projets</a> : financement des travaux à régler dans l'onglet Financer.`;
-  majAmenag(b);
+  // Boutons et message hors du bloc recalculé : quitter un champ le redessine, le clic ne doit pas tomber sur un bouton remplacé
+  const m = racine.querySelector('#inv_amenagMsg'), btn = racine.querySelector('[data-a="amenagProjet"]');
+  if (m) m.innerHTML = `${deja ? 'Mis à jour' : 'Ajouté'} dans <a href="#projets">Mes projets</a> : financement des travaux à régler dans l'onglet Financer.`;
+  if (btn) btn.textContent = 'Mettre à jour dans Mes projets';
 }
 // Bandeaux en haut de la fiche : bien associé à un autre, et vente enregistrée
 function lienHTML(b) {
@@ -1661,8 +1676,8 @@ racine.addEventListener('click', async e => {
     const p = principalDe(b), q = planAmenag(b); if (!p || !p.geo || !estimable(p)) return;
     showTab('estimation');
     reprendre({label: p.geo.label, lat: p.geo.lat, lon: p.geo.lon, type: TYPE_DVF[p.type] || TYPE_DVF.appart, surf: p.surface, since: 'auto',
-      criteres: {...criteresEffectifs(p), location: q.meuble ? 'meuble' : 'vide'},
-      travaux: {niveau: 'amenager', amenType: q.t, amenM2: q.m2, amenUsage: 'lot', amenCout: b.amenag.cout || null, amenDecote: b.amenag.decote ?? null}});
+      criteres: {...criteresEffectifs(p), location: q.saison ? 'saison' : q.meuble ? 'meuble' : 'vide'},
+      travaux: {niveau: 'amenager', amenType: q.t, amenM2: q.m2, amenUsage: 'lot', amenCout: null, amenDecote: b.amenag.decote ?? null}});
     return;
   }
   if (a === 'amenagFait') {
@@ -1762,9 +1777,9 @@ racine.addEventListener('change', async e => {
   if (chemin.startsWith('vente.')) return majVente(b);
   if (chemin.startsWith('detache.')) return majDetache(b);
   if (chemin.startsWith('amenag.')) {
-    if (chemin === 'amenag.ou') { const p = principalDe(b); if (p && Object.values(NOMS_ESPACE).some(n => b.nom === n + ' · ' + p.nom)) b.nom = NOMS_ESPACE[v] + ' · ' + p.nom; b.amenag.cout = null; b.amenag.decote = null; sauver(b); }
+    if (chemin === 'amenag.ou') { const p = principalDe(b); if (p && Object.values(NOMS_ESPACE).some(n => b.nom === n + ' · ' + p.nom)) b.nom = NOMS_ESPACE[v] + ' · ' + p.nom; b.amenag.decote = null; sauver(b); }
     if (chemin === 'amenag.m2') { b.surface = v; sauver(b); }
-    return ['amenag.ou', 'amenag.m2'].includes(chemin) ? vueDetail(b) : majAmenag(b);
+    return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
   if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
