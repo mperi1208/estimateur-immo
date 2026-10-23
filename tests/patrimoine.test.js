@@ -337,3 +337,33 @@ test('vente : achat manquant signalé', () => {
   assert.equal(simulerVente(aVendre({achat: {mode: 'existant'}})).manqueAchat, true);
   assert.equal(simulerVente(aVendre()).manqueAchat, false);
 });
+test('espace à aménager : coût total saisi à la main, il remplace l\'estimation au m² (mobilier compris)', () => {
+  const m = maison(), e = nouvelEspace(m);
+  ctx.setBiens([m, e]);
+  Object.assign(e.amenag, {m2: 40, meuble: '1'});
+  e.amenag.estimation = {prix: 160000, loyerVide: 600, loyerMeuble: 700, cle: cleAmenag(e)};
+  assert.ok(planAmenag(e).mobilier > 0);                // estimé : travaux au m² + mobilier à part
+  e.amenag.total = 25000;
+  const q = planAmenag(e);
+  assert.equal(q.travaux, 25000); assert.equal(q.mobilier, 0); assert.equal(q.saisi, true);
+  assert.equal(q.creee, q.valeur - 25000); proche(q.rendement, q.loyer * 12 / 25000, 1e-9);
+  amenagTermine(e);
+  assert.equal(e.achat.travaux, 25000); assert.equal(e.achat.mobilier, null);
+});
+test('espace à aménager : à la nuitée, recettes du saisonnier et fiche en location saisonnière une fois fait', () => {
+  const m = maison(), e = nouvelEspace(m);
+  ctx.setBiens([m, e]);
+  Object.assign(e.amenag, {m2: 40, meuble: 'nuit', nuit: 90, occupation: 50});
+  e.amenag.estimation = {prix: 160000, loyerVide: 600, loyerMeuble: 700, cle: cleAmenag(e)};
+  const q = planAmenag(e);
+  assert.equal(q.saison, true); assert.equal(q.meuble, true);
+  proche(q.sz.nuits, 182.5, 1e-9);
+  assert.equal(q.loyer, Math.round(90 * 182.5 / 12 / 10) * 10);
+  assert.ok(q.sz.netMois < q.sz.brutMois);
+  delete e.amenag.nuit;                                 // sans prix : point de départ tiré du meublé décoté (÷ 9)
+  assert.equal(planAmenag(e).nuit, Math.max(20, Math.round(Math.round(700 * 0.76 / 10) * 10 / 9 / 5) * 5));
+  e.amenag.nuit = 90;
+  amenagTermine(e);
+  assert.equal(e.location.statut, 'saisonnier'); assert.equal(e.location.nuit, 90); assert.equal(e.location.nuitsAn, 183);
+  assert.ok(calculs(e).loyerMois > 0);
+});

@@ -2905,7 +2905,10 @@ function enregistrerAmenagement(a) {
     const ex = a.id ? PROJETS.liste.find(x => x.id === a.id) : null;
     const v = ex && ex.finance ? {...DEFAUTS, ...ex.finance} : {...DEFAUTS, struct: a.struct, sciExist: a.sciExist, tf: Math.round(a.loyer / 10) * 10, copro: 0, pno: 0};
     Object.assign(v, {prix: 0, notaire: 0, neuf: '0', type: a.type, surf: a.surf, travaux: a.travaux, valeurApres: a.valeurApres, dureeTravaux: a.duree, travauxCredit: ex ? v.travauxCredit : true,
-      scenario: 'louer', loyer: a.loyer, meuble: a.meuble ? '1' : '0', mobilier: a.mobilier || 0, ...SANS_LOYER2});
+      scenario: 'louer', loyer: a.loyer, meuble: a.meuble ? '1' : '0', mobilier: a.mobilier || 0, ...SANS_LOYER2,
+      // À la nuitée : prix par nuit et occupation de la fiche, frais par défaut (ou ceux déjà réglés dans le projet)
+      ...(a.saison ? {locMode: 'nuit', nuit: a.saison.nuit, occupation: a.saison.occupation, chargesSaison: a.saison.charges,
+        ...(ex && ex.finance.locMode === 'nuit' ? {} : {sejour: SAISON_DEFAUTS.sejour, menage: SAISON_DEFAUTS.menage, plateforme: SAISON_DEFAUTS.plateforme, conciergerie: SAISON_DEFAUTS.conciergerie, classe: '0'})} : SANS_SAISON)});
     if (v.differe < a.duree) { v.differe = a.duree; v.typeDiff = 'partiel'; }
     for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
     if (!ex) set('taux', tauxConseille());
@@ -2997,7 +3000,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=61"></script>
+<script src="investissements.js?v=62"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -3033,9 +3036,10 @@ const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y
 function carteAmenagement(pr) {
   const r = pr.resume || {}, am = r.amenag || {}, signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
   const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
-  const sous = [`Aménagement${am.principal ? ' de ' + esc(am.principal) : ''}`, r.surf ? `${r.surf} m²` : '', r.meuble ? 'location meublée' : 'location vide', qui].join(' · ');
+  const sous = [`Aménagement${am.principal ? ' de ' + esc(am.principal) : ''}`, r.surf ? `${r.surf} m²` : '', r.saison ? 'location saisonnière' : r.meuble ? 'location meublée' : 'location vide', qui].join(' · ');
   const cases = [['Valeur une fois aménagé', `<b>${eurP(r.valeurApres)}</b>`], ['Travaux', `<b>${eurP(r.travaux)}</b>` + (am.debut ? `<small>à partir de ${moisP(am.debut)}</small>` : '')],
-    ['Loyer hors charges', `<b>${eurP(r.loyer)}/mois</b>` + (am.loyerDes ? `<small>dès ${moisP(am.loyerDes)}</small>` : '')],
+    r.saison ? ['Location saisonnière', `<b>${eurP(r.loyer)}/mois</b><small>recettes : ${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation${am.loyerDes ? ', dès ' + moisP(am.loyerDes) : ''}</small>`]
+      : ['Loyer hors charges', `<b>${eurP(r.loyer)}/mois</b>` + (am.loyerDes ? `<small>dès ${moisP(am.loyerDes)}</small>` : '')],
     ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')],
     ['Mensualité', `<b>${eurP(r.mensualite)}/mois</b><small>crédit des travaux</small>`], ['Rendement brut', pctP(r.rendement)]];
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
