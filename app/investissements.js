@@ -833,7 +833,6 @@ function vueDetail(b) {
     <div class="blocs">
     ${section('Rentabilité', '<div id="inv_renta"></div>')}
     ${b.type === 'terrain' ? revenusHTML(b) : locationHTML(b)}
-    ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
     ${section('Le bien', `<div class="grille">
       ${champ(b, 'nom', 'Nom', {type: 'text', ph: 'ex. Studio Passy'})}
       ${champ(b, 'type', 'Type', {options: Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.l]))})}
@@ -859,6 +858,7 @@ function vueDetail(b) {
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
       ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
+    ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
     ${section('Achat', `<div class="grille">
       ${champ(b, 'achat.mode', 'Acquisition', {options: {existant: 'Achat d\'un bien', construction: 'Terrain + construction'}, large: true})}
       ${b.achat.mode === 'construction' ? `${champ(b, 'achat.date', 'Achat du terrain', {type: 'month'})}${champ(b, 'achat.prix', 'Prix du terrain (€)', {step: 1000})}
