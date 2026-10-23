@@ -978,6 +978,7 @@ function locationHTML(b) {
     return section('Location', `<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
       ${champ(b, 'location.nuit', 'Prix moyen par nuit (€)', {step: 5, aide: m ? `Point de départ : ≈ ${eur(nuitConseillee(m))} (loyer meublé du marché ÷ 9)` : ''})}
+      <div><label for="inv_periode">Période louée</label><select id="inv_periode" data-x="periode">${optionsPeriode(Object.keys(PERIODES_SAISON).find(k => Math.round(365 * PERIODES_SAISON[k].occ / 100) === +b.location.nuitsAn) || '')}</select><div class="aide">Remplit les nuits louées par an</div></div>
       ${champ(b, 'location.nuitsAn', 'Nuits louées par an', {step: 10, aide: '≈ 220 pour 60 % d\'occupation · 120 au plus pour une résidence principale'})}
       ${champ(b, 'location.fraisSaison', 'Frais (% des recettes)', {step: 1, aide: 'Plateforme, conciergerie et ménage (souvent 20 à 35 %)'})}
       ${champ(b, 'location.loyer', 'Ou recettes moyennes (€/mois)', {step: 10, aide: 'Compté seulement sans prix par nuit'})}
@@ -1163,7 +1164,8 @@ function planAmenag(b) {
   // À la nuitée : recettes moyennes du mois (prix par nuit × nuits louées), frais d'Estimer par défaut ; sert de « loyer »
   let sz = null, nuit = null, occupation = null, charges = null;
   if (saison && loyerMois != null) {
-    nuit = a.nuit > 0 ? a.nuit : nuitConseillee(loyerMois); occupation = a.occupation > 0 ? Math.min(100, a.occupation) : SAISON_DEFAUTS.occupation;
+    const per = PERIODES_SAISON[a.periode] ? a.periode : 'annee';   // été seulement : moins de nuits, mais plus chères
+    nuit = a.nuit > 0 ? a.nuit : nuitPeriode(loyerMois, per); occupation = a.occupation > 0 ? Math.min(100, a.occupation) : PERIODES_SAISON[per].occ;
     charges = chargesSaisonDefaut(m2 || 0, p.type !== 'maison');
     sz = saisonnier({...SAISON_DEFAUTS, nuit, occupation, charges});
   }
@@ -1176,7 +1178,7 @@ function nouvelEspace(b) {
   return nouveauBien({nom: NOMS_ESPACE.soussol + ' · ' + b.nom, type: b.type === 'maison' ? 'maison' : 'appart', adresse: b.adresse, geo: b.geo ? {...b.geo} : null,
     structure: b.structure, sciId: b.sciId, part: b.part, lieA: b.id, avecVu: true,
     location: {statut: 'avec', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0},
-    amenag: {ou: 'soussol', m2: null, total: null, decote: null, meuble: '', nuit: null, occupation: null, debut: '', duree: null}});
+    amenag: {ou: 'soussol', m2: null, total: null, decote: null, meuble: '', nuit: null, periode: 'annee', occupation: null, debut: '', duree: null}});
 }
 // Travaux terminés : l'espace devient un logement à part, avec sa valeur, son coût (les travaux) et son loyer
 function amenagTermine(b) {
@@ -1198,7 +1200,8 @@ function amenagHTML(b) {
       ${champ(b, 'amenag.decote', 'Décote de cette surface (%)', {ph: AMENAG[q.t].decote + ' (habituel)', aide: 'Moins de lumière, plafond plus bas : vaut moins au m² qu\'un logement classique'})}
       ${champ(b, 'amenag.meuble', 'Pour le louer', {options: {'': 'Vide', 1: 'Meublé', nuit: 'À la nuitée (saisonnier)'}})}
       ${q.saison ? `${champ(b, 'amenag.nuit', 'Prix moyen par nuit (€)', {step: 5, ph: q.nuit ? fmt(q.nuit) + ' (conseillé)' : 'après l\'estimation', aide: 'Point de départ : loyer meublé du marché ÷ 9, à caler sur les annonces voisines'})}
-      ${champ(b, 'amenag.occupation', 'Occupation (% des nuits)', {step: 5, ph: String(SAISON_DEFAUTS.occupation), aide: '60 % ≈ 220 nuits louées par an'})}` : ''}
+      ${champ(b, 'amenag.periode', 'Période louée', {options: Object.fromEntries(Object.entries(PERIODES_SAISON).map(([k, v]) => [k, v.l + (v.d ? ' · ' + v.d : '')]))})}
+      ${champ(b, 'amenag.occupation', 'Occupation sur l\'année (%)', {step: 5, ph: String(PERIODES_SAISON[PERIODES_SAISON[a.periode] ? a.periode : 'annee'].occ), aide: 'Vide : selon la période (60 % ≈ 220 nuits par an)'})}` : ''}
       ${champ(b, 'amenag.debut', 'Début des travaux', {type: 'month'})}
       ${champ(b, 'amenag.duree', 'Durée du chantier (mois)', {ph: '5'})}
     </div>
@@ -1743,6 +1746,10 @@ racine.addEventListener('change', async e => {
     if (v === 'np') { b.structure = 'np'; b.sciId = null; } else { b.structure = 'sci'; b.sciId = v; }
     sauver(b); return vueDetail(b);
   }
+  if (e.target.dataset.x === 'periode') {
+    const p = PERIODES_SAISON[e.target.value]; if (!p) return;
+    b.location.nuitsAn = Math.round(365 * p.occ / 100); sauver(b); return vueDetail(b);
+  }
   if (e.target.dataset.x === 'associer') {
     const x = biens.find(y => y.id === e.target.value);
     if (x) { x.lieA = b.id; x.avecVu = true; if (x.type === 'parking' && !LOUE.includes(x.location.statut)) x.location.statut = 'avec'; sauver(x); vueDetail(b); }
@@ -1779,7 +1786,8 @@ racine.addEventListener('change', async e => {
   if (chemin.startsWith('amenag.')) {
     if (chemin === 'amenag.ou') { const p = principalDe(b); if (p && Object.values(NOMS_ESPACE).some(n => b.nom === n + ' · ' + p.nom)) b.nom = NOMS_ESPACE[v] + ' · ' + p.nom; b.amenag.decote = null; sauver(b); }
     if (chemin === 'amenag.m2') { b.surface = v; sauver(b); }
-    return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total'].includes(chemin) ? vueDetail(b) : majAmenag(b);
+    if (chemin === 'amenag.periode') { b.amenag.occupation = null; sauver(b); }   // le taux suit la période choisie
+    return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
   if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);

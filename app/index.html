@@ -555,7 +555,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div class="loc-mode"><label>Loyer</label><div class="seg mini" id="cf_locSeg"><button data-v="mois">Au mois</button><button data-v="nuit">À la nuitée</button></div><select id="cf_locMode" hidden><option value="mois">mois</option><option value="nuit">nuit</option></select></div>
     <div data-mois><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
     <div data-nuit hidden><label>Prix par nuit (€)</label><input id="cf_nuit" type="number" min="0" step="5"></div>
-    <div data-nuit hidden><label>Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"></div>
+    <div data-nuit hidden><label>Période louée</label><select id="cf_periode"></select></div>
+    <div data-nuit hidden><label>Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"><div class="hint">sur l'année</div></div>
     <div data-nuit hidden class="plein"><div class="hint" id="cf_saisonHint"></div></div>
     <div><label>2e loyer (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="facultatif"><div class="hint">Division, garage ou annexe louée à part</div></div>
     <div data-loyer2 hidden><label>1er loyer à partir du mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"><div class="hint" id="cf_debutLoyer1Hint">Vide : après le chantier</div></div>
@@ -1330,6 +1331,18 @@ const SAISON_DEFAUTS = {occupation: 60, sejour: 3, menage: 30, plateforme: 15, c
 const MICRO_SAISON = {classe: {abattement: 0.5, plafond: 77700}, non: {abattement: 0.3, plafond: 15000}};
 const microSaison = classe => MICRO_SAISON[classe ? 'classe' : 'non'];
 const nuitConseillee = loyerMeubleHC => Math.max(20, Math.round(loyerMeubleHC / 9 / 5) * 5);
+// Période louée : un logement loué seulement l'été se remplit mieux pendant la saison, mais reste vide le reste de l'année.
+// occ = taux d'occupation sur l'année (mois loués ÷ 12 × remplissage pendant la période : 70 %, 80 %, 90 %) ;
+// prix = prix par nuit de départ par rapport à la moyenne de l'année (la haute saison se loue plus cher)
+const PERIODES_SAISON = {
+  annee: {l: 'Toute l\'année', occ: 60, prix: 1},
+  longue: {l: 'D\'avril à octobre', occ: 41, prix: 1.15, d: '7 mois, remplis à 70 %'},
+  ete: {l: 'L\'été (juin à septembre)', occ: 27, prix: 1.3, d: '4 mois, remplis à 80 %'},
+  juilaout: {l: 'Juillet et août', occ: 15, prix: 1.5, d: '2 mois, remplis à 90 %'},
+};
+const periodeSaison = occ => Object.keys(PERIODES_SAISON).find(k => PERIODES_SAISON[k].occ === +occ) || '';
+const nuitPeriode = (loyerMeubleHC, periode) => Math.max(20, Math.round(loyerMeubleHC / 9 * ((PERIODES_SAISON[periode] || {}).prix || 1) / 5) * 5);
+const optionsPeriode = cur => Object.entries(PERIODES_SAISON).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${v.l}</option>`).join('') + (cur ? '' : '<option value="" selected>Autre (taux saisi)</option>');
 // Charges payées par le propriétaire : celles qu'un locataire paierait (copropriété), plus énergie, internet et abonnements
 const chargesSaisonDefaut = (surf, appart = true) => Math.round(((appart ? 2 : 0.5) * surf + 1.5 * surf + 30) / 10) * 10;
 function saisonnier(s) {
@@ -1720,7 +1733,7 @@ let choixSaison = {};
 try { choixSaison = JSON.parse(localStorage.getItem('saison-choix') || '{}'); } catch (e) {}
 function paramsSaison() {
   const r = state.base, c = {...SAISON_DEFAUTS, ...choixSaison};
-  return {...c, auto: !(c.nuit > 0), nuit: c.nuit > 0 ? c.nuit : nuitConseillee(state.loyerHC || 0),
+  return {...c, auto: !(c.nuit > 0), nuit: c.nuit > 0 ? c.nuit : nuitPeriode(state.loyerHC || 0, periodeSaison(c.occupation)),
     charges: c.charges != null && c.charges !== '' ? c.charges : chargesSaisonDefaut(r ? r.surf : 0, isAppart())};
 }
 const CHAMPS_SAISON = [['nuit', 'Prix par nuit (€)', 5], ['occupation', 'Taux d\'occupation (%)', 5], ['sejour', 'Nuits par séjour', 1], ['menage', 'Ménage par séjour (€)', 5],
@@ -1733,15 +1746,22 @@ function renderSaison() {
   const ps = paramsSaison();
   el.innerHTML = `<h3>Location saisonnière (à la nuitée)</h3>
     <div class="hint">Prix et occupation à caler sur les annonces voisines (Airbnb, Booking) : le prix proposé part du loyer meublé du secteur.</div>
-    <div class="crit">${CHAMPS_SAISON.map(([k, l, st]) => `<div><label for="s_${k}">${l}</label><input type="number" id="s_${k}" min="0" step="${st}" value="${k === 'nuit' && ps.auto ? '' : ps[k]}"${k === 'nuit' ? ` placeholder="${ps.nuit}"` : ''}></div>`).join('')}
+    <div class="crit"><div><label for="s_periode">Période louée</label><select id="s_periode">${optionsPeriode(periodeSaison(ps.occupation))}</select>${(p => p && p.d ? `<div class="hint">${p.d}</div>` : '')(PERIODES_SAISON[periodeSaison(ps.occupation)])}</div>${CHAMPS_SAISON.map(([k, l, st]) => `<div><label for="s_${k}">${l}</label><input type="number" id="s_${k}" min="0" step="${st}" value="${k === 'nuit' && ps.auto ? '' : ps[k]}"${k === 'nuit' ? ` placeholder="${ps.nuit}"` : ''}></div>`).join('')}
       <div><label for="s_classe">Classement</label><select id="s_classe"><option value="0"${ps.classe ? '' : ' selected'}>Non classé</option><option value="1"${ps.classe ? ' selected' : ''}>Meublé de tourisme classé</option></select></div></div>
     <div id="saisonRes"></div>
     <div class="row"><button class="cta" onclick="financerBien()">Financer en location saisonnière →</button></div>`;   // hors de #saisonRes : quitter un champ le recalcule, le clic ne doit pas tomber sur un bouton remplacé
-  el.querySelectorAll('input, select').forEach(i => i.onchange = () => {
+  el.querySelector('#s_periode').onchange = e => {
+    const p = PERIODES_SAISON[e.target.value]; if (!p) return;
+    choixSaison.occupation = p.occ;
+    try { localStorage.setItem('saison-choix', JSON.stringify(choixSaison)); } catch (e) {}
+    renderSaison(); renderSynth();
+  };
+  el.querySelectorAll('input, select:not(#s_periode)').forEach(i => i.onchange = () => {
     const k = i.id.slice(2);
     choixSaison[k] = k === 'classe' ? i.value === '1' : i.value === '' ? null : Math.max(0, +i.value);
     if (k === 'occupation') choixSaison.occupation = Math.min(100, choixSaison.occupation ?? SAISON_DEFAUTS.occupation);
     try { localStorage.setItem('saison-choix', JSON.stringify(choixSaison)); } catch (e) {}
+    if (k === 'occupation') return renderSaison(), renderSynth();   // la période suit le taux saisi
     majSaisonRes(); renderSynth();
   });
   majSaisonRes();
@@ -2386,6 +2406,7 @@ function etat() {
 }
 function sauver() { try { localStorage.setItem('cashflow-v1', JSON.stringify(etat())); } catch (e) {} }
 function afficherChamps() {
+  $('periode').innerHTML = optionsPeriode(periodeSaison(get('occupation')));
   const st = get('struct'), meuble = get('meuble') === '1';
   const is = st === 'is' || (st === 'ir' && meuble);
   CF.querySelectorAll('[data-meuble]').forEach(e => e.hidden = !meuble);
@@ -2973,6 +2994,7 @@ $('form').addEventListener('input', e => {
   if (id === 'struct') { const x = mesScis().find(y => y.id === get('sciExist')); if (x && x.regime !== get('struct')) { set('sciExist', ''); sciVoulue = ''; } }
   if ((id === 'struct' || id === 'duree' || id === 'sciExist') && !flags.tauxManuel) set('taux', tauxConseille());
   if ((id === 'struct' || id === 'meuble' || id === 'sciExist') && !flags.comptaManuel) set('compta', comptaDefaut());
+  if (id === 'periode' && PERIODES_SAISON[get('periode')]) set('occupation', PERIODES_SAISON[get('periode')].occ);
   if (id === 'neuf') { set('notaire', get('neuf') === '1' ? 2.5 : 8); set('vieux', get('neuf') === '1' ? '0' : '1'); }
   if (id === 'dureeTravaux' && ouvert('projet') && get('differe') < get('dureeTravaux')) { set('differe', get('dureeTravaux')); set('typeDiff', 'partiel'); flags.differeAuto = true; }
   sauver(); rendre();
@@ -3009,7 +3031,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=63"></script>
+<script src="investissements.js?v=64"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
