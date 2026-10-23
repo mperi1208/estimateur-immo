@@ -703,9 +703,7 @@ function vueListe() {
     const choix = [['tout', 'Tous'], ['np', 'Nom propre'], ...scis.map(x => [x.id, x.nom])].filter(([f]) => f === 'tout' || n(f));
     const visibles = actifs.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
     const filtres = choix.length > 2 ? `<div class="filtres">${choix.map(([f, l]) => `<button data-a="filtre" data-f="${esc(f)}" class="${f === filtre ? 'on' : ''}">${esc(l)} <span>${n(f)}</span></button>`).join('')}</div>` : '';
-    ordonner(visibles);
-    const cs = visibles.map(calculs);
-    h += pli('biens', 'Mes biens', actifs.length, filtres + (visibles.length ? `<div class="liste">${visibles.map((b, i) => carte(b, cs[i])).join('')}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
+    h += pli('biens', 'Mes biens', actifs.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
     if (vendus.length) h += pli('vendus', 'Biens vendus', vendus.length, `<div class="liste">${vendus.map(carteVendue).join('')}</div>`);
     h += arbreHTML();
   } else {
@@ -757,19 +755,26 @@ document.addEventListener('toggle', e => {
   try { localStorage.setItem('sections-repliees', JSON.stringify([...replies])); } catch (e) {}
 }, true);
 const OEIL_PERSO = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
-// Un bien associé (garage…) juste après son bien principal
-function ordonner(liste) {
-  const ids = new Set(liste.map(b => b.id)), out = [];
-  for (const b of liste) if (!(b.lieA && ids.has(b.lieA))) { out.push(b); out.push(...liste.filter(x => x.lieA === b.id && x !== b)); }
-  for (const b of liste) if (!out.includes(b)) out.push(b);
-  liste.splice(0, liste.length, ...out);
-  return liste;
+// Liste : un bien et ses biens associés (garage…) dans une même carte, le garage en ligne compacte dessous
+function listeBiens(liste) {
+  const ids = new Set(liste.map(b => b.id));
+  return liste.filter(b => !(b.lieA && ids.has(b.lieA))).map(b => {
+    const lies = liste.filter(x => x.lieA === b.id && x !== b);
+    return lies.length ? `<div class="groupe-bien">${carte(b, calculs(b))}${lies.map(ligneAssociee).join('')}</div>` : carte(b, calculs(b));
+  }).join('');
+}
+function ligneAssociee(b) {
+  const c = calculs(b), k = partDe(b);
+  return `<a class="bien-lie" href="#investissements/${encodeURIComponent(b.id)}"><span class="ico-n">${icone(b.type)}</span>
+    <span class="nom-a"><b>${esc(b.nom)}</b><small>${esc([TYPES[b.type] ? TYPES[b.type].l : '', statutLib(b)].filter(Boolean).join(' · '))}</small></span>
+    <span class="chiffres-lie"><span><small>Valeur</small><b>${b.valeur ? kEur(b.valeur * k) : '—'}</b></span><span><small>Loyer</small><b>${c.loyerMois ? eur(c.loyerMois * k) + '/mois' : '—'}</b></span></span>
+    <span class="chev" aria-hidden="true">›</span></a>`;
 }
 function carte(b, c) {
   const k = partDe(b), x = n => n * k, pr = principalDe(b);
   const tags = [pr ? 'Associé à ' + pr.nom : '', k < 1 ? `Part : ${Math.round(k * 100)} %` : '', b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
     b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b)].filter(Boolean);
-  return `<a class="bien${pr ? ' associe' : ''}" href="#investissements/${encodeURIComponent(b.id)}">
+  return `<a class="bien" href="#investissements/${encodeURIComponent(b.id)}">
     <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type] ? TYPES[b.type].l : ''}</span></div>
     <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || 'Adresse à renseigner')}</span><span class="tags">${tags.map(esc).join(' · ')}</span></div>
     <div class="chiffres">
