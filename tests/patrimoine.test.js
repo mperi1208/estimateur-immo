@@ -6,6 +6,7 @@ const {bloc, proche, inv, idx} = require('./outils');
 
 const ctx = vm.createContext({T: {}});
 vm.runInContext([
+  bloc(idx, '// ---------- Location saisonnière', '// --- Loyer : carte officielle'),
   bloc(inv, 'const somme =', 'const uid ='),
   'let n_ = 0; const uid = () => "id" + (++n_);',
   bloc(inv, '// ---------- Mois', '// ---------- Données'),
@@ -195,4 +196,14 @@ test('espace à aménager : travaux terminés, il devient un logement compté à
   assert.equal(e.achat.travaux, planAmenag(e).travaux);
   const t = totaux([m, e]);
   assert.equal(t.n, 2); assert.equal(t.V, 696000);
+});
+test('location saisonnière : prix par nuit × nuits louées, frais en % des recettes, sans vacance', () => {
+  const b = nouveauBien({chargesAn: sansCharges, achat: {prix: 150000},
+    location: {statut: 'saisonnier', nuit: 90, nuitsAn: 200, fraisSaison: 25, loyer: 700, vacance: 2}});
+  const c = calculs(b);
+  proche(c.loyersAn, 18000, 0.01);
+  proche(c.loyerMois, 1500, 0.01);
+  proche(c.chargesAn, 4500, 0.01);
+  b.location.nuit = null;                                      // sans prix par nuit : recettes saisies au mois
+  proche(calculs(b).loyersAn, 700 * 10, 0.01);
 });
