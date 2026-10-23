@@ -2200,6 +2200,10 @@ function sync(est, mode) {
   let pr = projetCourantId ? PROJETS.liste.find(x => x.id === projetCourantId) : null;
   if (figee !== undefined && cle === figee) est = null; else figee = undefined;
   bienEst = bienUtile = est; majScis();
+  // Projet travaux fait dans Estimer et pas encore repris ici : passer par l'onglet suffit pour l'appliquer
+  // (une seule fois : ensuite les réglages faits dans Financer sont gardés)
+  const clePj = est && est.projet ? JSON.stringify([cle, est.projet]) : null;
+  if (!mode && clePj) { let vu = null; try { vu = localStorage.getItem('cashflow-projet'); } catch (e) {} if (clePj !== vu) mode = 'location'; }
   if (est && pr && pr.recherche) {   // nouvelle recherche ailleurs : ce n'est plus le même projet
     const rc = typeof rechercheCourante === 'function' ? rechercheCourante() : null;
     if (rc && rc.cle !== pr.recherche.cle) { fixerProjet(null); pr = null; }
@@ -2226,6 +2230,7 @@ function sync(est, mode) {
   }
   if (mode && est.projet) {
     const pj = est.projet;
+    try { localStorage.setItem('cashflow-projet', clePj); } catch (e) {}
     $('boxProjet').open = true; majChips();
     set('scenario', mode === 'revente' ? 'revendre' : 'louer'); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
     if (get('differe') < pj.duree) { set('differe', pj.duree); set('typeDiff', 'partiel'); flags.differeAuto = true; }
@@ -2235,8 +2240,11 @@ function sync(est, mode) {
     set('loyer', l1); flags.loyers = {avant: est.loyer, apres: l1, loyer2: l2 || null}; set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
     if (l2) { set('loyer2', l2); set('debutLoyer2', pj.duree + 1); } else for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
     if (!flags.comptaManuel) set('compta', comptaDefaut(pj.meuble));
-    bar.innerHTML += `<br>Projet travaux : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b>${pj.loyers && pj.loyers.length > 1 ? ` (${pj.loyers.map(eur).join(' + ')})` : ''} ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
     sauver();
+  }
+  if (est.projet) {
+    const pj = est.projet;
+    bar.innerHTML += `<br>Projet travaux : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b>${pj.loyers && pj.loyers.length > 1 ? ` (${pj.loyers.map(eur).join(' + ')})` : ''} ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
   }
   majSauvegarde(pr);
   rendre();
