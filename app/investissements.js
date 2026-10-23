@@ -734,6 +734,7 @@ function vueListe() {
       <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   if (biens.length || scis.length) {
     const actifs = detenus(), vendus = biens.filter(b => b.vendu);
+    const montres = actifs.filter(b => !enProjet(b));   // espace pas encore aménagé : seulement dans Mes projets (et la fiche de son bien)
     h += kpisTotaux(totaux(actifs));
     if (scis.length) h += pli('scis', 'Mes SCI', scis.length, `<div class="scis">${scis.map(x => {
       const t = totaux(actifs.filter(b => b.sciId === x.id && b.structure === 'sci'));
@@ -743,11 +744,11 @@ function vueListe() {
         <span class="chev" aria-hidden="true">›</span></a>`;
     }).join('')}</div>`);
     // Filtre par détenteur
-    const n = f => actifs.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
+    const n = f => montres.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
     const choix = [['tout', 'Tous'], ['np', 'Nom propre'], ...scis.map(x => [x.id, x.nom])].filter(([f]) => f === 'tout' || n(f));
-    const visibles = actifs.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
+    const visibles = montres.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
     const filtres = choix.length > 2 ? `<div class="filtres">${choix.map(([f, l]) => `<button data-a="filtre" data-f="${esc(f)}" class="${f === filtre ? 'on' : ''}">${esc(l)} <span>${n(f)}</span></button>`).join('')}</div>` : '';
-    h += pli('biens', 'Mes biens', actifs.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
+    h += pli('biens', 'Mes biens', montres.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
     if (vendus.length) h += pli('vendus', 'Biens vendus', vendus.length, `<div class="liste">${vendus.map(carteVendue).join('')}</div>`);
     h += arbreHTML();
   } else {
@@ -760,7 +761,7 @@ function vueListe() {
 }
 // Organigramme du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens (montants à hauteur de la part détenue)
 function arbreHTML() {
-  const biens = detenus();
+  const biens = detenus().filter(b => !enProjet(b));
   if (!biens.length) return '';
   const chiffres = (net, cf) => `<span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${cf != null ? `<span><b class="${signe(cf)}">${eur(cf)}/mois</b></span>` : ''}</span>`;
   const tot = t => chiffres(t.V ? t.net : null, t.n ? t.cf : null);
@@ -859,10 +860,12 @@ function lire(b, chemin) { return chemin.split('.').reduce((o, k) => o == null ?
 function ecrire(b, chemin, v) { const ks = chemin.split('.'), last = ks.pop(); ks.reduce((o, k) => o[k], b)[last] = v; }
 function champ(b, chemin, label, o = {}) {
   const v = lire(b, chemin), id = 'inv_' + chemin.replace(/\./g, '_');
-  let input;
-  if (o.options) input = `<select id="${id}" data-p="${chemin}">${Object.entries(o.options).map(([k, l]) => `<option value="${esc(k)}"${String(v ?? '') === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  let input; const choix = Array.isArray(o.options) ? o.options : Object.entries(o.options || {});   // tableau [valeur, libellé] : garde l'ordre (une clé « 1 » passerait devant)
+  if (o.options) input = `<select id="${id}" data-p="${chemin}">${choix.map(([k, l]) => `<option value="${esc(k)}"${String(v ?? '') === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   else if (o.zone) input = `<textarea id="${id}" data-p="${chemin}" rows="4" placeholder="${esc(o.ph || '')}">${esc(v || '')}</textarea>`;
   else input = `<input id="${id}" data-p="${chemin}" type="${o.type || 'number'}"${o.step ? ` step="${o.step}"` : ''}${o.type === 'month' ? ' placeholder="AAAA-MM"' : ''} value="${esc(v ?? '')}" placeholder="${esc(o.ph || '')}">`;
+  // Peu de choix : boutons côte à côte, tous visibles (la liste reste, cachée, et porte la valeur)
+  if (o.options && o.boutons) input = `<div class="seg">${choix.map(([k, l]) => `<button type="button" data-a="segChoix" data-cible="${id}" data-v="${esc(k)}" class="${String(v ?? '') === k ? 'on' : ''}">${esc(l)}</button>`).join('')}</div>${input.replace('<select ', '<select hidden ')}`;
   return `<div class="${o.large ? 'large' : ''}"><label for="${id}">${label}</label>${input}${o.aide ? `<div class="aide">${o.aide}</div>` : ''}</div>`;
 }
 const section = (titre, corps, large = false) => `<section class="bloc${large ? ' large' : ''}"><h3>${titre}</h3>${corps}</section>`;
@@ -1198,7 +1201,7 @@ function amenagHTML(b) {
       ${champ(b, 'amenag.m2', 'Surface à aménager (m²)', {ph: 'ex. 40'})}
       ${champ(b, 'amenag.total', 'Coût total des travaux (€)', {step: 1000, ph: q.suggere ? fmt(q.suggere + q.mobSuggere) + ' (estimé)' : 'ton devis ou ton budget', aide: 'Tout compris (mobilier aussi). Vide : estimé au m²'})}
       ${champ(b, 'amenag.decote', 'Décote de cette surface (%)', {ph: AMENAG[q.t].decote + ' (habituel)', aide: 'Moins de lumière, plafond plus bas : vaut moins au m² qu\'un logement classique'})}
-      ${champ(b, 'amenag.meuble', 'Pour le louer', {options: {'': 'Vide', 1: 'Meublé', nuit: 'À la nuitée (saisonnier)'}})}
+      ${champ(b, 'amenag.meuble', 'Pour le louer', {boutons: true, options: [['', 'Vide'], ['1', 'Meublé'], ['nuit', 'À la nuitée']]})}
       ${q.saison ? `${champ(b, 'amenag.nuit', 'Prix moyen par nuit (€)', {step: 5, ph: q.nuit ? fmt(q.nuit) + ' (conseillé)' : 'après l\'estimation', aide: 'Point de départ : loyer meublé du marché ÷ 9, à caler sur les annonces voisines'})}
       ${champ(b, 'amenag.periode', 'Période louée', {options: Object.fromEntries(Object.entries(PERIODES_SAISON).map(([k, v]) => [k, v.l + (v.d ? ' · ' + v.d : '')]))})}
       ${champ(b, 'amenag.occupation', 'Occupation sur l\'année (%)', {step: 5, ph: String(PERIODES_SAISON[PERIODES_SAISON[a.periode] ? a.periode : 'annee'].occ), aide: 'Vide : selon la période (60 % ≈ 220 nuits par an)'})}` : ''}
@@ -1294,7 +1297,7 @@ function vueSci(x) {
         <div class="part" data-part="${i}"></div><button class="lien" data-a="supprAssocie" data-i="${i}">Retirer</button></div>`).join('')}</div>` : '<div class="aide">Aucun associé renseigné.</div>'}
       <div class="aide" id="inv_parts">${x.associes.length && Math.abs(totalParts - 100) > 0.01 ? `Total des parts : ${fmt(totalParts)} % (devrait faire 100 %).` : ''}</div>
       <button data-a="ajoutAssocie">+ Ajouter un associé</button>`)}
-    ${section('Biens de la SCI', `${sesBiens.length ? `<div class="liste">${sesBiens.map((b, i) => carte(b, t.cs[i])).join('')}</div>` : '<div class="aide">Aucun bien rattaché. Dans la fiche d\'un bien, choisis cette SCI dans « Détenu par », ou ajoute-en un ici.</div>'}
+    ${section('Biens de la SCI', `${sesBiens.length ? `<div class="liste">${sesBiens.map((b, i) => enProjet(b) ? '' : carte(b, t.cs[i])).join('')}</div>` : '<div class="aide">Aucun bien rattaché. Dans la fiche d\'un bien, choisis cette SCI dans « Détenu par », ou ajoute-en un ici.</div>'}
       <button data-a="ajoutBienSci">+ Ajouter un bien à cette SCI</button>`, true)}
     ${section('Partenaires', `<div class="grille">${champ(x, 'banque', 'Banque', {type: 'text'})}${champ(x, 'comptable', 'Expert-comptable', {type: 'text'})}</div>`)}
     ${section('Notes', champ(x, 'notes', '', {zone: true, ph: 'Assemblées générales, comptes courants d\'associés, échéances…'}))}
@@ -1587,6 +1590,7 @@ racine.addEventListener('click', async e => {
   const t = e.target.closest('[data-a]'); if (!t) return;
   const b = biens.find(x => x.id === ouvert), a = t.dataset.a;
   const sci = ouvert && ouvert.startsWith('sci:') ? scis.find(x => x.id === ouvert.slice(4)) : null;
+  if (a === 'segChoix') { const sel = document.getElementById(t.dataset.cible); if (sel && sel.value !== t.dataset.v) { sel.value = t.dataset.v; sel.dispatchEvent(new Event('change', {bubbles: true})); } return; }
   if (a === 'connexion') return ouvrirCompte();
   if (a === 'etatCompte') { if (!COMPTE.user) return ouvrirCompte(); if (erreurEtat()) alert(etatCompte); return; }
   if (a === 'discret') {
