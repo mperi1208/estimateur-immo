@@ -20,6 +20,7 @@ jobs:
 
   parcours:
     runs-on: ubuntu-latest
+    timeout-minutes: 15   # un téléchargement du navigateur bloqué ne doit pas tourner des heures
     defaults:
       run:
         working-directory: tests/e2e
@@ -30,5 +31,6 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
       - name: Parcours dans un navigateur (réseau simulé)
         run: npm test
