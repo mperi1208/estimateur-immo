@@ -127,6 +127,7 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .seg button:disabled{color:var(--muted);opacity:.55;cursor:not-allowed}
 .works{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
 .works .kpis{margin-top:8px}
+.works.garage-est{background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
 .works .kpi{background:var(--panel)}
 .works .row{margin-top:10px}
 .detail{margin-top:14px}
@@ -1036,6 +1037,7 @@ function render(r) {
   if (r.zone !== state.zone) { state.zone = r.zone; fillOptions(); }
   out.innerHTML = `
     <div class="synth" id="synth"><div class="empty">Calcul…</div></div>
+    <div class="works garage-est" id="garageEst" hidden></div>
     <div class="works" id="works"></div>
     <div class="sauveEst" id="sauveEst"></div>
     <details class="detail"><summary>Détail du calcul, sources et ventes comparables</summary>
@@ -1219,11 +1221,37 @@ function resumeIndice(trend, ref) {
   return [...new Set(pick)].map(y => `ventes ${y} ${pct(trend[y] - 1)}`).join(', ');
 }
 
+// Garage ou box coché dans les détails : sa propre valeur, d'après les garages vendus seuls autour (pour le vendre ou le sortir à part)
+const garageCache = new Map();
+async function majGarageEst() {
+  const el = document.getElementById('garageEst'); if (!el) return;
+  const c = isAppart() ? 'parking' : 'garage', v = field(c) ? field(c).value : '';
+  const LIB = {ext: 'place extérieure', '1': 'place couverte', box: 'box ou garage fermé', '2': '2 places ou plus', oui: 'garage fermé', place: 'place extérieure / abri'};
+  if (!LIB[v] || !window.INV || !INV.estimerGarage || state.lat == null) { el.hidden = true; return; }
+  const cle = state.lat.toFixed(5) + ',' + state.lon.toFixed(5), run = state.run;
+  el.hidden = false;
+  const tete = `<b>Le stationnement (${LIB[v]})</b>`;
+  if (!garageCache.has(cle)) {
+    el.innerHTML = `${tete}<div class="hint">Recherche des garages et box vendus seuls autour…</div>`;
+    const p = INV.estimerGarage(state.lat, state.lon).catch(e => ({erreur: e.message}));
+    garageCache.set(cle, p); p.then(r => { if (r.erreur) garageCache.delete(cle); });
+  }
+  const r = await garageCache.get(cle);
+  if (run !== state.run || el !== document.getElementById('garageEst')) return;
+  if (r.erreur) { el.innerHTML = `${tete}<div class="hint">${esc(r.erreur)}</div>`; return; }
+  const deux = v === '2';
+  el.innerHTML = `${tete}<div class="kpis">
+      <div class="kpi"><div class="k">Valeur seule</div><div class="v">${fmtK(r.prix * (deux ? 2 : 1))}</div><div class="d">${fmtK(r.lo * (deux ? 2 : 1))} – ${fmtK(r.hi * (deux ? 2 : 1))}${deux ? ' (2 places)' : ''}</div></div>
+      <div class="kpi"><div class="k">Ventes comparées</div><div class="v">${r.ventes}</div><div class="d">garages, box et places vendus seuls, à moins de ${r.rayon < 1000 ? fmt(r.rayon) + ' m' : (r.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}</div></div>
+      <div class="kpi"><div class="k">Fiabilité</div><div class="v txt">${esc(r.fiabilite.replace(/^Fiabilité /, ''))}</div><div class="d">ventes ${r.periode}</div></div></div>
+    <div class="hint" style="margin-top:6px">Le prix du bien ci-dessus compte déjà le stationnement. Cette valeur sert si tu le vends ou le loues à part${v === 'ext' || v === 'place' ? ' (une place extérieure se vend plutôt dans le bas de la fourchette)' : v === 'box' || v === 'oui' ? ' (un box fermé se vend plutôt dans le haut de la fourchette)' : ''}.</div>`;
+}
 function updateResult() {
   const el = document.getElementById('res'), r = state.base;
   if (!el || !r) return;
   setTimeout(updateRent);
   setTimeout(renderSynth);
+  setTimeout(majGarageEst);
   const lines = adjustments(r);
   dampen(lines);
   const raw = lines.reduce((f, l) => f * (1 + (l.p || 0)), 1);
@@ -2737,7 +2765,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=53"></script>
+<script src="investissements.js?v=54"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
