@@ -80,6 +80,11 @@ test('Estimer « rénovation complète » → « Travaux + location » : travaux
   await estimer(page, {surf: 50, details: {etat: 'renover'}});
   await page.selectOption('#w_niveau', 'renover');
   await page.waitForFunction(() => state.projet && state.projet.niveau === 'renover');
+  assert.ok(await page.evaluate(() => state.projet.travaux) > 0);
+  // Coût total des travaux saisi à la main : il remplace le calcul au m²
+  await page.fill('#w_total', '60000'); await page.dispatchEvent('#w_total', 'change');
+  await page.waitForFunction(() => state.projet && state.projet.travaux === 60000);
+  assert.match(await page.locator('#works').innerText(), /montant que tu as saisi/i);
   const pj = await page.evaluate(() => state.projet);
   await page.click('#works button.cta >> nth=0');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
@@ -198,8 +203,14 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
   const pj = await page.evaluate(() => state.projet);
   assert.equal(pj.loyers.length, 2); assert.ok(pj.loyers[1] > 0 && pj.loyers[1] < pj.loyers[0]);
   assert.equal(pj.travaux, Math.round((30 * 1500 + 11000 + 3000) / 500) * 500);   // sous-sol 1 500 €/m², cuisine et compteurs, architecte
+  // Coût total saisi à la main : il remplace l'estimation, sans relancer l'estimation des logements
+  await page.fill('#w_total', '50000'); await page.dispatchEvent('#w_total', 'change');
+  await page.waitForFunction(() => state.projet && state.projet.travaux === 50000);
+  assert.deepEqual(await page.evaluate(() => state.projet.loyers), pj.loyers);
+  assert.match(await page.locator('#works').innerText(), /montant que tu as saisi/i);
   await page.click('#works .row button.cta >> nth=0');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.equal(+await valeur('travaux'), 50000);
   assert.equal(+await valeur('loyer'), pj.loyers[0]); assert.equal(+await valeur('loyer2'), pj.loyers[1]);
   assert.equal(+await valeur('debutLoyer2'), pj.duree + 1);
   assert.match(await page.locator('#cf_alerts').innerText(), /Deux loyers/);

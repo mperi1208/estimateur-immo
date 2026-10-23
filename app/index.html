@@ -1546,10 +1546,12 @@ function renderWorks() {
   const question = `<div class="crit"><div><label>Travaux prévus ?</label><select id="w_niveau">${opt(Object.fromEntries(Object.entries(NIVEAUX).map(([k, v]) => [k, v.l])), niveau)}</select></div>`;
   const bind = () => {
     const save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
-    document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; save(); renderWorks(); };
+    document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; choixTravaux.totalTravaux = null; save(); renderWorks(); };
     const g = document.getElementById('w_gamme'), d = document.getElementById('w_dpe');
     if (g) g.onchange = e => { choixTravaux.gamme = e.target.value; save(); updateResult(); };
     if (d) d.onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
+    const tt = document.getElementById('w_total');
+    if (tt) tt.onchange = e => { choixTravaux.totalTravaux = +e.target.value || null; save(); renderWorks(); };
   };
   if (niveau === 'diviser' || niveau === 'amenager') return projetSurface(el, niveau, question, z, surf);
   if (niveau === 'non') {
@@ -1563,8 +1565,9 @@ function renderWorks() {
   const gamme = GAMMES[choixTravaux.gamme] ? choixTravaux.gamme : 'standard';
   const meubleApres = louerMeuble();
   const eM2 = coutEnergie(dpe, cible, niveau), tM2 = Math.round(NIVEAUX[niveau][z] * GAMMES[gamme].mult);
-  const budget = Math.round((tM2 + eM2) * surf / 500) * 500;
-  const mobilier = meubleApres ? budgetMobilier(surf, gamme) : 0;
+  const suggere = Math.round((tM2 + eM2) * surf / 500) * 500, mobSuggere = meubleApres ? budgetMobilier(surf, gamme) : 0;
+  // Coût total saisi à la main (devis, budget, tout compris) : il remplace l'estimation au m², qui reste en suggestion
+  const saisi = +choixTravaux.totalTravaux > 0, budget = saisi ? +choixTravaux.totalTravaux : suggere, mobilier = saisi ? 0 : mobSuggere;
   const duree = NIVEAUX[niveau].mois + (eM2 ? 1 : 0);
   // Valeur et loyer « comme si » les travaux étaient faits : état selon la gamme, DPE visé
   const etatApres = niveau === 'aucun' ? etat : GAMMES[gamme].etat;
@@ -1581,6 +1584,7 @@ function renderWorks() {
   el.innerHTML = `${question}
       <div><label>Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
       <div><label>DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
+      <div><label>Coût total des travaux (€)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? budget : ''}" placeholder="${fmt(suggere + mobSuggere)} (estimé)"><div class="hint">Ton devis ou ton budget, tout compris${meubleApres ? ' (mobilier aussi)' : ''}. Vide : estimé ci-dessous.</div></div>
     </div>
     <div class="hint">${NIVEAUX[niveau].d}</div>
     <div class="kpis">
@@ -1591,7 +1595,7 @@ function renderWorks() {
     <div class="calc">
       <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
       <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
-      <div><span>Travaux : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>
+      ${saisi ? `<div><span>Travaux : montant que tu as saisi (estimé : ${fmtK(suggere + mobSuggere)})</span><b>${fmtK(budget)}</b></div>` : `<div><span>Travaux : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>`}
       ${mobilier ? `<div><span>Mobilier pour louer meublé<sup>${eM2 ? 3 : 2}</sup></span><b>${fmtK(mobilier)}</b></div>` : ''}
       <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
       <div><span>Rendement brut sur le coût total</span><b>${(loyerApres * 12 / (coutBien + mobilier) * 100).toFixed(1).replace('.', ',')} %</b></div>
@@ -1628,7 +1632,7 @@ function projetSurface(el, niveau, question, z, surf) {
         <div class="hint">Total ${fmt(lots.reduce((t, l) => t + l.surf, 0))} m² pour ${fmt(surf)} m² aujourd'hui.</div></div>`;
     avertissement = 'Copropriété : accord de l\'assemblée générale (règlement et état descriptif de division). Chaque logement : au moins 9 m² et 2,20 m sous plafond. Déclaration préalable en mairie, parfois permis de construire ; certaines communes demandent un « permis de diviser ».';
   } else {
-    const t = AMENAG[c.amenType] ? c.amenType : 'soussol', m2 = Math.max(5, +c.amenM2 || 20), cm2 = +c.amenCout || AMENAG[t].m2;
+    const t = AMENAG[c.amenType] ? c.amenType : 'soussol', m2 = Math.max(5, +c.amenM2 || 20), cm2 = AMENAG[t].m2;
     const dec = c.amenDecote != null && c.amenDecote !== '' ? Math.max(0, Math.min(80, +c.amenDecote)) : AMENAG[t].decote;
     const usage = c.amenUsage === 'lot' ? 'lot' : 'agrandir', utile = Math.round(m2 * (1 - dec / 100));
     // Agrandir : la surface gagnée vaut le prix au m² actuel, après décote ; le loyer suit la nouvelle surface (moteur)
@@ -1640,12 +1644,14 @@ function projetSurface(el, niveau, question, z, surf) {
     champs = `<div><label>Surface à aménager (m²)</label><input type="number" id="w_m2" min="5" value="${m2}"></div>
       <div><label>Où</label><select id="w_type">${opt(Object.fromEntries(Object.entries(AMENAG).map(([k, v]) => [k, v.l])), t)}</select></div>
       <div><label>Pour</label><select id="w_usage">${opt({agrandir: 'Agrandir le logement', lot: 'Créer un logement à part'}, usage)}</select></div>
-      <div><label>Coût (€/m²)</label><input type="number" id="w_cout" min="300" step="50" value="${cm2}"></div>
       <div><label>Décote de cette surface (%)</label><input type="number" id="w_decote" min="0" max="80" value="${dec}"><div class="hint">Moins de lumière, plafond plus bas : cette surface vaut ${dec} % de moins au m² que le logement principal.</div></div>`;
     avertissement = 'Une pièce habitable doit avoir 2,20 m sous plafond et une fenêtre sur l\'extérieur : caves, sous-sols et combles non aménagés ne peuvent pas être loués comme logement. Changement de destination : déclaration préalable ou permis ; en copropriété, accord si des parties communes sont touchées. Prévoir le traitement de l\'humidité en sous-sol.';
   }
-  const budget = Math.round(couts.reduce((t, x) => t + x[1], 0) / 500) * 500;
-  const mobilier = meuble ? lots.filter(l => !l.actuel).reduce((t, l) => t + budgetMobilier(l.surf, gamme), 0) : 0;
+  // Coût total saisi à la main (devis, budget, tout compris mobilier aussi) : il remplace l'estimation, qui reste en suggestion
+  const suggere = Math.round(couts.reduce((t, x) => t + x[1], 0) / 500) * 500;
+  const mobSuggere = meuble ? lots.filter(l => !l.actuel).reduce((t, l) => t + budgetMobilier(l.surf, gamme), 0) : 0;
+  const saisi = +c.totalTravaux > 0, budget = saisi ? +c.totalTravaux : suggere, mobilier = saisi ? 0 : mobSuggere;
+  champs += `<div><label>Coût total des travaux (€)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? +c.totalTravaux : ''}" placeholder="${fmt(suggere + mobSuggere)} (estimé)"><div class="hint">Ton devis ou ton budget, tout compris${meuble ? ' (mobilier aussi)' : ''}. Vide : estimé ci-dessous.</div></div>`;
   const criteresLot = l => ({...saved, ...(niveau === 'diviser' ? {etat: GAMMES[gamme].etat, dpe: cible} : {}), location: meuble ? 'meuble' : 'vide', chambre: false});
   const cle = JSON.stringify([state.lat, state.lon, state.type, niveau, lots.map(l => [l.surf, !!l.actuel]), gamme, cible, meuble, saved]);
   const calc = state.calcProjet && state.calcProjet.cle === cle ? state.calcProjet : null;
@@ -1664,8 +1670,9 @@ function projetSurface(el, niveau, question, z, surf) {
       <div class="calc">
         <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
         <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
-        ${couts.map(([l, v]) => `<div><span>${l}</span><b>${fmtK(v)}</b></div>`).join('')}
-        ${mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${fmtK(mobilier)}</b></div>` : ''}
+        ${saisi ? `<div><span>Travaux : montant que tu as saisi (estimé : ${fmtK(suggere + mobSuggere)})</span><b>${fmtK(budget)}</b></div>`
+          : `${couts.map(([l, v]) => `<div><span>${l}</span><b>${fmtK(v)}</b></div>`).join('')}
+        ${mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${fmtK(mobilier)}</b></div>` : ''}`}
         <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
         <div><span>Rendement brut sur le coût total</span><b>${(loyer * 12 / (coutBien + mobilier) * 100).toFixed(1).replace('.', ',')} %</b></div>
       </div>
@@ -1678,11 +1685,13 @@ function projetSurface(el, niveau, question, z, surf) {
     <div class="range">${avertissement}</div>`;
   // Réglages
   const maj = () => { save(); state.calcProjet = null; renderWorks(); };
-  document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; maj(); };
+  document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; choixTravaux.totalTravaux = null; maj(); };
+  // Le montant saisi ne change pas les logements estimés : pas besoin de relancer l'estimation
+  document.getElementById('w_total').onchange = e => { c.totalTravaux = +e.target.value || null; save(); renderWorks(); };
   const on = (id, f) => { const x = document.getElementById(id); if (x) x.onchange = e => { f(e.target.value); maj(); }; };
   on('w_nb', v => { c.nbLots = +v; c.surfaces = []; }); on('w_gamme', v => c.gamme = v);
-  on('w_m2', v => c.amenM2 = +v); on('w_type', v => { c.amenType = v; c.amenCout = null; c.amenDecote = null; }); on('w_usage', v => c.amenUsage = v);
-  on('w_cout', v => c.amenCout = +v); on('w_decote', v => c.amenDecote = v);
+  on('w_m2', v => c.amenM2 = +v); on('w_type', v => { c.amenType = v; c.amenDecote = null; }); on('w_usage', v => c.amenUsage = v);
+  on('w_decote', v => c.amenDecote = v);
   el.querySelectorAll('[data-lot]').forEach(x => x.onchange = () => { c.surfaces = lots.map((l, i) => i === +x.dataset.lot ? +x.value : l.surf); maj(); });
   // Estimation de chaque logement par le moteur
   document.getElementById('w_calc').onclick = async () => {
@@ -3000,7 +3009,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=62"></script>
+<script src="investissements.js?v=63"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

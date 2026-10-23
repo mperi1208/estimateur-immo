@@ -1677,7 +1677,7 @@ racine.addEventListener('click', async e => {
     showTab('estimation');
     reprendre({label: p.geo.label, lat: p.geo.lat, lon: p.geo.lon, type: TYPE_DVF[p.type] || TYPE_DVF.appart, surf: p.surface, since: 'auto',
       criteres: {...criteresEffectifs(p), location: q.saison ? 'saison' : q.meuble ? 'meuble' : 'vide'},
-      travaux: {niveau: 'amenager', amenType: q.t, amenM2: q.m2, amenUsage: 'lot', amenCout: null, amenDecote: b.amenag.decote ?? null}});
+      travaux: {niveau: 'amenager', amenType: q.t, amenM2: q.m2, amenUsage: 'lot', totalTravaux: b.amenag.total || null, amenDecote: b.amenag.decote ?? null}});
     return;
   }
   if (a === 'amenagFait') {
