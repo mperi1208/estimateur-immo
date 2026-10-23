@@ -70,9 +70,15 @@ function analyseReneg(p, e, sci) {
 // ---------- Rentabilité d'un bien (avant impôts) ----------
 const LOUE = ['vide', 'meuble', 'saisonnier', 'colocation', 'lots'];
 const LISTES = {colocation: {cle: 'chambres', nom: 'Chambre', titre: 'Chambres louées', ajout: '+ Ajouter une chambre'},
-  lots: {cle: 'lots', nom: 'Logement', titre: 'Logements', ajout: '+ Ajouter un logement'}};
-// Loyer mensuel d'un logement : un seul loyer, ou la somme des chambres (colocation) ou des lots (bien divisé)
-const loyerLogement = b => LISTES[b.location.statut] ? somme(b[LISTES[b.location.statut].cle] || [], x => x.loyer) : b.location.loyer || 0;
+  lots: {cle: 'lots', nom: 'Logement', titre: 'Logements', ajout: '+ Ajouter un loyer'}};
+// Loyer mensuel d'un logement : un seul loyer, ou la somme des chambres (colocation) ou des lots (bien divisé, annexe louée à part)
+const lignesLoyer = b => LISTES[b.location.statut] ? b[LISTES[b.location.statut].cle] || [] : null;
+const loyerLogement = b => lignesLoyer(b) ? somme(lignesLoyer(b), x => x.loyer) : b.location.loyer || 0;
+// Chaque chambre ou lot peut avoir son propre début de loyer (logement créé, garage aménagé…) : sans date, il est déjà loué.
+// Mois de loyer sur les 12 prochains mois, et loyer encaissé ce mois-ci
+const moisDeLoyer = (debut, auj = moisCourant()) => (debut = normMois(debut)) ? Math.max(0, Math.min(12, 12 - ecartMois(auj, debut))) : 12;
+const commence = (x, auj = moisCourant()) => !normMois(x.debut) || ecartMois(normMois(x.debut), auj) >= 0;
+const loyerActuel = b => lignesLoyer(b) ? somme(lignesLoyer(b).filter(x => commence(x)), x => x.loyer) : loyerLogement(b);
 const STATUTS_TERRAIN = {loue: 'Loué (bail)', activites: 'Activités qui rapportent', perso: 'Usage personnel', libre: 'Non exploité'};
 const NATURES = {'': '—', constructible: 'Constructible', agricole: 'Agricole', naturel: 'Naturel / boisé', loisirs: 'Loisirs / agrément', stockage: 'Parking / stockage', autre: 'Autre'};
 const BAUX = {'': '—', rural: 'Bail rural (fermage)', commercial: 'Bail commercial', precaire: 'Convention d\'occupation précaire', parking: 'Location parking / stockage', autre: 'Autre'};
@@ -91,8 +97,10 @@ function calculs(b) {
   const actifs = prets.filter(x => x.e && x.e.mois > 0);
   const terrain = b.type === 'terrain';
   const loue = terrain ? ['loue', 'activites'].includes(b.location.statut) : LOUE.includes(b.location.statut);
-  const loyersAn = terrain ? revenusTerrain(b) : (loue ? loyerLogement(b) : 0) * 12 * (1 - Math.min(12, b.location.vacance || 0) / 12);
-  const loyerMois = terrain ? loyersAn / 12 : loue ? loyerLogement(b) : 0;
+  const lignes = lignesLoyer(b), vac = 1 - Math.min(12, b.location.vacance || 0) / 12;
+  const loyersAn = terrain ? revenusTerrain(b) : !loue ? 0 : lignes ? somme(lignes, x => (x.loyer || 0) * moisDeLoyer(x.debut)) * vac : loyerLogement(b) * 12 * vac;
+  const loyerMois = terrain ? loyersAn / 12 : loue ? loyerActuel(b) : 0;
+  const loyerPlein = terrain ? loyerMois : loue ? loyerLogement(b) : 0;   // tous les loyers commencés : pour le rendement
   const c = b.chargesAn;
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100;
   const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
@@ -101,7 +109,7 @@ function calculs(b) {
   return {prets, loue, loyerMois, loyersAn, chargesAn, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
     mensuCredit: somme(actifs, x => x.e.pause ? 0 : x.e.M + x.e.assur), interetsAn: somme(actifs, x => x.e.interets + x.e.assur * x.e.payes),
     capitalAn: somme(actifs, x => x.e.capital), emprunte: somme(b.prets, p => p.montant),
-    brut: cout > 0 && loyerMois ? loyerMois * 12 / cout : null, net: cout > 0 && loue ? (loyersAn - chargesAn) / cout : null,
+    brut: cout > 0 && loyerPlein ? loyerPlein * 12 / cout : null, net: cout > 0 && loue ? (loyersAn - chargesAn) / cout : null,
     patrimoine: b.valeur > 0 ? b.valeur - crd : null, plusValue: b.valeur > 0 && cout > 0 ? b.valeur - cout : null};
 }
 
@@ -525,7 +533,7 @@ const TYPES = {
   terrain: {l: 'Terrain', i: '<path d="M3 20l6-9 4 5 3-4 5 8zM15 6a2 2 0 104 0 2 2 0 10-4 0"/>'},
 };
 const icone = t => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${(TYPES[t] || TYPES.appart).i}</svg>`;
-const STATUTS = {vide: 'Loué vide', meuble: 'Loué meublé', colocation: 'Loué en colocation', lots: 'Divisé en plusieurs logements', saisonnier: 'Location saisonnière', vacant: 'Vacant', rp: 'Résidence principale', secondaire: 'Résidence secondaire', travaux: 'En travaux'};
+const STATUTS = {vide: 'Loué vide', meuble: 'Loué meublé', colocation: 'Loué en colocation', lots: 'Plusieurs loyers (bien divisé, annexe…)', saisonnier: 'Location saisonnière', vacant: 'Vacant', rp: 'Résidence principale', secondaire: 'Résidence secondaire', travaux: 'En travaux'};
 const mini = (items, cls = '') => {
   const l = items.filter(x => x && x[1] != null && x[1] !== '');
   return l.length ? `<div class="mini ${cls}">${l.map(([k, v, c]) => `<div><span>${k}</span><b class="${c || ''}">${v}</b></div>`).join('')}</div>` : '';
@@ -812,9 +820,10 @@ function locationHTML(b) {
     const liste = b[Lc.cle] || [];
     return section('Location', `<div class="grille">${champ(b, 'location.statut', 'Situation', {options: STATUTS})}</div>
       <div class="activites">${liste.map((x, i) => `<div class="activite"><div class="grille">
-        ${champ(b, `${Lc.cle}.${i}.libelle`, Lc.nom, {type: 'text', ph: `${Lc.nom} ${i + 1}`})}${champ(b, `${Lc.cle}.${i}.loyer`, 'Loyer hors charges (€/mois)', {step: 10})}
-        ${Lc.cle === 'lots' ? champ(b, `lots.${i}.surface`, 'Surface (m²)') : ''}${champ(b, `${Lc.cle}.${i}.locataire`, 'Locataire', {type: 'text'})}</div>
-        <button class="lien" data-a="supprLigne" data-i="${i}">Retirer</button></div>`).join('') || `<div class="aide">Ajoute ${Lc.cle === 'lots' ? 'chaque logement' : 'chaque chambre'} avec son loyer.</div>`}</div>
+        ${champ(b, `${Lc.cle}.${i}.libelle`, Lc.nom, {type: 'text', ph: Lc.cle === 'lots' ? `Loyer ${i + 1} (ex. appartement, garage aménagé)` : `${Lc.nom} ${i + 1}`})}${champ(b, `${Lc.cle}.${i}.loyer`, 'Loyer hors charges (€/mois)', {step: 10})}
+        ${Lc.cle === 'lots' ? champ(b, `lots.${i}.surface`, 'Surface (m²)') : ''}${champ(b, `${Lc.cle}.${i}.locataire`, 'Locataire', {type: 'text'})}
+        ${champ(b, `${Lc.cle}.${i}.debut`, 'Loyer à partir de', {type: 'month', aide: 'Vide : déjà loué'})}</div>
+        <button class="lien" data-a="supprLigne" data-i="${i}">Retirer</button></div>`).join('') || `<div class="aide">Ajoute ${Lc.cle === 'lots' ? 'chaque logement (ou le garage, l\'annexe aménagée…)' : 'chaque chambre'} avec son loyer et le mois où il commence.</div>`}</div>
       <button data-a="ajoutLigne">${Lc.ajout}</button>
       <div class="grille" style="margin-top:10px">${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}</div>
       <div class="total" id="inv_revTotal"></div>`);
@@ -1046,7 +1055,7 @@ function majCalculs(b) {
     <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
   // Total des revenus d'un terrain, mis à jour sans reconstruire la section (pour garder le champ en cours)
   const rt = q('#inv_revTotal');
-  if (rt) rt.innerHTML = b.type !== 'terrain' && LISTES[b.location.statut] ? (n => n ? `${n} ${b.location.statut === 'lots' ? 'logement' : 'chambre'}${n > 1 ? 's' : ''} : <b>${eur(loyerLogement(b))}</b> par mois au total, ${eur(c.loyersAn)} par an après vacance.` : '')((b[LISTES[b.location.statut].cle] || []).length)
+  if (rt) rt.innerHTML = b.type !== 'terrain' && LISTES[b.location.statut] ? (l => l.length ? `${l.length} ${b.location.statut === 'lots' ? 'loyer' : 'chambre'}${l.length > 1 ? 's' : ''} : <b>${eur(loyerLogement(b))}</b> par mois au total${(a => a.length ? ` (dont ${a.map(x => `${eur(x.loyer || 0)} à partir de ${libMois(normMois(x.debut))}`).join(', ')})` : '')(l.filter(x => !commence(x)))}, ${eur(c.loyersAn)} sur les 12 prochains mois après vacance.` : '')(lignesLoyer(b))
     : c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
   const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
   q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
@@ -1188,7 +1197,7 @@ racine.addEventListener('click', async e => {
     return;
   }
   if (a === 'venteSortir') { b.vente = b.vente || {}; b.vente.sortir = t.dataset.v === '1'; sauver(b); racine.querySelectorAll('.vente-sortie button').forEach(x => x.classList.toggle('on', x === t)); return majVente(b); }
-  if (a === 'ajoutLigne' && LISTES[b.location.statut]) { const k = LISTES[b.location.statut].cle; (b[k] = b[k] || []).push({id: uid(), libelle: '', loyer: null, locataire: ''}); sauver(b); return vueDetail(b); }
+  if (a === 'ajoutLigne' && LISTES[b.location.statut]) { const k = LISTES[b.location.statut].cle; (b[k] = b[k] || []).push({id: uid(), libelle: '', loyer: null, locataire: '', debut: ''}); sauver(b); return vueDetail(b); }
   if (a === 'supprLigne' && LISTES[b.location.statut] && confirm('Retirer cette ligne ?')) { b[LISTES[b.location.statut].cle].splice(+t.dataset.i, 1); sauver(b); return vueDetail(b); }
   if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
   if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
@@ -1252,6 +1261,7 @@ racine.addEventListener('change', async e => {
     if (terrain && !STATUTS_TERRAIN[st]) b.location.statut = 'libre';
     if (!terrain && !STATUTS[st]) b.location.statut = st === 'perso' ? 'rp' : st === 'loue' ? 'vide' : 'vacant';
   }
+  if (chemin === 'location.statut' && v === 'lots' && !(b.lots || []).length && b.location.loyer) b.lots = [{id: uid(), libelle: 'Loyer 1', loyer: b.location.loyer, locataire: b.location.locataire || '', debut: b.location.debutBail && ecartMois(b.location.debutBail, moisCourant()) < 0 ? b.location.debutBail : ''}];
   if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver(b);
