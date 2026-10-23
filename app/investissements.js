@@ -336,7 +336,7 @@ function criteresEffectifs(b) {
   if (b.annee > 1500) c.epoque = EPOQUES.find(([y]) => b.annee < y)[1];
   return c;
 }
-const cleEstimation = b => { if (b.type === 'terrain') return JSON.stringify([b.adresse.trim(), 'terrain', b.surface, b.nature || '']); const c = criteresEffectifs(b); delete c.location; return JSON.stringify([b.adresse.trim(), b.type, b.surface, c]); };
+const cleEstimation = b => { if (b.type === 'parking') return JSON.stringify([b.adresse.trim(), 'parking']); if (b.type === 'terrain') return JSON.stringify([b.adresse.trim(), 'terrain', b.surface, b.nature || '']); const c = criteresEffectifs(b); delete c.location; return JSON.stringify([b.adresse.trim(), b.type, b.surface, c]); };
 const cleAncienne = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);   // estimations faites avant (location comprise)
 // Loyers de marché d'une estimation : vide et meublé (les anciennes n'en ont qu'un, celui de la location d'alors)
 function loyersMarche(e) {
@@ -348,7 +348,9 @@ const meubleBien = b => ['meuble', 'saisonnier', 'colocation'].includes(b.locati
 // Terrains : codes DVF (le filtre de l'API prend le début du code) — un terrain à bâtir se vend souvent
 // 50 à 100 fois plus cher au m² qu'un pré, d'où une comparaison seulement entre terrains de même nature
 const NATURE_DVF = {constructible: '21', agricole: '231', naturel: '232,233,239', loisirs: '22', stockage: '22', autre: '2'};
-const estimable = b => (TYPE_DVF[b.type] || (b.type === 'terrain' && NATURE_DVF[b.nature])) && (b.adresse.trim().length >= 5 || (b.geo && b.geo.manuel)) && b.surface >= (b.type === 'terrain' ? 50 : 9);
+const placeOk = b => b.adresse.trim().length >= 5 || (b.geo && b.geo.manuel);
+// Garage, box, place : estimé à l'unité (la surface d'un parking n'est presque jamais dans les actes)
+const estimable = b => b.type === 'parking' ? placeOk(b) : (TYPE_DVF[b.type] || (b.type === 'terrain' && NATURE_DVF[b.nature])) && placeOk(b) && b.surface >= (b.type === 'terrain' ? 50 : 9);
 function versTerrain(f) {
   const p = f.properties, prix = +p.valeurfonc, st = +p.sterr;
   if (!(prix > 500) || !(st >= 50) || +p.sbati > 0 || /^Echange|^Adjudication|^Expropriation/.test(p.libnatmut || '')) return null;
@@ -356,10 +358,10 @@ function versTerrain(f) {
   return {id: p.idopendata, prix, st, ppm: prix / st, date: p.datemut, code: p.codtypbien,
     lon: ring.reduce((t, c) => t + c[0], 0) / ring.length, lat: ring.reduce((t, c) => t + c[1], 0) / ring.length};
 }
-async function boiteTerrains(lon0, lat0, lon1, lat1, codes, anMin) {
+async function boiteTerrains(lon0, lat0, lon1, lat1, codes, anMin, conv = versTerrain) {
   let url = `${API}?in_bbox=${[lon0, lat0, lon1, lat1].map(v => v.toFixed(5)).join(',')}&codtypbien=${codes}&anneemut_min=${anMin}&page_size=500`;
   const out = [];
-  for (let k = 0; url && k < 6; k++) { const js = await getJSON(url); out.push(...js.features.map(versTerrain).filter(Boolean)); url = js.next; }
+  for (let k = 0; url && k < 6; k++) { const js = await getJSON(url); out.push(...js.features.map(conv).filter(Boolean)); url = js.next; }
   return out;
 }
 const medianePonderee = (l, q = 0.5) => {
@@ -412,6 +414,45 @@ async function estimerTerrain(lat, lon, surf, nature) {
     periode: `${an - periode}–${an}`, terrain: true, ecartees, seuil: seuil && Math.round(seuil),
     fiabilite: nature === 'autre' ? 'Fiabilité faible (toutes natures mêlées)' : l.length >= 20 && disp < 3 ? 'Fiabilité bonne' : l.length >= 8 && disp < 5 ? 'Fiabilité moyenne' : 'Fiabilité faible'};
 }
+// Garages, box et places vendus seuls (DVF : « dépendance », code 13) : prix à l'unité, ventes d'une seule dépendance
+function versDependance(f) {
+  const p = f.properties, prix = +p.valeurfonc;
+  if (!(prix >= 1000 && prix <= 250000) || /^Echange|^Adjudication|^Expropriation/.test(p.libnatmut || '')) return null;
+  if (p.codtypbien && !/^13/.test(String(p.codtypbien))) return null;
+  if (/^132/.test(String(p.codtypbien || ''))) return null;   // plusieurs dépendances dans la même vente : prix d'un lot
+  const ring = f.geometry?.coordinates?.[0]?.[0]; if (!ring) return null;
+  return {id: p.idopendata, prix, date: p.datemut, garage: /^1311/.test(String(p.codtypbien || '')),
+    lon: ring.reduce((t, c) => t + c[0], 0) / ring.length, lat: ring.reduce((t, c) => t + c[1], 0) / ring.length};
+}
+async function estimerDependance(lat, lon) {
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540, an = new Date().getFullYear();
+  let comps = [], periode = 5;
+  for (const p of [5, 10]) {
+    periode = p;
+    const vus = new Map();
+    for (const boites of searchSteps(lat, lon)) {
+      for (const v of (await Promise.all(boites.map(bx => boiteTerrains(...bx, '13', an - p, versDependance)))).flat()) {
+        if (vus.has(v.id)) continue;
+        v.d = Math.hypot((v.lon - lon) * kx, (v.lat - lat) * ky);
+        if (v.d <= 8000) vus.set(v.id, v);
+      }
+      comps = [...vus.values()];
+      if (comps.length >= 25) break;
+    }
+    if (comps.length >= 10) break;
+  }
+  if (comps.length < 3) return {erreur: `Pas assez de garages ou parkings vendus seuls autour (${comps.length} en 10 ans). Renseigne la valeur à la main.`};
+  // Plus proche et plus récent = plus de poids ; puis on écarte les prix aberrants (lots mal saisis, places de stationnement d'un ensemble)
+  const poids = v => 1 / (1 + v.d / 600) / (1 + Math.max(0, an - +v.date.slice(0, 4)) / 5);
+  let l = comps.map(v => [v.prix, poids(v), v]);
+  const m0 = medianePonderee(l);
+  l = l.filter(([x]) => x > m0 / 3 && x < m0 * 3);
+  const med = medianePonderee(l), lo = medianePonderee(l, 0.25), hi = medianePonderee(l, 0.75), rayon = Math.max(...l.map(x => x[2].d));
+  const disp = hi / Math.max(lo, 1);
+  return {prix: Math.round(med / 500) * 500, lo: Math.round(lo / 500) * 500, hi: Math.round(hi / 500) * 500, ventes: l.length, rayon: Math.round(rayon),
+    periode: `${an - periode}–${an}`, dependance: true,
+    fiabilite: l.length >= 20 && disp < 1.8 ? 'Fiabilité bonne' : l.length >= 8 && disp < 2.5 ? 'Fiabilité moyenne' : 'Fiabilité faible'};
+}
 const enCours = new Set();
 async function estimerBien(b0) {
   let b = b0;
@@ -425,7 +466,8 @@ async function estimerBien(b0) {
       if (!f) throw new Error('Adresse introuvable : place le bien sur la carte (sous l\'adresse), ou ajoute la ville ou le code postal.');
       b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
     }
-    const res = b.type === 'terrain' ? await estimerTerrain(b.geo.lat, b.geo.lon, b.surface, b.nature)
+    const res = b.type === 'parking' ? await estimerDependance(b.geo.lat, b.geo.lon)
+      : b.type === 'terrain' ? await estimerTerrain(b.geo.lat, b.geo.lon, b.surface, b.nature)
       : await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
     // Le bien a pu être remplacé entre-temps par sa version du compte (autre page) : on écrit dans la version actuelle
     const geo = b.geo; b = biens.find(x => x.id === b.id) || b; if (!b.geo || b.geo.pour !== geo.pour) b.geo = geo;
@@ -451,11 +493,11 @@ function majAuto(b) {
   // Le bouton en bas des caractéristiques : seul moyen de lancer l'estimation
   if (btn) {
     btn.disabled = !estimable(b) || enCours.has(b.id);
-    btn.textContent = enCours.has(b.id) ? 'Estimation en cours…' : !estimable(b) ? (b.type === 'terrain' && !NATURE_DVF[b.nature] ? 'Estimer ce terrain (choisis sa nature)' : 'Estimer ce bien (adresse et surface à remplir)') : e && !e.erreur && a_jour ? 'Estimer à nouveau' : 'Estimer ce bien';
+    btn.textContent = enCours.has(b.id) ? 'Estimation en cours…' : !estimable(b) ? (b.type === 'terrain' && !NATURE_DVF[b.nature] ? 'Estimer ce terrain (choisis sa nature)' : b.type === 'parking' ? 'Estimer ce garage (adresse à remplir)' : 'Estimer ce bien (adresse et surface à remplir)') : e && !e.erreur && a_jour ? 'Estimer à nouveau' : 'Estimer ce bien';
   }
   let h;
   if (b.type === 'terrain' && !NATURE_DVF[b.nature]) h = '<div class="aide">Choisis la nature du terrain (constructible, agricole…) : l\'estimation compare avec les ventes de terrains de même nature, dont les prix au m² n\'ont rien à voir d\'une nature à l\'autre.</div>';
-  else if (!TYPE_DVF[b.type] && b.type !== 'terrain') h = '<div class="aide">Estimation automatique disponible pour les appartements, les maisons et les terrains : renseigne la valeur à la main.</div>';
+  else if (!TYPE_DVF[b.type] && b.type !== 'terrain' && b.type !== 'parking') h = '<div class="aide">Estimation automatique disponible pour les appartements, les maisons, les terrains et les garages : renseigne la valeur à la main.</div>';
   else if (enCours.has(b.id)) {
     const t0 = Date.now();
     h = '<div class="auto-cours"><span class="rond"></span>Recherche des ventes comparables… <span id="inv_chrono"></span></div>';
@@ -467,6 +509,18 @@ function majAuto(b) {
   }
   else if (!e) h = `<div class="aide">${estimable(b) ? 'Règle les caractéristiques, puis clique sur « Estimer ce bien ».' : 'Renseigne l\'adresse et la surface, règle les caractéristiques, puis clique sur « Estimer ce bien ».'}</div>`;
   else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)}</div>`;
+  else if (e.dependance) {
+    const rev = calculs(b).loyersAn;
+    h = `<div class="auto-res${a_jour ? '' : ' perime'}">
+      <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
+        <div><span>Ventes comparées</span><b>${e.ventes}</b><small>garages, box et places vendus seuls, à moins de ${dist(e.rayon)}</small></div>
+        ${rev ? `<div><span>Rendement brut</span><b>${pct(rev / e.prix)}</b><small>loyer actuel, sur la valeur</small></div>` : ''}</div>
+      ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
+      <div class="aide">Les actes ne disent pas si c'est un box fermé ou une simple place : un box se vend plutôt dans le haut de la fourchette, une place extérieure dans le bas.</div>
+      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
+    </div>
+    ${!a_jour ? '<div class="aide">Adresse modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
+  }
   else if (e.terrain) {
     const rev = calculs(b).loyersAn;
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
@@ -795,7 +849,7 @@ function vueDetail(b) {
       <div class="part-ligne"><input type="range" id="inv_part" data-p="part" min="1" max="100" step="1" value="${Math.round(partDe(b) * 100)}"><output id="inv_partVal" for="inv_part">${Math.round(partDe(b) * 100)} %</output></div>
       <div class="aide">Pour un bien à plusieurs (indivision, famille…) : les totaux de « Mon patrimoine » ne comptent que cette part.</div></div>
     ${critHTML(b)}
-    ${TYPE_DVF[b.type] || b.type === 'terrain' ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
+    ${TYPE_DVF[b.type] || b.type === 'terrain' || b.type === 'parking' ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
       ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`)}
