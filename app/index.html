@@ -549,6 +549,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
     <div><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
     <div><label>2e loyer (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="facultatif"><div class="hint">Division, garage ou annexe louée à part</div></div>
+    <div data-loyer2 hidden><label>1er loyer à partir du mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"><div class="hint" id="cf_debutLoyer1Hint">Vide : après le chantier</div></div>
     <div data-loyer2 hidden><label>2e loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
   </div><button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button></div>
 
@@ -2130,9 +2131,9 @@ const $ = id => document.getElementById('cf_' + id);
 const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier', 'struct', 'meuble', 'regime', 'tmi', 'terrain', 'distrib',
   'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'tf', 'copro', 'pno',
   'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit', 'sciExist',
-  'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2'];
+  'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2', 'debutLoyer1'];
 // 2e loyer (bien divisé, annexe louée à part) : absent des projets enregistrés avant lui, donc remis à zéro à leur réouverture
-const SANS_LOYER2 = {loyer2: '', debutLoyer2: 1};
+const SANS_LOYER2 = {loyer2: '', debutLoyer2: 1, debutLoyer1: ''};
 const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
@@ -2238,7 +2239,7 @@ function sync(est, mode) {
     // Plusieurs logements : le premier en loyer, les autres en 2e loyer (à partir de la fin du chantier)
     const [l1, ...autres] = pj.loyers && pj.loyers.length > 1 ? pj.loyers : [pj.loyerApres], l2 = autres.reduce((t, x) => t + x, 0);
     set('loyer', l1); flags.loyers = {avant: est.loyer, apres: l1, loyer2: l2 || null}; set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
-    if (l2) { set('loyer2', l2); set('debutLoyer2', pj.duree + 1); } else for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
+    if (l2) { set('loyer2', l2); set('debutLoyer2', pj.duree + 1); set('debutLoyer1', ''); } else for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
     if (!flags.comptaManuel) set('compta', comptaDefaut(pj.meuble));
     sauver();
   }
@@ -2272,6 +2273,8 @@ function afficherChamps() {
   CF.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
   CF.querySelectorAll('[data-revente]').forEach(e => e.hidden = get('scenario') !== 'revendre');
   CF.querySelectorAll('[data-loyer2]').forEach(e => e.hidden = !(get('loyer2') > 0));
+  $('debutLoyer1').placeholder = ouvert('projet') ? String(get('dureeTravaux') + 1) : '1';
+  $('debutLoyer1Hint').textContent = ouvert('projet') ? `Vide : après le chantier (mois ${get('dureeTravaux') + 1}). 1 = déjà loué pendant les travaux` : '1 = dès l\'achat';
   CF.querySelectorAll('#cf_scen button').forEach(b => b.classList.toggle('on', b.dataset.v === get('scenario')));
 }
 
@@ -2300,7 +2303,7 @@ function simuler() {
   // Travaux : comptés seulement si la section est ouverte ; le loyer démarre à la fin du chantier
   const travauxOn = ouvert('projet');
   if (!travauxOn) { p.travaux = 0; p.valeurApres = 0; p.dureeTravaux = 0; }
-  p.debutLoc = travauxOn ? p.dureeTravaux : 0;
+  p.debutLoc = p.loyer2 > 0 && p.debutLoyer1 ? Math.max(0, Math.round(p.debutLoyer1) - 1) : travauxOn ? p.dureeTravaux : 0;
   // 2e loyer : son propre début (mois 1 = dès l'achat) ; tous les loyers tournent à partir de debutPlein
   p.debutLoc2 = Math.max(0, Math.round(p.debutLoyer2 || 1) - 1);
   p.loyerTotal = p.loyer + p.loyer2;
