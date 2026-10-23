@@ -1610,11 +1610,11 @@ function projetSurface(el, niveau, question, z, surf) {
     const notaire = state.prix * 0.08, coutBien = state.prix + notaire + budget, marge = valeur - coutBien;
     state.projet = {travaux: budget, valeurApres: Math.round(valeur), loyerApres: Math.round(loyer), duree, niveau, dpe: cible, gamme, meuble, mobilier, lots: lots.length};
     res = `<div class="kpis">
-        <div class="kpi"><div class="k">Valeur après projet</div><div class="v">${fmtK(valeur)}</div><div class="d">${lots.length > 1 ? lots.length + ' logements' : 'logement agrandi'}</div></div>
+        <div class="kpi"><div class="k">Valeur après projet</div><div class="v">${fmtK(valeur)}</div><div class="d">${lots.length > 1 ? calc.lots.map(l => fmtK(l.prix)).join(' + ') + ' · ' + lots.length + ' logements, vendables séparément' : 'logement agrandi'}</div></div>
         <div class="kpi"><div class="k">Loyers après projet</div><div class="v">${fmt(loyer)} €</div><div class="d">${calc.lots.length > 1 ? calc.lots.map(l => fmt(l.loyer) + ' €').join(' + ') + ' · ' : ''}${meuble ? 'meublé' : 'vide'}, hors charges/mois · aujourd'hui ${fmt(state.loyerHC)} €</div></div>
         <div class="kpi"><div class="k">Valeur créée</div><div class="v ${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+' : '−'}${fmtK(Math.abs(marge))}</div><div class="d">après achat, notaire et travaux</div></div>
       </div>
-      <div class="calc">${calc.lots.map((l, i) => `<div><span>${calc.lots.length > 1 ? `Loyer ${i + 1} : ` : ''}${l.nom} · ${fmt(l.surf)} m²${l.actuel ? ' (inchangé)' : ''}</span><b>${fmtK(l.prix)} · ${fmt(l.loyer)} €/mois</b></div>`).join('')}</div>
+      ${calc.lots.length > 1 ? '<div class="hint">Prix de vente et loyer de chaque logement :</div>' : ''}<div class="calc">${calc.lots.map((l, i) => `<div><span>${calc.lots.length > 1 ? `Logement ${i + 1} : ` : ''}${l.nom} · ${fmt(l.surf)} m²${l.actuel ? ' (inchangé)' : ''}</span><b>${fmtK(l.prix)} · ${fmt(l.loyer)} €/mois</b></div>`).join('')}</div>
       <div class="calc">
         <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
         <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
