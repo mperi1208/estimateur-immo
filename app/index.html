@@ -2030,12 +2030,15 @@ async function majVersion() {
   try {
     const r = await fetch(location.pathname, {method: 'HEAD', cache: 'no-store'}), lm = r.headers.get('last-modified');
     const enLigne = lm ? new Date(lm) : null;
-    if (enLigne && enLigne - ici > 60000) {
-      el.innerHTML = `Version du ${dateVersion(ici)} · <b>une version plus récente est en ligne</b> (${dateVersion(enLigne)})<button class="lien" id="versionRecharger">Recharger</button>`;
-      el.querySelector('#versionRecharger').onclick = () => location.reload();
-    } else el.textContent += ' · à jour';
+    if (enLigne && enLigne - ici > 60000) el.innerHTML = `Version du ${dateVersion(ici)} · <b>une version plus récente est en ligne</b> (${dateVersion(enLigne)})`;
+    else el.textContent += ' · à jour';
   } catch (e) {}
+  el.insertAdjacentHTML('beforeend', '<button class="lien" id="versionRecharger">Recharger</button>');
+  el.querySelector('#versionRecharger').onclick = recharger;
 }
+// Recharger en contournant les caches (navigateur et serveur) : paramètre unique, retiré de l'adresse au chargement
+function recharger() { location.replace(location.pathname + '?r=' + Date.now() + location.hash); }
+if (/[?&]r=\d+/.test(location.search)) history.replaceState(null, '', location.pathname + location.search.replace(/[?&]r=\d+/, '').replace(/^&/, '?') + location.hash);
 function ouvrirCompte(mode = 'connexion') {
   const dlg = document.getElementById('compteDlg'), body = document.getElementById('compteBody');
   const retour = location.origin + location.pathname;
