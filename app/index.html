@@ -296,6 +296,23 @@ body.discret #invest :is(.chiffres-arbre b, .kpi .v, .kpi .d, .chiffres b, .mini
 .invwrap .mini.petit b{font-size:13px;font-weight:600}
 .invwrap .ta-part{margin:-6px 0 16px;padding:10px 14px;border-radius:12px;background:var(--accent-soft)}
 .invwrap .ta-part-titre{font-size:13px;font-weight:700;color:var(--accent)}
+/* Garage, parking, annexe associé à un bien */
+.invwrap .associes-bien{display:grid;gap:8px;margin-bottom:10px}
+.invwrap a.associe-bien{display:grid;grid-template-columns:24px minmax(0,1fr) auto 14px;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none}
+.invwrap a.associe-bien:hover{border-color:var(--accent)}
+.invwrap a.associe-bien .ico-n{color:var(--accent);display:inline-flex}.invwrap a.associe-bien .ico-n svg{width:20px;height:20px}
+.invwrap a.associe-bien .nom-a{display:flex;flex-direction:column;min-width:0}.invwrap a.associe-bien small{color:var(--muted);font-size:12px}
+.invwrap a.associe-bien .mini{margin:0}.invwrap a.associe-bien .chev{font-size:20px}
+@media (max-width:520px){.invwrap a.associe-bien{grid-template-columns:24px minmax(0,1fr) 14px}.invwrap a.associe-bien .mini{grid-column:2/3;grid-row:2}}
+.invwrap .bloc .case label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;color:var(--ink);margin:10px 0 0}
+.invwrap .bloc .case input{width:auto}
+.invwrap .lie-a{margin:-6px 0 14px;font-size:14px;color:var(--muted)}
+.invwrap .lie-a a{color:var(--accent);font-weight:600;text-decoration:none;margin-right:8px}
+.invwrap .vendu-bandeau{margin:-6px 0 16px;font-size:14px}
+.invwrap a.bien.associe{margin-left:28px;position:relative}
+.invwrap a.bien.associe::before{content:"";position:absolute;left:-18px;top:-12px;width:12px;height:calc(50% + 12px);border-left:1.5px solid var(--line);border-bottom:1.5px solid var(--line);border-bottom-left-radius:8px}
+@media (max-width:760px){.invwrap a.bien.associe{margin-left:16px}.invwrap a.bien.associe::before{left:-11px;width:7px}}
+.invwrap a.bien.vendu{opacity:.75}
 .invwrap .pret-etat,.invwrap .reneg{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--bg)}
 .invwrap .reneg.oui{background:color-mix(in srgb,var(--good) 10%,transparent)}
 .invwrap .pret-pause,.invwrap .reneg-titre{font-size:13px;font-weight:600;margin-bottom:2px}
@@ -2678,7 +2695,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=47"></script>
+<script src="investissements.js?v=49"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
