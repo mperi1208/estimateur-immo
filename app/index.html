@@ -277,8 +277,10 @@ body.discret #pj .pj-chiffres b{filter:blur(7px);user-select:none}
 .invwrap .org .chiffres-arbre{display:flex;flex-direction:column;align-items:center;color:var(--muted);margin-top:3px}
 .invwrap .org .chiffres-arbre b{font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
 @media (max-width:600px){.invwrap .org .noeud{min-width:96px;padding:8px 9px}.invwrap .org li{padding-left:3px;padding-right:3px}}
+.invwrap .org ul.annexes-n{padding-top:10px}.invwrap .org ul.annexes-n::before{height:10px}.invwrap .org .annexes-n li{padding-top:0}
+.invwrap .org .noeud.annexe-n{flex-direction:row;gap:5px;min-width:0;max-width:200px;padding:4px 9px;border:1px dashed var(--line);background:transparent;font-size:11px;white-space:nowrap}.invwrap .org .annexe-n .ico-n{margin:0}.invwrap .org .annexe-n .ico-n svg{width:14px;height:14px}.invwrap .org .annexe-n .nom-n{font-size:11px;font-weight:500;color:var(--muted);overflow:hidden;text-overflow:ellipsis}.invwrap .org .annexe-n b{font-size:11px;font-variant-numeric:tabular-nums}
 /* Mode discret : les montants (et les champs chiffrés) sont floutés */
-body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .kpi .v, .kpi .d, .chiffres b, .mini b, .calc b, .auto-chiffres b, .auto-chiffres small, .deux-loyers b, .total, .ta-part, input[type=number], .reneg .aide, .vente .aide, .resume .aide, #inv_auto .aide, .tags, .part){filter:blur(7px);user-select:none}
+body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .v, .kpi .d, .chiffres b, .mini b, .calc b, .auto-chiffres b, .auto-chiffres small, .deux-loyers b, .total, .ta-part, input[type=number], .reneg .aide, .vente .aide, .resume .aide, #inv_auto .aide, .tags, .part){filter:blur(7px);user-select:none}
 .invwrap .dethead-actions{margin-left:auto;flex-shrink:0}
 @media (max-width:600px){.invwrap .dethead{flex-wrap:wrap}.invwrap .dethead-actions{margin-left:0;width:100%}.invwrap .dethead-actions button{width:100%}}
 .invwrap .vente .vente-params{margin-bottom:12px}
@@ -355,6 +357,7 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .kpi .v, .kpi .d, .
 .invwrap .crit-bien .case label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400;color:var(--ink);margin:22px 0 0}
 .invwrap .crit-bien .case input{width:auto}
 .invwrap .crit-bien .stat-associe{padding:8px 10px;border:1px dashed var(--line);border-radius:8px;font-size:14px}.invwrap .crit-bien .stat-associe a{color:var(--accent);font-weight:600;text-decoration:none}
+.invwrap .reprise{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 12px;margin-bottom:12px;border:1px dashed var(--line);border-radius:8px}.invwrap .reprise .aide{flex:1 1 220px;margin:0}
 .invwrap details.plus-crit{margin-top:10px;border:0;padding:0}
 .invwrap details.plus-crit summary{font-size:13px;color:var(--accent);cursor:pointer;margin-bottom:8px}
 .invwrap #inv_auto{margin-bottom:12px}
@@ -2765,7 +2768,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=56"></script>
+<script src="investissements.js?v=57"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
