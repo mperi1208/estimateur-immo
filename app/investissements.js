@@ -990,6 +990,8 @@ function annexeHTML(b) {
       ${d.mode === 'vendre' ? `${champ(b, 'detache.prixVente', 'Prix de vente (€)', {step: 500, ph: 'sa valeur'})}${champ(b, 'detache.moisVente', 'Vendu en', {type: 'month', ph: moisCourant()})}` : ''}
     </div>
     ${!lots.length && LOUE.includes(b.location.statut) && b.location.loyer ? `<div class="case"><label><input type="checkbox" data-p="detache.deduire"${d.deduire ? ' checked' : ''}> Ce loyer était compté dans celui du bien (${eur(b.location.loyer)}) : le retirer</label></div>` : ''}
+    ${(d.type || 'parking') === 'parking' ? `<div class="boutons"><button data-a="detacheEstimer"${enCours.has('det:' + b.id) ? ' disabled' : ''}>${enCours.has('det:' + b.id) ? 'Estimation en cours…' : 'Estimer sa valeur (garages vendus autour)'}</button></div>
+      ${d.estimation ? d.estimation.erreur ? `<div class="warnbox">${esc(d.estimation.erreur)}</div>` : `<div class="aide">Estimé à <b>${eur(d.estimation.prix)}</b> (${eur(d.estimation.lo)} – ${eur(d.estimation.hi)}), d'après ${d.estimation.ventes} garages, box et places vendus seuls à moins de ${dist(d.estimation.rayon)} · ${esc(d.estimation.fiabilite.toLowerCase())}. Un box se vend plutôt dans le haut de la fourchette.</div>` : ''}` : ''}
     <div id="inv_detacheRes"></div>
     <div class="boutons"><button class="primaire" data-a="detacher">${d.mode === 'vendre' ? 'Sortir le garage et simuler sa vente →' : 'Créer le bien associé'}</button><button data-a="detacheFermer">Annuler</button></div>`;
   return section('Garage, parking ou annexe', h, true);
@@ -1031,6 +1033,7 @@ function detacher(b) {
     if (b.type === 'appart' && b.criteres.parking && b.criteres.parking !== 'aucun') b.criteres.parking = b.criteres.parking === '2' ? '1' : 'aucun';
     if (b.type === 'maison' && (b.criteres.garage || 'oui') === 'oui') b.criteres.garage = 'non';
   }
+  if (d.estimation && !d.estimation.erreur && n.type === 'parking') { n.estimation = {...d.estimation, cle: cleEstimation(n)}; n.valeurManuelle = p.val !== d.estimation.prix; }
   if (d.mode === 'vendre') { n.vente = {prix: d.prixVente ?? null, mois: d.moisVente || ''}; venteOuverte.add(n.id); }
   delete b.detache; detacheOuvert.delete(b.id);
   biens.splice(biens.indexOf(b) + 1, 0, n);
@@ -1412,6 +1415,28 @@ racine.addEventListener('click', async e => {
     b.detache = {mode: t.dataset.m, type: 'parking', lot: lot ? lot.id : '', ...(b.detache || {}), ...(t.dataset.m ? {mode: t.dataset.m} : {})};
     detacheOuvert.add(b.id); vueDetail(b);
     const f = racine.querySelector('#inv_detache_nom'); if (f) { f.scrollIntoView({behavior: 'smooth', block: 'center'}); f.focus({preventScroll: true}); }
+    return;
+  }
+  if (a === 'detacheEstimer' && !enCours.has('det:' + b.id)) {
+    const cle = 'det:' + b.id;
+    enCours.add(cle); vueDetail(b);
+    const le = new Date().toISOString().slice(0, 10);
+    let res;
+    try {
+      if (!b.geo || (!b.geo.manuel && b.geo.pour !== b.adresse.trim())) {
+        const f = b.adresse.trim().length >= 5 && (await geocode(b.adresse.trim()))[0];
+        if (!f) throw new Error('Adresse du bien introuvable : renseigne-la (ou place le bien sur la carte) pour estimer le garage.');
+        b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
+      }
+      res = await estimerDependance(b.geo.lat, b.geo.lon);
+    } catch (err) { res = {erreur: err.message || String(err)}; }
+    enCours.delete(cle);
+    const c = biens.find(x => x.id === b.id) || b;
+    c.detache = c.detache || {mode: 'separer', type: 'parking'};
+    c.detache.estimation = {...res, le};
+    if (!res.erreur) c.detache.valeur = res.prix;
+    sauver(c);
+    if (ouvert === c.id && detacheOuvert.has(c.id)) vueDetail(c);
     return;
   }
   if (a === 'detacheFermer') { detacheOuvert.delete(b.id); delete b.detache; sauver(b); return vueDetail(b); }
