@@ -450,7 +450,7 @@ async function estimerDependance(lat, lon) {
   const med = medianePonderee(l), lo = medianePonderee(l, 0.25), hi = medianePonderee(l, 0.75), rayon = Math.max(...l.map(x => x[2].d));
   const disp = hi / Math.max(lo, 1);
   return {prix: Math.round(med / 500) * 500, lo: Math.round(lo / 500) * 500, hi: Math.round(hi / 500) * 500, ventes: l.length, rayon: Math.round(rayon),
-    periode: `${an - periode}–${an}`, dependance: true,
+    periode: `${an - periode}–${an}`, dependance: true, comps: l.sort((a, b) => b[1] - a[1]).slice(0, 25).map(([, w, v]) => ({prix: v.prix, date: v.date, d: Math.round(v.d), lat: v.lat, lon: v.lon, w})),
     fiabilite: l.length >= 20 && disp < 1.8 ? 'Fiabilité bonne' : l.length >= 8 && disp < 2.5 ? 'Fiabilité moyenne' : 'Fiabilité faible'};
 }
 const enCours = new Set();
@@ -471,6 +471,7 @@ async function estimerBien(b0) {
       : await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
     // Le bien a pu être remplacé entre-temps par sa version du compte (autre page) : on écrit dans la version actuelle
     const geo = b.geo; b = biens.find(x => x.id === b.id) || b; if (!b.geo || b.geo.pour !== geo.pour) b.geo = geo;
+    delete res.comps;
     b.estimation = res.erreur ? {erreur: res.erreur, cle, le} : {...res, cle, le};
     if (!res.erreur && !b.valeurManuelle) { b.valeur = res.prix; b.valeurLe = moisCourant(); }
   } catch (e) {
@@ -890,8 +891,11 @@ function critHTML(b) {
   if (!TYPE_DVF[b.type]) return '';
   const pour = b.type === 'appart' ? 'appart' : 'maison';
   const liste = CRITERES.filter(c => !c.cache && c.id !== 'epoque' && (c.pour === 'tous' || c.pour === pour));
+  // Stationnement sorti en bien associé : compté dans sa propre fiche, plus dans celle-ci
+  const garages = associesA(b).filter(x => x.type === 'parking' && !x.vendu);
   const un = c => {
     const v = b.criteres[c.id], id = 'inv_c_' + c.id;
+    if (garages.length && (c.id === 'parking' || c.id === 'garage')) return `<div><label>${esc(c.label)}</label><div class="stat-associe">${garages.map(x => `<a href="#investissements/${encodeURIComponent(x.id)}">${esc(x.nom)}</a>`).join(', ')}</div><div class="aide">Bien associé, compté à part : pas dans la valeur de ce bien.</div></div>`;
     if (c.check) return `<div class="case"><label><input type="checkbox" id="${id}" data-p="criteres.${c.id}"${v ? ' checked' : ''}> ${esc(c.label)}</label></div>`;
     if (c.number) return `<div><label for="${id}">${esc(c.label)}</label><input type="number" min="0" id="${id}" data-p="criteres.${c.id}" value="${esc(v ?? '')}" placeholder="facultatif"></div>`;
     const def = (c.options.find(o => o.d) || c.options[0]).k;
@@ -1438,6 +1442,7 @@ racine.addEventListener('click', async e => {
     enCours.delete(cle);
     const c = biens.find(x => x.id === b.id) || b;
     c.detache = c.detache || {mode: 'separer', type: 'parking'};
+    delete res.comps;
     c.detache.estimation = {...res, le};
     if (!res.erreur) c.detache.valeur = res.prix;
     sauver(c);
@@ -1537,6 +1542,6 @@ racine.addEventListener('change', async e => {
 biens = biensLocaux(); scis = scisLocales(); normaliser();
 // Biens repris des anciens crédits : enregistrés tout de suite, pour garder les mêmes identifiants d'un chargement à l'autre
 try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
-window.INV = {estimerSurface: p => moteur.estimer(p), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
+window.INV = {estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon) => estimerDependance(lat, lon), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
 COMPTE.init();
 })();

@@ -353,6 +353,7 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .kpi .v, .kpi .d, .
 .invwrap .crit-bien{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .invwrap .crit-bien .case label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400;color:var(--ink);margin:22px 0 0}
 .invwrap .crit-bien .case input{width:auto}
+.invwrap .crit-bien .stat-associe{padding:8px 10px;border:1px dashed var(--line);border-radius:8px;font-size:14px}.invwrap .crit-bien .stat-associe a{color:var(--accent);font-weight:600;text-decoration:none}
 .invwrap details.plus-crit{margin-top:10px;border:0;padding:0}
 .invwrap details.plus-crit summary{font-size:13px;color:var(--accent);cursor:pointer;margin-bottom:8px}
 .invwrap #inv_auto{margin-bottom:12px}
@@ -503,9 +504,9 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 
   <div class="row typesurf">
     <div><label>Type de bien</label>
-      <div class="seg" id="type"><button data-v="121" class="on">Appartement</button><button data-v="111">Maison</button></div>
+      <div class="seg" id="type"><button data-v="121" class="on">Appartement</button><button data-v="111">Maison</button><button data-v="13">Garage</button></div>
     </div>
-    <div><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
+    <div data-surf><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
   </div>
 
   <details class="affiner" id="affiner" open>
@@ -915,8 +916,39 @@ async function ventesPourIndice(trouvees, yearMin) {
   return [...parId.values()];
 }
 
+// Garage, box ou place vendu seul : estimé à l'unité (les actes donnent rarement sa surface), sans critères
+const modeGarage = () => state.type === '13';
+function majModeGarage() {
+  document.querySelectorAll('[data-surf], #affiner').forEach(el => el.hidden = modeGarage());
+}
+async function estimerGarage() {
+  const run = ++state.run, out = document.getElementById('out');
+  layer.clearLayers(); markers = []; if (circle) { circle.remove(); circle = null; }
+  state.base = null; state.prix = null;
+  if (!window.INV || !INV.estimerGarage) { out.innerHTML = '<div class="empty">Estimation des garages indisponible : recharge la page.</div>'; return; }
+  out.innerHTML = '<div class="empty">Recherche des garages, box et places vendus seuls autour…</div>';
+  let r;
+  try { r = await INV.estimerGarage(state.lat, state.lon); }
+  catch (e) { r = {erreur: `L'API DVF ne répond pas (${e.message}). Réessaie dans un instant.`}; }
+  if (run !== state.run) return;
+  if (r.erreur) { out.innerHTML = `<div class="empty">${esc(r.erreur)}</div>`; return; }
+  circle = L.circle([state.lat, state.lon], {radius: r.rayon, color: '#2f6fde', weight: 1, fillOpacity: .04}).addTo(map);
+  const maxW = r.comps.length ? r.comps[0].w : 1, dist = d => d < 1000 ? fmt(d) + ' m' : (d / 1000).toFixed(1).replace('.', ',') + ' km';
+  r.comps.forEach(c => markers.push(L.circleMarker([c.lat, c.lon], {radius: 3 + 5 * c.w / maxW, color: '#fff', weight: 1, fillColor: '#2f6fde', fillOpacity: .5 + .5 * c.w / maxW})
+    .bindPopup(`${fmtDate(c.date)}<br><b>${fmt(c.prix)} €</b>`).addTo(layer)));
+  out.innerHTML = `<div class="synth"><div class="kpis">
+      <div class="kpi"><div class="k">Valeur estimée</div><div class="v">${fmtK(r.prix)}</div><div class="d">${fmtK(r.lo)} – ${fmtK(r.hi)}</div></div>
+      <div class="kpi"><div class="k">Ventes comparées</div><div class="v">${r.ventes}</div><div class="d">vendus seuls, à moins de ${dist(r.rayon)}</div></div>
+      <div class="kpi"><div class="k">Fiabilité</div><div class="v txt">${esc(r.fiabilite.replace(/^Fiabilité /, ''))}</div><div class="d">ventes ${r.periode}</div></div></div>
+    <div class="hint" style="margin-top:8px">Les actes ne disent pas si c'est un box fermé, une place couverte ou extérieure : un box se vend plutôt dans le haut de la fourchette, une place extérieure dans le bas. Pour un garage qui fait partie d'un appartement, sors-le en bien associé dans Mon patrimoine.</div></div>
+    <details class="detail"><summary>Ventes les plus comparables</summary>
+      <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">Prix</th></tr></thead><tbody>${r.comps.map((c, k) => `<tr data-k="${k}"><td>${fmtDate(c.date)}</td><td class="n">${dist(c.d)}</td><td class="n">${fmtK(c.prix)}</td></tr>`).join('')}</tbody></table>
+      <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema), ventes d'une seule dépendance.</div></details>`;
+  out.querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => { const c = r.comps[+tr.dataset.k]; map.setView([c.lat, c.lon], Math.max(map.getZoom(), 16)); markers[+tr.dataset.k].openPopup(); });
+}
 async function estimate() {
   if (state.lat == null || !state.lance) return;   // rien avant le premier clic sur « Rechercher »
+  if (modeGarage()) return estimerGarage();
   const surf = +document.getElementById('surf').value;
   if (!(surf >= 9)) return;
   const run = ++state.run, type = state.type;
@@ -1817,6 +1849,7 @@ function reprendre(r) {
   document.getElementById('since').value = r.since || 'auto';
   state.type = r.type;
   document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x.dataset.v === r.type));
+  majModeGarage();
   saved = {...r.criteres};
   try { localStorage.setItem('criteres-v2', JSON.stringify(saved)); } catch (e) {}
   syncForm(); fillOptions();
@@ -1885,7 +1918,7 @@ window.estimerPour = estimerPour;   // après le chargement des autres scripts (
 // --- Paramètres ---
 document.querySelectorAll('#type button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x === b));
-  state.type = b.dataset.v; syncForm(); majAffiner(); estimate();
+  state.type = b.dataset.v; syncForm(); majAffiner(); majModeGarage(); estimate();
 });
 buildForm();
 let debounce;
@@ -2704,7 +2737,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=51"></script>
+<script src="investissements.js?v=53"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
