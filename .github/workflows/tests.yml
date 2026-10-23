@@ -16,4 +16,4 @@ jobs:
       - name: Syntaxe de investissements.js
         run: node --check app/investissements.js
       - name: Calculs financiers
-        run: node --test tests/calculs.test.js
+        run: node --test tests/*.test.js

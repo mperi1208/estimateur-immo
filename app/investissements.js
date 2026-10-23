@@ -78,7 +78,9 @@ const loyerLogement = b => lignesLoyer(b) ? somme(lignesLoyer(b), x => x.loyer) 
 // Mois de loyer sur les 12 prochains mois, et loyer encaissé ce mois-ci
 const moisDeLoyer = (debut, auj = moisCourant()) => (debut = normMois(debut)) ? Math.max(0, Math.min(12, 12 - ecartMois(auj, debut))) : 12;
 const commence = (x, auj = moisCourant()) => !normMois(x.debut) || ecartMois(normMois(x.debut), auj) >= 0;
-const loyerActuel = b => lignesLoyer(b) ? somme(lignesLoyer(b).filter(x => commence(x)), x => x.loyer) : loyerLogement(b);
+// Un seul loyer : un bail qui commence plus tard (garage sorti d'un lot à venir, logement en travaux…) ne rapporte qu'à partir de là
+const debutBailFutur = b => (d => d && !commence({debut: d}) ? d : '')(normMois(b.location.debutBail));
+const loyerActuel = b => lignesLoyer(b) ? somme(lignesLoyer(b).filter(x => commence(x)), x => x.loyer) : debutBailFutur(b) ? 0 : loyerLogement(b);
 const STATUTS_TERRAIN = {loue: 'Loué (bail)', activites: 'Activités qui rapportent', perso: 'Usage personnel', libre: 'Non exploité'};
 const NATURES = {'': '—', constructible: 'Constructible', agricole: 'Agricole', naturel: 'Naturel / boisé', loisirs: 'Loisirs / agrément', stockage: 'Parking / stockage', autre: 'Autre'};
 const BAUX = {'': '—', rural: 'Bail rural (fermage)', commercial: 'Bail commercial', precaire: 'Convention d\'occupation précaire', parking: 'Location parking / stockage', autre: 'Autre'};
@@ -98,7 +100,7 @@ function calculs(b) {
   const terrain = b.type === 'terrain';
   const loue = terrain ? ['loue', 'activites'].includes(b.location.statut) : LOUE.includes(b.location.statut);
   const lignes = lignesLoyer(b), vac = 1 - Math.min(12, b.location.vacance || 0) / 12;
-  const loyersAn = terrain ? revenusTerrain(b) : !loue ? 0 : lignes ? somme(lignes, x => (x.loyer || 0) * moisDeLoyer(x.debut)) * vac : loyerLogement(b) * 12 * vac;
+  const loyersAn = terrain ? revenusTerrain(b) : !loue ? 0 : lignes ? somme(lignes, x => (x.loyer || 0) * moisDeLoyer(x.debut)) * vac : loyerLogement(b) * moisDeLoyer(debutBailFutur(b)) * vac;
   const loyerMois = terrain ? loyersAn / 12 : loue ? loyerActuel(b) : 0;
   const loyerPlein = terrain ? loyerMois : loue ? loyerLogement(b) : 0;   // tous les loyers commencés : pour le rendement
   const c = b.chargesAn;
@@ -569,7 +571,15 @@ function majAuto(b) {
 // ---------- Passage invité ↔ compte ----------
 COMPTE.surChangement(async user => {
   compteCharge = false; urls.clear();
-  if (!user) { etatCompte = ''; biens = biensLocaux(); scis = scisLocales(); normaliser(); return afficher(); }
+  if (!user) {
+    etatCompte = ''; biens = biensLocaux(); scis = scisLocales(); normaliser();
+    // Les projets n'existent qu'avec un compte, et les recherches ont été versées dans le compte : à la déconnexion on les
+    // retire de l'appareil, sinon la prochaine connexion (un autre compte) les fusionnerait dans le sien
+    if (typeof PROJETS !== 'undefined') { PROJETS.liste = []; PROJETS.garder(); if (typeof fixerProjet === 'function') fixerProjet(null); }
+    if (typeof RECENTES !== 'undefined') { RECENTES.liste = []; RECENTES.garder(); }
+    supprimes = {};
+    return afficher();
+  }
   etatCompte = 'Chargement de ton compte…'; afficher();
   try {
     const brut = await COMPTE.lire();
@@ -1180,9 +1190,11 @@ function simulerVente(b) {
   if (regime === 'is') {
     const construit = a.mode === 'construction';
     const acquisition = (a.prix || 0) + (construit ? a.construction || 0 : 0) + (v.fraisAchat ?? ((a.notaire || 0) + (a.frais || 0))) + (v.travaux ?? (a.travaux || 0));
-    // Amortissement : le bâti seulement (≈ 85 % du prix d'un bien acheté ; toute la construction pour une maison construite), sur 30 ans
+    // Amortissement : le bâti seulement (≈ 85 % du prix d'un bien acheté ; toute la construction pour une maison construite) sur 30 ans,
+    // les travaux sur 15 ans (comme dans Financer) ; jamais plus que leur coût, même détenus plus longtemps
     const ansAmort = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : annees;
-    const amortAuto = ansAmort != null ? Math.round(((construit ? a.construction || 0 : (a.prix || 0) * 0.85) + (a.travaux || 0)) / 30 * ansAmort) : 0;
+    const amortAuto = ansAmort != null ? Math.round((construit ? a.construction || 0 : (a.prix || 0) * 0.85) * Math.min(Math.max(0, ansAmort), 30) / 30
+      + (a.travaux || 0) * Math.min(Math.max(0, ansAmort), 15) / 15) : 0;
     r.amort = v.amort ?? amortAuto; r.amortAuto = amortAuto;
     r.vnc = Math.max(0, acquisition - r.amort);
     r.pv = prix - frais - r.vnc;
@@ -1504,8 +1516,9 @@ racine.addEventListener('click', async e => {
   if (a === 'dissocier' && confirm('Dissocier ce bien ? Il reste dans ta liste, sans lien avec l\'autre.')) { delete b.lieA; if (b.location.statut === 'avec') b.location.statut = 'vacant'; sauver(b); return vueDetail(b); }
   if (a === 'copierAchat') {
     const r = repriseAchat(b); if (!r) return;
-    Object.assign(b.achat, {mode: 'existant', date: b.achat.date || r.date, prix: r.prix || b.achat.prix, notaire: b.achat.notaire ?? (r.notaire || null), frais: b.achat.frais ?? (r.frais || null)});
-    if (r.prix) { const a = r.p.achat; a.prix -= r.prix; if (r.notaire) a.notaire -= r.notaire; if (r.frais) a.frais -= r.frais; }
+    const notaire = b.achat.notaire == null ? r.notaire : 0, frais = b.achat.frais == null ? r.frais : 0;   // seulement ce qui est repris
+    Object.assign(b.achat, {mode: 'existant', date: b.achat.date || r.date, prix: r.prix || b.achat.prix, notaire: b.achat.notaire ?? (notaire || null), frais: b.achat.frais ?? (frais || null)});
+    if (r.prix) { const a = r.p.achat; a.prix -= r.prix; if (notaire) a.notaire -= notaire; if (frais) a.frais -= frais; }
     sauver(b, r.p); return vueDetail(b);
   }
   if (a === 'saisirAPart') { b.saisieAPart = true; sauver(b); return vueDetail(b); }
@@ -1528,7 +1541,7 @@ racine.addEventListener('click', async e => {
   }
   if (a === 'supprimer' && confirm(`Supprimer « ${b.nom} » et ses documents ? C'est définitif.`)) {
     for (const d of b.docs) await supprimerDoc(d);
-    const lies = associesA(b); lies.forEach(x => { delete x.lieA; });
+    const lies = associesA(b); lies.forEach(x => { delete x.lieA; if (x.location.statut === 'avec') x.location.statut = 'vacant'; });
     marquerSupprime(b.id); biens = biens.filter(x => x !== b); sauver(...lies); location.hash = '#investissements';
   }
 });

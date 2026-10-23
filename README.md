@@ -23,4 +23,4 @@ Mise en place, une fois, dans le projet Supabase :
 
 ## Tests
 
-`node --test tests/calculs.test.js` : vérifie les calculs de crédit (mensualité, échéancier, différé, restant dû) et de rentabilité d'un bien (loyers, charges, rendements, terrain, colocation). Aucune dépendance.
+`node --test tests/*.test.js` : vérifie les calculs de crédit (mensualité, échéancier, différé, restant dû), de rentabilité d'un bien (loyers, charges, rendements, terrain, colocation, plusieurs loyers avec leur date de début), du garage associé (sortie au prorata, loyer repris, lien avec le bien principal), de la simulation de vente (abattements, surtaxe, exonérations, IS) et de l'onglet Financer (deux loyers, travaux, fiscalité, revente, prix d'équilibre). Aucune dépendance.
