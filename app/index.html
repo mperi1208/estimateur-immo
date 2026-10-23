@@ -1610,7 +1610,7 @@ function projetSurface(el, niveau, question, z, surf) {
   if (calc && calc.lots) {
     const valeur = calc.lots.reduce((t, l) => t + l.prix, 0), loyer = calc.lots.reduce((t, l) => t + l.loyer, 0);
     const notaire = state.prix * 0.08, coutBien = state.prix + notaire + budget, marge = valeur - coutBien;
-    state.projet = {travaux: budget, valeurApres: Math.round(valeur), loyerApres: Math.round(loyer), duree, niveau, dpe: cible, gamme, meuble, mobilier, lots: lots.length};
+    state.projet = {travaux: budget, valeurApres: Math.round(valeur), loyerApres: Math.round(loyer), duree, niveau, dpe: cible, gamme, meuble, mobilier, lots: lots.length, loyers: calc.lots.map(l => Math.round(l.loyer))};
     res = `<div class="kpis">
         <div class="kpi"><div class="k">Valeur après projet</div><div class="v">${fmtK(valeur)}</div><div class="d">${lots.length > 1 ? calc.lots.map(l => fmtK(l.prix)).join(' + ') + ' · ' + lots.length + ' logements, vendables séparément' : 'logement agrandi'}</div></div>
         <div class="kpi"><div class="k">Loyers après projet</div><div class="v">${fmt(loyer)} €</div><div class="d">${calc.lots.length > 1 ? calc.lots.map(l => fmt(l.loyer) + ' €').join(' + ') + ' · ' : ''}${meuble ? 'meublé' : 'vide'}, hors charges/mois · aujourd'hui ${fmt(state.loyerHC)} €</div></div>
@@ -2230,9 +2230,12 @@ function sync(est, mode) {
     set('scenario', mode === 'revente' ? 'revendre' : 'louer'); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
     if (get('differe') < pj.duree) { set('differe', pj.duree); set('typeDiff', 'partiel'); flags.differeAuto = true; }
     set('moisRevente', pj.duree + 6);
-    set('loyer', pj.loyerApres); flags.loyers = {avant: est.loyer, apres: pj.loyerApres}; set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
+    // Plusieurs logements : le premier en loyer, les autres en 2e loyer (à partir de la fin du chantier)
+    const [l1, ...autres] = pj.loyers && pj.loyers.length > 1 ? pj.loyers : [pj.loyerApres], l2 = autres.reduce((t, x) => t + x, 0);
+    set('loyer', l1); flags.loyers = {avant: est.loyer, apres: l1, loyer2: l2 || null}; set('meuble', pj.meuble ? '1' : '0'); set('mobilier', pj.mobilier || 0);
+    if (l2) { set('loyer2', l2); set('debutLoyer2', pj.duree + 1); } else for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
     if (!flags.comptaManuel) set('compta', comptaDefaut(pj.meuble));
-    bar.innerHTML += `<br>Projet travaux : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b> ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
+    bar.innerHTML += `<br>Projet travaux : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b>${pj.loyers && pj.loyers.length > 1 ? ` (${pj.loyers.map(eur).join(' + ')})` : ''} ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
     sauver();
   }
   majSauvegarde(pr);
@@ -2773,9 +2776,11 @@ $('boxProjet').addEventListener('toggle', () => {
     if (get('differe') < get('dureeTravaux')) { set('differe', get('dureeTravaux')); set('typeDiff', 'partiel'); flags.differeAuto = true; }
     if (!get('valeurApres')) set('valeurApres', get('prix') + get('travaux'));
     if (L && get('loyer') === L.avant) set('loyer', L.apres);
+    if (L && L.loyer2 && !get('loyer2')) { set('loyer2', L.loyer2); set('debutLoyer2', get('dureeTravaux') + 1); }
   } else {
     if (flags.differeAuto) { set('differe', 0); flags.differeAuto = false; }
     if (L && get('loyer') === L.apres) set('loyer', L.avant);
+    if (L && L.loyer2 && get('loyer2') === L.loyer2) for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
   }
 });
 CF.querySelectorAll('#cf_scen button').forEach(b => b.onclick = () => { set('scenario', b.dataset.v); sauver(); rendre(); });
