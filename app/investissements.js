@@ -998,10 +998,10 @@ function majDetache(b) {
   const el = racine.querySelector('#inv_detacheRes'); if (!el) return;
   const p = planDetache(b), a = b.achat, crd = calculs(b).crd;
   el.innerHTML = `<div class="calc">
-    <div><span>${esc(p.d.nom || 'Garage · ' + b.nom)}</span><b>${p.val ? kEur(p.val) : '—'}${p.d.valeur == null && p.val ? ' (suggérée)' : ''}</b></div>
-    <div><span>· acheté ${a.date ? 'en ' + libMois(a.date) : '(date d\'achat du bien)'}</span><b>${eur(p.prix)}${p.notaire ? ' + ' + eur(p.notaire) + ' de notaire' : ''}</b></div>
+    <div><span>${esc(p.d.nom || 'Garage · ' + b.nom)}</span><b>${p.val ? eur(p.val) : '—'}${p.d.valeur == null && p.val ? ' (suggérée)' : ''}</b></div>
+    ${p.base ? `<div><span>· acheté ${a.date ? 'en ' + libMois(a.date) : '(date d\'achat du bien)'}</span><b>${eur(p.prix)}${p.notaire ? ' + ' + eur(p.notaire) + ' de notaire' : ''}</b></div>` : ''}
     ${p.loyer ? `<div><span>· loyer</span><b>${eur(p.loyer)}/mois</b></div>` : ''}
-    <div><span>${esc(b.nom)} ensuite</span><b>${p.valeurApres != null ? kEur(p.valeurApres) : '—'}</b></div>
+    <div><span>${esc(b.nom)} ensuite</span><b>${p.valeurApres != null ? eur(p.valeurApres) : '—'}</b></div>
     ${p.base ? `<div><span>· prix d'achat</span><b>${eur(p.baseApres)}</b></div>` : ''}
     ${crd ? `<div><span>· crédit (reste sur ce bien)</span><b>${kEur(crd)}</b></div>` : ''}</div>
     <div class="aide">Le patrimoine total ne change pas : la valeur est seulement répartie entre les deux fiches. ${p.d.mode === 'vendre' ? 'Vendu seul, le garage est imposé sur sa propre plus-value (même si l\'appartement est ta résidence principale), sauf si le prix ne dépasse pas 15 000 €. La durée de détention compte depuis l\'achat du bien. ' : ''}${crd ? 'Si la banque demande de rembourser une partie du crédit avec le prix du garage, mets à jour le restant dû du prêt ici. ' : ''}${!a.prix ? 'Renseigne le prix d\'achat du bien (bloc Achat) pour répartir le prix et la plus-value.' : ''}</div>`;
