@@ -420,6 +420,7 @@ body[data-onglet="investissements"] .tabs,body[data-onglet="projets"] .tabs{padd
 #compteDlg .lien{border:0;background:none;color:var(--accent);font:inherit;font-size:13px;padding:0;margin-top:10px;cursor:pointer;text-decoration:underline}
 #compteDlg .msg{margin-top:10px;font-size:13px}
 #compteDlg .msg.err{color:var(--bad)}
+#compteDlg .version{margin-top:16px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}#compteDlg .version .lien{font-size:12px;margin:0 0 0 6px}
 #cf .voirRes{display:none}
 @media (max-width:900px){#cf .voirRes{display:block;width:100%;margin-top:10px}}
 button.cta{border:0;width:100%;font:inherit;cursor:pointer}
@@ -490,6 +491,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 <dialog id="compteDlg" aria-label="Compte">
   <form method="dialog" class="fermer"><button aria-label="Fermer">✕</button></form>
   <div id="compteBody"></div>
+  <div class="version" id="versionSite"></div>
 </dialog>
 <div class="wrap" id="estim">
 <aside>
@@ -2017,6 +2019,22 @@ function erreurCompte(e) {
   if (/could not find the table|relation .* does not exist/i.test(m)) return 'la base des crédits n\'est pas encore installée (script supabase.sql à lancer).';
   return m;
 }
+// Date de mise à jour du site (en-tête Last-Modified de la page publiée), et proposition de recharger si une version
+// plus récente est en ligne que celle affichée
+const dateVersion = d => d.toLocaleString('fr-FR', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}).replace(':', ' h ');
+async function majVersion() {
+  const el = document.getElementById('versionSite'), ici = new Date(document.lastModified);
+  if (!el || isNaN(ici)) return;
+  el.textContent = 'Version du ' + dateVersion(ici);
+  try {
+    const r = await fetch(location.pathname, {method: 'HEAD', cache: 'no-store'}), lm = r.headers.get('last-modified');
+    const enLigne = lm ? new Date(lm) : null;
+    if (enLigne && enLigne - ici > 60000) {
+      el.innerHTML = `Version du ${dateVersion(ici)} · <b>une version plus récente est en ligne</b> (${dateVersion(enLigne)})<button class="lien" id="versionRecharger">Recharger</button>`;
+      el.querySelector('#versionRecharger').onclick = () => location.reload();
+    } else el.textContent += ' · à jour';
+  } catch (e) {}
+}
 function ouvrirCompte(mode = 'connexion') {
   const dlg = document.getElementById('compteDlg'), body = document.getElementById('compteBody');
   const retour = location.origin + location.pathname;
@@ -2071,6 +2089,7 @@ function ouvrirCompte(mode = 'connexion') {
       btn.disabled = false;
     };
   }
+  majVersion();
   if (!dlg.open) dlg.showModal();
   const champ = body.querySelector('input'); if (champ) champ.focus();
 }
