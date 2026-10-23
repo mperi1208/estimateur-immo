@@ -610,6 +610,8 @@ function afficher(id = idDuHash()) {
 // Totaux d'un ensemble de biens (patrimoine net : seulement sur les biens dont la valeur est renseignée)
 // Part du bien détenue (indivision, bien à plusieurs…) : 100 % par défaut
 const partDe = b => Math.max(1, Math.min(100, b.part || 100)) / 100;
+// Biens vendus (vente enregistrée) : gardés pour mémoire, hors des totaux
+const detenus = () => biens.filter(b => !b.vendu);
 function totaux(liste) {
   const cs = liste.map(calculs), avec = liste.map((b, i) => [b, cs[i], partDe(b)]), estimes = avec.filter(([b]) => b.valeur > 0);
   const V = somme(estimes, ([b, , k]) => b.valeur * k), Dv = somme(estimes, ([, c, k]) => c.crd * k), D = somme(avec, ([, c, k]) => c.crd * k);
@@ -633,21 +635,24 @@ function vueListe() {
       <button data-a="ajoutSci">+ Créer une SCI</button>
       <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   if (biens.length || scis.length) {
-    h += kpisTotaux(totaux(biens));
+    const actifs = detenus(), vendus = biens.filter(b => b.vendu);
+    h += kpisTotaux(totaux(actifs));
     if (scis.length) h += pli('scis', 'Mes SCI', scis.length, `<div class="scis">${scis.map(x => {
-      const t = totaux(biens.filter(b => b.sciId === x.id && b.structure === 'sci'));
+      const t = totaux(actifs.filter(b => b.sciId === x.id && b.structure === 'sci'));
       return `<a class="sci" href="#investissements/sci:${encodeURIComponent(x.id)}"><div class="ico">${ICONE_SCI}</div>
         <div class="infos"><b>${esc(x.nom)}</b><span>SCI ${REGIMES[x.regime]} · ${t.n} bien${t.n > 1 ? 's' : ''}${x.associes.length ? ` · ${x.associes.length} associé${x.associes.length > 1 ? 's' : ''}` : ''}</span></div>
         <div class="chiffres"><div><span>Patrimoine net</span><b class="${t.V ? signe(t.net) : ''}">${t.V ? kEur(t.net) : '—'}</b></div><div><span>Cash-flow</span><b class="${signe(t.cf)}">${t.n ? eur(t.cf) + '/mois' : '—'}</b></div></div>
         <span class="chev" aria-hidden="true">›</span></a>`;
     }).join('')}</div>`);
     // Filtre par détenteur
-    const n = f => biens.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
+    const n = f => actifs.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
     const choix = [['tout', 'Tous'], ['np', 'Nom propre'], ...scis.map(x => [x.id, x.nom])].filter(([f]) => f === 'tout' || n(f));
-    const visibles = biens.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
+    const visibles = actifs.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
     const filtres = choix.length > 2 ? `<div class="filtres">${choix.map(([f, l]) => `<button data-a="filtre" data-f="${esc(f)}" class="${f === filtre ? 'on' : ''}">${esc(l)} <span>${n(f)}</span></button>`).join('')}</div>` : '';
+    ordonner(visibles);
     const cs = visibles.map(calculs);
-    h += pli('biens', 'Mes biens', biens.length, filtres + (visibles.length ? `<div class="liste">${visibles.map((b, i) => carte(b, cs[i])).join('')}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
+    h += pli('biens', 'Mes biens', actifs.length, filtres + (visibles.length ? `<div class="liste">${visibles.map((b, i) => carte(b, cs[i])).join('')}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
+    if (vendus.length) h += pli('vendus', 'Biens vendus', vendus.length, `<div class="liste">${vendus.map(carteVendue).join('')}</div>`);
     h += arbreHTML();
   } else {
     h += `<div class="vide"><div class="ico">${icone('maison')}</div><h2>Ajoute ton premier investissement</h2>
@@ -659,14 +664,16 @@ function vueListe() {
 }
 // Organigramme du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens (montants à hauteur de la part détenue)
 function arbreHTML() {
+  const biens = detenus();
   if (!biens.length) return '';
   const chiffres = (net, cf) => `<span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${cf != null ? `<span><b class="${signe(cf)}">${eur(cf)}/mois</b></span>` : ''}</span>`;
   const tot = t => chiffres(t.V ? t.net : null, t.n ? t.cf : null);
-  const feuille = b => {
-    const c = calculs(b), k = partDe(b);
+  const feuille = (b, i, l) => {
+    const c = calculs(b), k = partDe(b), enfants = l.filter(x => x.lieA === b.id && x !== b);
+    if (b.lieA && l.some(x => x.id === b.lieA)) return '';   // dessiné sous son bien principal
     return `<li><a class="noeud bien-n" href="#investissements/${encodeURIComponent(b.id)}"><span class="ico-n">${icone(b.type)}</span>
       <span class="nom-n">${esc(b.nom)}</span>${k < 1 ? `<small>${Math.round(k * 100)} %</small>` : ''}
-      ${chiffres(c.patrimoine != null ? c.patrimoine * k : null, c.loue || c.mensuCredit ? c.cfMois * k : null)}</a></li>`;
+      ${chiffres(c.patrimoine != null ? c.patrimoine * k : null, c.loue || c.mensuCredit ? c.cfMois * k : null)}</a>${enfants.length ? `<ul>${enfants.map(x => feuille({...x, lieA: null}, 0, [])).join('')}</ul>` : ''}</li>`;
   };
   const branches = [];
   const np = biens.filter(b => b.structure !== 'sci');
@@ -696,11 +703,19 @@ document.addEventListener('toggle', e => {
   try { localStorage.setItem('sections-repliees', JSON.stringify([...replies])); } catch (e) {}
 }, true);
 const OEIL_PERSO = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+// Un bien associé (garage…) juste après son bien principal
+function ordonner(liste) {
+  const ids = new Set(liste.map(b => b.id)), out = [];
+  for (const b of liste) if (!(b.lieA && ids.has(b.lieA))) { out.push(b); out.push(...liste.filter(x => x.lieA === b.id && x !== b)); }
+  for (const b of liste) if (!out.includes(b)) out.push(b);
+  liste.splice(0, liste.length, ...out);
+  return liste;
+}
 function carte(b, c) {
-  const k = partDe(b), x = n => n * k;
-  const tags = [k < 1 ? `Part : ${Math.round(k * 100)} %` : '', b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
+  const k = partDe(b), x = n => n * k, pr = principalDe(b);
+  const tags = [pr ? 'Associé à ' + pr.nom : '', k < 1 ? `Part : ${Math.round(k * 100)} %` : '', b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
     b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b)].filter(Boolean);
-  return `<a class="bien" href="#investissements/${encodeURIComponent(b.id)}">
+  return `<a class="bien${pr ? ' associe' : ''}" href="#investissements/${encodeURIComponent(b.id)}">
     <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type] ? TYPES[b.type].l : ''}</span></div>
     <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || 'Adresse à renseigner')}</span><span class="tags">${tags.map(esc).join(' · ')}</span></div>
     <div class="chiffres">
@@ -708,6 +723,18 @@ function carte(b, c) {
       <div><span>Restant dû${k < 1 ? ' (ta part)' : ''}</span><b>${c.crd ? kEur(x(c.crd)) : '—'}</b></div>
       <div><span>Cash-flow${k < 1 ? ' (ta part)' : ''}</span><b class="${signe(c.cfMois)}">${c.loue || c.mensuCredit ? eur(x(c.cfMois)) + '/mois' : '—'}</b></div>
       <div><span>Rendement brut</span><b>${c.brut != null ? pct(c.brut) : '—'}</b></div>
+    </div><span class="chev" aria-hidden="true">›</span></a>`;
+}
+function carteVendue(b) {
+  const v = b.vendu;
+  return `<a class="bien vendu" href="#investissements/${encodeURIComponent(b.id)}">
+    <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>Vendu</span></div>
+    <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || '')}</span><span class="tags">${esc(['Vendu en ' + libMois(v.mois), sciDe(b) ? sciDe(b).nom : ''].filter(Boolean).join(' · '))}</span></div>
+    <div class="chiffres">
+      <div><span>Prix de vente</span><b>${kEur(v.prix)}</b></div>
+      <div><span>Plus-value</span><b class="${signe(v.pv)}">${v.pv != null ? kEur(v.pv) : '—'}</b></div>
+      <div><span>Impôts</span><b>${v.impots != null ? eur(v.impots) : '—'}</b></div>
+      <div><span>${v.dansSci ? 'Resté dans la SCI' : 'Ce qui t\'est revenu'}</span><b class="${signe(v.net)}">${v.net != null ? kEur(v.net) : '—'}</b></div>
     </div><span class="chev" aria-hidden="true">›</span></a>`;
 }
 // Photo ou plan en vignette (chargés après coup)
@@ -739,12 +766,14 @@ function vueDetail(b) {
   const opt = (o) => o;
   let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
-      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions"><button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button></div></div>
+      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions">${b.vendu ? '' : `<button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button>`}</div></div>
+    ${b.vendu ? venduHTML(b) : ''}${lienHTML(b)}
     <div id="inv_kpis"></div>
-    ${venteOuverte.has(b.id) ? venteHTML(b) : ''}
+    ${venteOuverte.has(b.id) && !b.vendu ? venteHTML(b) : ''}
     <div class="blocs">
     ${section('Rentabilité', '<div id="inv_renta"></div>')}
     ${b.type === 'terrain' ? revenusHTML(b) : locationHTML(b)}
+    ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
     ${section('Le bien', `<div class="grille">
       ${champ(b, 'nom', 'Nom', {type: 'text', ph: 'ex. Studio Passy'})}
       ${champ(b, 'type', 'Type', {options: Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.l]))})}
@@ -795,7 +824,7 @@ function vueDetail(b) {
     </div>
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
-  majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b);
+  majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b); majDetache(b);
 }
 // Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Estimer)
 function critHTML(b) {
@@ -851,8 +880,121 @@ function revenusHTML(b) {
   h += '<div class="total" id="inv_revTotal"></div>';
   return section('Revenus du terrain', h);
 }
+// ---------- Garage, parking, annexe : un bien à part, associé au bien principal ----------
+// Le garage d'un appartement (ou l'annexe d'une maison) devient une fiche à part, reliée au bien (lieA) : sa valeur,
+// sa part du prix d'achat et son loyer propres, et il peut être vendu seul. Le crédit reste sur le bien principal.
+const ANNEXE_POUR = ['appart', 'maison', 'immeuble', 'local'];
+const TYPES_ANNEXE = {parking: 'Garage, box ou parking', local: 'Local, atelier, cave…', appart: 'Logement (annexe aménagée)'};
+const associesA = b => biens.filter(x => x.lieA === b.id && x.id !== b.id);
+const principalDe = b => b.lieA ? biens.find(x => x.id === b.lieA) || null : null;
+const detacheOuvert = new Set();   // fiches où le formulaire « sortir un garage » est ouvert
+// Part de la valeur que représente le stationnement (mêmes écarts que l'estimation : box ≈ +9 % sur un appartement,
+// garage ≈ 5 % d'une maison) : sert de suggestion quand la valeur du garage n'est pas saisie
+function partSuggeree(b) {
+  if (b.type === 'appart' && typeof CRITERES !== 'undefined') {
+    const c = CRITERES.find(x => x.id === 'parking'), o = c && c.options.find(x => x.k === b.criteres.parking);
+    const p = o && o.p != null ? (typeof o.p === 'number' ? o.p : o.p.autre) : 0.07;
+    return p / (1 + p);
+  }
+  return 0.05;
+}
+// Ce que la séparation change : valeur, prix d'achat et frais répartis au prorata, loyer déplacé
+function planDetache(b) {
+  const d = b.detache || {}, a = b.achat, construit = a.mode === 'construction';
+  const base = (a.prix || 0) + (construit ? a.construction || 0 : 0);
+  const valSugg = b.valeur ? Math.round(b.valeur * partSuggeree(b) / 500) * 500 : null;
+  const val = d.valeur ?? valSugg;
+  const prixSugg = base && (b.valeur && val ? Math.round(base * Math.min(1, val / b.valeur) / 100) * 100 : Math.round(base * partSuggeree(b) / 100) * 100);
+  const prix = Math.min(base, d.prix ?? prixSugg ?? 0);
+  const r = base ? prix / base : 0;
+  const lot = b.location.statut === 'lots' && d.lot ? (b.lots || []).find(x => x.id === d.lot) : null;
+  const loyer = lot ? lot.loyer || 0 : d.loyer || 0;
+  return {d, val, valSugg, prix, prixSugg, r, base, construit, lot, loyer,
+    notaire: Math.round((a.notaire || 0) * r), frais: Math.round((a.frais || 0) * r),
+    valeurApres: b.valeur ? Math.max(0, b.valeur - (val || 0)) : null, baseApres: base - prix};
+}
+function annexeHTML(b) {
+  const lies = associesA(b), ouvert_ = detacheOuvert.has(b.id), d = b.detache || {};
+  let h = lies.length ? `<div class="associes-bien">${lies.map(x => { const c = calculs(x);
+    return `<a class="associe-bien" href="#investissements/${encodeURIComponent(x.id)}"><span class="ico-n">${icone(x.type)}</span><span class="nom-a"><b>${esc(x.nom)}</b><small>${esc(x.vendu ? 'Vendu en ' + libMois(x.vendu.mois) : statutLib(x))}</small></span>
+      ${mini([['Valeur', x.vendu ? null : x.valeur ? kEur(x.valeur) : '—'], ['Loyer', !x.vendu && c.loyerMois ? eur(c.loyerMois) + '/mois' : null], ['Vendu', x.vendu ? kEur(x.vendu.prix) : null]], 'petit')}<span class="chev" aria-hidden="true">›</span></a>`; }).join('')}</div>` : '';
+  if (!ouvert_) {
+    const libres = biens.filter(x => x.id !== b.id && !x.lieA && !associesA(x).length && !x.vendu);
+    h += `${lies.length ? '' : '<div class="aide">Un garage, une place ou une annexe que tu pourrais louer ou vendre à part ? Sors-le en bien à part : il garde sa valeur, sa part du prix d\'achat et son loyer, reste associé à ce bien, et peut être vendu seul.</div>'}
+      <div class="boutons"><button data-a="detacheOuvrir" data-m="separer">+ Sortir un garage ou une annexe</button><button data-a="detacheOuvrir" data-m="vendre">Vendre le garage seul…</button></div>
+      ${libres.length ? `<div class="grille" style="margin-top:10px"><div class="large"><label for="inv_associer">Ou associer un bien déjà dans ta liste</label><select id="inv_associer" data-x="associer"><option value="">—</option>${libres.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></div></div>` : ''}`;
+    return section('Garage, parking ou annexe', h);
+  }
+  const lots = b.location.statut === 'lots' ? (b.lots || []).filter(x => x.loyer > 0 || x.libelle) : [];
+  h += `<div class="grille">
+      ${champ(b, 'detache.nom', 'Nom du nouveau bien', {type: 'text', ph: 'Garage · ' + b.nom})}
+      ${champ(b, 'detache.type', 'Type', {options: TYPES_ANNEXE})}
+      ${champ(b, 'detache.valeur', 'Sa valeur (€)', {step: 500, ph: b.valeur ? fmt(planDetache({...b, detache: {}}).valSugg) + ' (suggérée)' : ''})}
+      ${champ(b, 'detache.prix', 'Sa part du prix d\'achat (€)', {step: 500, ph: (p => p.prixSugg ? fmt(p.prixSugg) + ' (au prorata)' : '')(planDetache({...b, detache: {valeur: d.valeur}})), aide: 'Compte pour sa plus-value à la vente'})}
+      ${lots.length ? champ(b, 'detache.lot', 'Son loyer', {options: {'': 'Aucun loyer', ...Object.fromEntries(lots.map((x, i) => [x.id, `${x.libelle || 'Loyer ' + (i + 1)} (${eur(x.loyer || 0)}/mois)`]))}, aide: 'Le loyer passe dans la fiche du garage'})
+        : champ(b, 'detache.loyer', 'Son loyer (€/mois)', {step: 10, ph: 'facultatif'})}
+      ${d.mode === 'vendre' ? `${champ(b, 'detache.prixVente', 'Prix de vente (€)', {step: 500, ph: 'sa valeur'})}${champ(b, 'detache.moisVente', 'Vendu en', {type: 'month', ph: moisCourant()})}` : ''}
+    </div>
+    ${!lots.length && LOUE.includes(b.location.statut) && b.location.loyer ? `<div class="case"><label><input type="checkbox" data-p="detache.deduire"${d.deduire ? ' checked' : ''}> Ce loyer était compté dans celui du bien (${eur(b.location.loyer)}) : le retirer</label></div>` : ''}
+    <div id="inv_detacheRes"></div>
+    <div class="boutons"><button class="primaire" data-a="detacher">${d.mode === 'vendre' ? 'Sortir le garage et simuler sa vente →' : 'Créer le bien associé'}</button><button data-a="detacheFermer">Annuler</button></div>`;
+  return section('Garage, parking ou annexe', h, true);
+}
+function majDetache(b) {
+  const el = racine.querySelector('#inv_detacheRes'); if (!el) return;
+  const p = planDetache(b), a = b.achat, crd = calculs(b).crd;
+  el.innerHTML = `<div class="calc">
+    <div><span>${esc(p.d.nom || 'Garage · ' + b.nom)}</span><b>${p.val ? kEur(p.val) : '—'}${p.d.valeur == null && p.val ? ' (suggérée)' : ''}</b></div>
+    <div><span>· acheté ${a.date ? 'en ' + libMois(a.date) : '(date d\'achat du bien)'}</span><b>${eur(p.prix)}${p.notaire ? ' + ' + eur(p.notaire) + ' de notaire' : ''}</b></div>
+    ${p.loyer ? `<div><span>· loyer</span><b>${eur(p.loyer)}/mois</b></div>` : ''}
+    <div><span>${esc(b.nom)} ensuite</span><b>${p.valeurApres != null ? kEur(p.valeurApres) : '—'}</b></div>
+    ${p.base ? `<div><span>· prix d'achat</span><b>${eur(p.baseApres)}</b></div>` : ''}
+    ${crd ? `<div><span>· crédit (reste sur ce bien)</span><b>${kEur(crd)}</b></div>` : ''}</div>
+    <div class="aide">Le patrimoine total ne change pas : la valeur est seulement répartie entre les deux fiches. ${p.d.mode === 'vendre' ? 'Vendu seul, le garage est imposé sur sa propre plus-value (même si l\'appartement est ta résidence principale), sauf si le prix ne dépasse pas 15 000 €. La durée de détention compte depuis l\'achat du bien. ' : ''}${crd ? 'Si la banque demande de rembourser une partie du crédit avec le prix du garage, mets à jour le restant dû du prêt ici. ' : ''}${!a.prix ? 'Renseigne le prix d\'achat du bien (bloc Achat) pour répartir le prix et la plus-value.' : ''}</div>`;
+}
+function detacher(b) {
+  const p = planDetache(b), d = p.d, a = b.achat;
+  const loyer = p.loyer, lot = p.lot;
+  const n = nouveauBien({nom: (d.nom || '').trim() || 'Garage · ' + b.nom, type: d.type || 'parking', adresse: b.adresse, geo: b.geo ? {...b.geo} : null,
+    structure: b.structure, sciId: b.sciId, part: b.part, lieA: b.id,
+    valeur: p.val || null, valeurLe: p.val ? moisCourant() : '', valeurManuelle: !!p.val,
+    achat: {mode: 'existant', date: a.date || '', prix: p.prix || null, notaire: p.notaire || null, travaux: null, mobilier: null, frais: p.frais || null},
+    location: loyer ? {statut: 'vide', loyer, charges: null, locataire: lot ? lot.locataire || '' : '', debutBail: lot && normMois(lot.debut) ? normMois(lot.debut) : '', vacance: 0}
+      : {statut: 'vacant', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0},
+    notes: `Sorti de « ${b.nom} » en ${libMois(moisCourant())}.`});
+  // Le bien principal perd ce qui part dans la nouvelle fiche
+  if (p.base && p.r) {
+    a.prix = a.prix ? Math.round(a.prix * (1 - p.r)) : a.prix;
+    if (p.construit && a.construction) a.construction = Math.round(a.construction * (1 - p.r));
+    if (a.notaire) a.notaire -= p.notaire;
+    if (a.frais) a.frais -= p.frais;
+  }
+  if (b.valeur && p.val) { b.valeur = p.valeurApres; b.valeurLe = moisCourant(); }
+  if (lot) b.lots = b.lots.filter(x => x !== lot);
+  else if (loyer && d.deduire && b.location.loyer) b.location.loyer = Math.max(0, b.location.loyer - loyer);
+  // Caractéristiques d'estimation : le stationnement ne fait plus partie du bien
+  if ((d.type || 'parking') === 'parking') {
+    if (b.type === 'appart' && b.criteres.parking && b.criteres.parking !== 'aucun') b.criteres.parking = b.criteres.parking === '2' ? '1' : 'aucun';
+    if (b.type === 'maison' && (b.criteres.garage || 'oui') === 'oui') b.criteres.garage = 'non';
+  }
+  if (d.mode === 'vendre') { n.vente = {prix: d.prixVente ?? null, mois: d.moisVente || ''}; venteOuverte.add(n.id); }
+  delete b.detache; detacheOuvert.delete(b.id);
+  biens.splice(biens.indexOf(b) + 1, 0, n);
+  sauver(b, n);
+  return n;
+}
+// Bandeaux en haut de la fiche : bien associé à un autre, et vente enregistrée
+function lienHTML(b) {
+  const pr = principalDe(b);
+  return pr ? `<div class="lie-a">Associé à <a href="#investissements/${encodeURIComponent(pr.id)}">${esc(pr.nom)} →</a> <button class="lien" data-a="dissocier">Dissocier</button></div>` : '';
+}
+function venduHTML(b) {
+  const v = b.vendu;
+  return `<div class="okbox vendu-bandeau"><b>Vendu en ${libMois(v.mois)} pour ${eur(v.prix)}</b>${v.pv != null ? ` · plus-value ${eur(v.pv)}` : ''}${v.impots != null ? ` · impôts ${eur(v.impots)}` : ''}${v.net != null ? ` · ${v.dansSci ? 'resté dans la SCI' : 'ce qui t\'est revenu'} ${eur(v.net)}` : ''}.
+    Il ne compte plus dans tes totaux. <button class="lien" data-a="venteAnnuler">Annuler la vente</button></div>`;
+}
 function vueSci(x) {
-  const sesBiens = biens.filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
+  const sesBiens = detenus().filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
   const totalParts = somme(x.associes, a => a.parts);
   let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand sciv">${ICONE_SCI}<span>SCI ${REGIMES[x.regime]}</span></div>
@@ -880,7 +1022,7 @@ function vueSci(x) {
   majParts(x, t); vignettes();
 }
 // Ce qui revient à chaque associé (au prorata de ses parts)
-function majParts(x, t = totaux(biens.filter(b => b.structure === 'sci' && b.sciId === x.id))) {
+function majParts(x, t = totaux(detenus().filter(b => b.structure === 'sci' && b.sciId === x.id))) {
   x.associes.forEach((a, i) => {
     const el = racine.querySelector(`[data-part="${i}"]`); if (!el) return;
     el.innerHTML = a.parts > 0 ? mini([['Sa part du patrimoine net', t.V ? kEur(t.net * a.parts / 100) : null, signe(t.net)], ['Sa part du cash-flow', eur(t.cf * a.parts / 100) + '/mois', signe(t.cf)]], 'petit') : '';
@@ -958,7 +1100,9 @@ function simulerVente(b) {
     }
     r.abIR = pvPart ? 1 - r.ir / (pvPart * IR_PV) : abatIR(annees ?? 0); r.abPS = pvPart ? 1 - r.ps / (pvPart * PS_PV) : abatPS(annees ?? 0);   // abattements moyens
     r.anneesMaison = construit ? anneesEntre(a.debutTravaux || a.finTravaux, mois) : null;
-    if (rp) { r.ir = 0; r.ps = 0; }
+    // Vente de 15 000 € ou moins (garage, place de parking…) : plus-value exonérée (seuil apprécié sur la part vendue)
+    r.petite = !rp && prix * partBien <= 15000 && prix > 0;
+    if (rp || r.petite) { r.ir = 0; r.ps = 0; baseSurtaxe = 0; }
     r.surtaxe = rp ? 0 : surtaxePV(baseSurtaxe);
     r.impots = r.ir + r.ps + r.surtaxe;
     r.pourToi = r.liquide * k - r.impots;
@@ -981,7 +1125,10 @@ function venteHTML(b) {
         ${regime === 'ir' ? champ(b, 'vente.parts', 'Tes parts dans la SCI (%)', {step: 1, ph: '100'}) : ''}`}
     </div>
     ${regime === 'is' ? `<div class="seg mini vente-sortie"><button data-a="venteSortir" data-v="0" class="${v.sortir ? '' : 'on'}">Garder l'argent dans la SCI</button><button data-a="venteSortir" data-v="1" class="${v.sortir ? 'on' : ''}">Le sortir (dividendes)</button></div>` : ''}
-    <div id="inv_venteRes"></div></section>`;
+    <div id="inv_venteRes"></div>
+    ${(l => l.length ? `<div class="aide">Non compris dans cette vente : ${l.map(x => `<a href="#investissements/${encodeURIComponent(x.id)}">${esc(x.nom)}</a>`).join(', ')} (bien associé, à vendre depuis sa fiche).</div>` : '')(associesA(b).filter(x => !x.vendu))}
+    <div class="boutons"><button data-a="venteEnregistrer">C'est vendu : enregistrer la vente</button></div>
+    <div class="aide">Le bien passe dans « Biens vendus » et ne compte plus dans tes totaux (tu peux annuler).</div></section>`;
 }
 function majVente(b) {
   const el = racine.querySelector('#inv_venteRes'); if (!el) return;
@@ -1003,7 +1150,7 @@ function majVente(b) {
       <div class="aide">${r.sortir ? 'Le bénéfice de la vente sort en dividendes (flat tax 31,4 %) ; le reste rembourse tes apports en compte courant, sans impôt.' : 'Tant que l\'argent reste dans la SCI, pas de flat tax : elle ne s\'applique qu\'aux dividendes que tu sortiras.'} Amortissements, compte courant et IS dépendent des comptes de la SCI : à valider avec ton comptable.</div>`;
   } else {
     h += `${r.k < 1 ? ligne(`Ta part${partTxt}`, eur(r.liquide * r.k)) : ''}
-      ${r.rp ? ligne('Résidence principale : plus-value exonérée', eur(0)) : `${ligne(`Impôt sur la plus-value (19 %, abattement ${Math.round(r.abIR * 100)} %)`, moins(r.ir))}
+      ${r.rp ? ligne('Résidence principale : plus-value exonérée', eur(0)) : r.petite ? ligne('Vente de 15 000 € ou moins : plus-value exonérée', eur(0)) : `${ligne(`Impôt sur la plus-value (19 %, abattement ${Math.round(r.abIR * 100)} %)`, moins(r.ir))}
       ${ligne(`Prélèvements sociaux (17,2 %, abattement ${String(Math.round(r.abPS * 1000) / 10).replace('.', ',')} %)`, moins(r.ps))}
       ${r.surtaxe ? ligne('Surtaxe (plus-value de plus de 50 000 €)', moins(r.surtaxe)) : ''}`}
       ${ligne('<b>Ce qui te revient</b>', eur(r.pourToi), signe(r.pourToi))}</div>
@@ -1040,7 +1187,10 @@ function majCalculs(b) {
     ${partDe(b) < 1 ? (k => `<div class="ta-part"><div class="ta-part-titre">Ta part : ${Math.round(k * 100)} % du bien</div>${mini([
       ['Valeur', b.valeur ? kEur(b.valeur * k) : null], ['Restant dû', c.crd ? kEur(c.crd * k) : null],
       ['Patrimoine net', c.patrimoine != null ? kEur(c.patrimoine * k) : null, signe(c.patrimoine)],
-      ['Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois * k) + '/mois' : null, signe(c.cfMois)]]) || '<div class="aide">Les totaux de la page comptent cette part.</div>'}</div>`)(partDe(b)) : ''}`;
+      ['Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois * k) + '/mois' : null, signe(c.cfMois)]]) || '<div class="aide">Les totaux de la page comptent cette part.</div>'}</div>`)(partDe(b)) : ''}
+    ${(l => l.length && !b.vendu ? (t => `<div class="ta-part"><div class="ta-part-titre">Avec ${esc(l.map(x => x.nom).join(', '))}</div>${mini([
+      ['Valeur', t.V ? kEur(t.V) : null], ['Patrimoine net', t.V ? kEur(t.net) : null, signe(t.net)],
+      ['Loyers', t.loyers ? eur(t.loyers) + '/mois' : null], ['Cash-flow', eur(t.cf) + '/mois', signe(t.cf)]])}</div>`)(totaux([b, ...l])) : '')(associesA(b).filter(x => !x.vendu))}`;
   const ligne = (l, v, cls = '') => `<div><span>${l}</span><b class="${cls}">${v}</b></div>`;
   q('#inv_renta').innerHTML = `<div class="calc">
       ${ligne(b.type === 'terrain' ? 'Revenus encaissés' : 'Loyers encaissés', eur(c.loyersAn) + '/an', '')}
@@ -1196,6 +1346,23 @@ racine.addEventListener('click', async e => {
     if (venteOuverte.has(b.id)) racine.querySelector('#inv_vente').scrollIntoView({behavior: 'smooth', block: 'start'});
     return;
   }
+  if (a === 'venteEnregistrer') {
+    const r = simulerVente(b), dansSci = r.regime === 'is' && !r.sortir;
+    if (!confirm(`Enregistrer la vente de « ${b.nom} » en ${libMois(r.mois)} pour ${eur(r.prix)} ? Il ne comptera plus dans tes totaux.`)) return;
+    b.vendu = {mois: r.mois, prix: r.prix, pv: Math.round(r.pv), impots: Math.round(r.impots), net: Math.round(dansSci ? r.dansSci * r.partSci : r.pourToi), dansSci};
+    venteOuverte.delete(b.id); sauver(b); vueDetail(b); window.scrollTo(0, 0); return;
+  }
+  if (a === 'venteAnnuler' && confirm('Annuler la vente ? Le bien revient dans tes totaux.')) { delete b.vendu; sauver(b); return vueDetail(b); }
+  if (a === 'detacheOuvrir') {
+    const lot = (b.lots || []).find(x => /garage|box|parking|place|annexe|cave/i.test(x.libelle || ''));
+    b.detache = {mode: t.dataset.m, type: 'parking', lot: lot ? lot.id : '', ...(b.detache || {}), ...(t.dataset.m ? {mode: t.dataset.m} : {})};
+    detacheOuvert.add(b.id); vueDetail(b);
+    const f = racine.querySelector('#inv_detache_nom'); if (f) { f.scrollIntoView({behavior: 'smooth', block: 'center'}); f.focus({preventScroll: true}); }
+    return;
+  }
+  if (a === 'detacheFermer') { detacheOuvert.delete(b.id); delete b.detache; sauver(b); return vueDetail(b); }
+  if (a === 'detacher') { const n = detacher(b); location.hash = '#investissements/' + n.id; return; }
+  if (a === 'dissocier' && confirm('Dissocier ce bien ? Il reste dans ta liste, sans lien avec l\'autre.')) { delete b.lieA; sauver(b); return vueDetail(b); }
   if (a === 'venteSortir') { b.vente = b.vente || {}; b.vente.sortir = t.dataset.v === '1'; sauver(b); racine.querySelectorAll('.vente-sortie button').forEach(x => x.classList.toggle('on', x === t)); return majVente(b); }
   if (a === 'ajoutLigne' && LISTES[b.location.statut]) { const k = LISTES[b.location.statut].cle; (b[k] = b[k] || []).push({id: uid(), libelle: '', loyer: null, locataire: '', debut: ''}); sauver(b); return vueDetail(b); }
   if (a === 'supprLigne' && LISTES[b.location.statut] && confirm('Retirer cette ligne ?')) { b[LISTES[b.location.statut].cle].splice(+t.dataset.i, 1); sauver(b); return vueDetail(b); }
@@ -1210,7 +1377,8 @@ racine.addEventListener('click', async e => {
   }
   if (a === 'supprimer' && confirm(`Supprimer « ${b.nom} » et ses documents ? C'est définitif.`)) {
     for (const d of b.docs) await supprimerDoc(d);
-    marquerSupprime(b.id); biens = biens.filter(x => x !== b); sauver(); location.hash = '#investissements';
+    const lies = associesA(b); lies.forEach(x => { delete x.lieA; });
+    marquerSupprime(b.id); biens = biens.filter(x => x !== b); sauver(...lies); location.hash = '#investissements';
   }
 });
 racine.addEventListener('change', async e => {
@@ -1239,6 +1407,11 @@ racine.addEventListener('change', async e => {
     if (v === 'np') { b.structure = 'np'; b.sciId = null; } else { b.structure = 'sci'; b.sciId = v; }
     sauver(b); return vueDetail(b);
   }
+  if (e.target.dataset.x === 'associer') {
+    const x = biens.find(y => y.id === e.target.value);
+    if (x) { x.lieA = b.id; sauver(x); vueDetail(b); }
+    return;
+  }
   if (e.target.id === 'inv_fichier') {
     const etat = racine.querySelector('#inv_docEtat'), fichiers = [...e.target.files];
     e.target.value = '';
@@ -1266,6 +1439,7 @@ racine.addEventListener('change', async e => {
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver(b);
   if (chemin.startsWith('vente.')) return majVente(b);
+  if (chemin.startsWith('detache.')) return majDetache(b);
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
   if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
