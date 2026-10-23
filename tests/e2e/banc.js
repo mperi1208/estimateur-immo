@@ -88,7 +88,7 @@ function repondreBase(base, op, corps) {
   return {error: {message: 'opération inconnue ' + op}};
 }
 
-const lancerNavigateur = () => chromium.launch();
+const lancerNavigateur = () => chromium.launch(process.env.PW_CANAL ? {channel: process.env.PW_CANAL} : {});   // en CI : le Chrome déjà installé sur la machine
 
 // Un « appareil » : un contexte de navigateur avec son propre stockage, branché sur la base simulée
 async function appareil(nav, base, {reseau = {}} = {}) {
@@ -155,7 +155,7 @@ async function estimer(page, {surf = 50, type, details = {}} = {}) {
   await page.fill('#addr', 'rue de la République Lyon');
   await page.fill('#surf', String(surf));
   for (const [k, v] of Object.entries(details)) await page.evaluate(([k, v]) => { const f = document.getElementById('c_' + k); if (f.type === 'checkbox') f.checked = v; else f.value = v; f.dispatchEvent(new Event('input')); }, [k, v]);
-  await page.evaluate(() => { state.loyerHC = null; });
+  await page.evaluate(() => { state.loyerHC = null; state.prix = null; state.base = null; });   // pas de résultat du test d'avant pris pour le nouveau
   await page.click('#go');
   await page.waitForFunction(() => state.base && state.prix != null && state.loyerHC != null && document.querySelector('#works .crit'), null, {timeout: 20000});
   return page.evaluate(() => ({prix: state.prix, loyer: state.loyerHC, mob: state.mob, surf: state.base.surf}));
