@@ -2500,7 +2500,16 @@ function rendre() {
 }
 
 // ---------- Achat + travaux + revente ----------
-const SURTAXE = [[250000, 0.06], [200000, 0.05], [150000, 0.04], [100000, 0.03], [50000, 0.02]];   // plus-values > 50 000 €
+// Surtaxe des plus-values de plus de 50 000 € (art. 1609 nonies G du CGI), avec le lissage à l'entrée de chaque tranche
+const SURTAXE = [[50000, 60000, 0.02, 1 / 20], [100000, 110000, 0.03, 1 / 10], [150000, 160000, 0.04, 0.15], [200000, 210000, 0.05, 0.20], [250000, 260000, 0.06, 0.25]];
+function surtaxe(pv) {
+  for (let i = SURTAXE.length - 1; i >= 0; i--) {
+    const [bas, haut, taux, lissage] = SURTAXE[i];
+    if (pv > haut) return pv * taux;
+    if (pv > bas) return pv * taux - (haut - pv) * lissage;
+  }
+  return 0;
+}
 function bilanRevente(s) {
   const p = s.p, n = Math.max(1, Math.round(p.moisRevente));
   const rows = s.ech.rows.slice(0, n);
@@ -2530,9 +2539,9 @@ function bilanRevente(s) {
     // Plus-value des particuliers (aussi pour une SCI à l'IR) : frais d'acquisition réels ou forfait 7,5 %, travaux sur factures
     const pv = prixVente - fraisVente - (p.prix + Math.max(s.fraisNotaire, 0.075 * p.prix) + p.travaux);
     if (pv > 0) {
-      const sur = SURTAXE.find(([seuil]) => pv > seuil)?.[1] || 0;
-      impot = pv * (0.19 + PS_FONCIER + sur);
-      detail = `plus-value de ${eur(pv)} × 36,2 %${sur ? ` + surtaxe ${pct(sur * 100)}` : ''}, sans abattement avant 6 ans`;
+      const sur = surtaxe(pv);
+      impot = pv * (0.19 + PS_FONCIER) + sur;
+      detail = `plus-value de ${eur(pv)} × 36,2 %${sur ? ` + surtaxe ${eur(sur)}` : ''}, sans abattement avant 6 ans`;
     } else detail = 'pas de plus-value imposable';
   }
   return {n, interets, assurance, capital, crd, chargesFixes, chargesVar, loyers, prixVente, fraisVente, ira, coutAchat,
@@ -2806,7 +2815,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=58"></script>
+<script src="investissements.js?v=59"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
