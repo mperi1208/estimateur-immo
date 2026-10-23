@@ -165,6 +165,9 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   const pr = c.projets.find(x => x.nom === 'Sous-sol · Studio Test');
   assert.equal(pr.finance.prix, 0); assert.equal(pr.finance.travaux, 42000); assert.equal(pr.finance.mobilier, 0); assert.equal(pr.amenag.bien, bienDuCompte('Sous-sol · Studio Test').id);
   assert.equal(pr.finance.locMode, 'nuit'); assert.equal(pr.finance.nuit, 80); assert.equal(pr.resume.saison.nuit, 80);
+  // Pas encore fait : absent de la liste de Mon patrimoine (et de l'organisation), seulement dans Mes projets
+  await page.click('#inv a.retour'); await page.waitForSelector('#inv .invhead');
+  assert.equal(await page.locator('#inv', {hasText: 'Sous-sol · Studio Test'}).count(), 0);
   await page.click('.tabs [data-tab="projets"]');
   const carte = page.locator('#pj .pj', {hasText: 'Sous-sol · Studio Test'});
   await carte.waitFor();
@@ -179,6 +182,7 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   assert.equal(b.achat.travaux, 42000); assert.equal(b.location.statut, 'saisonnier'); assert.equal(b.location.nuit, 80);
   await page.click('#inv a.retour');
   await page.waitForSelector('#inv .invhead');
+  assert.equal(await page.locator('#inv .groupe-bien .bien-lie', {hasText: 'Sous-sol · Studio Test'}).count(), 1);   // fait : il rejoint la liste
   const t = await page.locator('#inv .kpis').first().innerText();
   assert.ok(Math.abs(nombre(t.match(/^Valeur\s*\n\s*([^\n]+)/im)[1]) * 1000 - (200000 + b.valeur)) < 1000, t);   // affiché en k€
 });

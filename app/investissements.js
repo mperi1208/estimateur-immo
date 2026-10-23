@@ -734,6 +734,7 @@ function vueListe() {
       <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   if (biens.length || scis.length) {
     const actifs = detenus(), vendus = biens.filter(b => b.vendu);
+    const montres = actifs.filter(b => !enProjet(b));   // espace pas encore aménagé : seulement dans Mes projets (et la fiche de son bien)
     h += kpisTotaux(totaux(actifs));
     if (scis.length) h += pli('scis', 'Mes SCI', scis.length, `<div class="scis">${scis.map(x => {
       const t = totaux(actifs.filter(b => b.sciId === x.id && b.structure === 'sci'));
@@ -743,11 +744,11 @@ function vueListe() {
         <span class="chev" aria-hidden="true">›</span></a>`;
     }).join('')}</div>`);
     // Filtre par détenteur
-    const n = f => actifs.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
+    const n = f => montres.filter(b => f === 'tout' || (f === 'np' ? b.structure !== 'sci' : b.sciId === f && b.structure === 'sci')).length;
     const choix = [['tout', 'Tous'], ['np', 'Nom propre'], ...scis.map(x => [x.id, x.nom])].filter(([f]) => f === 'tout' || n(f));
-    const visibles = actifs.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
+    const visibles = montres.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
     const filtres = choix.length > 2 ? `<div class="filtres">${choix.map(([f, l]) => `<button data-a="filtre" data-f="${esc(f)}" class="${f === filtre ? 'on' : ''}">${esc(l)} <span>${n(f)}</span></button>`).join('')}</div>` : '';
-    h += pli('biens', 'Mes biens', actifs.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
+    h += pli('biens', 'Mes biens', montres.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
     if (vendus.length) h += pli('vendus', 'Biens vendus', vendus.length, `<div class="liste">${vendus.map(carteVendue).join('')}</div>`);
     h += arbreHTML();
   } else {
@@ -760,7 +761,7 @@ function vueListe() {
 }
 // Organigramme du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens (montants à hauteur de la part détenue)
 function arbreHTML() {
-  const biens = detenus();
+  const biens = detenus().filter(b => !enProjet(b));
   if (!biens.length) return '';
   const chiffres = (net, cf) => `<span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${cf != null ? `<span><b class="${signe(cf)}">${eur(cf)}/mois</b></span>` : ''}</span>`;
   const tot = t => chiffres(t.V ? t.net : null, t.n ? t.cf : null);
@@ -1296,7 +1297,7 @@ function vueSci(x) {
         <div class="part" data-part="${i}"></div><button class="lien" data-a="supprAssocie" data-i="${i}">Retirer</button></div>`).join('')}</div>` : '<div class="aide">Aucun associé renseigné.</div>'}
       <div class="aide" id="inv_parts">${x.associes.length && Math.abs(totalParts - 100) > 0.01 ? `Total des parts : ${fmt(totalParts)} % (devrait faire 100 %).` : ''}</div>
       <button data-a="ajoutAssocie">+ Ajouter un associé</button>`)}
-    ${section('Biens de la SCI', `${sesBiens.length ? `<div class="liste">${sesBiens.map((b, i) => carte(b, t.cs[i])).join('')}</div>` : '<div class="aide">Aucun bien rattaché. Dans la fiche d\'un bien, choisis cette SCI dans « Détenu par », ou ajoute-en un ici.</div>'}
+    ${section('Biens de la SCI', `${sesBiens.length ? `<div class="liste">${sesBiens.map((b, i) => enProjet(b) ? '' : carte(b, t.cs[i])).join('')}</div>` : '<div class="aide">Aucun bien rattaché. Dans la fiche d\'un bien, choisis cette SCI dans « Détenu par », ou ajoute-en un ici.</div>'}
       <button data-a="ajoutBienSci">+ Ajouter un bien à cette SCI</button>`, true)}
     ${section('Partenaires', `<div class="grille">${champ(x, 'banque', 'Banque', {type: 'text'})}${champ(x, 'comptable', 'Expert-comptable', {type: 'text'})}</div>`)}
     ${section('Notes', champ(x, 'notes', '', {zone: true, ph: 'Assemblées générales, comptes courants d\'associés, échéances…'}))}
