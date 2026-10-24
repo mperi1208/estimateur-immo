@@ -159,6 +159,14 @@ test('différé partiel : intérêts seuls pendant le différé, puis mensualit�
   assert.equal(a1.capital, 0); proche(a1.interets, s.pret * 0.0339, 0.5);
   proche(a2.credit, 12 * s.ech.pmt, 0.01);
 });
+test('mensualité pendant le différé : intérêts + assurance (partiel), assurance seule (total), rien sans différé', () => {
+  const s = formulaire({prix: 200000, apport: 0, differe: 36, typeDiff: 'partiel', assur: 0.3});
+  proche(s.ech.mensDiff, s.pret * 0.0339 / 12 + s.ech.assM, 1e-6);
+  proche(s.ech.mensDiff, s.ech.rows[0].i + s.ech.rows[0].ass, 1e-6);
+  assert.ok(s.ech.mensDiff < s.ech.pmt + s.ech.assM);
+  proche(formulaire({prix: 200000, apport: 0, differe: 12, typeDiff: 'total', assur: 0.3}).ech.mensDiff, s.ech.assM, 1e-6);
+  assert.equal(formulaire({differe: 0}).ech.mensDiff, null);
+});
 test('cumul de trésorerie : départ = −mise de départ, puis somme des cash-flows', () => {
   const s = formulaire({apport: 25000});
   let c = -25000; s.annees.forEach(a => { c += a.cf; proche(a.cumul, c, 1e-6); });
