@@ -1,0 +1,33 @@
+name: Mise en ligne
+
+# Publie le site sur GitHub Pages à chaque push sur main (plus rapide que le déploiement « depuis la branche »).
+# Réglage requis : Settings → Pages → Source : « GitHub Actions ».
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # Seulement ce que le site sert : la page d'accueil et l'appli (pas les tests ni les scripts SQL)
+      - run: mkdir _site && cp -r index.html app _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploiement
+        uses: actions/deploy-pages@v4
