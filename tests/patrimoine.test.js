@@ -37,7 +37,7 @@ test('plusieurs loyers : chacun compte à partir de son mois de début', () => {
   const c = calculs(b);
   assert.equal(c.loyerMois, 650);                      // le 2e loyer n'a pas commencé
   assert.equal(c.loyersAn, 650 * 12 + 100 * 9);        // il compte 9 mois sur les 12 prochains
-  proche(c.brut, 750 * 12 / 150000, 1e-9);             // rendement : tous les loyers, commencés ou non
+  assert.equal(c.brut, undefined);                     // plus de rendement calculé
 });
 test('plusieurs loyers : date au format 03/2026 (Safari) et vacance', () => {
   const [a, m] = dans(6).split('-');
@@ -346,7 +346,7 @@ test('espace à aménager : coût total saisi à la main, il remplace l\'estimat
   e.amenag.total = 25000;
   const q = planAmenag(e);
   assert.equal(q.travaux, 25000); assert.equal(q.mobilier, 0); assert.equal(q.saisi, true);
-  assert.equal(q.creee, q.valeur - 25000); proche(q.rendement, q.loyer * 12 / 25000, 1e-9);
+  assert.equal(q.creee, q.valeur - 25000); assert.equal(q.rendement, undefined);
   amenagTermine(e);
   assert.equal(e.achat.travaux, 25000); assert.equal(e.achat.mobilier, null);
 });
@@ -381,4 +381,22 @@ test('espace à aménager à la nuitée, loué seulement l\'été : moins de nui
   assert.ok(ete.loyer < an.loyer);                     // mais moins de recettes sur l'année
   e.amenag.occupation = 30;                            // taux saisi : il prime sur la période
   assert.equal(planAmenag(e).occupation, 30);
+});
+
+// ---------- Comptable de la SCI ----------
+test('comptable de la SCI : honoraires partagés entre les biens qui le choisissent, vendus exclus', () => {
+  const sci = {id: 'sci1', nom: 'SCI Test', regime: 'is', compta: 1800};
+  const loue = o => nouveauBien({structure: 'sci', sciId: 'sci1', achat: {prix: 100000}, location: {statut: 'vide', loyer: 700, vacance: 0}, ...o});
+  const a = loue({chargesAn: {...sansCharges, comptaSci: '1', compta: 999}});
+  const b = loue({chargesAn: {...sansCharges, comptaSci: '1'}});
+  const c = loue({chargesAn: {...sansCharges, compta: 300}});                       // montant à lui : pas de part
+  const v = loue({chargesAn: {...sansCharges, comptaSci: '1'}, vendu: {mois: dans(-2)}});
+  ctx.setScis([sci]); ctx.setBiens([a, b, c, v]);
+  assert.equal(calculs(a).compta, 900); assert.equal(calculs(a).chargesAn, 900);  // 1 800 € ÷ 2 biens, le montant saisi à la main est ignoré
+  assert.equal(calculs(b).cfAn, 700 * 12 - 900);
+  assert.equal(calculs(c).compta, 300);
+  sci.compta = null; assert.equal(calculs(a).compta, 0);                           // honoraires pas encore saisis
+  const np = nouveauBien({chargesAn: {...sansCharges, comptaSci: '1', compta: 200}}); // plus dans une SCI : son propre montant
+  ctx.setBiens([np]); assert.equal(calculs(np).compta, 200);
+  ctx.setBiens([]); ctx.setScis([]);
 });

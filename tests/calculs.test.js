@@ -79,10 +79,10 @@ const bien = (o = {}) => Object.assign({
   chargesAn: {tf: 1000, copro: 600, pno: 0, compta: 0, cfe: 0, autres: 0, gestion: 0, entretien: 0},
   achat: {prix: 150000, notaire: 12000, travaux: 8000},
 }, o);
-test('rentabilité : loyers, charges, rendements bruts et nets', () => {
+test('cash-flow : loyers, charges, plus de rendement calculé', () => {
   const c = calculs(bien());
   assert.equal(c.cout, 170000); assert.equal(c.loyersAn, 9600); assert.equal(c.chargesAn, 1600);
-  proche(c.brut, 9600 / 170000, 1e-9); proche(c.net, 8000 / 170000, 1e-9); assert.equal(c.cfAn, 8000);
+  assert.equal(c.cfAn, 8000); assert.ok(!('brut' in c) && !('net' in c));
 });
 test('rentabilité : vacance, gestion et entretien en % des loyers', () => {
   const c = calculs(bien({location: {statut: 'vide', loyer: 1000, vacance: 1}, chargesAn: {tf: 0, gestion: 8, entretien: 2}}));
@@ -164,10 +164,10 @@ test('rentabilité : assurance du prêt dans la mensualité et le crédit annuel
   const c = calculs(bien({prets: [{montant: 100000, taux: 2, duree: 240, debut: decalerMois(auj, -1), assurance: 25}]}));
   proche(c.mensuCredit, c.prets[0].e.M + 25, 1e-9); proche(c.creditAn, (c.prets[0].e.M + 25) * 12, 0.01);
 });
-test('rentabilité : vacance plafonnée à 12 mois, coût nul = pas de rendement', () => {
+test('rentabilité : vacance plafonnée à 12 mois, coût nul = pas de plus-value', () => {
   assert.equal(calculs(bien({location: {statut: 'vide', loyer: 800, vacance: 15}})).loyersAn, 0);
   const sansAchat = calculs(bien({achat: {}}));
-  assert.equal(sansAchat.brut, null); assert.equal(sansAchat.net, null); assert.equal(sansAchat.plusValue, null);
+  assert.equal(sansAchat.plusValue, null);
 });
 test('renégociation : nouvelle mensualité au taux du marché, indemnités plafonnées, rien sous 1 000 €', () => {
   const src = idx;
