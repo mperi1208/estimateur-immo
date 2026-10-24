@@ -139,6 +139,11 @@ test('vente en nom propre après 10 ans : plus-value, forfait travaux 15 %, imp�
   proche(r.ir, 55000 * 0.70 * 0.19); proche(r.ps, 55000 * (1 - 0.0825) * 0.172); assert.equal(r.surtaxe, 0);
   proche(r.pourToi, 300000 - r.impots);
 });
+test('vente : frais par défaut de 4 % avec agence, 1 % sans agence, valeur saisie prioritaire', () => {
+  assert.equal(simulerVente(aVendre({vente: {}})).frais, 12000);
+  assert.equal(simulerVente(aVendre({vente: {agence: false}})).frais, 3000);
+  assert.equal(simulerVente(aVendre({vente: {agence: false, frais: 2}})).frais, 6000);
+});
 test('vente : résidence principale et garage de 15 000 € ou moins exonérés', () => {
   assert.equal(simulerVente(aVendre({location: {statut: 'rp'}})).impots, 0);
   const g = simulerVente(aVendre({type: 'parking', valeur: 14000, achat: {mode: 'existant', date: dans(-24), prix: 8000}}));
