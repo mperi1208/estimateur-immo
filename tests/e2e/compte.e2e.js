@@ -200,7 +200,13 @@ test('location saisonnière dans une fiche : recettes à la nuitée, frais, cash
 test('simuler la vente : le détail s\'additionne, puis vente enregistrée (hors totaux) et annulée', async () => {
   await ouvrirFiche('Studio Test');
   await page.click('#inv [data-a="vente"]');
-  await champ('vente.prix', 230000); await champ('vente.frais', 5);
+  await champ('vente.prix', 230000);
+  await page.click('#inv [data-a="venteAgence"][data-v="0"]');     // sans agence : diagnostics seuls, 1 %
+  await page.waitForFunction(() => /−2\s300 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
+  assert.equal(await page.getAttribute('#inv_vente_frais', 'placeholder'), '1');
+  await page.click('#inv [data-a="venteAgence"][data-v="1"]');
+  assert.equal(await page.getAttribute('#inv_vente_frais', 'placeholder'), '4');
+  await champ('vente.frais', 5);
   const calc = await page.locator('#inv_venteRes .calc').innerText();
   const l = re => { const m = calc.match(re); return m ? nombre(m[1]) : 0; };
   const prix = l(/Prix de vente\s+([^\n]+)/), frais = l(/Frais de vente\s+([^\n]+)/), crd = l(/Crédit remboursé[^\n]*?\)\s+([^\n]+)/),

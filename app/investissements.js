@@ -1346,7 +1346,7 @@ function surtaxePV(pv) {
 const anneesEntre = (de, a) => de && a ? Math.floor(ecartMois(de, a) / 12) : null;
 function simulerVente(b) {
   const v = b.vente || {}, a = b.achat, sci = sciDe(b), regime = sci ? sci.regime : 'np';
-  const mois = v.mois || moisCourant(), prix = v.prix ?? b.valeur ?? 0, frais = prix * (v.frais ?? 4) / 100;
+  const mois = v.mois || moisCourant(), prix = v.prix ?? b.valeur ?? 0, frais = prix * (v.frais ?? fraisVenteDefaut(v)) / 100;
   // Crédits soldés à la vente : restant dû à la date de vente, et indemnités (plafond légal : 6 mois d'intérêts, 3 % du restant dû)
   const prets = b.prets.map(p => ({p, e: etatPret(p, mois)})).filter(x => x.e && x.e.crd > 0);
   const crd = somme(prets, x => x.e.crd);
@@ -1407,13 +1407,21 @@ function simulerVente(b) {
   r.manqueAchat = !(a.prix > 0) || !a.date || (a.mode === 'construction' && !(a.construction > 0));
   return r;
 }
+// Frais de vente : avec agence (commission + diagnostics, ~4 %) ou sans agence (diagnostics seuls, ~1 %)
+const fraisVenteDefaut = v => v.agence === false ? 1 : 4;
+const fraisVenteAide = v => v.agence === false ? 'Diagnostics seulement (environ 1 %), modifiable' : 'Commission d\'agence et diagnostics (environ 4 %), modifiable';
+function fraisVenteHTML(b) {
+  const v = b.vente || {}, sans = v.agence === false;
+  return champ(b, 'vente.frais', 'Frais de vente (%)', {step: 0.5, ph: String(fraisVenteDefaut(v)), aide: fraisVenteAide(v)})
+    .replace('<input ', `<div class="seg mini vente-agence"><button type="button" data-a="venteAgence" data-v="1" class="${sans ? '' : 'on'}">Avec agence</button><button type="button" data-a="venteAgence" data-v="0" class="${sans ? 'on' : ''}">Sans agence</button></div><input `);
+}
 function venteHTML(b) {
   const sci = sciDe(b), regime = sci ? sci.regime : 'np', v = b.vente || {};
   return `<section class="bloc large vente" id="inv_vente"><h3>Si je vends ce bien</h3>
     <div class="grille vente-params">
       ${champ(b, 'vente.prix', 'Prix de vente (€)', {step: 1000, ph: b.valeur ? fmt(b.valeur) + ' (valeur actuelle)' : ''})}
       ${champ(b, 'vente.mois', 'Vendu en', {type: 'month', ph: moisCourant()})}
-      ${champ(b, 'vente.frais', 'Frais de vente (%)', {step: 0.5, ph: '4', aide: 'Agence et diagnostics à ta charge'})}
+      ${fraisVenteHTML(b)}
       ${champ(b, 'vente.ira', 'Indemnités du crédit (€)', {step: 100, ph: 'calculées', aide: 'Remboursement anticipé (IRA)'})}
       ${regime === 'is' ? `${champ(b, 'vente.amort', 'Amortissements déjà déduits (€)', {step: 1000, ph: 'estimés', aide: 'Voir le bilan de la SCI'})}
         ${champ(b, 'vente.parts', 'Tes parts dans la SCI (%)', {step: 1, ph: '100'})}`
@@ -1714,6 +1722,12 @@ racine.addEventListener('click', async e => {
     const p = principalDe(b); if (!p) return;
     for (const k of ['gestion', 'entretien']) if (b.chargesAn[k] == null && p.chargesAn[k] != null) b.chargesAn[k] = p.chargesAn[k];
     sauver(b); return vueDetail(b);
+  }
+  if (a === 'venteAgence') {   // change le mode et revient au pourcentage par défaut de ce mode (toujours modifiable)
+    b.vente = b.vente || {}; b.vente.agence = t.dataset.v === '1'; delete b.vente.frais; sauver(b);
+    racine.querySelectorAll('.vente-agence button').forEach(x => x.classList.toggle('on', x === t));
+    const inp = racine.querySelector('#inv_vente_frais'); if (inp) { inp.value = ''; inp.placeholder = String(fraisVenteDefaut(b.vente)); const aide = inp.parentNode.querySelector('.aide'); if (aide) aide.textContent = fraisVenteAide(b.vente); }
+    return majVente(b);
   }
   if (a === 'venteSortir') { b.vente = b.vente || {}; b.vente.sortir = t.dataset.v === '1'; sauver(b); racine.querySelectorAll('.vente-sortie button').forEach(x => x.classList.toggle('on', x === t)); return majVente(b); }
   if (a === 'ajoutLigne' && LISTES[b.location.statut]) { const k = LISTES[b.location.statut].cle; (b[k] = b[k] || []).push({id: uid(), libelle: '', loyer: null, locataire: '', debut: ''}); sauver(b); return vueDetail(b); }
