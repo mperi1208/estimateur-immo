@@ -2164,6 +2164,23 @@ async function majVersion() {
   el.insertAdjacentHTML('beforeend', '<button class="lien" id="versionRecharger">Recharger</button>');
   el.querySelector('#versionRecharger').onclick = recharger;
 }
+// Une version plus récente est en ligne (page ouverte depuis longtemps, cache tenace, appli sur l'écran d'accueil) :
+// on recharge tout seul, au chargement et en revenant sur l'onglet (au plus toutes les 5 minutes), une fois par version.
+// On compare l'en-tête Last-Modified de la page affichée (copie du cache) à celui du serveur, tel quel : pas de fuseau horaire en jeu
+const enTeteDate = async cache => (await fetch(location.pathname, {cache})).headers.get('last-modified');
+const versionChargee = window === window.top ? enTeteDate('force-cache').catch(() => null) : Promise.resolve(null);   // pas dans le cadre caché du moteur
+let vuVersion = 0;
+async function verifierVersion() {
+  if (window !== window.top || Date.now() - vuVersion < 300000) return;
+  vuVersion = Date.now();
+  try {
+    const ici = await versionChargee, lm = await enTeteDate('reload');
+    if (!ici || !lm || ici === lm || sessionStorage.getItem('rechargeAuto') === lm) return;   // à jour, ou déjà tenté pour cette version
+    sessionStorage.setItem('rechargeAuto', lm); recharger();
+  } catch (e) {}
+}
+setTimeout(verifierVersion, 3000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verifierVersion(); });
 // Recharger en contournant les caches (navigateur et serveur) : paramètre unique, retiré de l'adresse au chargement
 function recharger() { location.replace(location.pathname + '?r=' + Date.now() + location.hash); }
 if (/[?&]r=\d+/.test(location.search)) history.replaceState(null, '', location.pathname + location.search.replace(/[?&]r=\d+/, '').replace(/^&/, '?') + location.hash);
@@ -3031,7 +3048,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=65"></script>
+<script src="investissements.js?v=66"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

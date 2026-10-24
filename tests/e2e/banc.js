@@ -88,6 +88,7 @@ function repondreBase(base, op, corps) {
   return {error: {message: 'opération inconnue ' + op}};
 }
 
+const PUBLIE = new Date(Date.now() - 3600e3).toUTCString();   // date de mise en ligne fixe : sinon la page se croirait périmée
 const lancerNavigateur = () => chromium.launch(process.env.PW_CANAL ? {channel: process.env.PW_CANAL} : {});   // en CI : le Chrome déjà installé sur la machine
 
 // Un « appareil » : un contexte de navigateur avec son propre stockage, branché sur la base simulée
@@ -102,7 +103,7 @@ async function appareil(nav, base, {reseau = {}} = {}) {
       let f = path.join(RACINE, decodeURIComponent(url.pathname));
       if (f.endsWith('/')) f += 'index.html';
       if (!f.startsWith(RACINE) || !fs.existsSync(f)) return route.fulfill({status: 404, body: 'introuvable'});
-      return route.fulfill({status: 200, contentType: TYPES_MIME[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f), headers: {'last-modified': new Date(Date.now() - 3600e3).toUTCString()}});
+      return route.fulfill({status: 200, contentType: TYPES_MIME[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f), headers: {'last-modified': PUBLIE}});
     }
     if (url.host === 'cdnjs.cloudflare.com' && /leaflet/.test(url.pathname)) {
       const nom = path.basename(url.pathname).replace('.min', ''), f = [path.join(LEAFLET, nom), path.join(LEAFLET, 'images', nom)].find(x => fs.existsSync(x));

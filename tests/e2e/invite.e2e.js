@@ -240,3 +240,16 @@ test('diviser en 3 logements : surfaces modifiables, coûts par logement, 3 loye
   await page.click('.tabs [data-tab="estimation"]');
   await page.selectOption('#w_niveau', 'non');
 });
+
+test('nouvelle version en ligne : la page se recharge toute seule, une fois par version', async () => {
+  const lm = new Date(Date.now() + 3600e3).toUTCString();          // le serveur annonce une page plus récente que celle affichée
+  await page.route(u => u.pathname === '/app/index.html', route => route.request().isNavigationRequest() ? route.fallback()
+    : route.fulfill({status: 200, body: '', headers: {'last-modified': lm}}));
+  await page.evaluate(() => { window.marque = 1; vuVersion = 0; verifierVersion(); });
+  await page.waitForFunction(() => !window.marque);                // rechargée
+  await page.waitForFunction(() => typeof COMPTE !== 'undefined' && COMPTE.pret && window.CF_APP);
+  await page.evaluate(() => { window.marque = 1; vuVersion = 0; return verifierVersion(); });
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => window.marque), 1);        // déjà tenté pour cette version : pas de boucle
+  await page.unrouteAll({behavior: 'ignoreErrors'});
+});
