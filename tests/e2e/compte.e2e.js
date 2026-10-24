@@ -259,6 +259,11 @@ test('comptable de la SCI : honoraires saisis sur la SCI, comptés dans les char
   await attendreCompte(c => c.scis.find(x => x.id === sci.id).compta === 1200);
   await ouvrirFiche('Parking Test');
   const avant = nombre(await kpi('Cash-flow'));
+  // Bloc Cash-flow : chaque ligne par an et par mois, la colonne par mois reprend le KPI
+  assert.match(await page.locator('#inv_renta .l2.tete').innerText(), /Par an\s+Par mois/i);
+  const [cfAn, cfMois] = (await page.locator('#inv_renta .l2').filter({hasText: 'Cash-flow'}).first().locator(':scope > b').allInnerTexts()).map(nombre);
+  assert.equal(cfMois, avant);
+  assert.ok(Math.abs(cfAn / 12 - cfMois) <= 1);
   const bouton = l => page.locator('#inv [data-a="segChoix"][data-cible="inv_chargesAn_comptaSci"]', {hasText: l});
   assert.equal(await bouton('Oui, comptable de la SCI').isVisible(), true);       // l'option se voit sans ouvrir de menu
   await bouton('Oui, comptable de la SCI').click();

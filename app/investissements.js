@@ -1549,13 +1549,16 @@ function majCalculs(b) {
       ['Valeur', t.V ? kEur(t.V) : null], ['Patrimoine net', t.V ? kEur(t.net) : null, signe(t.net)],
       ['Loyers', t.loyers ? eur(t.loyers) + '/mois' : null], ['Cash-flow', eur(t.cf) + '/mois', signe(t.cf)]])}</div>`)(totaux([b, ...l])) : '')(associesA(b).filter(x => !x.vendu))}`;
   const ligne = (l, v, cls = '') => `<div><span>${l}</span><b class="${cls}">${v}</b></div>`;
+  // Chaque montant sur 12 mois, et sa moyenne par mois à côté
+  const ligne2 = (l, an, pre = '', cls = '') => `<div class="l2"><span>${l}</span><b class="${cls}">${an ? pre : ''}${eur(an)}</b><b class="${cls}">${an ? pre : ''}${eur(an / 12)}</b></div>`;
   q('#inv_renta').innerHTML = `<div class="calc">
-      ${ligne(b.type === 'terrain' ? 'Revenus encaissés' : 'Loyers encaissés', eur(c.loyersAn) + '/an', '')}
-      ${ligne('Charges du propriétaire', (c.chargesAn ? '−' : '') + eur(c.chargesAn) + '/an')}
-      ${ligne('Crédit (mensualités et assurance)', (c.creditAn ? '−' : '') + eur(c.creditAn) + '/an')}
-      ${ligne('<b>Cash-flow</b>', eur(c.cfAn) + '/an · ' + eur(c.cfMois) + '/mois', signe(c.cfAn))}
-      ${ligne('Capital remboursé sur 12 mois', (c.capitalAn ? '+' : '') + eur(c.capitalAn))}
-      ${ligne('<b>Enrichissement</b> (cash-flow + capital remboursé)', eur(c.cfAn + c.capitalAn) + '/an', signe(c.cfAn + c.capitalAn))}
+      <div class="l2 tete"><span></span><span>Par an</span><span>Par mois</span></div>
+      ${ligne2(b.type === 'terrain' ? 'Revenus encaissés' : 'Loyers encaissés', c.loyersAn)}
+      ${ligne2('Charges du propriétaire', c.chargesAn, '−')}
+      ${ligne2('Crédit (mensualités et assurance)', c.creditAn, '−')}
+      ${ligne2('<b>Cash-flow</b>', c.cfAn, '', signe(c.cfAn))}
+      ${ligne2('Capital remboursé', c.capitalAn, '+')}
+      ${ligne2('<b>Enrichissement</b> (cash-flow + capital remboursé)', c.cfAn + c.capitalAn, '', signe(c.cfAn + c.capitalAn))}
       ${c.cout && c.emprunte ? ligne('Apport', eur(Math.max(0, c.cout - c.emprunte)) + (c.cout - c.emprunte <= 0 ? ' (financé à 100 % ou plus)' : '')) : ''}
     </div>
     <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? lieSimple(b) ? ' Achat, crédit et charges comptés avec ' + esc(principalDe(b).nom) + '.' : ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
