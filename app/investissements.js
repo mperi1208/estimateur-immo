@@ -1,4 +1,4 @@
-// Mon patrimoine : chaque bien avec son achat, ses crédits, sa location, ses charges, sa rentabilité,
+// Mon patrimoine : chaque bien avec son achat, ses crédits, sa location, ses charges, son cash-flow,
 // ses plans et documents. Invité : tout reste sur cet appareil (localStorage, fichiers dans IndexedDB).
 // Connecté : dans le compte (Supabase : liste des biens dans immo_profils, fichiers dans le stockage « immo-docs »).
 (() => {
@@ -69,7 +69,7 @@ function analyseReneg(p, e, sci) {
   return {tNew, mensu2, gainMois, gainTotal, ira, fraisRachat, netRachat: gainTotal - fraisRachat, netAvenant: gainTotal - 600, surprime, offre};
 }
 
-// ---------- Rentabilité d'un bien (avant impôts) ----------
+// ---------- Cash-flow d'un bien (avant impôts) ----------
 const LOUE = ['vide', 'meuble', 'saisonnier', 'colocation', 'lots'];
 const LISTES = {colocation: {cle: 'chambres', nom: 'Chambre', titre: 'Chambres louées', ajout: '+ Ajouter une chambre'},
   lots: {cle: 'lots', nom: 'Logement', titre: 'Logements', ajout: '+ Ajouter un loyer'}};
@@ -97,6 +97,12 @@ function revenusTerrain(b) {
   if (L.statut === 'activites') return somme(b.revenus || [], r => annuel(r.montant, r.periode));
   return 0;
 }
+// Comptable de la SCI : ses honoraires annuels, partagés à parts égales entre les biens de la SCI qui le choisissent
+const avecComptaSci = (x, b) => biens.filter(y => y.structure === 'sci' && y.sciId === x.id && y.chargesAn && y.chargesAn.comptaSci && (!y.vendu || y === b));
+function partComptaSci(b) {
+  const x = b.chargesAn.comptaSci && sciDe(b); if (!x) return null;
+  return (x.compta || 0) / Math.max(1, avecComptaSci(x, b).length);
+}
 const statutLib = b => b.amenag && !b.amenag.fait ? 'À aménager' : b.location.statut === 'avec' ? (p => p ? 'Avec ' + p.nom : '')(principalDe(b)) : (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
 function calculs(b) {
   const prets = b.prets.map(p => ({p, e: etatPret(p)}));
@@ -106,17 +112,15 @@ function calculs(b) {
   const lignes = lignesLoyer(b), vac = nuitee(b) ? 1 : 1 - Math.min(12, b.location.vacance || 0) / 12;   // à la nuitée, les nuits louées comptent déjà les creux
   const loyersAn = terrain ? revenusTerrain(b) : !loue ? 0 : lignes ? somme(lignes, x => (x.loyer || 0) * moisDeLoyer(x.debut)) * vac : loyerLogement(b) * moisDeLoyer(debutBailFutur(b)) * vac;
   const loyerMois = terrain ? loyersAn / 12 : loue ? loyerActuel(b) : 0;
-  const loyerPlein = terrain ? loyerMois : loue ? loyerLogement(b) : 0;   // tous les loyers commencés : pour le rendement
-  const c = b.chargesAn;
-  const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + (c.compta || 0) + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
+  const c = b.chargesAn, compta = c.comptaSci ? partComptaSci(b) ?? (c.compta || 0) : c.compta || 0;
+  const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + compta + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
     + (b.location.statut === 'saisonnier' && !terrain ? loyersAn * (b.location.fraisSaison || 0) / 100 : 0);   // plateforme, conciergerie, ménage
   const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
   const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
   const crd = somme(prets, x => x.e && x.e.crd), cfAn = loyersAn - chargesAn - creditAn;
-  return {prets, loue, loyerMois, loyersAn, chargesAn, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
+  return {prets, loue, loyerMois, loyersAn, chargesAn, compta, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
     mensuCredit: somme(actifs, x => x.e.pause ? 0 : x.e.M + x.e.assur), interetsAn: somme(actifs, x => x.e.interets + x.e.assur * x.e.payes),
     capitalAn: somme(actifs, x => x.e.capital), emprunte: somme(b.prets, p => p.montant),
-    brut: cout > 0 && loyerPlein ? loyerPlein * 12 / cout : null, net: cout > 0 && loue ? (loyersAn - chargesAn) / cout : null,
     patrimoine: b.valeur > 0 ? b.valeur - crd : null, plusValue: b.valeur > 0 && cout > 0 ? b.valeur - cout : null};
 }
 
@@ -141,7 +145,7 @@ function depuisCredit(c) {
 }
 function nouvelleSci(o = {}) {
   return {id: uid(), nom: 'Nouvelle SCI', regime: 'ir', siren: '', creation: '', capital: null, siege: '', cloture: '31/12',
-    associes: [], banque: '', comptable: '', notes: '', ...o};
+    associes: [], banque: '', comptable: '', compta: null, notes: '', ...o};
 }
 const scisLocales = () => { try { const v = JSON.parse(localStorage.getItem(CLE_SCI) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
 // Anciennes fiches (« SCI à l'IR / à l'IS » + nom libre) : rattachées à une vraie fiche SCI
@@ -544,11 +548,10 @@ function majAuto(b) {
   else if (!e) h = `<div class="aide">${estimable(b) ? 'Règle les caractéristiques, puis clique sur « Estimer ce bien ».' : 'Renseigne l\'adresse et la surface, règle les caractéristiques, puis clique sur « Estimer ce bien ».'}</div>`;
   else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)}</div>`;
   else if (e.dependance) {
-    const rev = calculs(b).loyersAn;
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
         <div><span>Ventes comparées</span><b>${e.ventes}</b><small>garages, box et places vendus seuls, à moins de ${dist(e.rayon)}</small></div>
-        ${rev ? `<div><span>Rendement brut</span><b>${pct(rev / e.prix)}</b><small>loyer actuel, sur la valeur</small></div>` : ''}</div>
+</div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
       <div class="aide">Les actes ne disent pas si c'est un box fermé ou une simple place : un box se vend plutôt dans le haut de la fourchette, une place extérieure dans le bas.</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
@@ -556,11 +559,10 @@ function majAuto(b) {
     ${!a_jour ? '<div class="aide">Adresse modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
   }
   else if (e.terrain) {
-    const rev = calculs(b).loyersAn;
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
         <div><span>Prix au m²</span><b>${e.ppm >= 10 ? fmt(e.ppm) : e.ppm.toFixed(2).replace('.', ',')} €</b><small>médiane des ventes ${NATURES[b.nature] ? 'de terrains « ' + NATURES[b.nature].toLowerCase() + ' »' : ''}</small></div>
-        ${rev ? `<div><span>Rendement brut</span><b>${pct(rev / e.prix)}</b><small>revenus actuels, sur la valeur</small></div>` : ''}</div>
+</div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
       <div class="aide">${e.ecartees ? `${e.ecartees} vente${e.ecartees > 1 ? 's' : ''} au-dessus de ${fmt(e.seuil)} €/m² écartée${e.ecartees > 1 ? 's' : ''} (parcelles achetées pour construire). ` : ''}À confirmer par un notaire ou une agence : accès, vue, viabilisation et zonage comptent beaucoup.</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
@@ -570,11 +572,10 @@ function majAuto(b) {
   else {
     // Bien loué : on met en avant le loyer de sa location (vide ou meublé) ; sinon (habité, vacant…) aucun des deux
     const loue = LOUE.includes(b.location.statut), L = loyersMarche(e), m = meubleBien(b);
-    const ref = m ? L.meuble ?? L.vide : L.vide ?? L.meuble, rdt = v => v != null ? pct(v * 12 / e.prix) : '—';
+    const ref = m ? L.meuble ?? L.vide : L.vide ?? L.meuble;
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
-        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div>${L.coloc ? `<div><small>Coloc. ${L.chambres} ch.</small><b>${eur(L.coloc)}</b></div>` : ''}</div><small>hors charges/mois${e.loyerAvec ? ` · avec ${esc(e.loyerAvec)}, loué avec le bien` : ''}${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : L.coloc ? ` · ${eur(L.coloc / L.chambres)} par chambre en colocation` : ''}</small></div>
-        <div><span>Rendement brut</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${rdt(L.vide)}</b></div><div><small>Meublé</small><b>${rdt(L.meuble)}</b></div>${L.coloc ? `<div><small>Coloc.</small><b>${rdt(L.coloc)}</b></div>` : ''}</div><small>sur la valeur estimée</small></div>` : ''}</div>
+        ${ref ? `<div><span>Loyer de marché</span><div class="deux-loyers egaux"><div><small>Vide</small><b>${L.vide != null ? eur(L.vide) : '—'}</b></div><div><small>Meublé</small><b>${L.meuble != null ? eur(L.meuble) : '—'}</b></div>${L.coloc ? `<div><small>Coloc. ${L.chambres} ch.</small><b>${eur(L.coloc)}</b></div>` : ''}</div><small>hors charges/mois${e.loyerAvec ? ` · avec ${esc(e.loyerAvec)}, loué avec le bien` : ''}${L.vide == null || L.meuble == null ? ' · réestime pour avoir les deux' : L.coloc ? ` · ${eur(L.coloc / L.chambres)} par chambre en colocation` : ''}</small></div>` : ''}</div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
       ${b.location.statut === 'saisonnier' && L.meuble && loyerLogement(b) ? (net => `<div class="aide">À la nuitée : ${eur(loyerLogement(b))} de recettes par mois, ${eur(net)} après frais, soit ${pct(net / L.meuble - 1)} par rapport au meublé classique du marché (${eur(L.meuble)} hors charges).</div>`)(loyerLogement(b) * (1 - (b.location.fraisSaison || 0) / 100)) : ''}
       ${(rf => loue && rf && loyerLogement(b) && !['lots', 'saisonnier'].includes(b.location.statut) ? `<div class="aide">Ton loyer : ${eur(loyerLogement(b))}, soit ${pct(loyerLogement(b) / rf - 1)} par rapport au marché ${b.location.statut === 'colocation' ? 'en colocation' : m ? 'meublé' : 'vide'}.</div>` : '')(b.location.statut === 'colocation' && L.coloc ? L.coloc : ref)}
@@ -753,7 +754,7 @@ function vueListe() {
     h += arbreHTML();
   } else {
     h += `<div class="vide"><div class="ico">${icone('maison')}</div><h2>Ajoute ton premier investissement</h2>
-      <p>Pour chaque bien : l'achat, le crédit, la location, les charges, et les plans. La rentabilité et ce qu'il reste à rembourser se calculent tout seuls. Tes SCI ont aussi leur fiche, avec leurs biens et leurs associés.</p>
+      <p>Pour chaque bien : l'achat, le crédit, la location, les charges, et les plans. Le cash-flow et ce qu'il reste à rembourser se calculent tout seuls. Tes SCI ont aussi leur fiche, avec leurs biens et leurs associés.</p>
       <div class="boutons centre"><button data-a="ajoutSci">+ Créer une SCI</button><button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   }
   racine.innerHTML = h;
@@ -829,7 +830,7 @@ function carte(b, c) {
       <div><span>Valeur${k < 1 ? ' (ta part)' : ''}</span><b>${b.valeur ? kEur(x(b.valeur)) : '—'}</b></div>
       <div><span>Restant dû${k < 1 ? ' (ta part)' : ''}</span><b>${c.crd ? kEur(x(c.crd)) : '—'}</b></div>
       <div><span>Cash-flow${k < 1 ? ' (ta part)' : ''}</span><b class="${signe(c.cfMois)}">${c.loue || c.mensuCredit ? eur(x(c.cfMois)) + '/mois' : '—'}</b></div>
-      <div><span>Rendement brut</span><b>${c.brut != null ? pct(c.brut) : '—'}</b></div>
+      <div><span>Loyers${k < 1 ? ' (ta part)' : ''}</span><b>${c.loyerMois ? eur(x(c.loyerMois)) + '/mois' : '—'}</b></div>
     </div><span class="chev" aria-hidden="true">›</span></a>`;
 }
 function carteVendue(b) {
@@ -868,6 +869,16 @@ function champ(b, chemin, label, o = {}) {
   if (o.options && o.boutons) input = `<div class="seg">${choix.map(([k, l]) => `<button type="button" data-a="segChoix" data-cible="${id}" data-v="${esc(k)}" class="${String(v ?? '') === k ? 'on' : ''}">${esc(l)}</button>`).join('')}</div>${input.replace('<select ', '<select hidden ')}`;
   return `<div class="${o.large ? 'large' : ''}"><label for="${id}">${label}</label>${input}${o.aide ? `<div class="aide">${o.aide}</div>` : ''}</div>`;
 }
+// Case « Comptable » d'un bien : un montant pour ce bien, ou, s'il est dans une SCI, sa part du comptable de la SCI
+function comptaHTML(b) {
+  const x = sciDe(b), choix = aide => champ(b, 'chargesAn.comptaSci', 'Comptable', {options: [['', 'Montant pour ce bien'], ['1', 'Comptable de la SCI']], aide});
+  if (!x) return champ(b, 'chargesAn.compta', 'Comptable (€)', {step: 50});
+  if (!b.chargesAn.comptaSci) return choix() + champ(b, 'chargesAn.compta', 'Comptable (€)', {step: 50});
+  const n = avecComptaSci(x, b).length;
+  return choix(x.compta ? `${eur(partComptaSci(b))}/an${n > 1 ? ` : ${eur(x.compta)} partagés entre ${n} biens` : ''}, honoraires saisis dans la fiche de ${esc(x.nom)}.`
+    : `Renseigne les honoraires du comptable dans la fiche de ${esc(x.nom)} (« Partenaires »).`);
+}
+const comptaSciAide = x => (n => n ? `Compté dans les charges ${n > 1 ? `de ses ${n} biens qui ont choisi « Comptable de la SCI », à parts égales` : 'de son bien qui a choisi « Comptable de la SCI »'}.` : 'Pour le compter, choisis « Comptable de la SCI » dans les charges de ses biens.')(avecComptaSci(x).filter(y => !y.vendu).length);
 const section = (titre, corps, large = false) => `<section class="bloc${large ? ' large' : ''}"><h3>${titre}</h3>${corps}</section>`;
 
 function vueDetail(b) {
@@ -881,7 +892,7 @@ function vueDetail(b) {
     ${venteOuverte.has(b.id) && !b.vendu ? venteHTML(b) : ''}
     <div class="blocs">
     ${enProjet(b) ? amenagHTML(b) : ''}
-    ${section('Rentabilité', '<div id="inv_renta"></div>')}
+    ${section('Cash-flow', '<div id="inv_renta"></div>')}
     ${b.type === 'terrain' ? revenusHTML(b) : locationHTML(b)}
     ${section('Le bien', `<div class="grille">
       ${champ(b, 'nom', 'Nom', {type: 'text', ph: 'ex. Studio Passy'})}
@@ -923,7 +934,7 @@ function vueDetail(b) {
     ${section('Charges du propriétaire (par an)', `${(p => p && ['gestion', 'entretien'].some(k => b.chargesAn[k] == null && p.chargesAn[k] != null) ? `<div class="reprise"><button data-a="copierCharges">Reprendre les % de ${esc(p.nom)}</button><div class="aide">Gestion et entretien, en % des loyers. Taxe foncière, assurance et copropriété restent sur la fiche de ${esc(p.nom)}.</div></div>` : '')(principalDe(b))}<div class="grille">
       ${champ(b, 'chargesAn.tf', 'Taxe foncière (€)', {step: 50})}${champ(b, 'chargesAn.copro', 'Copropriété non récupérable (€)', {step: 50})}
       ${champ(b, 'chargesAn.pno', 'Assurance PNO (€)', {step: 10})}${champ(b, 'chargesAn.gestion', 'Gestion (% des loyers)', {step: 0.5})}
-      ${champ(b, 'chargesAn.entretien', 'Entretien (% des loyers)', {step: 0.5})}${champ(b, 'chargesAn.compta', 'Comptable (€)', {step: 50})}
+      ${champ(b, 'chargesAn.entretien', 'Entretien (% des loyers)', {step: 0.5})}${comptaHTML(b)}
       ${champ(b, 'chargesAn.cfe', 'CFE (€)', {step: 50})}${champ(b, 'chargesAn.autres', 'Autres (€)', {step: 50})}
     </div>`)}`}
     ${section('Notes', champ(b, 'notes', '', {zone: true, ph: 'Travaux à prévoir, contacts, échéances…'}))}
@@ -1175,7 +1186,7 @@ function planAmenag(b) {
   const loyer = sz ? Math.round(sz.brutMois / 10) * 10 : loyerMois;
   const debut = normMois(a.debut) || '';
   return {t, m2, coutM2, decote, postes, suggere, mobSuggere, saisi, travaux, mobilier, duree, meuble, saison, sz, nuit, occupation, charges, e, valeur, loyer, debut, loyerDes: debut ? decalerMois(debut, duree) : '',
-    rendement: travaux && loyer ? loyer * 12 / (travaux + mobilier) : null, creee: valeur != null && travaux ? valeur - travaux : null};
+    creee: valeur != null && travaux ? valeur - travaux : null};
 }
 function nouvelEspace(b) {
   return nouveauBien({nom: NOMS_ESPACE.soussol + ' · ' + b.nom, type: b.type === 'maison' ? 'maison' : 'appart', adresse: b.adresse, geo: b.geo ? {...b.geo} : null,
@@ -1223,8 +1234,7 @@ function majAmenag(b) {
   el.innerHTML = `<div class="auto-res"><div class="auto-chiffres">
       <div><span>Valeur une fois aménagé</span><b>${kEur(q.valeur)}</b><small>logement de ${fmt(q.m2)} m² estimé ${kEur(q.e.prix)}, moins ${q.decote} % (${esc(AMENAG[q.t].l.toLowerCase())})</small></div>
       ${q.sz ? `<div><span>À la nuitée</span><b>${eur(q.loyer)}/mois</b><small>recettes moyennes : ${eur(q.nuit)} × ${fmt(q.sz.nuits)} nuits par an ; ${eur(q.sz.netMois)}/mois après plateforme, ménage et charges · ${mois}</small></div>`
-        : `<div><span>Loyer possible</span><b>${q.loyer != null ? eur(q.loyer) + '/mois' : '—'}</b><small>${q.meuble ? 'meublé' : 'vide'}, hors charges · ${mois}</small></div>`}
-      <div><span>Rendement brut</span><b>${q.rendement != null ? pct(q.rendement) : '—'}</b><small>${q.sz ? 'recettes' : 'loyer'} sur le coût des travaux${q.mobilier ? ' et du mobilier' : ''}</small></div></div></div>
+        : `<div><span>Loyer possible</span><b>${q.loyer != null ? eur(q.loyer) + '/mois' : '—'}</b><small>${q.meuble ? 'meublé' : 'vide'}, hors charges · ${mois}</small></div>`}</div></div>
     <div class="calc">${q.saisi ? `<div><span>Montant que tu as saisi${q.suggere ? ` (estimé au m² : ${kEur(q.suggere + q.mobSuggere)})` : ''}</span><b>${kEur(q.travaux)}</b></div>`
       : `${q.postes.map(([l, v]) => `<div><span>${l}</span><b>${kEur(v)}</b></div>`).join('')}
       ${q.mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${kEur(q.mobilier)}</b></div>` : ''}`}
@@ -1299,7 +1309,7 @@ function vueSci(x) {
       <button data-a="ajoutAssocie">+ Ajouter un associé</button>`)}
     ${section('Biens de la SCI', `${sesBiens.length ? `<div class="liste">${sesBiens.map((b, i) => enProjet(b) ? '' : carte(b, t.cs[i])).join('')}</div>` : '<div class="aide">Aucun bien rattaché. Dans la fiche d\'un bien, choisis cette SCI dans « Détenu par », ou ajoute-en un ici.</div>'}
       <button data-a="ajoutBienSci">+ Ajouter un bien à cette SCI</button>`, true)}
-    ${section('Partenaires', `<div class="grille">${champ(x, 'banque', 'Banque', {type: 'text'})}${champ(x, 'comptable', 'Expert-comptable', {type: 'text'})}</div>`)}
+    ${section('Partenaires', `<div class="grille">${champ(x, 'banque', 'Banque', {type: 'text'})}${champ(x, 'comptable', 'Expert-comptable', {type: 'text'})}${champ(x, 'compta', 'Honoraires du comptable (€/an)', {step: 50, aide: comptaSciAide(x)})}</div>`)}
     ${section('Notes', champ(x, 'notes', '', {zone: true, ph: 'Assemblées générales, comptes courants d\'associés, échéances…'}))}
     </div>
     <div class="pied"><button class="danger" data-a="supprSci">Supprimer cette SCI</button></div>`;
@@ -1469,7 +1479,7 @@ function majCalculs(b) {
     ${kpi('Restant dû', c.crd ? kEur(c.crd) : '—', c.mensuCredit ? eur(c.mensuCredit) + '/mois assurance comprise' : '')}
     ${kpi('Patrimoine net', c.patrimoine != null ? kEur(c.patrimoine) : '—', 'valeur − restant dû', c.patrimoine != null ? signe(c.patrimoine) : '')}
     ${kpi('Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois) : '—', 'par mois, avant impôts', signe(c.cfMois))}
-    ${kpi('Rendement brut', c.brut != null ? pct(c.brut) : '—', c.cout ? 'loyer annuel ÷ coût total' : 'renseigne l\'achat')}
+    ${kpi(b.type === 'terrain' ? 'Revenus' : 'Loyers', c.loyerMois ? eur(c.loyerMois) : '—', c.loyerMois ? 'par mois, encaissés ce mois-ci' : c.loue ? 'loyer à venir' : 'pas loué')}
     ${kpi('Plus-value latente', c.plusValue != null ? kEur(c.plusValue) : '—', 'valeur − coût total', c.plusValue != null ? signe(c.plusValue) : '')}</div>
     ${partDe(b) < 1 ? (k => `<div class="ta-part"><div class="ta-part-titre">Ta part : ${Math.round(k * 100)} % du bien</div>${mini([
       ['Valeur', b.valeur ? kEur(b.valeur * k) : null], ['Restant dû', c.crd ? kEur(c.crd * k) : null],
@@ -1486,7 +1496,6 @@ function majCalculs(b) {
       ${ligne('<b>Cash-flow</b>', eur(c.cfAn) + '/an · ' + eur(c.cfMois) + '/mois', signe(c.cfAn))}
       ${ligne('Capital remboursé sur 12 mois', (c.capitalAn ? '+' : '') + eur(c.capitalAn))}
       ${ligne('<b>Enrichissement</b> (cash-flow + capital remboursé)', eur(c.cfAn + c.capitalAn) + '/an', signe(c.cfAn + c.capitalAn))}
-      ${c.net != null ? ligne('Rendement net de charges', pct(c.net) + ' du coût total') : ''}
       ${c.cout && c.emprunte ? ligne('Apport', eur(Math.max(0, c.cout - c.emprunte)) + (c.cout - c.emprunte <= 0 ? ' (financé à 100 % ou plus)' : '')) : ''}
     </div>
     <div class="aide">Avant impôts.${Object.values(b.chargesAn).every(v => v == null) ? lieSimple(b) ? ' Achat, crédit et charges comptés avec ' + esc(principalDe(b).nom) + '.' : ' Charges du propriétaire à remplir plus bas.' : ''}</div>`;
@@ -1733,7 +1742,7 @@ racine.addEventListener('change', async e => {
     if (t.type === 'month' && t.value && !v) { alert('Date au format AAAA-MM, par exemple 2019-06.'); t.value = lire(sci, chemin) || ''; return; }
     if (chemin === 'nom' && !String(v).trim()) { t.value = sci.nom; return; }
     ecrire(sci, chemin, v); sauver(sci);
-    if (chemin === 'regime') return vueSci(sci);
+    if (chemin === 'regime' || chemin === 'compta') return vueSci(sci);
     racine.querySelector('#inv_titre').textContent = sci.nom;
     racine.querySelector('#inv_sous').textContent = ['SCI ' + REGIMES[sci.regime], sci.siren ? 'SIREN ' + sci.siren : '', sci.siege].filter(Boolean).join(' · ');
     return majParts(sci);
@@ -1794,7 +1803,7 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin)) return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature'].includes(chemin)) majAuto(b);

@@ -18,14 +18,14 @@ test('sans compte : arrivée sur Estimer, Mon patrimoine et Mes projets fermés 
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
 });
 
-test('Estimer : prix, loyer et rendement cohérents entre eux', async () => {
+test('Estimer : prix et loyer cohérents, plus de rendement affiché', async () => {
   const e = await estimer(page, {surf: 50});
   assert.ok(e.prix > 100000 && e.prix < 300000, `prix ${e.prix}`);
   assert.ok(e.loyer > 300 && e.loyer < 1200, `loyer ${e.loyer}`);
   const synth = await page.locator('#synth').innerText();
   assert.match(synth, /Prix estimé/i); assert.match(synth, /Fiabilité/i);
-  const rdt = nombre(synth.match(/RENDEMENT BRUT\s+([\d,]+ %)/i)[1]);
-  assert.ok(Math.abs(rdt - e.loyer * 12 / e.prix * 100) < 0.06, `rendement affiché ${rdt}`);
+  assert.doesNotMatch(synth, /Rendement/i);
+  assert.doesNotMatch(await page.locator('main').innerText(), /Rendement/i);
 });
 
 test('Estimer : DPE G = prix décoté et « non louable » ; meublé = loyer plus haut et mobilier', async () => {

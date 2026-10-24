@@ -62,7 +62,8 @@ test('Mon patrimoine : un bien avec achat, crédit, loyer et charges ; chiffres 
   assert.ok(crd > 135000 && crd < 145000, `restant dû ${crd}`);
   assert.equal(nombre(await kpi('Cash-flow')), Math.round(800 - 900 / 12 - M));   // loyer − charges − mensualité
   assert.match(await page.locator('#inv_kpis').innerText(), new RegExp(Math.round(M) + ' €/mois'));
-  assert.equal(await kpi('Rendement brut'), (800 * 12 / 194000 * 100).toFixed(1).replace('.', ',') + ' %');   // loyer ÷ (prix + notaire)
+  assert.equal(nombre(await kpi('Loyers')), 800);                                  // le rendement a laissé la place aux loyers
+  assert.doesNotMatch(await page.locator('#inv').innerText(), /Rendement/i);
   const resume = await page.locator('[data-resume="0"]').innerText();
   assert.match(resume, /Mois restants\s*\n\s*215/i);                               // 1re échéance il y a 24 mois : 25 payées sur 240
   const solde = 150000 * Math.pow(1.0025, 25) - M * (Math.pow(1.0025, 25) - 1) / 0.0025;
@@ -242,6 +243,26 @@ test('SCI : création, bien rattaché, filtre par détenteur et totaux de la SCI
   assert.match(await page.locator('#inv details[data-pli="scis"]').innerText(), /SCI Famille[\s\S]*SCI à l'IS · 1 bien/i);
 });
 
+test('comptable de la SCI : honoraires saisis sur la SCI, comptés dans les charges du bien qui le choisit', async () => {
+  const sci = compte().scis.find(x => x.nom === 'SCI Famille');
+  await page.evaluate(id => { location.hash = '#investissements/sci:' + id; }, sci.id);
+  await page.waitForSelector('#inv [data-p="compta"]');
+  assert.match(await page.locator('#inv').innerText(), /choisis « Comptable de la SCI »/i);
+  await champ('compta', 1200);
+  await attendreCompte(c => c.scis.find(x => x.id === sci.id).compta === 1200);
+  await ouvrirFiche('Parking Test');
+  const avant = nombre(await kpi('Cash-flow'));
+  await champ('chargesAn.comptaSci', '1');
+  await page.waitForSelector('#inv [data-p="chargesAn.compta"]', {state: 'detached'});
+  assert.match(await page.locator('#inv').innerText(), /1\s200\s€\/an, honoraires saisis dans la fiche de SCI Famille/i);
+  assert.equal(await page.locator('#inv [data-p="chargesAn.compta"]').count(), 0);   // plus de montant à saisir pour ce bien
+  assert.equal(nombre(await kpi('Cash-flow')), avant - 100);                        // 1 200 €/an = 100 €/mois en moins
+  await attendreCompte(() => bienDuCompte('Parking Test').chargesAn.comptaSci === '1');
+  await champ('chargesAn.comptaSci', '');
+  await page.waitForSelector('#inv [data-p="chargesAn.compta"]');
+  assert.equal(nombre(await kpi('Cash-flow')), avant);
+});
+
 test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de doublon), supprimé', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#works button.cta');
@@ -288,7 +309,7 @@ test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, val
   assert.equal(+await page.inputValue('#inv [data-p="valeur"]'), Math.round(e.prix));
   assert.equal(+await page.inputValue('#inv [data-p="location.loyer"]'), Math.round(e.loyer));
   await page.click('#inv [data-a="estimerAuto"]');
-  await page.waitForFunction(() => /Estimé|estimé/.test((document.getElementById('inv_auto') || {}).innerText || ''), null, {timeout: 60000});
+  await page.waitForFunction(() => /Estimé le/i.test((document.getElementById('inv_auto') || {}).innerText || ''), null, {timeout: 60000});
   const nom = await page.locator('#inv_titre').innerText();
   const b = (await attendreCompte(() => (bienDuCompte(nom) || {}).estimation)).biens.find(x => x.nom === nom);
   assert.ok(!b.estimation.erreur, JSON.stringify(b.estimation));
