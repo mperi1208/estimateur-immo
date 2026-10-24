@@ -254,18 +254,20 @@ test('comptable de la SCI : honoraires saisis sur la SCI, comptés dans les char
   const sci = compte().scis.find(x => x.nom === 'SCI Famille');
   await page.evaluate(id => { location.hash = '#investissements/sci:' + id; }, sci.id);
   await page.waitForSelector('#inv [data-p="compta"]');
-  assert.match(await page.locator('#inv').innerText(), /choisis « Comptable de la SCI »/i);
+  assert.match(await page.locator('#inv').innerText(), /choisis « Oui, comptable de la SCI »/i);
   await champ('compta', 1200);
   await attendreCompte(c => c.scis.find(x => x.id === sci.id).compta === 1200);
   await ouvrirFiche('Parking Test');
   const avant = nombre(await kpi('Cash-flow'));
-  await champ('chargesAn.comptaSci', '1');
+  const bouton = l => page.locator('#inv [data-a="segChoix"][data-cible="inv_chargesAn_comptaSci"]', {hasText: l});
+  assert.equal(await bouton('Oui, comptable de la SCI').isVisible(), true);       // l'option se voit sans ouvrir de menu
+  await bouton('Oui, comptable de la SCI').click();
   await page.waitForSelector('#inv [data-p="chargesAn.compta"]', {state: 'detached'});
-  assert.match(await page.locator('#inv').innerText(), /1\s200\s€\/an, honoraires saisis dans la fiche de SCI Famille/i);
+  assert.match(await page.locator('#inv').innerText(), /Part de ce bien : 1\s200\s€\/an, honoraires saisis dans la fiche de SCI Famille/i);
   assert.equal(await page.locator('#inv [data-p="chargesAn.compta"]').count(), 0);   // plus de montant à saisir pour ce bien
   assert.equal(nombre(await kpi('Cash-flow')), avant - 100);                        // 1 200 €/an = 100 €/mois en moins
   await attendreCompte(() => bienDuCompte('Parking Test').chargesAn.comptaSci === '1');
-  await champ('chargesAn.comptaSci', '');
+  await bouton('Non, montant pour ce bien').click();
   await page.waitForSelector('#inv [data-p="chargesAn.compta"]');
   assert.equal(nombre(await kpi('Cash-flow')), avant);
 });
