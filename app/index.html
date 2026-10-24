@@ -2443,7 +2443,9 @@ function echeancier(capital, tauxAn, mois, differe, typeDiff, assAn) {
     crd -= cap;
     rows.push({i, cap, ass: assM, crd: Math.max(0, crd)});
   }
-  return {rows, pmt, assM};
+  // Pendant le différé : intérêts + assurance (partiel), assurance seule (total, les intérêts s'ajoutent au capital)
+  const mensDiff = differe > 0 ? (typeDiff === 'total' ? 0 : capital * r) + assM : null;
+  return {rows, pmt, assM, mensDiff};
 }
 
 // ---------- Simulation ----------
@@ -2638,13 +2640,12 @@ function rendre() {
   const coutCredit = s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie;
   const fin = s.annees[s.annees.length - 1];
   const patrimoine = s.valeur - fin.crd + fin.cumul;
-  const coutRef = p.projet === 'location' ? s.coutTotal : p.prix;
   const ac = anneeCroisiere(s), suiteDiffere = p.differe > 0 && ac.y !== a1.y ? ` · après le différé (année ${ac.y}) : <b>${eur(ac.cf / 12)}</b> par mois` : '';
   $('tiles').innerHTML = [
-    ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}`],
+    ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}${p.differe > 0 ? ` · après le différé` : ''}`],
+    ...(p.differe > 0 ? [['Mensualité pendant le différé', eur(s.ech.mensDiff), `pendant ${p.differe} mois : ${p.typeDiff === 'total' ? 'assurance seule, les intérêts s\'ajoutent au capital' : `intérêts ${eur(s.ech.mensDiff - s.ech.assM)} + assurance ${eur(s.ech.assM)}, sans capital remboursé`}`]] : []),
     ['Cash-flow / mois', eur(a1.cf / 12), (p.avecImpots ? `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, impôts non comptés`) + suiteDiffere],
     ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
-    ['Rendement', pct(p.loyerTotal * 12 / coutRef * 100) + ' brut', `${p.saison ? 'recettes annuelles' : `loyer${p.loyer2 > 0 ? 's' : ''} annuel${p.loyer2 > 0 ? 's' : ''}`} ÷ ${p.projet === 'location' ? 'coût total (achat, travaux, frais)' : 'prix d\'achat'} · net de charges : ${pct((a1.loyers - a1.charges) / s.coutTotal * 100)} du coût total${p.avecImpots ? `, ${pct((a1.loyers - a1.charges - a1.impots) / s.coutTotal * 100)} après impôts` : ''}`],
     ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
@@ -2653,7 +2654,7 @@ function rendre() {
   if (!ouvert('evol')) al += '<div class="hint">Loyers, prix et charges constants : ouvre « Évolutions dans le temps » pour les faire progresser.</div>';
   al += `<div class="hint">Le graphique continue 5 ans après la fin du crédit (année ${s.finCredit}) pour montrer l'après-crédit.</div>`;
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
-  if (p.projet === 'location') al += `<div class="okbox">Travaux : <b>${eur(p.travaux)}</b> ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois${p.differe ? ` (intérêts seuls pendant ${p.differe} mois)` : ''}, loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.pret * p.taux / 1200 + s.ech.assM)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
+  if (p.projet === 'location') al += `<div class="okbox">Travaux : <b>${eur(p.travaux)}</b> ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois${p.differe ? ` (intérêts seuls pendant ${p.differe} mois)` : ''}, loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
   if (s.saison) {
     const z = s.saison;
     $('saisonHint').innerHTML = `≈ <b>${eur(z.brutMois)}</b> de recettes par mois (${fmt(z.nuits)} nuits par an), <b>${eur(z.netMois)}</b> après frais et charges du logement. Frais détaillés dans « Réglages détaillés ».`;

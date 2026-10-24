@@ -62,6 +62,8 @@ test('Estimer → Financer : le bien estimé est repris (prix, loyer, surface), 
   assert.match(await page.locator('#cf_bien').innerText(), /prix estimé/);
   const tuiles = await page.locator('#cf_tiles').innerText();
   assert.match(tuiles, /Mensualité/i); assert.match(tuiles, /Cash-flow/i);
+  assert.doesNotMatch(tuiles, /Rendement/i);                 // case retirée de Financer
+  assert.doesNotMatch(tuiles, /pendant le différé/i);         // pas de différé : pas de case
 });
 
 test('Financer : un réglage fait à la main n\'est pas écrasé en revenant sur l\'onglet, et survit au rechargement', async () => {
@@ -92,6 +94,7 @@ test('Estimer « rénovation complète » → « Travaux + location » : travaux
   assert.equal(+await valeur('travaux'), pj.travaux); assert.equal(+await valeur('valeurApres'), pj.valeurApres);
   assert.equal(+await valeur('loyer'), pj.loyerApres); assert.equal(+await valeur('dureeTravaux'), pj.duree);
   assert.ok(+await valeur('differe') >= pj.duree);
+  assert.match(await page.locator('#cf_tiles').innerText(), /Mensualité pendant le différé[\s\S]*pendant \d+ mois/i);
   assert.match(await page.locator('#cf_alerts').innerText(), new RegExp(`loyer à partir du mois ${pj.duree + 1}`));
 });
 
