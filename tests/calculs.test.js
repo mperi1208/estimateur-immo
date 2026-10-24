@@ -20,7 +20,7 @@ vm.runInContext([
   bloc(inv, '// ---------- Mois', '// ---------- Données'),
   'var STATUTS = {};',
   bloc(idx, 'function echeancier', '// ---------- Simulation'),
-  'this.X = {pmt, solde, etatPret, analyseReneg, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
+  'this.X = {pmt, solde, etatPret, planPret, analyseReneg, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
 ].join('\n'), ctx);
 const {pmt, solde, etatPret, calculs, echeancier, ecartMois, decalerMois, normMois} = ctx.X;
 const proche = (a, b, eps = 0.01) => assert.ok(Math.abs(a - b) <= eps, `${a} ≠ ${b}`);
@@ -146,6 +146,40 @@ test('prêt dont la 1re échéance est dans 6 mois : rien à payer avant, 7 éch
   assert.equal(e.fin, decalerMois(debut, 239));                  // dernière échéance : 240e à partir de la 1re
   const demain = etatPret({...p, debut: '2026-02'}, '2026-01');   // 1re échéance le mois prochain : 12 échéances
   assert.equal(demain.payes, 12); assert.equal(demain.fin, decalerMois('2026-02', 239));
+});
+test('prêt progressif : mensualité actuelle seule, hausse calculée pour finir à la date prévue', () => {
+  const p = {montant: 101058, taux: 3.7, duree: 300, debut: '2026-05', mensualite: 497, progressif: '1', mensuLe: '2026-10'};
+  const e = etatPret(p, '2026-10');
+  assert.equal(e.M, 497); assert.equal(e.fin, '2051-04');
+  assert.ok(e.prog.g > 0 && e.prog.g < 0.02, `hausse ${e.prog.g}`);
+  assert.equal(e.prog.hausse.mois, '2027-05'); proche(e.prog.hausse.M, 497 * (1 + e.prog.g), 1e-6);
+  assert.equal(etatPret(p, '2051-04').crd, 0);
+  assert.ok(etatPret(p, '2051-03').crd > 0);
+  // Plus tard, la mensualité saisie en octobre 2026 a augmenté ; le restant dû est plus haut qu'en mensualité constante
+  assert.ok(etatPret(p, '2030-10').M > 497);
+  assert.ok(e.crd > etatPret({...p, progressif: '', mensualite: null}, '2026-10').crd);
+  proche(e.interets + e.capital, e.paye12, 1e-6);
+});
+test('prêt progressif : hausse saisie, mensualité calculée ; saisie plus tard ramenée à l\'année 0', () => {
+  const p = {montant: 100000, taux: 3, duree: 240, debut: '2020-01', progressif: '1', hausse: 2};
+  const e = etatPret(p, '2020-06'), l = ctx.X.planPret(p, '2020-06').l;
+  proche(l[239].crd, 0, 0.01); proche(l[12].paye, l[0].paye * 1.02, 1e-6); proche(l[24].paye, l[0].paye * 1.0404, 1e-6);
+  const M3 = l[36].paye, e2 = etatPret({...p, hausse: null, mensualite: M3, mensuLe: '2023-03'}, '2023-03');
+  proche(e2.prog.g, 0.02, 1e-6); proche(e2.crd, etatPret(p, '2023-03').crd, 0.5);
+  assert.equal(e.prog.saisie, true);
+});
+test('prêt avec différé partiel puis total : intérêts seuls ou capitalisés, durée comprise', () => {
+  const p = {montant: 100000, taux: 3, duree: 240, debut: '2025-01', typeDiff: 'partiel', differe: 12};
+  const e = etatPret(p, '2025-06');
+  proche(e.M, 250, 1e-9); assert.equal(e.crd, 100000); assert.equal(e.capital > 0, true);   // 6 mois d'intérêts seuls puis l'amortissement
+  assert.equal(e.differe.fin, '2025-12'); proche(e.differe.apres, pmt(100000, 0.0025, 228), 1e-6);
+  assert.equal(e.fin, '2044-12');
+  const t = etatPret({...p, typeDiff: 'total'}, '2025-11');   // dernier mois du différé à venir
+  proche(t.crd, 100000 * Math.pow(1.0025, 11), 0.01); assert.equal(t.M, 0);
+  assert.equal(etatPret({...p, typeDiff: 'total'}, '2025-12').differe, null);
+  proche(t.differe.apres, pmt(100000 * Math.pow(1.0025, 12), 0.0025, 228), 1e-6);
+  const c = calculs(bien({prets: [{...p, assurance: 20}]}));
+  proche(c.creditAn, c.prets[0].e.paye12 + 20 * c.prets[0].e.payes, 1e-9);
 });
 test('prêt en pause (relevé à venir) : pas de mensualité comptée tant qu\'il ne reprend pas', () => {
   const b = bien({prets: [{crd: 100000, mois: 120, crdLe: decalerMois(auj, 4), taux: 3}]});
