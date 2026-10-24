@@ -871,14 +871,14 @@ function champ(b, chemin, label, o = {}) {
 }
 // Case « Comptable » d'un bien : un montant pour ce bien, ou, s'il est dans une SCI, sa part du comptable de la SCI
 function comptaHTML(b) {
-  const x = sciDe(b), choix = aide => champ(b, 'chargesAn.comptaSci', 'Comptable', {options: [['', 'Montant pour ce bien'], ['1', 'Comptable de la SCI']], aide});
+  const x = sciDe(b), choix = aide => champ(b, 'chargesAn.comptaSci', 'Comptable : inclure ce bien dans les frais du comptable de la SCI ?', {options: [['', 'Non, montant pour ce bien'], ['1', 'Oui, comptable de la SCI']], boutons: true, large: true, aide});
   if (!x) return champ(b, 'chargesAn.compta', 'Comptable (€)', {step: 50});
   if (!b.chargesAn.comptaSci) return choix() + champ(b, 'chargesAn.compta', 'Comptable (€)', {step: 50});
   const n = avecComptaSci(x, b).length;
-  return choix(x.compta ? `${eur(partComptaSci(b))}/an${n > 1 ? ` : ${eur(x.compta)} partagés entre ${n} biens` : ''}, honoraires saisis dans la fiche de ${esc(x.nom)}.`
+  return choix(x.compta ? `Part de ce bien : <b>${eur(partComptaSci(b))}/an</b>${n > 1 ? ` (${eur(x.compta)} partagés entre ${n} biens)` : ''}, honoraires saisis dans la fiche de ${esc(x.nom)}.`
     : `Renseigne les honoraires du comptable dans la fiche de ${esc(x.nom)} (« Partenaires »).`);
 }
-const comptaSciAide = x => (n => n ? `Compté dans les charges ${n > 1 ? `de ses ${n} biens qui ont choisi « Comptable de la SCI », à parts égales` : 'de son bien qui a choisi « Comptable de la SCI »'}.` : 'Pour le compter, choisis « Comptable de la SCI » dans les charges de ses biens.')(avecComptaSci(x).filter(y => !y.vendu).length);
+const comptaSciAide = x => (n => n ? `Compté dans les charges ${n > 1 ? `de ses ${n} biens qui ont choisi « Oui, comptable de la SCI », à parts égales` : 'de son bien qui a choisi « Oui, comptable de la SCI »'}.` : 'Pour le compter, choisis « Oui, comptable de la SCI » dans les charges de ses biens.')(avecComptaSci(x).filter(y => !y.vendu).length);
 const section = (titre, corps, large = false) => `<section class="bloc${large ? ' large' : ''}"><h3>${titre}</h3>${corps}</section>`;
 
 function vueDetail(b) {
