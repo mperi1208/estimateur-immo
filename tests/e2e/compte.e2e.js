@@ -201,11 +201,12 @@ test('simuler la vente : le détail s\'additionne, puis vente enregistrée (hors
   await ouvrirFiche('Studio Test');
   await page.click('#inv [data-a="vente"]');
   await champ('vente.prix', 230000);
-  await page.click('#inv [data-a="venteAgence"][data-v="0"]');     // sans agence : diagnostics seuls, 1 %
-  await page.waitForFunction(() => /−2\s300 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
-  assert.equal(await page.getAttribute('#inv_vente_frais', 'placeholder'), '1');
+  await page.click('#inv [data-a="venteAgence"][data-v="0"]');     // sans agence : montant fixe en euros, 600 € par défaut
+  await page.waitForFunction(() => /−600 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
+  await champ('vente.fraisFixe', 450);
+  await page.waitForFunction(() => /−450 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
   await page.click('#inv [data-a="venteAgence"][data-v="1"]');
-  assert.equal(await page.getAttribute('#inv_vente_frais', 'placeholder'), '4');
+  await page.waitForSelector('#inv_vente_frais');
   await champ('vente.frais', 5);
   const calc = await page.locator('#inv_venteRes .calc').innerText();
   const l = re => { const m = calc.match(re); return m ? nombre(m[1]) : 0; };
