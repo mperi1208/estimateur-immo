@@ -31,34 +31,79 @@ const pmt = (P, r, n) => r ? P * r / (1 - Math.pow(1 + r, -n)) : P / n;
 const solde = (P, r, M, k) => r ? P * Math.pow(1 + r, k) - M * (Math.pow(1 + r, k) - 1) / r : P - M * k;
 // Deux façons de décrire un prêt : un relevé (restant dû et mois restants à une date, le plus fiable : il tient
 // compte des différés et remboursements anticipés), ou l'offre (montant, durée, 1re échéance).
+// Échéancier mois par mois, de la 1re échéance (offre) ou du mois qui suit le relevé, jusqu'à la dernière :
+// - différé (offre seulement, compris dans la durée) : intérêts seuls (partiel) ou rien (total : les intérêts s'ajoutent au capital) ;
+// - mensualité progressive : elle augmente d'un même pourcentage chaque année, de date à date depuis la fin du différé.
+//   Avec la mensualité actuelle seule, la hausse est celle qui rembourse le prêt pile à la dernière échéance.
+function planPret(p, auj = moisCourant()) {
+  const r = (p.taux || 0) / 1200, releve = p.crd > 0 && p.mois > 0 && p.crdLe;
+  let P, n, debut, D = 0;
+  const diff = p.typeDiff && p.duree > 0 ? Math.max(0, Math.min(p.duree - 1, Math.round(p.differe || 0))) : 0;
+  if (releve) { P = p.crd; n = p.mois; debut = decalerMois(p.crdLe, 1); }
+  else if (p.montant > 0 && p.duree > 0 && p.debut) { P = p.montant; n = p.duree; debut = p.debut; D = diff; }
+  else return null;
+  const total = p.typeDiff === 'total';
+  const jAncre = p.debut ? ecartMois(debut, decalerMois(p.debut, diff)) : 0, an = j => Math.max(0, Math.floor((j - jAncre) / 12));
+  const deroule = (M0, g) => {
+    const l = []; let c = P;
+    for (let j = 0; j < n; j++) {
+      const it = c * r; let paye, interets = it;
+      if (j < D) { if (total) { paye = 0; interets = 0; c += it; } else paye = it; }
+      else { paye = Math.max(0, Math.min(M0 * Math.pow(1 + g, an(j)), c + it)); c -= paye - it; }
+      l.push({paye, interets, capital: paye - interets, crd: c});
+    }
+    return l;
+  };
+  const reste = (M0, g) => { const l = deroule(M0, g); return l.length ? l[l.length - 1].crd : P; };
+  let M0, g = 0, prog = null;
+  if (p.progressif && (p.mensualite > 0 || p.hausse > 0)) {
+    // Mensualité saisie à une date (celle de la saisie) : on la ramène à l'année 0
+    const jRef = Math.max(D, Math.min(n - 1, ecartMois(debut, p.mensuLe || auj))), yRef = an(jRef);
+    const depuisRef = g => p.mensualite / Math.pow(1 + g, yRef);
+    if (p.hausse != null && p.hausse >= 0) {
+      g = p.hausse / 100;
+      if (p.mensualite > 0) M0 = depuisRef(g);
+      else { const b0 = reste(0, g), b1 = reste(1, g); M0 = b0 / (b0 - b1); }   // le restant dû final varie en ligne droite avec M0
+    } else if (reste(depuisRef(0), 0) > 0.5) {
+      let a = 0, b = 0.2;
+      for (let i = 0; i < 50; i++) { const m = (a + b) / 2; if (reste(depuisRef(m), m) > 0) a = m; else b = m; }
+      g = (a + b) / 2; M0 = depuisRef(g);
+    } else M0 = p.mensualite;
+    prog = {g, saisie: p.hausse != null && p.hausse >= 0};
+  } else M0 = p.mensualite || pmt(total ? P * Math.pow(1 + r, D) : P, r, n - D);
+  return {l: deroule(M0, g), P, debut, D, total, releve, jAncre, an, prog};
+}
 function etatPret(p, auj = moisCourant()) {
-  const r = (p.taux || 0) / 1200;
-  let crd, mois, M, pause = 0, reprise = null;
-  if (p.crd > 0 && p.mois > 0 && p.crdLe) {
-    M = p.mensualite || pmt(p.crd, r, p.mois);
-    const ecart = ecartMois(p.crdLe, auj);
-    // Relevé à une date à venir : prêt en pause (différé) jusque-là, remboursement de ce restant dû ensuite
-    if (ecart < 0) { pause = -ecart; crd = p.crd; mois = p.mois + pause; reprise = p.crdLe; }
-    else { const k = Math.min(p.mois, ecart); crd = solde(p.crd, r, M, k); mois = p.mois - k; }
-  } else if (p.montant > 0 && p.duree > 0 && p.debut) {
-    M = p.mensualite || pmt(p.montant, r, p.duree);
-    const ecart = ecartMois(p.debut, auj);
-    // 1re échéance dans plusieurs mois (achat récent, différé) : rien à payer d'ici là
-    if (ecart < -1) { pause = -ecart - 1; crd = p.montant; mois = p.duree + pause; reprise = p.debut; }
-    else { const k = Math.min(p.duree, ecart + 1); crd = solde(p.montant, r, M, k); mois = p.duree - k; }   // k : échéances déjà payées
-  } else return null;
+  const pl = planPret(p, auj); if (!pl) return null;
+  const {l, P, debut, D} = pl, n = l.length, ecart = ecartMois(debut, auj);
+  const k = Math.max(0, Math.min(n, ecart + 1));   // échéances déjà payées : jusqu'à ce mois-ci compris
+  // 1re échéance dans plusieurs mois (achat récent) ou relevé à une date à venir (prêt en pause) : rien à payer d'ici là
+  const pause = Math.max(0, -ecart - 1), reprise = pause ? (pl.releve ? p.crdLe : p.debut) : null;
+  const mois = n - k + pause;
+  let crd = k ? l[k - 1].crd : P;
   crd = mois > 0 && crd > 0.005 ? crd : 0;   // prêt soldé : pas de reste d'arrondi
+  const jCour = Math.max(0, Math.min(n - 1, ecart)), M = n ? l[jCour].paye : 0;
   // 12 prochains mois : intérêts et capital remboursé (rien pendant la pause : les intérêts s'ajoutent au capital)
-  let c = crd, interets = 0, capital = 0;
-  const payes = Math.max(0, Math.min(12, mois) - pause);
-  for (let i = 0; i < payes; i++) { const it = c * r; interets += it; capital += M - it; c -= M - it; }
-  return {crd, mois, M, pause, payes, reprise, debutFutur: reprise === p.debut, assur: p.assurance || 0, fin: decalerMois(auj, mois), interets, capital};
+  let interets = 0, capital = 0, paye12 = 0, resteAPayer = 0;
+  const fin12 = Math.min(n, ecart + 13);
+  for (let j = k; j < n; j++) { resteAPayer += l[j].paye; if (j < fin12) { interets += l[j].interets; capital += l[j].capital; paye12 += l[j].paye; } }
+  const payes = Math.max(0, fin12 - k);
+  // Différé pas encore fini : ce qu'on paie pendant, et la mensualité d'après
+  const differe = D && ecart < D - 1 && D < n ? {fin: decalerMois(debut, D - 1), total: pl.total, apres: l[D].paye} : null;
+  let prog = null;
+  if (pl.prog) {
+    const jH = pl.jAncre + 12 * (pl.an(Math.max(jCour, D, pl.jAncre)) + 1);   // 1re échéance de l'année suivante
+    prog = {...pl.prog, max: Math.max(...l.map(x => x.paye)), hausse: jH < n && jH >= k ? {mois: decalerMois(debut, jH), M: l[jH].paye} : null};
+  }
+  return {crd, mois, M, pause, payes, reprise, debutFutur: pause > 0 && !pl.releve, assur: p.assurance || 0, fin: decalerMois(auj, mois),
+    interets, capital, paye12, resteAPayer, differe, prog};
 }
 // Renégociation ou rachat aux taux d'aujourd'hui (même calcul que l'ancien onglet « Mes crédits »)
 function analyseReneg(p, e, sci) {
   if (!e || !(e.mois > 0 && e.crd > 1000 && p.taux > 0)) return null;
   const n = e.mois - (e.pause || 0), tNew = T.tauxDuree(T.TAUX_ACTUEL, n) + (sci ? T.SURPRIME_SCI : 0);   // durée de remboursement restante
-  const mensu2 = pmt(e.crd, tNew / 1200, n), gainMois = e.M - mensu2, gainTotal = gainMois * n;
+  // Gain : ce qui reste à payer (mensualités qui montent, différé…) moins la nouvelle mensualité fixe
+  const mensu2 = pmt(e.crd, tNew / 1200, n), gainMois = e.M - mensu2, gainTotal = (e.resteAPayer ?? e.M * n) - mensu2 * n;
   const ira = Math.min(0.03 * e.crd, 6 * e.crd * p.taux / 1200), fraisRachat = ira + 1000 + 0.015 * e.crd;
   let surprime = null;
   const offre = p.offre || p.debut;
@@ -115,7 +160,7 @@ function calculs(b) {
   const c = b.chargesAn, compta = c.comptaSci ? partComptaSci(b) ?? (c.compta || 0) : c.compta || 0;
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + compta + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
     + (b.location.statut === 'saisonnier' && !terrain ? loyersAn * (b.location.fraisSaison || 0) / 100 : 0);   // plateforme, conciergerie, ménage
-  const creditAn = somme(actifs, x => (x.e.M + x.e.assur) * x.e.payes);
+  const creditAn = somme(actifs, x => x.e.paye12 + x.e.assur * x.e.payes);
   const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
   const crd = somme(prets, x => x.e && x.e.crd), cfAn = loyersAn - chargesAn - creditAn;
   return {prets, loue, loyerMois, loyersAn, chargesAn, compta, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
@@ -1473,11 +1518,17 @@ function pretHTML(b, p, i) {
       ${champ(b, c + 'banque', 'Banque', {type: 'text'})}${champ(b, c + 'montant', 'Montant emprunté (€)', {step: 1000})}
       ${champ(b, c + 'taux', 'Taux nominal (%)', {step: 0.01})}${champ(b, c + 'duree', 'Durée totale (mois)', {aide: '240 = 20 ans'})}
       ${champ(b, c + 'debut', '1re échéance', {type: 'month'})}${champ(b, c + 'offre', 'Date de l\'offre', {type: 'month', aide: 'Pour comparer au taux du marché de l\'époque'})}
-      ${champ(b, c + 'mensualite', 'Mensualité hors assurance (€)', {step: 0.01, ph: 'calculée'})}${champ(b, c + 'assurance', 'Assurance (€/mois)', {step: 0.01})}
+      ${champ(b, c + 'progressif', 'Mensualité', {options: [['', 'Constante'], ['1', 'Progressive (augmente chaque année)']], boutons: true, large: true})}
+      ${p.progressif ? champ(b, c + 'mensualite', 'Mensualité actuelle hors assurance (€)', {step: 0.01, ph: 'à saisir', aide: 'Celle que tu paies ' + (p.mensuLe && p.mensuLe !== moisCourant() ? 'en ' + libMois(p.mensuLe) : 'ce mois-ci')})
+        + champ(b, c + 'hausse', 'Hausse par an (%)', {step: 0.01, ph: 'calculée', aide: 'Sur ton tableau d\'amortissement : compare la mensualité d\'une année à celle de l\'année suivante (ex. 497 € puis 504 € : 1,4 %). Vide : calculée pour finir le prêt à la date prévue.'})
+        : champ(b, c + 'mensualite', 'Mensualité hors assurance (€)', {step: 0.01, ph: 'calculée'})}
+      ${champ(b, c + 'assurance', 'Assurance (€/mois)', {step: 0.01})}
+      ${champ(b, c + 'typeDiff', 'Différé', {options: [['', 'Sans différé'], ['partiel', 'Partiel (intérêts seuls)'], ['total', 'Total (rien à payer)']], boutons: true, large: true})}
+      ${p.typeDiff ? champ(b, c + 'differe', 'Durée du différé (mois)', {aide: `Compris dans la durée totale, à partir de la 1re échéance. ${p.typeDiff === 'total' ? 'Seule l\'assurance est payée, les intérêts s\'ajoutent au capital.' : 'Tu paies les intérêts et l\'assurance, sans rembourser de capital.'}`}) : ''}
     </div>
     <details class="releve"${p.crd ? ' open' : ''}><summary>Restant dû relevé sur le tableau d'amortissement (plus précis)</summary>
       <div class="grille">${champ(b, c + 'crd', 'Restant dû (€)', {step: 0.01})}${champ(b, c + 'mois', 'Mois restants')}${champ(b, c + 'crdLe', 'À la date du', {type: 'month'})}</div>
-      <div class="aide">Tient compte d'un différé ou d'un remboursement anticipé ; le site fait avancer ce restant dû chaque mois.</div></details>
+      <div class="aide">Tient compte d'un différé ou d'un remboursement anticipé ; le site fait avancer ce restant dû chaque mois${p.typeDiff ? ' (le différé saisi plus haut n\'est alors plus compté)' : ''}.</div></details>
     <div class="resume" data-resume="${i}"></div></div>`;
 }
 // Chiffres recalculés sans reconstruire le formulaire (pour ne pas perdre le champ en cours de saisie)
@@ -1523,14 +1574,17 @@ function resumePret(b, p, e) {
   const a = analyseReneg(p, e, b.structure !== 'np'), dejaPaye = p.montant > 0 ? 1 - e.crd / p.montant : null;
   const taux = v => v.toFixed(2).replace('.', ',') + ' %';
   let h = `<div class="pret-etat">
+    ${e.differe ? `<div class="pret-pause">Différé ${e.differe.total ? 'total' : 'partiel'} jusqu'en ${libMois(e.differe.fin)} : ${e.differe.total ? 'assurance seule, les intérêts s\'ajoutent au capital' : `${eur(e.M)} d'intérêts par mois`}, puis ${eur(e.differe.apres)} par mois hors assurance.</div>` : ''}
+    ${p.progressif && !e.prog ? '<div class="pret-pause">Mensualité progressive : saisis ta mensualité actuelle (ou la hausse par an) pour en tenir compte.</div>' : ''}
     ${e.pause ? `<div class="pret-pause">${e.debutFutur ? `1re échéance en ${libMois(e.reprise)} : rien à payer d'ici là.` : `En pause jusqu'en ${libMois(e.reprise)} : pas d'échéance, les intérêts s'ajoutent au capital.`}</div>` : ''}
     ${mini([[e.pause ? 'À rembourser à la reprise' : 'Restant dû', eur(e.crd)], ['Mensualité', eur(e.M) + (e.assur ? ' + ' + eur(e.assur) + ' d\'assurance' : '')],
       ['Fin du prêt', libMois(e.fin)], ['Mois restants', String(e.mois - (e.pause || 0))]])}
     ${dejaPaye != null ? `<div class="barre"><span style="width:${Math.max(0, Math.min(100, dejaPaye * 100)).toFixed(1)}%"></span></div><div class="aide">${pct(dejaPaye)} du capital remboursé</div>` : ''}
     ${mini([['Intérêts sur 12 mois', eur(e.interets)], ['Capital remboursé sur 12 mois', eur(e.capital)]], 'petit')}
+    ${e.prog ? `<div class="aide">Mensualité progressive : +${(e.prog.g * 100).toFixed(2).replace('.', ',')} % par an${e.prog.saisie ? '' : ' (calculée avec le montant, le taux et la durée)'}${e.prog.hausse ? `, ${eur(e.prog.hausse.M)} à partir de ${libMois(e.prog.hausse.mois)}` : ''}, jusqu'à ${eur(e.prog.max)} la dernière année.</div>` : ''}
   </div>`;
   if (a) h += `<div class="reneg ${a.netAvenant > 0 ? 'oui' : 'non'}"><div class="reneg-titre">Aux taux d'aujourd'hui : ${taux(a.tNew)}${b.structure !== 'np' ? ' (SCI)' : ''} au lieu de ${taux(p.taux)}</div>
-    ${mini([['Nouvelle mensualité', eur(a.mensu2)], ['Différence', (a.gainMois >= 0 ? '−' : '+') + eur(Math.abs(a.gainMois)) + '/mois', a.gainMois > 0 ? 'up' : 'down'],
+    ${mini([['Nouvelle mensualité', eur(a.mensu2)], [e.prog ? 'Différence aujourd\'hui' : 'Différence', (a.gainMois >= 0 ? '−' : '+') + eur(Math.abs(a.gainMois)) + '/mois', a.gainMois > 0 ? 'up' : 'down'],
       ['Gain net : renégociation', '≈ ' + eur(a.netAvenant), signe(a.netAvenant)], ['Gain net : rachat', '≈ ' + eur(a.netRachat), signe(a.netRachat)]])}
     <div class="aide">Renégociation avec ta banque : avenant ≈ 600 €. Rachat par une autre banque : indemnités ≈ ${eur(a.ira)}, plus dossier et garantie.${a.surprime ? ` Surprime payée en ${libMois(a.offre)} : ${a.surprime[0] >= 0 ? '+' : ''}${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à ' + (a.surprime[1] >= 0 ? '+' : '') + a.surprime[1].toFixed(2).replace('.', ',') : ''} point par rapport au marché de l'époque.` : ''}</div></div>`;
   return h;
@@ -1734,7 +1788,7 @@ racine.addEventListener('click', async e => {
   if (a === 'supprLigne' && LISTES[b.location.statut] && confirm('Retirer cette ligne ?')) { b[LISTES[b.location.statut].cle].splice(+t.dataset.i, 1); sauver(b); return vueDetail(b); }
   if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
   if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
-  if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
+  if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, progressif: '', hausse: null, mensuLe: '', typeDiff: '', differe: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
   if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'fichier') racine.querySelector('#inv_fichier').click();
   if (a === 'supprDoc') {
@@ -1806,6 +1860,9 @@ racine.addEventListener('change', async e => {
   }
   if (chemin === 'location.statut' && v === 'lots' && !(b.lots || []).length && b.location.loyer) b.lots = [{id: uid(), libelle: 'Loyer 1', loyer: b.location.loyer, locataire: b.location.locataire || '', debut: b.location.debutBail && ecartMois(b.location.debutBail, moisCourant()) < 0 ? b.location.debutBail : ''}];
   if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
+  // Mensualité progressive : la mensualité saisie est celle du mois de la saisie (elle augmente ensuite)
+  if (/^prets\.\d+\.(mensualite|progressif)$/.test(chemin)) { const p = lire(b, chemin.replace(/\.\w+$/, '')); p.mensuLe = p.progressif && p.mensualite ? moisCourant() : ''; }
+  if (/^prets\.\d+\.typeDiff$/.test(chemin) && v && !lire(b, chemin.replace('typeDiff', 'differe'))) ecrire(b, chemin.replace('typeDiff', 'differe'), 12);
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver(b);
   if (chemin.startsWith('vente.')) return majVente(b);
@@ -1817,7 +1874,7 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.banque$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature'].includes(chemin)) majAuto(b);

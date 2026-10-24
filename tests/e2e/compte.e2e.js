@@ -272,6 +272,37 @@ test('comptable de la SCI : honoraires saisis sur la SCI, comptés dans les char
   assert.equal(nombre(await kpi('Cash-flow')), avant);
 });
 
+test('crédit progressif et différé : boutons visibles, mensualité actuelle qui augmente, différé partiel', async () => {
+  await ouvrirFiche('Studio Test');
+  await page.click('#inv [data-a="ajoutPret"]');
+  await champ('prets.1.montant', 101058); await champ('prets.1.taux', 3.7); await champ('prets.1.duree', 300); await champ('prets.1.debut', mois(-5));
+  const resume = () => page.locator('[data-resume="1"]').innerText();
+  const bouton = (cible, l) => page.locator(`#inv [data-a="segChoix"][data-cible="${cible}"]`, {hasText: l});
+  assert.match(await resume(), /Mensualité\s*\n\s*517 €/i);                               // constante : calculée
+  assert.equal(await bouton('inv_prets_1_progressif', 'Progressive').isVisible(), true);
+  await bouton('inv_prets_1_progressif', 'Progressive').click();
+  await page.waitForSelector('#inv [data-p="prets.1.hausse"]');
+  assert.match(await resume(), /saisis ta mensualité actuelle/i);
+  await champ('prets.1.mensualite', 497);
+  let r = await resume();
+  assert.match(r, /Mensualité\s*\n\s*497 €/i);
+  assert.match(r, /Mensualité progressive : \+0,\d\d % par an \(calculée/i);
+  assert.match(r, /Fin du prêt\s*\n\s*[^\n]+ \d{4}/i);
+  await attendreCompte(() => (p => p && p.progressif === '1' && p.mensualite === 497 && p.mensuLe === mois(0))(bienDuCompte('Studio Test').prets[1]));
+  await bouton('inv_prets_1_typeDiff', 'Partiel').click();
+  await page.waitForSelector('#inv [data-p="prets.1.differe"]');
+  await champ('prets.1.differe', 12);                                                       // fini dans 6 mois
+  r = await resume();
+  assert.match(r, /Différé partiel jusqu'en/i);
+  assert.match(r, /Mensualité\s*\n\s*312 €/i);                                            // intérêts seuls : 101 058 × 3,7 % / 12
+  assert.match(r, /Restant dû\s*\n\s*101\s058 €/i);
+  await bouton('inv_prets_1_typeDiff', 'Sans différé').click();
+  await page.waitForSelector('#inv [data-p="prets.1.differe"]', {state: 'detached'});
+  await page.locator('#inv [data-a="supprPret"][data-i="1"]').click();
+  await page.waitForSelector('[data-resume="1"]', {state: 'detached'});
+  await attendreCompte(() => bienDuCompte('Studio Test').prets.length === 1);
+});
+
 test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de doublon), supprimé', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#works button.cta');
