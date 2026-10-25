@@ -2950,7 +2950,7 @@ function enregistrerProjet(nouveau) {
   inst.resume.label = r ? r.label : ex && ex.resume ? ex.resume.label : '';
   if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
   const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(),
-    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {})};
+    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(ex && ex.regroupe ? {regroupe: ex.regroupe} : {})};
   PROJETS.ajouter(pr);
   fixerProjet(pr.id);
   nomTouche = false;
@@ -3133,7 +3133,7 @@ function carteProjet(pr) {
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
-      <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}${pr.regroupe ? '<button data-a="separer">Séparer</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
 // Aménagement d'un espace d'un bien déjà à toi : pas de prix d'achat, seulement les travaux, puis le loyer
 const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y && m ? new Date(y, m - 1, 1).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : ''; };
@@ -3167,7 +3167,7 @@ function afficherProjets() {
   const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(x.nom)}</option>`).join('');
   document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${achats.length > 1 ? '<button data-a="regroupe">Un seul crédit pour deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
     + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Un seul crédit pour deux projets</h2>
-      <p class="aide">Par exemple deux appartements achetés au même vendeur. Un nouveau projet est créé : frais de notaire, apport et crédit sur le total, loyers et charges des deux biens additionnés. Le 1er projet garde ses réglages de crédit et de fiscalité ; tes deux projets restent tels quels.</p>
+      <p class="aide">Par exemple deux appartements achetés au même vendeur. Un nouveau projet est créé : frais de notaire, apport et crédit sur le total, loyers et charges des deux biens additionnés. Le 1er projet garde ses réglages de crédit et de fiscalité. Le projet regroupé remplace les deux : « Séparer » les fait revenir.</p>
       <div class="pj-choix"><label>1er projet<select id="pj_a">${opt(achats[0])}</select></label><label>2e projet<select id="pj_b">${opt(achats[1])}</select></label></div>
       <div class="boutons"><button class="primaire" data-a="regrouper">Créer le projet à un seul crédit</button><button data-a="regroupe">Annuler</button></div><div class="aide" id="pj_regrMsg"></div></div>` : '')
     + (l.length ? `<div class="pj-liste">${l.map(carteProjet).join('')}</div>`
@@ -3190,6 +3190,7 @@ document.getElementById('pj').addEventListener('click', e => {
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
+  else if (t.dataset.a === 'separer' && confirm('Séparer ce projet ? Les deux projets d\'origine reviennent dans la liste.')) separerProjet(id);
   else if (t.dataset.a === 'regroupe') { const z = document.getElementById('pj_regroupe'); z.hidden = !z.hidden; }
   else if (t.dataset.a === 'regrouper') regrouperProjets(document.getElementById('pj_a').value, document.getElementById('pj_b').value);
   else if (t.dataset.a === 'suppr' && confirm('Supprimer ce projet ?')) { PROJETS.supprimer(id); if (projetCourantId === id) fixerProjet(null); }
@@ -3200,9 +3201,25 @@ function regrouperProjets(idA, idB) {
   if (!a || !b || a === b) { msg.textContent = 'Choisis deux projets différents.'; return; }
   const g = CF_APP.regrouper(a, b);
   if (g.travauxB && !confirm(`Les travaux de « ${b.nom} » (${eurP(g.travauxB)}) ne sont pas repris : seul le 1er projet garde ses travaux. Tu pourras les ajouter dans la section Travaux de Financer. Continuer ?`)) return;
-  const pr = {id: nouvelId(), nom: `${a.nom} + ${b.nom}`, maj: Date.now(), quand: new Date().toISOString(), recherche: null, bien: '', finance: g.finance, resume: g.resume};
+  // Il remplace les deux projets (gardés dedans pour « Séparer ») ; refait avec les mêmes, il met à jour le précédent au lieu d'en créer un autre
+  const nom = `${a.nom} + ${b.nom}`, ex = PROJETS.liste.find(x => x.nom === nom && x.resume && x.resume.prixB2 != null);
+  const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(), recherche: null, bien: '', finance: g.finance, resume: g.resume, regroupe: [a, b]};
+  retirerProjets([a.id, b.id]);
   PROJETS.ajouter(pr);
   ouvrirProjet(pr.id, 'cashflow');
+}
+function retirerProjets(ids) {
+  PROJETS.liste = PROJETS.liste.filter(x => !ids.includes(x.id));
+  if (window.INV) ids.forEach(INV.marquerSupprime);
+  if (ids.includes(projetCourantId)) fixerProjet(null);
+}
+// Les deux projets reviennent (nouveaux identifiants : les anciens sont marqués supprimés dans le compte), le projet regroupé part
+function separerProjet(id) {
+  const pr = PROJETS.liste.find(x => x.id === id); if (!pr || !pr.regroupe) return;
+  const revenus = pr.regroupe.map(x => ({...x, id: nouvelId(), maj: Date.now()}));
+  retirerProjets([id]);
+  PROJETS.liste = [...revenus, ...PROJETS.liste];
+  PROJETS.enregistrer();
 }
 // Boutons d'Estimer (« Financer ce bien », « Travaux + location »...) : repartent de l'estimation en cours, même après la réouverture d'un projet
 function financerBien(mode) { CF_APP.liberer(); showTab('cashflow', true, mode || null); }

@@ -450,9 +450,16 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   assert.match(await page.locator('#cf').innerText(), /Deux biens, un seul crédit/i);
   const pr = (await attendreCompte(c => c.projets.some(x => x.nom === 'Lot A + Lot B'))).projets.find(x => x.nom === 'Lot A + Lot B');
   assert.equal(pr.resume.prix, Math.round(e.prix) + 120000); assert.equal(pr.resume.prixB2, 120000);
-  assert.ok(await page.evaluate(() => ['Lot A', 'Lot B'].every(n => PROJETS.liste.some(x => x.nom === n))));   // les deux projets restent
+  // Le projet regroupé remplace les deux (pas trois fois les mêmes biens dans la liste)
+  let c = await attendreCompte(c => !c.projets.some(x => x.nom === 'Lot A' || x.nom === 'Lot B'), 'projets d\'origine remplacés');
+  assert.equal(c.projets.filter(x => x.nom === 'Lot A + Lot B').length, 1);
   await page.click('.tabs [data-tab="projets"]');
-  assert.match(await page.locator('#pj .pj', {hasText: 'Lot A + Lot B'}).innerText(), /un seul crédit/i);
+  const carte = page.locator('#pj .pj', {hasText: 'Lot A + Lot B'});
+  assert.match(await carte.innerText(), /un seul crédit/i);
+  // « Séparer » : les deux projets reviennent, le projet regroupé part
+  await carte.locator('[data-a="separer"]').click();
+  c = await attendreCompte(c => !c.projets.some(x => x.nom === 'Lot A + Lot B') && ['Lot A', 'Lot B'].every(n => c.projets.some(x => x.nom === n)), 'projets séparés');
+  assert.equal(c.projets.find(x => x.nom === 'Lot B').finance.prix, 120000);
 });
 
 test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {
