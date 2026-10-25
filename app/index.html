@@ -265,6 +265,18 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-regroupe{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .invwrap .pj-regroupe h2{margin:0 0 4px;font-size:16px}
 .invwrap .pj-verdict{margin:4px 0 10px;font-size:14px}
+.invwrap .pj-cmp-defile{overflow-x:auto}
+.invwrap .pj-compare{margin:10px 0 4px}
+.invwrap .pj-gr-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:10px 0 4px}
+.invwrap .pj-br{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.invwrap .pj-br h4{margin:0;font-size:15px;text-transform:none;letter-spacing:0;color:var(--ink)}
+.invwrap .pj-props{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}
+.invwrap .pj-props button{font-size:13px;padding:6px 10px}
+.invwrap .pj-coches{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px 12px;margin:8px 0;max-height:320px;overflow:auto}
+.invwrap .pj-coches label{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;margin:0;padding:4px 0}
+.invwrap .pj-coches input{width:auto;flex:0 0 auto;margin:0}
+.invwrap .pj-cmp td b{white-space:nowrap}
+.invwrap .pj-coches small{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
 .invwrap table.pj-cmp{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
 .invwrap .pj-cmp th,.invwrap .pj-cmp td{padding:7px 8px;border-top:1px solid var(--line);text-align:right;vertical-align:top}
 .invwrap .pj-cmp thead th{border-top:0;font-size:13px;overflow-wrap:anywhere}
@@ -770,7 +782,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <div class="card" id="cf_save"><h2>Enregistrer ce projet</h2>
     <div id="cf_saveForm">
       <div class="hint">Il rejoint l'onglet « Mes projets » : tu pourras le rouvrir, changer l'estimation ou le financement, et le comparer aux autres.</div>
-      <div class="saverow"><input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregNouveau" hidden>Enregistrer comme nouveau projet</button></div>
+      <div class="saverow"><input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregNouveau" hidden>Enregistrer comme nouveau projet</button><button id="cf_enregBranche" hidden>Enregistrer comme nouvelle branche</button></div>
       <div id="cf_saveMsg" class="hint" role="status"></div>
     </div>
     <div id="cf_saveInvite" hidden>
@@ -2495,7 +2507,7 @@ function mettreSaison(sz) {
 }
 function barreProjet(pr) {
   const r = pr.resume || {};
-  return `Projet <b>${esc(pr.nom)}</b>${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
+  return `Projet <b>${esc(pr.nom)}</b>${pr.groupe && branchesDe(pr).length > 1 ? ` · branche <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
 }
 function sync(est, mode) {
   if (mode) figee = undefined;   // « Travaux + location » et autres : demande explicite, on applique le projet
@@ -3065,6 +3077,7 @@ function majSauvegarde(pr) {
   if (!nomTouche) $('nomProjet').value = pr ? pr.nom : bienUtile ? bienUtile.label : '';
   $('enreg').textContent = pr ? 'Enregistrer les modifications' : 'Enregistrer dans mes projets';
   $('enregNouveau').hidden = !pr;
+  $('enregBranche').hidden = !pr || !!pr.amenag;
   $('saveMsg').textContent = '';
 }
 // Résumé d'un projet (ce que montre « Mes projets ») : version 2 = cash-flow mesuré après le différé, au bout de 2 ans au moins ;
@@ -3092,7 +3105,7 @@ function instantane(ex, recalcul) {
   }
   return {finance: etat(), resume};
 }
-function enregistrerProjet(nouveau) {
+function enregistrerProjet(nouveau, branche) {
   const r = bienUtile && typeof rechercheCourante === 'function' ? rechercheCourante() : null;
   let ex = !nouveau && projetCourantId ? PROJETS.liste.find(x => x.id === projetCourantId) : null;
   if (ex && r && ex.recherche && ex.recherche.cle !== r.cle) ex = null;   // autre bien que le projet ouvert : nouveau projet
@@ -3100,13 +3113,18 @@ function enregistrerProjet(nouveau) {
   const inst = instantane(ex);
   inst.resume.label = r ? r.label : ex && ex.resume ? ex.resume.label : '';
   if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
-  const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(),
-    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(ex && ex.regroupe ? {regroupe: ex.regroupe, regroupeV: ex.regroupeV} : {}), ...(ex && ex.estimations ? {estimations: ex.estimations} : {})};
+  const meme = ex && !branche;   // nouvelle branche : même projet, autre identifiant
+  const estimations = ex && (ex.estimations || (branche && ex.regroupe ? rechercheRegroupees(ex).map(x => x && x.recherche) : null));
+  const pr = {id: meme ? ex.id : nouvelId(), nom, maj: Date.now(), quand: meme ? ex.quand : new Date().toISOString(),
+    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(meme && ex.regroupe ? {regroupe: ex.regroupe, regroupeV: ex.regroupeV} : {}), ...(estimations ? {estimations} : {}),
+    ...(branche && ex ? {groupe: assurerGroupe(ex), branche} : meme ? Object.fromEntries(['groupe', 'branche', 'nomAvant'].filter(k => ex[k]).map(k => [k, ex[k]])) : {})};
+  // Le nom est celui du projet : changé ici, il change pour toutes ses branches
+  if (pr.groupe) PROJETS.liste.forEach(x => { if (x.groupe === pr.groupe && x.id !== pr.id && x.nom !== nom) Object.assign(x, {nom, maj: Date.now()}); });
   PROJETS.ajouter(pr);
   fixerProjet(pr.id);
   nomTouche = false;
   majSauvegarde(pr);
-  $('saveMsg').innerHTML = `Enregistré dans <a href="#projets">Mes projets</a>.`;
+  $('saveMsg').innerHTML = branche ? `Branche « ${esc(branche)} » ajoutée au projet dans <a href="#projets">Mes projets</a>.` : `Enregistré dans <a href="#projets">Mes projets</a>.`;
 }
 // Recalcule le résumé d'un projet enregistré avec ses réglages, sans toucher à ce que montre Financer
 function recalculer(v, ex) {
@@ -3216,6 +3234,12 @@ $('nomProjet').addEventListener('input', () => { nomTouche = true; });
 $('connexion').onclick = () => ouvrirCompte();
 $('enreg').onclick = () => enregistrerProjet(false);
 $('enregNouveau').onclick = () => enregistrerProjet(true);
+// Même projet, autre façon de le faire : les réglages en cours deviennent une branche à côté de celle ouverte
+$('enregBranche').onclick = () => {
+  const pr = projetCourantId && PROJETS.liste.find(x => x.id === projetCourantId); if (!pr) return;
+  const n = (prompt('Nom de la nouvelle branche (ce que tu testes) :', 'Branche ' + (branchesDe(pr).length + 1)) || '').trim();
+  if (n) enregistrerProjet(false, n);
+};
 $('form').addEventListener('input', e => {
   const carte = e.target.closest('#cf_biensPlus [data-i]');
   if (carte) {   // un autre bien du même crédit
@@ -3302,13 +3326,13 @@ function chiffresSimples(r, revente, prix) {
   const m = r.mois || {loyer: (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0), credit: r.mensualite || 0, charges: Math.max(0, (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0) - (r.mensualite || 0) - (r.cfMois || 0))};
   return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true});
 }
-// ---------- Comparer deux projets
-// Les chiffres de deux projets côte à côte, le meilleur mis en avant avec l'écart ; en mode simple, seulement l'essentiel
+// ---------- Comparer des branches
+// Les chiffres de plusieurs branches côte à côte, le meilleur mis en avant avec son avance sur le suivant ; en mode simple, seulement l'essentiel
 const eurC = n => (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
 const pctC = n => (n * 100).toFixed(1).replace('.', ',') + ' %';
 const reventeC = r => r.scenario === 'revendre';
 const loyerC = r => reventeC(r) ? null : r.mois ? r.mois.loyer : (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0);
-// mieux : 1 = le plus haut gagne, −1 = le plus bas, 0 = pas de gagnant ; siNonNul : ligne cachée si les deux sont à 0
+// mieux : 1 = le plus haut gagne, −1 = le plus bas, 0 = pas de gagnant ; siNonNul : ligne cachée si tous sont à 0
 const CRITERES_C = [
   {k: 'Prix du projet', v: r => r.prix, mieux: -1, simple: true},
   {k: 'Travaux', v: r => r.travaux || 0, mieux: -1, siNonNul: true},
@@ -3324,38 +3348,41 @@ const CRITERES_C = [
   {k: 'Patrimoine à la fin', v: r => r.patrimoine, mieux: 1, sous: r => r.horizon ? `dans ${r.horizon} ans` : '', memeHorizon: true},
   {k: 'Coût du crédit', v: r => r.coutCredit, mieux: -1},
 ];
-// Lignes : valeurs, gagnant ('a', 'b' ou null) et écart
-function lignesComparaison(ra, rb, simple = false) {
+// Lignes : une valeur par branche, le gagnant (son rang dans la liste, ou null) et son avance sur le 2e
+function lignesComparaison(rs, simple = false) {
   const num = x => typeof x === 'number' && !isNaN(x) ? x : null;
   return CRITERES_C.filter(c => !simple || c.simple).map(c => {
-    const a = num(c.v(ra)), b = num(c.v(rb));
-    if (a == null && b == null) return null;
-    if (c.siNonNul && !a && !b) return null;
-    const comparable = a != null && b != null && c.mieux && a !== b && (!c.memeHorizon || ra.horizon === rb.horizon);
-    const gagnant = comparable ? ((a - b) * c.mieux > 0 ? 'a' : 'b') : null;
-    const sous = c.sous ? [c.sous(ra), c.sous(rb)] : null, pareil = sous && sous[0] && sous[0] === sous[1];   // même horizon : dit une fois dans le libellé
-    return {k: pareil ? 'Patrimoine ' + sous[0] : c.k, a, b, pct: !!c.pct, gagnant, ecart: comparable ? Math.abs(a - b) : 0, sous: pareil ? null : sous};
+    const v = rs.map(r => num(c.v(r)));
+    if (v.every(x => x == null) || (c.siNonNul && v.every(x => !x))) return null;
+    const sous = c.sous ? rs.map(c.sous) : null, pareil = !!sous && !!sous[0] && sous.every(x => x === sous[0]);   // même horizon : dit une fois dans le libellé
+    let gagnant = null, ecart = 0;
+    if (c.mieux && rs.length > 1 && v.every(x => x != null) && (!c.memeHorizon || pareil)) {
+      const tri = v.map((x, i) => [x * c.mieux, i]).sort((a, b) => b[0] - a[0]);
+      if (tri[0][0] !== tri[1][0]) { gagnant = tri[0][1]; ecart = tri[0][0] - tri[1][0]; }
+    }
+    return {k: pareil ? 'Patrimoine ' + sous[0] : c.k, v, pct: !!c.pct, gagnant, ecart, sous: pareil ? null : sous};
   }).filter(Boolean);
 }
-// La phrase du haut : ce qui compte le plus pour chacun (le reste par mois, ou le bénéfice d'un achat-revente)
-function verdictComparaison(na, nb, ra, rb) {
-  const [cle, quoi] = reventeC(ra) && reventeC(rb) ? ['benefice', 'à la revente'] : !reventeC(ra) && !reventeC(rb) ? ['cfMois', 'par mois'] : [];
-  if (!cle || ra[cle] == null || rb[cle] == null) return '';
-  const e = ra[cle] - rb[cle];
-  if (Math.round(e) === 0) return `Les deux te laissent autant ${quoi}.`;
-  return `« ${e > 0 ? na : nb} » te ${cle === 'benefice' ? 'rapporte' : 'laisse'} <b>${eurC(Math.abs(e))}</b> de plus ${quoi}.`;
+// La phrase du haut : ce qui compte le plus (le reste par mois, ou le bénéfice si toutes sont des achats-reventes)
+function verdictComparaison(noms, rs) {
+  const [cle, quoi, verbe] = rs.every(reventeC) ? ['benefice', 'à la revente', 'rapporte'] : !rs.some(reventeC) ? ['cfMois', 'par mois', 'laisse'] : [];
+  if (!cle || rs.length < 2 || rs.some(r => r[cle] == null)) return '';
+  const tri = rs.map((r, i) => [r[cle], i]).sort((a, b) => b[0] - a[0]), e = tri[0][0] - tri[1][0];
+  if (Math.round(e) === 0) return `« ${noms[tri[0][1]]} » et « ${noms[tri[1][1]]} » te ${verbe === 'laisse' ? 'laissent' : 'rapportent'} autant ${quoi}.`;
+  return `« ${noms[tri[0][1]]} » te ${verbe} le plus ${quoi} : <b>${eurC(e)}</b> de plus que « ${noms[tri[1][1]]} ».`;
 }
-function tableComparaison(pa, pb, o = {}) {
-  const ra = pa.resume || {}, rb = pb.resume || {}, f = (x, l) => x == null ? '—' : l.pct ? pctC(x) : eurC(x);
-  const cellule = (l, cote, i) => {
-    const x = l[cote], g = l.gagnant === cote, cls = g ? ' class="mieux"' : '', signe = /reste|différé|Bénéfice/.test(l.k) && x != null ? (x < 0 ? ' down' : x > 0 ? ' up' : '') : '';
-    const ecart = g ? `<small>${l.pct ? (l.ecart * 100).toFixed(1).replace('.', ',') + ' pt' : eurC(l.ecart)} de mieux</small>` : l.sous && l.sous[i] ? `<small>${l.sous[i]}</small>` : '';
-    return `<td${cls}><b class="${signe.trim()}">${f(x, l)}</b>${ecart}</td>`;
+// prs : [{nom, resume}] ; o.sous : une ligne sous chaque nom (usage)
+function tableComparaison(prs, o = {}) {
+  const rs = prs.map(p => p.resume || {}), noms = prs.map(p => esc(p.nom)), f = (x, l) => x == null ? '—' : l.pct ? pctC(x) : eurC(x);
+  const cellule = (l, i) => {
+    const x = l.v[i], g = l.gagnant === i, signe = /reste|différé|Bénéfice/.test(l.k) && x != null ? (x < 0 ? 'down' : x > 0 ? 'up' : '') : '';
+    const plus = g ? `<small>${l.pct ? (l.ecart * 100).toFixed(1).replace('.', ',') + ' pt' : eurC(l.ecart)} de mieux</small>` : l.sous && l.sous[i] ? `<small>${l.sous[i]}</small>` : '';
+    return `<td${g ? ' class="mieux"' : ''}><b class="${signe}">${f(x, l)}</b>${plus}</td>`;
   };
-  const verdict = verdictComparaison(esc(pa.nom), esc(pb.nom), ra, rb);
+  const verdict = verdictComparaison(noms, rs);
   return (verdict ? `<p class="pj-verdict">${verdict}</p>` : '')
-    + `<table class="pj-cmp"><thead><tr><th></th><th>${esc(pa.nom)}${o.sous ? `<small>${o.sous[0]}</small>` : ''}</th><th>${esc(pb.nom)}${o.sous ? `<small>${o.sous[1]}</small>` : ''}</th></tr></thead><tbody>`
-    + lignesComparaison(ra, rb, o.simple).map(l => `<tr><th>${l.k}</th>${cellule(l, 'a', 0)}${cellule(l, 'b', 1)}</tr>`).join('') + '</tbody></table>';
+    + `<div class="pj-cmp-defile"><table class="pj-cmp"><thead><tr><th></th>${noms.map((n, i) => `<th>${n}${o.sous && o.sous[i] ? `<small>${o.sous[i]}</small>` : ''}</th>`).join('')}</tr></thead><tbody>`
+    + lignesComparaison(rs, o.simple).map(l => `<tr><th>${l.k}</th>${rs.map((_, i) => cellule(l, i)).join('')}</tr>`).join('') + '</tbody></table></div>';
 }
 // ---------- fin de la comparaison
 // Trois chiffres, les mêmes que les tuiles de Financer ; l'estimation et le prix d'équilibre sur des lignes discrètes
@@ -3366,18 +3393,23 @@ const quiP = r => r.struct === 'np' || !r.struct ? '' : `SCI à l'${r.struct ===
 const usageP = (r, revente) => revente ? 'achat-revente' : r.saison ? 'saisonnier' : r.meuble ? 'meublé' : 'location vide';
 // Actions rares rangées derrière « ⋯ » : un seul bouton visible à côté de « Modifier le financement »
 const menuP = boutons => boutons.length ? `<details class="pj-menu"><summary aria-label="Autres actions" title="Autres actions">⋯</summary><div class="pj-menu-l">${boutons.join('')}</div></details>` : '';
-function cartePj(pr, sous, corps, boutons) {
+function cartePj(pr, sous, corps, boutons, br) {
+  boutons = [...boutons, ...boutonsBranche(pr, br)];
+  if (br) return `<section class="pj-br" data-id="${esc(pr.id)}"><div class="pj-br-tete"><h4>${esc(nomBranche(pr))}</h4>${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
+    ${corps}
+    <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
+      <div class="pj-actions">${menuP(boutons)}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></section>`;
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
       <div class="pj-actions">${menuP(boutons)}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
-function carteProjet(pr) {
-  if (pr.amenag) return carteAmenagement(pr);
+function carteProjet(pr, br) {
+  if (pr.amenag) return carteAmenagement(pr, br);
   const r = pr.resume || {}, revente = r.scenario === 'revendre', deux = r.prixB2 != null;
   // Deux biens : pas la phrase « un seul crédit pour « A » et « B » », ni « Appartement de » pour la surface des deux additionnée
-  const sous = [deux ? `${r.nbBiens > 2 ? r.nbBiens : 'Deux'} biens, un seul crédit` : r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appart.'} ${r.surf} m²`) : '', usageP(r, revente), quiP(r)].filter(Boolean).join(' · ');
+  const sous = [deux ? `${r.nbBiens > 2 ? r.nbBiens : 'Deux'} biens, un seul crédit` : r.label && r.label !== pr.nom && !br ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appart.'} ${r.surf} m²`) : '', usageP(r, revente), quiP(r)].filter(Boolean).join(' · ');
   const prix = ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>dont ${eurP(r.travaux)} de travaux en plus</small>` : r.apport ? `<small>apport ${eurP(r.apport)}</small>` : '')];
   const cases = revente ? [prix, ['Valeur après travaux', eurP(r.valeurApres)], [(r.benefice || 0) < 0 ? 'Perte à la revente' : 'Bénéfice à la revente', `<b class="${signeP(r.benefice)}">${eurP(Math.abs(r.benefice || 0))}</b>`]]
     : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>loyers ${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</small>`], caseReste(r)];
@@ -3389,8 +3421,8 @@ function carteProjet(pr) {
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
     ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
     deux && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : '',
-    pr.regroupe ? '<button data-a="separer">Séparer en deux projets</button>' : '', boutonComparer()].filter(Boolean);
-  return cartePj(pr, sous, corps, boutons);
+    pr.regroupe ? '<button data-a="separer">Séparer en deux projets</button>' : ''].filter(Boolean);
+  return cartePj(pr, sous, corps, boutons, br);
 }
 // Projet à un seul crédit : l'estimation de chacun des deux biens (choisie à la main, sinon celle des projets d'origine)
 const nomsRegroupes = pr => pr.regroupe ? pr.regroupe.map(x => x.nom) : (/« (.+) » et « (.+) »$/.exec((pr.resume || {}).label || '') || ['', 'Bien 1', 'Bien 2']).slice(1, 3);
@@ -3430,14 +3462,14 @@ function panneauEstimations(pr) {
 }
 // Aménagement d'un espace d'un bien déjà à toi : pas de prix d'achat, seulement les travaux, puis le loyer
 const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y && m ? new Date(y, m - 1, 1).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : ''; };
-function carteAmenagement(pr) {
+function carteAmenagement(pr, br) {
   const r = pr.resume || {}, am = r.amenag || {};
   const sous = [`Aménagement${am.principal ? ' de ' + esc(am.principal) : ''}`, r.surf ? `${r.surf} m²` : '', usageP(r, false), quiP(r)].filter(Boolean).join(' · ');
   const cases = [['Travaux', `<b>${eurP(r.travaux)}</b>` + (am.debut ? `<small>à partir de ${moisP(am.debut)}</small>` : '')],
     ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>${r.saison ? 'recettes' : 'loyer'} ${eurP(r.loyer)}/mois${am.loyerDes ? ' dès ' + moisP(am.loyerDes) : ''}</small>`], caseReste(r)];
   const note = [r.valeurApres ? `Vaut ${eurP(r.valeurApres)} une fois aménagé` : '', r.saison ? `${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation` : ''].filter(Boolean).join(' · ');
   const corps = modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`) : chiffresPro(cases) + (note ? `<div class="pj-note">${note}</div>` : '');
-  return cartePj(pr, sous, corps, ['<button data-a="fiche">Voir la fiche du bien</button>', boutonComparer()].filter(Boolean));
+  return cartePj(pr, sous, corps, ['<button data-a="fiche">Voir la fiche du bien</button>'], br);
 }
 // Les projets enregistrés avant le nouveau calcul (cash-flow pendant le différé) sont recalculés une fois
 function rafraichirResumes() {
@@ -3465,47 +3497,126 @@ function rafraichirResumes() {
   if (change) { try { localStorage.setItem('projets-v1', JSON.stringify(PROJETS.liste)); } catch (e) {} }
   if (compte && window.INV) INV.sauverCompte();
 }
-// Comparaison ouverte : {a, b} identifiants des deux projets, gardée quand la liste se redessine
-let comparaison = null;
-const comparables = () => [...PROJETS.liste].filter(x => x.resume).sort((a, b) => (b.maj || 0) - (a.maj || 0));
-const boutonComparer = () => comparables().length > 1 ? '<button data-a="comparer">Comparer avec un autre projet</button>' : '';
-function ouvrirComparaison(idA) {
-  const l = comparables(), a = l.find(x => x.id === idA) || l[0], b = l.find(x => x !== a);
-  comparaison = a && b ? {a: a.id, b: b.id} : null;
+// ---------- Branches
+// Plusieurs façons de tester un même projet (diviser la maison, refaire le garage…), chacune avec son financement.
+// Chaque branche reste un projet de la liste (compte, Financer, estimations inchangés) ; celles d'un même projet partagent
+// `groupe` et le nom du projet, `branche` est le nom de la branche, `nomAvant` le nom d'origine (rendu en sortant du projet).
+const groupeDe = pr => pr.groupe || pr.id;
+const nomBranche = pr => pr.branche || 'Version de départ';
+const branchesDe = pr => PROJETS.liste.filter(x => groupeDe(x) === groupeDe(pr)).sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')));
+const nomComplet = pr => pr.groupe && branchesDe(pr).length > 1 ? `${pr.nom} · ${nomBranche(pr)}` : pr.nom;
+const comparees = new Set();   // projets dont la comparaison des branches est ouverte
+function boutonsBranche(pr, br) {
+  const nouvelle = pr.amenag ? '' : `<button data-a="brNouvelle">${br ? 'Nouvelle branche à partir de celle-ci' : 'Tester une autre version (nouvelle branche)'}</button>`;
+  return br ? [nouvelle, '<button data-a="brRenommer">Renommer la branche</button>', '<button data-a="brSortir">Sortir de ce projet</button>', '<button data-a="suppr">Supprimer cette branche</button>'].filter(Boolean) : [nouvelle].filter(Boolean);
 }
-function rendreComparaison() {
-  const z = document.getElementById('pj_cmp'); if (!z || !comparaison) return;
-  const a = PROJETS.liste.find(x => x.id === comparaison.a), b = PROJETS.liste.find(x => x.id === comparaison.b);
-  const sous = pr => pr.amenag ? 'aménagement' : usageP(pr.resume || {}, (pr.resume || {}).scenario === 'revendre');
-  z.innerHTML = !a || !b || a === b ? '<p class="aide">Choisis deux projets différents.</p>' : tableComparaison(a, b, {simple: modeSimple(), sous: [sous(a), sous(b)]});
+function carteGroupe(bs) {
+  const g = groupeDe(bs[0]), ouvert = comparees.has(g), r0 = bs[0].resume || {};
+  const lieu = [...new Set(bs.map(x => (x.resume || {}).label).filter(Boolean))];
+  const sousNoms = bs.map(x => x.amenag ? 'aménagement' : usageP(x.resume || {}, (x.resume || {}).scenario === 'revendre'));
+  const cmp = ouvert ? `<div class="pj-compare">${tableComparaison(bs.map(x => ({nom: nomBranche(x), resume: x.resume})), {simple: modeSimple(), sous: sousNoms})}</div>` : '';
+  return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div><h3>${esc(bs[0].nom)}</h3><div class="pj-sous">${[`${bs.length} branches`, lieu.length === 1 && lieu[0] !== bs[0].nom ? esc(lieu[0]) : '', r0.surf && !r0.prixB2 ? `${r0.type === 'maison' ? 'Maison' : 'Appart.'} ${r0.surf} m²` : ''].filter(Boolean).join(' · ')}</div></div>
+    <button class="pj-x" data-a="supprGroupe" aria-label="Supprimer ce projet et ses branches" title="Supprimer ce projet et ses branches">${CROIX_X}</button></div>
+    <div class="pj-gr-actions">${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>'])}<button class="${ouvert ? '' : 'primaire'}" data-a="comparerBranches" aria-pressed="${ouvert}">${ouvert ? 'Fermer la comparaison' : 'Comparer les branches'}</button></div>
+    ${cmp}${bs.map(x => carteProjet(x, true)).join('')}</article>`;
 }
-function panneauComparaison() {
-  const l = comparables();
-  if (comparaison && !(l.some(x => x.id === comparaison.a) && l.some(x => x.id === comparaison.b))) ouvrirComparaison(comparaison.a);   // un des deux a été supprimé
-  if (!comparaison) return '';
-  const opt = id => l.map(x => `<option value="${esc(x.id)}"${x.id === id ? ' selected' : ''}>${esc(x.nom)}</option>`).join('');
-  return `<div class="pj-regroupe pj-compare" id="pj_compare"><div class="pj-tete"><h2>Comparer deux projets</h2><button class="pj-x" data-a="comparerFermer" aria-label="Fermer la comparaison" title="Fermer">${CROIX_X}</button></div>
-    <div class="pj-choix"><label>1er projet<select id="pj_ca">${opt(comparaison.a)}</select></label><label>2e projet<select id="pj_cb">${opt(comparaison.b)}</select></label></div>
-    <div id="pj_cmp"></div></div>`;
+const assurerGroupe = pr => { if (!pr.groupe) { pr.groupe = 'g' + nouvelId(); pr.maj = Date.now(); } return pr.groupe; };
+// Nouvelle branche : copie de celle-ci, ouverte dans Financer pour y changer ce qu'on veut tester
+function nouvelleBranche(id) {
+  const pr = PROJETS.liste.find(x => x.id === id); if (!pr || pr.amenag) return;
+  const n = (prompt('Nom de la nouvelle branche (ce que tu veux tester) :', 'Branche ' + (branchesDe(pr).length + 1)) || '').trim(); if (!n) return;
+  const copie = {...JSON.parse(JSON.stringify(pr)), id: nouvelId(), groupe: assurerGroupe(pr), branche: n, maj: Date.now(), quand: new Date().toISOString()};
+  delete copie.nomAvant;
+  // Un seul crédit pour deux projets : la copie garde les deux estimations, pas les projets d'origine (« Séparer » reste sur l'original)
+  if (pr.regroupe) { copie.estimations = rechercheRegroupees(pr).map(x => x && x.recherche); delete copie.regroupe; delete copie.regroupeV; }
+  PROJETS.ajouter(copie);
+  ouvrirProjet(copie.id, 'cashflow');
 }
+function sortirBranche(x) {
+  x.nom = x.nomAvant || (x.branche ? `${x.nom} · ${x.branche}` : x.nom);
+  delete x.groupe; delete x.branche; delete x.nomAvant; x.maj = Date.now();
+}
+// Ce qui distingue une branche : son nom d'origine sans les mots du projet, sinon son usage, ses travaux et son prix
+const racineP = m => m.slice(0, 5);
+function brancheAuto(x, nomP) {
+  const du = new Set(motsP(nomP).map(racineP)), mots = String(x.nom || '').split(/\s+/).filter(m => { const n = motsP(m)[0]; return !n || !du.has(racineP(n)); });
+  const lien = /^(de|du|des|la|le|les|et|à|au|aux|en|avec|[-–·:,+()]+)$/i;
+  while (mots.length && lien.test(mots[0])) mots.shift();
+  while (mots.length && lien.test(mots[mots.length - 1])) mots.pop();
+  const reste = mots.join(' ').replace(/^[\s\-–·:,+()]+|[\s\-–·:,+()]+$/g, '');
+  if (/[a-z0-9]/i.test(reste)) return reste[0].toUpperCase() + reste.slice(1);
+  const r = x.resume || {};
+  return [x.amenag ? 'Aménagement' : usageP(r, r.scenario === 'revendre'), r.travaux > 0 ? `travaux ${fmtK(r.travaux)}` : '', r.prix ? fmtK(r.prix) : ''].filter(Boolean).join(' · ').replace(/^./, c => c.toUpperCase());
+}
+// Propositions : projets à la même adresse, sur la même estimation, ou dont les noms partagent un mot (« San Gaetano », « sans Gaetan 2 »)
+const MOTS_COMMUNS = new Set('proje maiso appar immeu studi garag local locat achat reven divis trava versi bien avec sans meubl coloc saiso branc route chemi avenu credi seul deux trois autre nouve copie test lyon paris'.split(' '));
+const racinesNom = nom => new Set(motsP(nom).filter(m => m.length >= 4 && /[a-z]/.test(m)).map(racineP).filter(m => !MOTS_COMMUNS.has(m)));
+function propositionsBranches(l) {
+  const parent = l.map((_, i) => i), chef = i => parent[i] === i ? i : (parent[i] = chef(parent[i]));
+  const vus = new Map(), lier = (k, i) => { if (!k) return; if (vus.has(k)) parent[chef(i)] = chef(vus.get(k)); else vus.set(k, i); };
+  l.forEach((x, i) => {
+    if (x.groupe) lier('g:' + x.groupe, i);
+    if (x.recherche && x.recherche.cle) lier('r:' + x.recherche.cle, i);
+    if ((x.resume || {}).label) lier('a:' + x.resume.label, i);
+    racinesNom(x.nom).forEach(m => lier('m:' + m, i));
+  });
+  const paquets = new Map();
+  l.forEach((x, i) => { const c = chef(i); if (!paquets.has(c)) paquets.set(c, []); paquets.get(c).push(x); });
+  return [...paquets.values()].filter(p => p.length > 1 && !p.every(x => x.groupe && x.groupe === p[0].groupe)).sort((a, b) => b.length - a.length)
+    .map(p => ({ids: p.map(x => x.id), nom: nomPropose(p)}));
+}
+// Nom proposé : celui d'un projet déjà à branches, sinon le plus court qui contient le mot le plus partagé
+function nomPropose(p) {
+  const g = p.find(x => x.groupe && branchesDe(x).length > 1); if (g) return g.nom;
+  const n = new Map(); p.forEach(x => racinesNom(x.nom).forEach(m => n.set(m, (n.get(m) || 0) + 1)));
+  const top = [...n.entries()].sort((a, b) => b[1] - a[1])[0], avec = p.filter(x => !top || racinesNom(x.nom).has(top[0]));
+  return (avec.length ? avec : p).map(x => x.nomAvant || x.nom).sort((a, b) => a.length - b.length)[0];
+}
+// Les projets cochés deviennent les branches d'un seul projet (rejoignent celui à branches s'il y en a un parmi eux)
+function regrouperEnBranches(ids, nom) {
+  const l = ids.map(id => PROJETS.liste.find(x => x.id === id)).filter(Boolean), msg = document.getElementById('pj_brMsg');
+  if (l.length < 2) { msg.textContent = 'Coche au moins deux projets.'; return; }
+  const ex = l.find(x => x.groupe && branchesDe(x).length > 1), g = ex ? ex.groupe : 'g' + nouvelId(), maj = Date.now();
+  const nomP = (nom || '').trim() || nomPropose(l);
+  for (const x of l) if (x.groupe !== g) { x.nomAvant ||= x.nom; x.branche = x.branche && x.groupe ? x.branche : brancheAuto(x, nomP); }
+  for (const x of PROJETS.liste) if (x.groupe === g || l.includes(x)) Object.assign(x, {groupe: g, nom: nomP, maj});
+  comparees.add(g);
+  PROJETS.enregistrer();
+}
+function panneauBranches(l) {
+  const props = propositionsBranches(l);
+  return `<div class="pj-regroupe" id="pj_branches" hidden><h2>Regrouper en branches</h2>
+    <p class="aide">Coche les projets qui sont des façons différentes de faire la même chose : ils deviennent les branches d'un seul projet, que tu peux comparer.</p>
+    ${props.length ? `<div class="pj-props"><span>Proposé :</span>${props.map((x, i) => `<button data-a="brProp" data-i="${i}">${esc(x.nom)} · ${x.ids.length} projets</button>`).join('')}</div>` : ''}
+    <div class="pj-coches">${l.map(x => `<label><input type="checkbox" value="${esc(x.id)}"> <span>${esc(nomComplet(x))}</span><small>${(x.resume || {}).prix ? eurP(x.resume.prix) : ''}</small></label>`).join('')}</div>
+    <div class="pj-choix"><label>Nom du projet<input id="pj_brNom" placeholder="Ex. Maison San Gaetano"></label></div>
+    <div class="boutons"><button class="primaire" data-a="brRegrouper">Regrouper</button><button data-a="branches">Annuler</button></div><div class="aide" id="pj_brMsg"></div></div>`;
+}
+function appliquerProposition(i) {
+  const z = document.getElementById('pj_branches'), x = propositionsBranches(PROJETS.liste)[i]; if (!z || !x) return;
+  z.querySelectorAll('.pj-coches input').forEach(c => { c.checked = x.ids.includes(c.value); });
+  document.getElementById('pj_brNom').value = x.nom;
+}
+// ---------- fin des branches
 function afficherProjets() {
   rafraichirResumes();
   const l = [...PROJETS.liste].sort((a, b) => (b.maj || 0) - (a.maj || 0));
-  const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(x.nom)}</option>`).join('');
+  const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(nomComplet(x))}</option>`).join('');
+  const groupes = new Map(); l.forEach(x => { const g = groupeDe(x); if (!groupes.has(g)) groupes.set(g, []); groupes.get(g).push(x); });
+  const cartes = [...groupes.values()].map(bs => bs.length > 1 ? carteGroupe(bs.sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')))) : carteProjet(bs[0]));
   const anciens = anciensRegroupes(l);
-  const menuOuvert = (document.querySelector('#pj details.pj-menu[open]') || {closest: () => null}).closest('.pj');   // gardé ouvert si la liste se redessine (synchro du compte)
+  const menuOuvert = (document.querySelector('#pj details.pj-menu[open]') || {closest: () => null}).closest('[data-id]');   // gardé ouvert si la liste se redessine (synchro du compte)
   const idMenu = menuOuvert && menuOuvert.dataset.id;
-  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${comparables().length > 1 ? '<button data-a="comparer">Comparer</button>' : ''}${achats.length > 1 ? '<button data-a="regroupe">Fusionner deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
+  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${l.length > 1 ? '<button data-a="branches">Regrouper en branches</button>' : ''}${achats.length > 1 ? '<button data-a="regroupe">Fusionner deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
     + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Fusionner deux projets</h2>
       <p class="aide">Les deux biens passent dans un seul projet, avec un seul crédit (par exemple deux appartements achetés au même vendeur). Les réglages de crédit sont ceux du 1er projet. « Séparer » les fait revenir.</p>
       <div class="pj-choix"><label>1er projet<select id="pj_a">${opt(achats[0])}</select></label><label>2e projet<select id="pj_b">${opt(achats[1])}</select></label>${anciens.length ? `<label>Remplace aussi<select id="pj_c"><option value="">Aucun autre projet</option>${anciens.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>` : ''}</div>
       <div class="boutons"><button class="primaire" data-a="regrouper">Fusionner</button><button data-a="regroupe">Annuler</button></div><div class="aide" id="pj_regrMsg"></div></div>` : '')
-    + panneauComparaison()
-    + (l.length ? `<div class="pj-liste">${l.map(carteProjet).join('')}</div>`
+    + (l.length > 1 ? panneauBranches(l) : '')
+    + (l.length ? `<div class="pj-liste">${cartes.join('')}</div>`
       : `<div class="vide"><h2>Aucun projet pour l'instant</h2><p>Estime un bien dans l'onglet « Estimer », simule son financement dans « Financer », puis clique sur « Enregistrer dans mes projets » en bas de la page. Il apparaît ici, et tu peux le rouvrir pour en modifier l'estimation ou le financement.</p>
         <div class="boutons centre"><button class="primaire" data-a="nouveau">Estimer un bien</button></div></div>`);
-  if (idMenu) { const m = document.querySelector(`#pj .pj[data-id="${CSS.escape(idMenu)}"] details.pj-menu`); if (m) m.open = true; }
-  rendreComparaison();
+  if (idMenu) { const m = document.querySelector(`#pj [data-id="${CSS.escape(idMenu)}"] details.pj-menu`); if (m) m.open = true; }
 }
 // Un seul menu « ⋯ » ouvert à la fois, refermé par un clic ailleurs
 document.addEventListener('click', e => document.querySelectorAll('#pj details.pj-menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
@@ -3520,17 +3631,18 @@ function ouvrirProjet(id, vers) {
 }
 document.getElementById('pj').addEventListener('click', e => {
   const t = e.target.closest('[data-a]'); if (!t) return;
-  const id = (t.closest('.pj') || {dataset: {}}).dataset.id, menu = t.closest('details.pj-menu');
+  const id = (t.closest('[data-id]') || {dataset: {}}).dataset.id, menu = t.closest('details.pj-menu');
+  const groupe = (t.closest('[data-groupe]') || {dataset: {}}).dataset.groupe, membres = () => PROJETS.liste.filter(x => groupeDe(x) === groupe);
   if (menu) menu.open = false;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'estChoisir') {
-    const art = t.closest('.pj'), ouvert = art.querySelector('.pj-estim'), pr = PROJETS.liste.find(x => x.id === id);
+    const art = t.closest('[data-id]'), ouvert = art.querySelector('.pj-estim'), pr = PROJETS.liste.find(x => x.id === id);
     if (ouvert) ouvert.remove(); else if (pr) { art.insertAdjacentHTML('beforeend', panneauEstimations(pr)); art._estimations = estimationsConnues(); }
   }
   else if (t.dataset.a === 'estFermer') t.closest('.pj-estim').remove();
   else if (t.dataset.a === 'estGarder') {   // gardées dans le projet (et le compte) : les boutons Estimation 1 et 2 les rouvrent
-    const art = t.closest('.pj'), pr = PROJETS.liste.find(x => x.id === id), l = art._estimations || estimationsConnues(); if (!pr) return;
+    const art = t.closest('[data-id]'), pr = PROJETS.liste.find(x => x.id === id), l = art._estimations || estimationsConnues(); if (!pr) return;
     pr.estimations = [...art.querySelectorAll('.pj-estim select')].map(x => l[+x.value] || null);
     pr.maj = Date.now();
     PROJETS.enregistrer(); afficherProjets();
@@ -3542,12 +3654,25 @@ document.getElementById('pj').addEventListener('click', e => {
   else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
   else if (t.dataset.a === 'separer' && confirm('Séparer ce projet ? Les deux projets d\'origine reviennent dans la liste.')) separerProjet(id);
-  else if (t.dataset.a === 'comparer') {   // depuis l'en-tête (ouvre ou ferme) ou le menu d'une carte (ce projet en 1er)
-    if (!id && comparaison) comparaison = null; else ouvrirComparaison(id);
-    afficherProjets();
-    const z = document.getElementById('pj_compare'); if (z && id) z.scrollIntoView({behavior: 'smooth', block: 'start'});
+  else if (t.dataset.a === 'comparerBranches') { if (comparees.has(groupe)) comparees.delete(groupe); else comparees.add(groupe); afficherProjets(); }
+  else if (t.dataset.a === 'brNouvelle') nouvelleBranche(id);
+  else if (t.dataset.a === 'brRenommer') {
+    const pr = PROJETS.liste.find(x => x.id === id), n = pr && (prompt('Nom de la branche :', nomBranche(pr)) || '').trim();
+    if (n) { pr.branche = n; pr.maj = Date.now(); PROJETS.enregistrer(); }
   }
-  else if (t.dataset.a === 'comparerFermer') { comparaison = null; afficherProjets(); }
+  else if (t.dataset.a === 'brSortir') { const pr = PROJETS.liste.find(x => x.id === id); if (pr) { sortirBranche(pr); PROJETS.enregistrer(); } }
+  else if (t.dataset.a === 'grRenommer') {
+    const l = membres(), n = l.length && (prompt('Nom du projet :', l[0].nom) || '').trim();
+    if (n) { l.forEach(x => { x.nom = n; x.maj = Date.now(); }); PROJETS.enregistrer(); }
+  }
+  else if (t.dataset.a === 'grDefaire' && confirm('Défaire le regroupement ? Chaque branche redevient un projet à part, avec son nom d\'avant.')) { membres().forEach(sortirBranche); comparees.delete(groupe); PROJETS.enregistrer(); }
+  else if (t.dataset.a === 'supprGroupe') {
+    const l = membres();
+    if (confirm(`Supprimer « ${l[0].nom} » et ses ${l.length} branches ?`)) { retirerProjets(l.map(x => x.id)); PROJETS.enregistrer(); }
+  }
+  else if (t.dataset.a === 'branches') { const z = document.getElementById('pj_branches'); z.hidden = !z.hidden; if (!z.hidden && !z.querySelector('.pj-coches input:checked')) appliquerProposition(0); }
+  else if (t.dataset.a === 'brProp') appliquerProposition(+t.dataset.i);
+  else if (t.dataset.a === 'brRegrouper') regrouperEnBranches([...document.querySelectorAll('#pj_branches .pj-coches input:checked')].map(x => x.value), document.getElementById('pj_brNom').value);
   else if (t.dataset.a === 'regroupe') { const z = document.getElementById('pj_regroupe'); z.hidden = !z.hidden; devinerAncien(); }
   else if (t.dataset.a === 'regrouper') regrouperProjets(document.getElementById('pj_a').value, document.getElementById('pj_b').value, (document.getElementById('pj_c') || {}).value);
   else if (t.dataset.a === 'suppr' && confirm('Supprimer ce projet ?')) { PROJETS.supprimer(id); if (projetCourantId === id) fixerProjet(null); }
@@ -3570,7 +3695,6 @@ function devinerAncien() {
 }
 document.getElementById('pj').addEventListener('change', e => {
   if (e.target.id === 'pj_a' || e.target.id === 'pj_b') devinerAncien();
-  if ((e.target.id === 'pj_ca' || e.target.id === 'pj_cb') && comparaison) { comparaison[e.target.id === 'pj_ca' ? 'a' : 'b'] = e.target.value; rendreComparaison(); }
 });
 // Deux projets financés par un seul crédit : nouveau projet, ouvert dans Financer (section « Deux biens, un seul crédit »)
 function regrouperProjets(idA, idB, idAncien) {
