@@ -339,6 +339,56 @@ test('crédit progressif et différé : boutons visibles, mensualité actuelle q
   await attendreCompte(() => bienDuCompte('Studio Test').prets.length === 1);
 });
 
+test('pause du crédit et durée allongée : mensualité, fin du prêt et tableau d\'amortissement recalculés', async () => {
+  await ouvrirFiche('Studio Test');
+  await page.click('#inv [data-a="ajoutPret"]');
+  await champ('prets.1.montant', 200000); await champ('prets.1.taux', 3); await champ('prets.1.duree', 240); await champ('prets.1.debut', mois(-12));
+  const resume = () => page.locator('[data-resume="1"]').innerText();
+  const fin = async () => (await resume()).match(/Fin du prêt\s*\n\s*([^\n]+)/i)[1];
+  const finAvant = await fin();
+  // Pause de 6 mois qui a commencé le mois dernier : rien à payer, prêt rallongé de 6 mois
+  await page.click('#inv [data-a="ajoutPause"][data-i="1"]');
+  await page.waitForSelector('#inv [data-p="prets.1.pauses.0.debut"]');
+  await champ('prets.1.pauses.0.debut', mois(-1));
+  let r = await resume();
+  assert.match(r, /Pause jusqu'en [^\n]+ : rien à payer/i);
+  assert.match(r, /Mensualité \(en pause\)\s*\n\s*0 €/i);
+  assert.match(r, /prêt rallongé de 6 mois/i);
+  assert.notEqual(await fin(), finAvant);
+  await attendreCompte(() => (p => p && p.pauses && p.pauses[0].mois === 6 && p.pauses[0].debut === mois(-1))(bienDuCompte('Studio Test').prets[1]));
+  // Même fin, mensualité plus haute
+  await page.locator('#inv [data-a="segChoix"][data-cible="inv_prets_1_pauses_0_suite"]', {hasText: 'Même fin'}).click();
+  await page.waitForFunction(() => !/prêt rallongé/i.test(document.querySelector('[data-resume="1"]').innerText));
+  assert.equal(await fin(), finAvant);
+  // Tableau d'amortissement : l'année de la pause est signalée
+  await page.locator('[data-resume="1"] details.amort summary').click();
+  assert.match(await page.locator('[data-resume="1"] details.amort').innerText(), /pause \d mois/i);
+  await champ('prets.1.assurance', 10);                                                    // le tableau reste ouvert
+  assert.equal(await page.locator('[data-resume="1"] details.amort').evaluate(d => d.open), true);
+  await page.click('#inv [data-a="supprPause"][data-i="1"][data-j="0"]');
+  await page.waitForSelector('#inv [data-p="prets.1.pauses.0.debut"]', {state: 'detached'});
+  // Allonger de 3 ans : simulation, puis enregistré sur le prêt
+  await page.click('#inv [data-a="allongeOuvrir"][data-i="1"]');
+  await page.waitForSelector('#inv [data-p="prets.1.allonge.ans"]');
+  const al = () => page.locator('[data-allonge="1"]').innerText();
+  r = await al();
+  assert.match(r, /20 ans → 23 ans/i);
+  assert.match(r, /Intérêts en plus\s*\n\s*\+/i);
+  const nouvelle = nombre(r.match(/Nouvelle mensualité\s*\n\s*([^\n]+)/i)[1]);
+  assert.ok(nouvelle < 1109 && nouvelle > 950, `nouvelle mensualité ${nouvelle}`);
+  assert.equal(await fin(), finAvant);                                                     // pas encore enregistré
+  await page.click('#inv [data-a="allongeFaire"][data-i="1"]');
+  await page.waitForSelector('#inv [data-a="allongeAnnuler"]');
+  assert.notEqual(await fin(), finAvant);
+  await attendreCompte(() => (x => x && x.fait === '1' && x.ans === 3)(bienDuCompte('Studio Test').prets[1].allonge));
+  await page.click('#inv [data-a="allongeAnnuler"][data-i="1"]');
+  await page.waitForSelector('#inv [data-a="allongeFaire"]');
+  assert.equal(await fin(), finAvant);
+  await page.locator('#inv [data-a="supprPret"][data-i="1"]').click();
+  await page.waitForSelector('[data-resume="1"]', {state: 'detached'});
+  await attendreCompte(() => bienDuCompte('Studio Test').prets.length === 1);
+});
+
 test('un seul crédit pour deux biens : prêt partagé au prorata des prix, chaque fiche compte sa part', async () => {
   const nouveau = async (nom, valeur, prix, loyer) => {
     await page.evaluate(() => { location.hash = '#investissements'; });

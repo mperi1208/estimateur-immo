@@ -20,9 +20,10 @@ vm.runInContext([
   bloc(inv, '// ---------- Mois', '// ---------- Données'),
   'var STATUTS = {}, biens = [];',
   bloc(idx, 'function echeancier', '// ---------- Simulation'),
-  'this.X = {pmt, solde, etatPret, planPret, analyseReneg, simulerRachat, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
+  'this.X = {pmt, solde, etatPret, planPret, analyseReneg, simulerRachat, simulerAllonge, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
 ].join('\n'), ctx);
 const {pmt, solde, etatPret, calculs, echeancier, ecartMois, decalerMois, normMois} = ctx.X;
+const somme12 = (l, k) => l.slice(k, k + 12).reduce((t, x) => t + x.paye, 0);
 const proche = (a, b, eps = 0.01) => assert.ok(Math.abs(a - b) <= eps, `${a} ≠ ${b}`);
 
 test('mensualité : 200 000 € à 3 % sur 20 ans ≈ 1109,20 €', () => proche(pmt(200000, 0.03 / 12, 240), 1109.20, 0.05));
@@ -180,6 +181,42 @@ test('prêt avec différé partiel puis total : intérêts seuls ou capitalisés
   proche(t.differe.apres, pmt(100000 * Math.pow(1.0025, 12), 0.0025, 228), 1e-6);
   const c = calculs(bien({prets: [{...p, assurance: 20}]}));
   proche(c.creditAn, c.prets[0].e.paye12 + 20 * c.prets[0].e.payes, 1e-9);
+});
+test('pause du crédit, rien à payer : intérêts capitalisés, prêt rallongé d\'autant, restant dû nul à la fin', () => {
+  const p = {montant: 200000, taux: 3, duree: 240, debut: '2024-01'}, avant = etatPret(p, '2026-10');
+  const q = {...p, pauses: [{debut: '2026-06', mois: 6, type: '', suite: ''}]}, e = etatPret(q, '2026-10'), l = ctx.X.planPret(q, '2026-10').l;
+  assert.equal(e.M, 0); assert.equal(e.enPause, true); assert.equal(l.length, 246); proche(l[245].crd, 0, 0.01);
+  assert.equal(e.fin, '2044-06'); assert.ok(e.crd > avant.crd);                          // 6 mois d'intérêts ajoutés au capital
+  assert.equal(e.pauses[0].fin, '2026-11'); assert.ok(e.pauses[0].apres > avant.M);       // un peu plus haute : capital augmenté
+  proche(e.paye12, somme12(l, 34), 1e-6); proche(e.paye12, 11 * e.pauses[0].apres, 0.01);   // nov. en pause, puis 11 échéances
+});
+test('pause, intérêts seuls : même mensualité après, prêt rallongé ; « même fin » : mensualité plus haute', () => {
+  const p = {montant: 200000, taux: 3, duree: 240, debut: '2024-01'}, M = etatPret(p, '2026-10').M;
+  const e = etatPret({...p, pauses: [{debut: '2026-06', mois: 6, type: 'partiel'}]}, '2026-10');
+  proche(e.pauses[0].apres, M, 1e-6); assert.equal(e.fin, '2044-06'); assert.ok(e.M > 0 && e.M < M);   // intérêts du mois
+  const f = etatPret({...p, pauses: [{debut: '2026-06', mois: 6, type: '', suite: 'mensu'}]}, '2026-10');
+  assert.equal(f.fin, '2043-12'); assert.ok(f.pauses[0].apres > M + 30);
+  const l = ctx.X.planPret({...p, pauses: [{debut: '2026-06', mois: 6, type: '', suite: 'mensu'}]}).l; proche(l[l.length - 1].crd, 0, 0.01);
+  assert.deepEqual(etatPret({...p, pauses: [{debut: '2026-06', mois: 6}]}, '2027-01').pauses, []);   // pause finie : plus affichée
+});
+test('pauses et relevé : une pause d\'avant le relevé est déjà comptée ; plusieurs pauses s\'additionnent', () => {
+  const r = {crd: 100000, mois: 120, crdLe: '2026-01', taux: 3};
+  assert.equal(etatPret({...r, pauses: [{debut: '2025-06', mois: 6}]}, '2026-02').fin, etatPret(r, '2026-02').fin);
+  const e = etatPret({...r, pauses: [{debut: '2026-03', mois: 1}, {debut: '2027-01', mois: 3, type: 'partiel'}]}, '2026-02');
+  assert.equal(e.fin, decalerMois(etatPret(r, '2026-02').fin, 4)); assert.equal(e.pauses.length, 2);
+});
+test('allonger la durée : 20 → 23 ans, mensualité plus basse, intérêts en plus, enregistré sur le prêt', () => {
+  const p = {montant: 200000, taux: 3, duree: 240, debut: '2024-01', allonge: {ans: 3}};
+  const s = ctx.X.simulerAllonge(p, '2026-10');
+  assert.equal(s.le, '2026-11'); assert.equal(s.finAvant, '2043-12'); assert.equal(s.finApres, '2046-12');
+  const crd = etatPret(p, '2026-10').crd; proche(s.apres, pmt(crd, 0.0025, 206 + 36), 0.01);   // 206 échéances restantes + 36
+  proche(s.diff, s.avant - s.apres, 1e-9); assert.ok(s.diff > 100 && s.interets > 9000);
+  assert.equal(etatPret(p, '2026-10').fin, '2043-12');                                    // simulation seule : le prêt ne change pas
+  const fait = {...p, allonge: {ans: 3, le: '2026-11', fait: '1'}};
+  assert.equal(etatPret(fait, '2026-10').fin, '2046-12'); proche(etatPret(fait, '2026-11').M, s.apres, 1e-6);
+  proche(ctx.X.simulerAllonge(fait, '2027-03').apres, s.apres, 1e-6);                     // enregistré : même comparaison ensuite
+  const enPause = ctx.X.simulerAllonge({...p, pauses: [{debut: '2026-09', mois: 6}]}, '2026-10');   // comparé à la reprise, pas à 0 €
+  assert.ok(enPause.apres > 900 && enPause.diff > 100, `pendant une pause : ${enPause.apres}`);
 });
 test('prêt en pause (relevé à venir) : pas de mensualité comptée tant qu\'il ne reprend pas', () => {
   const b = bien({prets: [{crd: 100000, mois: 120, crdLe: decalerMois(auj, 4), taux: 3}]});
