@@ -431,7 +431,7 @@ function criteresEffectifs(b) {
   if (b.annee > 1500) c.epoque = EPOQUES.find(([y]) => b.annee < y)[1];
   return c;
 }
-const cleEstimation = b => { if (b.type === 'parking') return JSON.stringify([b.adresse.trim(), 'parking']); if (b.type === 'terrain') return JSON.stringify([b.adresse.trim(), 'terrain', b.surface, b.nature || '']); const c = criteresEffectifs(b); delete c.location; return JSON.stringify([b.adresse.trim(), b.type, b.surface, c]); };
+const cleEstimation = b => { if (b.type === 'parking') return JSON.stringify([b.adresse.trim(), 'parking', ...(PLACES[b.place] && b.place !== 'box' ? [b.place] : [])]); if (b.type === 'terrain') return JSON.stringify([b.adresse.trim(), 'terrain', b.surface, b.nature || '']); const c = criteresEffectifs(b); delete c.location; return JSON.stringify([b.adresse.trim(), b.type, b.surface, c]); };
 const cleAncienne = b => JSON.stringify([b.adresse.trim(), b.type, b.surface, criteresEffectifs(b)]);   // estimations faites avant (location comprise)
 // Loyers de marché d'une estimation : vide et meublé (les anciennes n'en ont qu'un, celui de la location d'alors)
 function loyersMarche(e) {
@@ -510,6 +510,13 @@ async function estimerTerrain(lat, lon, surf, nature) {
     fiabilite: nature === 'autre' ? 'Fiabilité faible (toutes natures mêlées)' : l.length >= 20 && disp < 3 ? 'Fiabilité bonne' : l.length >= 8 && disp < 5 ? 'Fiabilité moyenne' : 'Fiabilité faible'};
 }
 // Garages, box et places vendus seuls (DVF : « dépendance », code 13) : prix à l'unité, ventes d'une seule dépendance
+// Les actes ne disent pas si c'est un box ou une simple place : la médiane des ventes vaut pour un box ou un garage fermé
+// (l'essentiel des dépendances vendues seules) ; une place couverte vaut ≈ 75 % d'un box, une place extérieure ≈ 15 %
+// (place couverte : écart des loyers Parkto à Paris ; place extérieure : très en dessous en province, où une place
+// à ciel ouvert au pied d'un immeuble se trouve facilement et se revend presque rien)
+const PLACES = {box: {l: 'Box ou garage fermé', f: 1}, couverte: {l: 'Place couverte / en sous-sol', f: 0.75}, ext: {l: 'Place extérieure', f: 0.15}};
+// Type de place d'après le stationnement coché sur un appartement (ext, 1, box, 2) ou une maison (oui, place)
+const placeDe = v => ({ext: 'ext', place: 'ext', '1': 'couverte', '2': 'couverte', box: 'box', oui: 'box'})[v] || 'box';
 function versDependance(f) {
   const p = f.properties, prix = +p.valeurfonc;
   if (!(prix >= 1000 && prix <= 250000) || /^Echange|^Adjudication|^Expropriation/.test(p.libnatmut || '')) return null;
@@ -519,7 +526,7 @@ function versDependance(f) {
   return {id: p.idopendata, prix, date: p.datemut, garage: /^1311/.test(String(p.codtypbien || '')),
     lon: ring.reduce((t, c) => t + c[0], 0) / ring.length, lat: ring.reduce((t, c) => t + c[1], 0) / ring.length};
 }
-async function estimerDependance(lat, lon) {
+async function estimerDependance(lat, lon, place = 'box') {
   const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540, an = new Date().getFullYear();
   let comps = [], periode = 5;
   for (const p of [5, 10]) {
@@ -537,15 +544,24 @@ async function estimerDependance(lat, lon) {
     if (comps.length >= 10) break;
   }
   if (comps.length < 3) return {erreur: `Pas assez de garages ou parkings vendus seuls autour (${comps.length} en 10 ans). Renseigne la valeur à la main.`};
+  return {...valeurDependance(comps, an, place), periode: `${an - periode}–${an}`};
+}
+// Même estimation, autre type de place (prix et fourchette ramenés d'un facteur à l'autre)
+function replacer(e, place) {
+  const f = (PLACES[place] || PLACES.box).f / (PLACES[e.place] || PLACES.box).f;
+  const arr = x => { const v = x * f, pas = v < 5000 ? 100 : 500; return Math.max(pas, Math.round(v / pas) * pas); };
+  return {...e, prix: arr(e.prix), lo: arr(e.lo), hi: arr(e.hi), place: PLACES[place] ? place : 'box'};
+}
+function valeurDependance(comps, an, place = 'box') {
   // Plus proche et plus récent = plus de poids ; puis on écarte les prix aberrants (lots mal saisis, places de stationnement d'un ensemble)
   const poids = v => 1 / (1 + v.d / 600) / (1 + Math.max(0, an - +v.date.slice(0, 4)) / 5);
   let l = comps.map(v => [v.prix, poids(v), v]);
   const m0 = medianePonderee(l);
   l = l.filter(([x]) => x > m0 / 3 && x < m0 * 3);
   const med = medianePonderee(l), lo = medianePonderee(l, 0.25), hi = medianePonderee(l, 0.75), rayon = Math.max(...l.map(x => x[2].d));
-  const disp = hi / Math.max(lo, 1);
-  return {prix: Math.round(med / 500) * 500, lo: Math.round(lo / 500) * 500, hi: Math.round(hi / 500) * 500, ventes: l.length, rayon: Math.round(rayon),
-    periode: `${an - periode}–${an}`, dependance: true, comps: l.sort((a, b) => b[1] - a[1]).slice(0, 25).map(([, w, v]) => ({prix: v.prix, date: v.date, d: Math.round(v.d), lat: v.lat, lon: v.lon, w})),
+  const disp = hi / Math.max(lo, 1), f = (PLACES[place] || PLACES.box).f;
+  const arr = x => { const v = x * f, pas = v < 5000 ? 100 : 500; return Math.max(pas, Math.round(v / pas) * pas); };
+  return {prix: arr(med), lo: arr(lo), hi: arr(hi), ventes: l.length, rayon: Math.round(rayon), place: PLACES[place] ? place : 'box', dependance: true, comps: l.sort((a, b) => b[1] - a[1]).slice(0, 25).map(([, w, v]) => ({prix: v.prix, date: v.date, d: Math.round(v.d), lat: v.lat, lon: v.lon, w})),
     fiabilite: l.length >= 20 && disp < 1.8 ? 'Fiabilité bonne' : l.length >= 8 && disp < 2.5 ? 'Fiabilité moyenne' : 'Fiabilité faible'};
 }
 const enCours = new Set();
@@ -561,7 +577,7 @@ async function estimerBien(b0) {
       if (!f) throw new Error('Adresse introuvable : place le bien sur la carte (sous l\'adresse), ou ajoute la ville ou le code postal.');
       b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
     }
-    const res = b.type === 'parking' ? await estimerDependance(b.geo.lat, b.geo.lon)
+    const res = b.type === 'parking' ? await estimerDependance(b.geo.lat, b.geo.lon, b.place)
       : b.type === 'terrain' ? await estimerTerrain(b.geo.lat, b.geo.lon, b.surface, b.nature)
       : await moteur.estimer({lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, criteres: criteresEffectifs(b)});
     // Garage associé loué avec le bien (pas de loyer à lui) : valeur sans le garage, loyers de marché avec
@@ -619,7 +635,7 @@ function majAuto(b) {
         <div><span>Ventes comparées</span><b>${e.ventes}</b><small>garages, box et places vendus seuls, à moins de ${dist(e.rayon)}</small></div>
 </div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
-      <div class="aide">Les actes ne disent pas si c'est un box fermé ou une simple place : un box se vend plutôt dans le haut de la fourchette, une place extérieure dans le bas.</div>
+      <div class="aide">Ventes de garages, box et places mêlés (les actes ne disent pas lequel) : valeur ramenée à ${e.place === 'ext' ? 'une place extérieure (≈ 15 % d\'un box)' : e.place === 'couverte' ? 'une place couverte (≈ 75 % d\'un box)' : 'un box ou garage fermé'}. Change le type de place au-dessus si besoin.</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
     </div>
     ${!a_jour ? '<div class="aide">Adresse modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
@@ -976,6 +992,7 @@ function vueDetail(b) {
         </div>
       <div class="large carte-bien"><div id="inv_carte" aria-label="Carte : clique à l'endroit du bien"></div><div class="aide" id="inv_carteAide">${aideCarte(b)}</div></div>
       ${b.type === 'terrain' ? `${champ(b, 'surface', 'Surface (m²)', {aide: b.surface >= 10000 ? (b.surface / 10000).toFixed(2).replace('.', ',') + ' ha' : ''})}${champ(b, 'nature', 'Nature du terrain', {options: NATURES})}`
+        : b.type === 'parking' ? `${champ(b, 'place', 'Type de place', {options: Object.fromEntries(Object.entries(PLACES).map(([k, p]) => [k, p.l]))})}${champ(b, 'surface', 'Surface (m²)')}`
         : `${champ(b, 'surface', 'Surface (m²)')}${champ(b, 'pieces', 'Pièces')}
       ${champ(b, 'annee', 'Année de construction')}`}
       <div><label for="inv_detention">Détenu par</label><select id="inv_detention" data-p="detention">
@@ -1169,6 +1186,7 @@ function annexeHTML(b) {
   h += `<div class="grille">
       ${champ(b, 'detache.nom', 'Nom du nouveau bien', {type: 'text', ph: 'Garage · ' + b.nom})}
       ${champ(b, 'detache.type', 'Type', {options: TYPES_ANNEXE})}
+      ${(d.type || 'parking') === 'parking' ? champ(b, 'detache.place', 'Type de place', {options: Object.fromEntries(Object.entries(PLACES).map(([k, p]) => [k, p.l]))}) : ''}
       ${champ(b, 'detache.valeur', 'Sa valeur (€)', {step: 500, ph: b.valeur ? fmt(planDetache({...b, detache: {}}).valSugg) + ' (suggérée)' : ''})}
       ${champ(b, 'detache.prix', 'Sa part du prix d\'achat (€)', {step: 500, ph: (p => p.prixSugg ? fmt(p.prixSugg) + ' (au prorata)' : '')(planDetache({...b, detache: {valeur: d.valeur}})), aide: 'Compte pour sa plus-value à la vente'})}
       ${lots.length ? champ(b, 'detache.lot', 'Son loyer', {options: {'': 'Aucun loyer', ...Object.fromEntries(lots.map((x, i) => [x.id, `${x.libelle || 'Loyer ' + (i + 1)} (${eur(x.loyer || 0)}/mois)`]))}, aide: 'Le loyer passe dans la fiche du garage'})
@@ -1177,7 +1195,7 @@ function annexeHTML(b) {
     </div>
     ${!lots.length && LOUE.includes(b.location.statut) && b.location.loyer ? `<div class="case"><label><input type="checkbox" data-p="detache.deduire"${d.deduire ? ' checked' : ''}> Ce loyer était compté dans celui du bien (${eur(b.location.loyer)}) : le retirer</label></div>` : ''}
     ${(d.type || 'parking') === 'parking' ? `<div class="boutons"><button data-a="detacheEstimer"${enCours.has('det:' + b.id) ? ' disabled' : ''}>${enCours.has('det:' + b.id) ? 'Estimation en cours…' : 'Estimer sa valeur (garages vendus autour)'}</button></div>
-      ${d.estimation ? d.estimation.erreur ? `<div class="warnbox">${esc(d.estimation.erreur)}</div>` : `<div class="aide">Estimé à <b>${eur(d.estimation.prix)}</b> (${eur(d.estimation.lo)} – ${eur(d.estimation.hi)}), d'après ${d.estimation.ventes} garages, box et places vendus seuls à moins de ${dist(d.estimation.rayon)} · ${esc(d.estimation.fiabilite.toLowerCase())}. Un box se vend plutôt dans le haut de la fourchette.</div>` : ''}` : ''}
+      ${d.estimation ? d.estimation.erreur ? `<div class="warnbox">${esc(d.estimation.erreur)}</div>` : `<div class="aide">Estimé à <b>${eur(d.estimation.prix)}</b> (${eur(d.estimation.lo)} – ${eur(d.estimation.hi)}), d'après ${d.estimation.ventes} garages, box et places vendus seuls à moins de ${dist(d.estimation.rayon)}, ramené à ${esc(PLACES[d.estimation.place || 'box'].l.toLowerCase())} · ${esc(d.estimation.fiabilite.toLowerCase())}.</div>` : ''}` : ''}
     <div id="inv_detacheRes"></div>
     <div class="boutons"><button class="primaire" data-a="detacher">${d.mode === 'vendre' ? 'Sortir le garage et simuler sa vente →' : 'Créer le bien associé'}</button><button data-a="detacheFermer">Annuler</button></div>`;
   return section('Garage, parking ou annexe', h, true);
@@ -1197,7 +1215,7 @@ function majDetache(b) {
 function detacher(b) {
   const p = planDetache(b), d = p.d, a = b.achat;
   const loyer = p.loyer, lot = p.lot;
-  const n = nouveauBien({nom: (d.nom || '').trim() || 'Garage · ' + b.nom, type: d.type || 'parking', adresse: b.adresse, geo: b.geo ? {...b.geo} : null,
+  const n = nouveauBien({nom: (d.nom || '').trim() || 'Garage · ' + b.nom, type: d.type || 'parking', ...((d.type || 'parking') === 'parking' ? {place: PLACES[d.place] ? d.place : 'box'} : {}), adresse: b.adresse, geo: b.geo ? {...b.geo} : null,
     structure: b.structure, sciId: b.sciId, part: b.part, lieA: b.id,
     valeur: p.val || null, valeurLe: p.val ? moisCourant() : '', valeurManuelle: !!p.val,
     achat: {mode: 'existant', date: a.date || '', prix: p.prix || null, notaire: p.notaire || null, travaux: null, mobilier: null, frais: p.frais || null},
@@ -1774,7 +1792,7 @@ racine.addEventListener('click', async e => {
   if (a === 'venteAnnuler' && confirm('Annuler la vente ? Le bien revient dans tes totaux.')) { delete b.vendu; sauver(b); return vueDetail(b); }
   if (a === 'detacheOuvrir') {
     const lot = (b.lots || []).find(x => /garage|box|parking|place|annexe|cave/i.test(x.libelle || ''));
-    b.detache = {mode: t.dataset.m, type: 'parking', lot: lot ? lot.id : '', ...(b.detache || {}), ...(t.dataset.m ? {mode: t.dataset.m} : {})};
+    b.detache = {mode: t.dataset.m, type: 'parking', place: placeDe(b.type === 'appart' ? b.criteres.parking : b.criteres.garage), lot: lot ? lot.id : '', ...(b.detache || {}), ...(t.dataset.m ? {mode: t.dataset.m} : {})};
     detacheOuvert.add(b.id); vueDetail(b);
     const f = racine.querySelector('#inv_detache_nom'); if (f) { f.scrollIntoView({behavior: 'smooth', block: 'center'}); f.focus({preventScroll: true}); }
     return;
@@ -1790,7 +1808,7 @@ racine.addEventListener('click', async e => {
         if (!f) throw new Error('Adresse du bien introuvable : renseigne-la (ou place le bien sur la carte) pour estimer le garage.');
         b.geo = {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: f.properties.label, pour: b.adresse.trim()};
       }
-      res = await estimerDependance(b.geo.lat, b.geo.lon);
+      res = await estimerDependance(b.geo.lat, b.geo.lon, (b.detache || {}).place);
     } catch (err) { res = {erreur: err.message || String(err)}; }
     enCours.delete(cle);
     const c = biens.find(x => x.id === b.id) || b;
@@ -1924,6 +1942,16 @@ racine.addEventListener('change', async e => {
     if (!terrain && !STATUTS[st]) b.location.statut = st === 'perso' ? 'rp' : st === 'loue' ? 'vide' : 'vacant';
   }
   if (chemin === 'location.statut' && v === 'lots' && !(b.lots || []).length && b.location.loyer) b.lots = [{id: uid(), libelle: 'Loyer 1', loyer: b.location.loyer, locataire: b.location.locataire || '', debut: b.location.debutBail && ecartMois(b.location.debutBail, moisCourant()) < 0 ? b.location.debutBail : ''}];
+  // Type de place changé : l'estimation déjà faite (mêmes ventes) est ramenée au nouveau type, sans rien rechercher
+  if (chemin === 'place' && b.type === 'parking' && b.estimation && b.estimation.dependance) {
+    b.estimation = {...replacer(b.estimation, v), cle: cleEstimation(b)};
+    if (!b.valeurManuelle) { b.valeur = b.estimation.prix; b.valeurLe = moisCourant(); }
+  }
+  if (chemin === 'detache.place' && b.detache.estimation && b.detache.estimation.dependance) {
+    const avant = b.detache.estimation.prix;
+    b.detache.estimation = replacer(b.detache.estimation, v);
+    if (b.detache.valeur === avant) b.detache.valeur = b.detache.estimation.prix;
+  }
   if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
   // Mensualité progressive : la mensualité saisie est celle du mois de la saisie (elle augmente ensuite)
   if (/^prets\.\d+\.(mensualite|progressif)$/.test(chemin)) { const p = lire(b, chemin.replace(/\.\w+$/, '')); p.mensuLe = p.progressif && p.mensualite ? moisCourant() : ''; }
@@ -1931,7 +1959,7 @@ racine.addEventListener('change', async e => {
   if (chemin === 'valeur' && v && !b.valeurLe) { b.valeurLe = moisCourant(); const m = racine.querySelector('[data-p="valeurLe"]'); if (m) m.value = b.valeurLe; }
   sauver(b);
   if (chemin.startsWith('vente.')) return majVente(b);
-  if (chemin.startsWith('detache.')) return majDetache(b);
+  if (chemin.startsWith('detache.')) return chemin === 'detache.place' ? vueDetail(b) : majDetache(b);
   if (chemin.startsWith('amenag.')) {
     if (chemin === 'amenag.ou') { const p = principalDe(b); if (p && Object.values(NOMS_ESPACE).some(n => b.nom === n + ' · ' + p.nom)) b.nom = NOMS_ESPACE[v] + ' · ' + p.nom; b.amenag.decote = null; sauver(b); }
     if (chemin === 'amenag.m2') { b.surface = v; sauver(b); }
@@ -1939,10 +1967,10 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
-  if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature'].includes(chemin)) majAuto(b);
+  if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature', 'place'].includes(chemin)) majAuto(b);
   majVente(b);
   majCalculs(b);
 });
@@ -1951,6 +1979,6 @@ racine.addEventListener('change', async e => {
 biens = biensLocaux(); scis = scisLocales(); normaliser();
 // Biens repris des anciens crédits : enregistrés tout de suite, pour garder les mêmes identifiants d'un chargement à l'autre
 try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
-window.INV = {estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon) => estimerDependance(lat, lon), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
+window.INV = {estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon, place) => estimerDependance(lat, lon, place), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
 COMPTE.init();
 })();

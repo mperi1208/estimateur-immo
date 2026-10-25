@@ -529,6 +529,9 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
       <div class="seg" id="type"><button data-v="121" class="on">Appartement</button><button data-v="111">Maison</button><button data-v="13">Garage</button></div>
     </div>
     <div data-surf><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
+    <div data-garage hidden><label>Type de place</label>
+      <div class="seg" id="place"><button data-v="box" class="on">Box / garage fermé</button><button data-v="couverte">Place couverte</button><button data-v="ext">Place extérieure</button></div>
+    </div>
   </div>
 
   <details class="affiner" id="affiner" open>
@@ -964,6 +967,7 @@ async function ventesPourIndice(trouvees, yearMin) {
 const modeGarage = () => state.type === '13';
 function majModeGarage() {
   document.querySelectorAll('[data-surf], #affiner').forEach(el => el.hidden = modeGarage());
+  document.querySelectorAll('[data-garage]').forEach(el => el.hidden = !modeGarage());
 }
 async function estimerGarage() {
   const run = ++state.run, out = document.getElementById('out');
@@ -972,7 +976,7 @@ async function estimerGarage() {
   if (!window.INV || !INV.estimerGarage) { out.innerHTML = '<div class="empty">Estimation des garages indisponible : recharge la page.</div>'; return; }
   out.innerHTML = '<div class="empty">Recherche des garages, box et places vendus seuls autour…</div>';
   let r;
-  try { r = await INV.estimerGarage(state.lat, state.lon); }
+  try { r = await INV.estimerGarage(state.lat, state.lon, state.place || 'box'); }
   catch (e) { r = {erreur: `L'API DVF ne répond pas (${e.message}). Réessaie dans un instant.`}; }
   if (run !== state.run) return;
   if (r.erreur) { out.innerHTML = `<div class="empty">${esc(r.erreur)}</div>`; return; }
@@ -984,7 +988,7 @@ async function estimerGarage() {
       <div class="kpi"><div class="k">Valeur estimée</div><div class="v">${fmtK(r.prix)}</div><div class="d">${fmtK(r.lo)} – ${fmtK(r.hi)}</div></div>
       <div class="kpi"><div class="k">Ventes comparées</div><div class="v">${r.ventes}</div><div class="d">vendus seuls, à moins de ${dist(r.rayon)}</div></div>
       <div class="kpi"><div class="k">Fiabilité</div><div class="v txt">${esc(r.fiabilite.replace(/^Fiabilité /, ''))}</div><div class="d">ventes ${r.periode}</div></div></div>
-    <div class="hint" style="margin-top:8px">Les actes ne disent pas si c'est un box fermé, une place couverte ou extérieure : un box se vend plutôt dans le haut de la fourchette, une place extérieure dans le bas. Pour un garage qui fait partie d'un appartement, sors-le en bien associé dans Mon patrimoine.</div></div>
+    <div class="hint" style="margin-top:8px">Les actes ne disent pas si c'est un box fermé, une place couverte ou extérieure : la médiane des ventes vaut pour un box, ${r.place === 'ext' ? 'une place extérieure en vaut ≈ 15 %' : r.place === 'couverte' ? 'une place couverte en vaut ≈ 75 %' : 'une place couverte en vaut ≈ 75 %, une place extérieure ≈ 15 %'}. Pour un garage qui fait partie d'un appartement, sors-le en bien associé dans Mon patrimoine.</div></div>
     <details class="detail"><summary>Ventes les plus comparables</summary>
       <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">Prix</th></tr></thead><tbody>${r.comps.map((c, k) => `<tr data-k="${k}"><td>${fmtDate(c.date)}</td><td class="n">${dist(c.d)}</td><td class="n">${fmtK(c.prix)}</td></tr>`).join('')}</tbody></table>
       <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema), ventes d'une seule dépendance.</div></details>`;
@@ -1273,12 +1277,13 @@ async function majGarageEst() {
   const c = isAppart() ? 'parking' : 'garage', v = field(c) ? field(c).value : '';
   const LIB = {ext: 'place extérieure', '1': 'place couverte', box: 'box ou garage fermé', '2': '2 places ou plus', oui: 'garage fermé', place: 'place extérieure / abri'};
   if (!LIB[v] || !window.INV || !INV.estimerGarage || state.lat == null) { el.hidden = true; return; }
-  const cle = state.lat.toFixed(5) + ',' + state.lon.toFixed(5), run = state.run;
+  const place = {ext: 'ext', place: 'ext', '1': 'couverte', '2': 'couverte'}[v] || 'box';
+  const cle = state.lat.toFixed(5) + ',' + state.lon.toFixed(5) + ',' + place, run = state.run;
   el.hidden = false;
   const tete = `<b>Le stationnement (${LIB[v]})</b>`;
   if (!garageCache.has(cle)) {
     el.innerHTML = `${tete}<div class="hint">Recherche des garages et box vendus seuls autour…</div>`;
-    const p = INV.estimerGarage(state.lat, state.lon).catch(e => ({erreur: e.message}));
+    const p = INV.estimerGarage(state.lat, state.lon, place).catch(e => ({erreur: e.message}));
     garageCache.set(cle, p); p.then(r => { if (r.erreur) garageCache.delete(cle); });
   }
   const r = await garageCache.get(cle);
@@ -1289,7 +1294,7 @@ async function majGarageEst() {
       <div class="kpi"><div class="k">Valeur seule</div><div class="v">${fmtK(r.prix * (deux ? 2 : 1))}</div><div class="d">${fmtK(r.lo * (deux ? 2 : 1))} – ${fmtK(r.hi * (deux ? 2 : 1))}${deux ? ' (2 places)' : ''}</div></div>
       <div class="kpi"><div class="k">Ventes comparées</div><div class="v">${r.ventes}</div><div class="d">garages, box et places vendus seuls, à moins de ${r.rayon < 1000 ? fmt(r.rayon) + ' m' : (r.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}</div></div>
       <div class="kpi"><div class="k">Fiabilité</div><div class="v txt">${esc(r.fiabilite.replace(/^Fiabilité /, ''))}</div><div class="d">ventes ${r.periode}</div></div></div>
-    <div class="hint" style="margin-top:6px">Le prix du bien ci-dessus compte déjà le stationnement. Cette valeur sert si tu le vends ou le loues à part${v === 'ext' || v === 'place' ? ' (une place extérieure se vend plutôt dans le bas de la fourchette)' : v === 'box' || v === 'oui' ? ' (un box fermé se vend plutôt dans le haut de la fourchette)' : ''}.</div>`;
+    <div class="hint" style="margin-top:6px">Le prix du bien ci-dessus compte déjà le stationnement. Cette valeur sert si tu le vends ou le loues à part${place === 'ext' ? ' (ramenée à une place extérieure, ≈ 15 % d\'un box)' : place === 'couverte' ? ' (ramenée à une place couverte, ≈ 75 % d\'un box)' : ''}.</div>`;
 }
 function updateResult() {
   const el = document.getElementById('res'), r = state.base;
@@ -2091,6 +2096,10 @@ window.estimerPour = estimerPour;   // après le chargement des autres scripts (
 document.querySelectorAll('#type button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x === b));
   state.type = b.dataset.v; syncForm(); majAffiner(); majModeGarage(); estimate();
+});
+document.querySelectorAll('#place button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#place button').forEach(x => x.classList.toggle('on', x === b));
+  state.place = b.dataset.v; if (modeGarage()) estimate();
 });
 buildForm();
 let debounce;
@@ -3068,7 +3077,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=e949a468"></script>
+<script src="investissements.js?v=73978af9"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
