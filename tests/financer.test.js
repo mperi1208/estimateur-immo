@@ -22,7 +22,7 @@ vm.runInContext([
   bloc(idx, '// ---------- Deux projets de « Mes projets »', 'function regrouper('),
   'this.X = {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS};',
 ].join('\n'), ctx);
-const {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, abatIR, abatPS} = ctx.X;
+const {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS} = ctx.X;
 // Surtaxe de Mon patrimoine, pour vérifier que les deux onglets calculent pareil
 const pat = vm.createContext({}); vm.runInContext(bloc(inv, 'function surtaxePV', 'const anneesEntre') + 'this.surtaxePV = surtaxePV;', pat);
 const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 'function surtaxePV') + 'this.abatIR = abatIR; this.abatPS = abatPS;', patAbat);
@@ -346,4 +346,21 @@ test('plusieurs biens, un seul crédit : prix, loyers et charges de chaque bien 
   proche(ancien.annees[2].cf, liste.annees[2].cf, 1e-6);
   assert.deepEqual(migrerFinance({prixB2: 100000, ouverts: {}}).biensPlus, []);   // section fermée : pas compté
   assert.equal(migrerFinance({biensPlus: [{prix: 1}]}).biensPlus[0].prix, 1);    // déjà au nouveau format
+});
+test('travaux +5 000 € : crédit +5 000 € (garantie comprise), mensualité et cash-flow en suivent ; payés comptant, seul l\'apport bouge', () => {
+  const v = {prix: 220000, loyer: 1200, taux: 4, duree: 25, apport: 0, garantie: 1.5, assur: 0, dureeTravaux: 5, valeurApres: 300000, differe: 36, typeDiff: 'partiel'};
+  const sim = (travaux, travauxCredit) => formulaire({...v, travaux, travauxCredit}, {projet: true});
+  const [a, b] = [sim(25000, true), sim(30000, true)];
+  proche(b.pret - a.pret, 5000 / 0.985, 0.01);
+  proche(b.ech.pmt - a.ech.pmt, (b.pret - a.pret) * (0.04 / 12) / (1 - Math.pow(1 + 0.04 / 12, -(300 - 36))), 0.01);
+  proche(anneeCroisiere(a).cf - anneeCroisiere(b).cf, 12 * (b.ech.pmt - a.ech.pmt), 0.01);
+  proche(a.annees[1].cf - b.annees[1].cf, 12 * (b.ech.mensDiff - a.ech.mensDiff), 0.01);   // pendant le différé : les intérêts en plus
+  const [c, d] = [sim(25000, false), sim(30000, false)];
+  assert.equal(d.pret, c.pret); assert.equal(d.apportEff - c.apportEff, 5000);
+  assert.deepEqual(d.annees.map(x => x.cf), c.annees.map(x => x.cf));
+});
+test('différé : le loyer affiché compte tous les loyers déjà encaissés (2e loyer, autres biens)', () => {
+  const s = formulaire({loyer: 1200, loyer2: 500, debutLoyer2: 6, travaux: 25000, dureeTravaux: 5, differe: 36, typeDiff: 'partiel', biensPlus: [{prix: 80000, loyer: 800}]}, {projet: true});
+  assert.equal(s.loyerDiffere, 2500);
+  assert.equal(formulaire({loyer: 1200, loyer2: 500, debutLoyer2: 40, differe: 36, typeDiff: 'partiel'}).loyerDiffere, 1200);
 });

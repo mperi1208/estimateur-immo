@@ -2793,7 +2793,9 @@ function simuler() {
   });
   const base = (p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix1) + p.prixB2;   // valeur de départ : après travaux s'il y en a (travaux sur le 1er bien)
   const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
-  return {p, st, regime, notes, pret, apportEff, base, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
+  // Loyers encaissés à la fin du différé : 1er loyer, 2e loyer s'il a commencé, et ceux des autres biens du même crédit
+  const loyerDiffere = p.loyer + (p.differe - 1 >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2;
+  return {p, st, regime, notes, pret, apportEff, base, loyerDiffere, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
 }
 
 // ---------- Affichage ----------
@@ -2838,7 +2840,7 @@ function rendre() {
   // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0);
-  if (p.projet === 'location') al += `<div class="okbox">Travaux : loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux <b>${eur(s.base)}</b> pour ${eur(coutBien)} investis (hors mobilier) : <b>${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))}</b>.</div>`;
+  if (p.projet === 'location') al += `<div class="okbox">Travaux : loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, <b>${eur(s.loyerDiffere)}</b> de loyer${p.deuxBiens || p.loyer2 > 0 ? 's' : ''} pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux <b>${eur(s.base)}</b> pour ${eur(coutBien)} investis (hors mobilier) : <b>${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))}</b>.</div>`;
   if (s.saison) {
     const z = s.saison;
     $('saisonHint').innerHTML = `≈ <b>${eur(z.brutMois)}</b> de recettes par mois (${fmt(z.nuits)} nuits par an), <b>${eur(z.netMois)}</b> après frais et charges du logement. Frais détaillés dans « Réglages détaillés ».`;
