@@ -114,7 +114,7 @@ test('Travaux + revente : scénario « Revendre », bilan de l\'opération', asy
 
 test('Financer : prix d\'équilibre sur une seule ligne, sans champ à remplir', async () => {
   await saisir(page, '#cf_prix', 400000);
-  await page.waitForFunction(() => /serait à 0 € si le prix était de|reste négatif|reste positif/.test(document.getElementById('cf_cibleRes').innerText));
+  await page.waitForFunction(() => /Prix du projet pour être à 0 € de cash-flow|reste négatif|reste positif/.test(document.getElementById('cf_cibleRes').innerText));
   assert.equal(await page.locator('#cf_cible input, #cf_cible button').count(), 0);
 });
 
@@ -135,7 +135,8 @@ test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le tota
   assert.match(al, /1\s200 € de loyers par mois/);
   const pret = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
   assert.ok(pret - pretSeul > 100000 && pret - pretSeul < 112000, `prêt ${pret} pour ${pretSeul} avec un seul bien`);   // 2e prix, son notaire et sa garantie
-  await page.waitForFunction(() => /si le 1er bien coûtait|reste négatif|reste positif/i.test(document.getElementById('cf_cibleRes').innerText));   // prix d'équilibre : celui du 1er bien
+  await page.waitForFunction(() => /Prix du projet pour être à 0 €|reste négatif|reste positif/i.test(document.getElementById('cf_cibleRes').innerText));   // prix d'équilibre : celui du projet entier
+  { const m = (await page.locator('#cf_cibleRes').innerText()).match(/:\s*([\d\s\u202f]+) €/); if (m) assert.ok(nombre(m[1]) > 100000, `prix d'équilibre ${m[1]} sans le 2e bien`); }
   // Chaque bien a sa taxe foncière et sa copro, dans sa carte
   assert.equal(await page.locator('#cf_bien1 #cf_tf').count(), 1);
   const charges = async () => nombre((await page.locator('#cf_simple').innerText()).match(/Charges[^\n]*\n?\s*−\s*([^\n]+)/i)[1]);
