@@ -105,7 +105,7 @@ test('mode simple : loyer, crédit, charges et ce qu\'il reste (liste, fiche, Fi
   await page.click('.tabs [data-mode="pro"]');
   await page.waitForFunction(() => !document.body.classList.contains('simple'));
   assert.equal(await page.locator('#cf_tiles').isVisible(), true);
-  assert.equal(await page.locator('#cf_simple').isVisible(), false);
+  assert.match(await page.locator('#cf_simple').innerText(), /Un mois type/i);    // le mois type reste, sous les 3 chiffres
   assert.equal(await page.evaluate(() => localStorage.getItem('mode-affichage')), 'pro');
   await page.click('.tabs [data-tab="investissements"]');
   await page.evaluate(() => { location.hash = '#investissements'; });
@@ -478,12 +478,15 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.selectOption('#pj_b', await id('Lot B'));
   await page.click('#pj [data-a="regrouper"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
-  assert.equal(await page.evaluate(() => document.getElementById('cf_boxBien2').open), true);
+  // Le 2e projet devient la carte d'un 2e bien, à son nom, avec son prix, son loyer et sa surface
+  const carte2 = page.locator('#cf_biensPlus [data-i="0"]');
   assert.equal(+await page.inputValue('#cf_prix'), Math.round(e.prix));
-  assert.equal(+await page.inputValue('#cf_prixB2'), 120000);
-  assert.equal(+await page.inputValue('#cf_loyerB2'), 550);
-  assert.equal(+await page.inputValue('#cf_surf'), 90);                // surface des deux biens (45 m² chacun)
-  assert.match(await page.locator('#cf').innerText(), /Deux biens, un seul crédit/i);
+  assert.equal(await carte2.locator('[data-k="nom"]').inputValue(), 'Lot B');
+  assert.equal(await page.inputValue('#cf_nomBien'), 'Lot A');
+  assert.equal(+await carte2.locator('[data-k="prix"]').inputValue(), 120000);
+  assert.equal(+await carte2.locator('[data-k="loyer"]').inputValue(), 550);
+  assert.equal(+await page.inputValue('#cf_surf'), 45); assert.equal(+await carte2.locator('[data-k="surf"]').inputValue(), 45);
+  assert.match(await page.locator('#cf_bien').innerText(), /2 biens, 90 m² en tout/i);
   const pr = (await attendreCompte(c => c.projets.some(x => x.nom === 'Lot A + Lot B'))).projets.find(x => x.nom === 'Lot A + Lot B');
   assert.equal(pr.resume.prix, Math.round(e.prix) + 120000); assert.equal(pr.resume.prixB2, 120000);
   // Le projet regroupé remplace les deux (pas trois fois les mêmes biens dans la liste)
@@ -531,7 +534,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   // Ancien regroupement sans ses deux projets, qui sont revenus à côté (doublon) : le refaire le remplace
   await page.evaluate(() => {
     const g = PROJETS.liste.find(x => x.nom === 'Lot A + Lot B'); g.nom = 'Alpha';
-    const copie = (nom, prix) => ({id: nouvelId(), nom, maj: Date.now(), quand: new Date().toISOString(), recherche: null, bien: '', finance: {...g.finance, ouverts: {}, prix}, resume: {...g.resume, prixB2: null}});
+    const copie = (nom, prix) => ({id: nouvelId(), nom, maj: Date.now(), quand: new Date().toISOString(), recherche: null, bien: '', finance: {...g.finance, ouverts: {}, biensPlus: [], prix}, resume: {...g.resume, prixB2: null}});
     PROJETS.liste.push(copie('Alpha 1', 150000), copie('Alpha 2', 120000)); PROJETS.enregistrer(); afficherProjets();
   });
   await page.click('#pj .actions [data-a="regroupe"]');
@@ -542,6 +545,30 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   c = await attendreCompte(c => !c.projets.some(x => /^Alpha [12]/.test(x.nom)) && c.projets.filter(x => x.nom === 'Alpha').length === 1 && c.projets.find(x => x.nom === 'Alpha').regroupe, 'ancien regroupement remplacé');
   assert.equal(c.projets.find(x => x.nom === 'Alpha').resume.prixB2, 120000);
+});
+
+test('ancien projet à deux biens (format d\'avant la liste de biens) : repris avec ses deux biens nommés, total inchangé', async () => {
+  await page.click('.tabs [data-tab="projets"]');
+  const avant = await page.evaluate(() => {
+    const f = {...PROJETS.liste[0].finance, nomBien: undefined, prix: 220000, loyer: 1700, tf: 900, copro: 0, prixB2: 80000, loyerB2: 750, tfB2: 400, coproB2: 0, ouverts: {bien2: true}};
+    delete f.biensPlus; delete f.nomBien;
+    const pr = {id: nouvelId(), nom: 'San gaetano', maj: Date.now(), quand: new Date().toISOString(), recherche: null, bien: '', finance: f,
+      resume: {v: 3, label: 'un seul crédit pour « Route de San Gaetano » et « sans Gaetan 2 »', prix: 300000, prixB2: 80000}};
+    PROJETS.liste.unshift(pr); PROJETS.enregistrer(); afficherProjets();
+    return CF_APP.recalculer({...f, biensPlus: [{prix: 80000, loyer: 750, tf: 400, copro: 0}]}, pr);
+  });
+  const carte = page.locator('#pj .pj', {hasText: 'San gaetano'});
+  assert.match(await carte.innerText(), /Deux biens, un seul crédit/i);
+  const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'San gaetano'));
+  assert.equal(pr.resume.v, 4); assert.equal(pr.resume.cfMois, avant.cfMois); assert.equal(pr.resume.prix, 300000);
+  assert.deepEqual([pr.finance.nomBien, pr.finance.biensPlus[0].nom, pr.finance.biensPlus[0].tf], ['Route de San Gaetano', 'sans Gaetan 2', 400]);
+  await carte.locator('[data-a="financer"]').click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.equal(await page.inputValue('#cf_nomBien'), 'Route de San Gaetano');
+  assert.equal(+await page.inputValue('#cf_tf'), 900);
+  assert.equal(+await page.locator('#cf_biensPlus [data-i="0"] [data-k="tf"]').inputValue(), 400);
+  await page.click('.tabs [data-tab="projets"]');
+  await carte.locator('[data-a="suppr"]').click();
 });
 
 test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {

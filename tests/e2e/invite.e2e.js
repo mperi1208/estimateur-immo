@@ -61,7 +61,7 @@ test('Estimer → Financer : le bien estimé est repris (prix, loyer, surface), 
   assert.equal(await page.evaluate(() => document.getElementById('cf_boxProjet').open), false);
   assert.match(await page.locator('#cf_bien').innerText(), /prix estimé/);
   const tuiles = await page.locator('#cf_tiles').innerText();
-  assert.match(tuiles, /Mensualité/i); assert.match(tuiles, /Cash-flow/i);
+  assert.match(tuiles, /Mensualité/i); assert.match(tuiles, /Il te (reste|manque) par mois/i);
   assert.doesNotMatch(tuiles, /Rendement/i);                 // case retirée de Financer
   assert.doesNotMatch(tuiles, /pendant le différé/i);         // pas de différé : pas de case
 });
@@ -94,7 +94,7 @@ test('Estimer « rénovation complète » → « Travaux + location » : travaux
   assert.equal(+await valeur('travaux'), pj.travaux); assert.equal(+await valeur('valeurApres'), pj.valeurApres);
   assert.equal(+await valeur('loyer'), pj.loyerApres); assert.equal(+await valeur('dureeTravaux'), pj.duree);
   assert.ok(+await valeur('differe') >= pj.duree);
-  assert.match(await page.locator('#cf_tiles').innerText(), /Mensualité pendant le différé[\s\S]*pendant \d+ mois/i);
+  assert.match(await page.locator('#cf_tiles').innerText(), /Mensualité[\s\S]*pendant le différé \(\d+ mois\)/i);
   assert.match(await page.locator('#cf_alerts').innerText(), new RegExp(`loyer à partir du mois ${pj.duree + 1}`));
 });
 
@@ -123,13 +123,17 @@ test('Financer : prix d\'équilibre affiché et « Mettre ce prix » l\'applique
   }
 });
 
-test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le total, loyers additionnés)', async () => {
+test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le total, loyers et charges de chaque bien)', async () => {
   if (await onglet() !== 'cashflow') await page.click('.tabs [data-tab="cashflow"]');
   await saisir(page, '#cf_prix', 150000); await saisir(page, '#cf_loyer', 700); await saisir(page, '#cf_apport', 0);
   const pretSeul = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
-  assert.equal(await page.locator('#cf_boxBien2 .chip').innerText(), 'non compté');
-  await page.click('#cf_boxBien2 summary');
-  await saisir(page, '#cf_prixB2', 100000); await saisir(page, '#cf_loyerB2', 500);
+  assert.match(await page.locator('#cf_titreBiens').innerText(), /^le bien$/i);
+  await page.click('#cf_ajoutBien');
+  const carte = page.locator('#cf_biensPlus [data-i="0"]');
+  await carte.waitFor();
+  assert.match(await page.locator('#cf_titreBiens').innerText(), /^les biens$/i);
+  await carte.locator('[data-k="nom"]').fill('Studio du 2e');
+  await saisir(page, '#cf_biensPlus [data-i="0"] [data-k="prix"]', 100000); await saisir(page, '#cf_biensPlus [data-i="0"] [data-k="loyer"]', 500);
   await page.waitForFunction(() => /Deux biens :/.test(document.getElementById('cf_alerts').innerText));
   const al = await page.locator('#cf_alerts').innerText();
   assert.match(al, /250\s000 € au total/);
@@ -137,15 +141,19 @@ test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le tota
   const pret = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
   assert.ok(pret - pretSeul > 100000 && pret - pretSeul < 112000, `prêt ${pret} pour ${pretSeul} avec un seul bien`);   // 2e prix, son notaire et sa garantie
   await page.waitForFunction(() => /le 1er bien à|aucun prix|pas un frein/i.test(document.getElementById('cf_cibleRes').innerText));   // prix d'équilibre : celui du 1er bien
-  // Taxe foncière et copro de chaque bien côte à côte dans la section, plus une fois en haut et l'autre dans les charges
-  assert.equal(await page.locator('#cf_chargesBiens #cf_tf').count(), 1);
-  assert.equal(await page.locator('#cf_boxDetail #cf_tf').count(), 0);
-  assert.match(await page.locator('#cf_chargesBiens').innerText(), /taxe foncière du 1er bien[\s\S]*taxe foncière du 2e bien/i);
-  assert.match(await page.locator('label[for], label').filter({hasText: /prix du 1er bien/i}).first().innerText(), /1er bien/i);
-  await page.click('#cf_boxBien2 summary');                // refermée : plus comptée
+  // Chaque bien a sa taxe foncière et sa copro, dans sa carte
+  assert.equal(await page.locator('#cf_bien1 #cf_tf').count(), 1);
+  const charges = async () => nombre((await page.locator('#cf_simple').innerText()).match(/Charges[^\n]*\n?\s*−\s*([^\n]+)/i)[1]);
+  const c0 = await charges();
+  await saisir(page, '#cf_biensPlus [data-i="0"] [data-k="tf"]', 1200);
+  await page.waitForFunction(c => { const m = document.getElementById('cf_simple').innerText.match(/Charges[^\n]*\n?\s*−\s*([^\n]+)/i); return m && +m[1].replace(/\D/g, '') === c + 100; }, c0);
+  // Le nom et les chiffres du 2e bien sont gardés avec le reste du formulaire
+  const garde = await page.evaluate(() => JSON.parse(localStorage.getItem('cashflow-v1')).biensPlus[0]);
+  assert.deepEqual([garde.nom, garde.prix, garde.tf], ['Studio du 2e', 100000, 1200]);
+  // Retiré : plus compté
+  await page.click('#cf_biensPlus [data-a="retirerBien"]');
   await page.waitForFunction(() => !/Deux biens/.test(document.getElementById('cf_alerts').innerText));
-  assert.equal(await page.locator('#cf_boxDetail #cf_tf').count(), 1);   // la taxe foncière revient dans les charges
-  assert.equal(await page.locator('label:has(+ #cf_tf)').textContent(), 'Taxe foncière (€/an)');
+  assert.equal(await page.locator('#cf_biensPlus [data-i]').count(), 0);
 });
 
 test('sans compte : enregistrer un projet propose de se connecter', async () => {
