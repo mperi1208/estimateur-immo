@@ -204,6 +204,12 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .total{margin-top:10px;font-size:14px}
 .invwrap .pret{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
 .invwrap .pret-tete{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.invwrap .pret.recu{background:var(--accent-soft)}
+.invwrap .pret-tete .aide{margin:0;text-align:right}
+.invwrap .partage{margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px}
+.invwrap .partage-titre{font-size:13px;font-weight:700}
+.invwrap .partage .filtres{margin:8px 0}
+.invwrap .part-porteur{padding:9px 0}.invwrap .part-porteur.neg{color:var(--bad, #c0392b)}
 .invwrap details.releve{margin-top:10px;border:0;padding:0}
 .invwrap details.releve summary{font-size:13px;color:var(--accent);cursor:pointer;margin-bottom:6px}
 .invwrap .resume .okbox,.invwrap .resume .warnbox{margin-top:10px;font-size:13px}
@@ -567,6 +573,13 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
     <div data-loyer2 hidden><label>1er loyer à partir du mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"><div class="hint" id="cf_debutLoyer1Hint">Vide : après le chantier</div></div>
     <div data-loyer2 hidden><label>2e loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
   </div><button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button></div>
+
+  <details class="opt" id="cf_boxBien2"><summary>Deux biens, un seul crédit <span class="chip"></span></summary><div class="hint">Ouverte : un 2e bien acheté en même temps avec le même prêt (par exemple deux appartements au même vendeur). Frais de notaire, apport et crédit portent sur le total ; les loyers et les charges des deux biens s'additionnent.</div><div class="grid">
+    <div><label>Prix du 2e bien (€)</label><input id="cf_prixB2" type="number" min="0" step="1000"></div>
+    <div><label>Loyer du 2e bien (€/mois)</label><input id="cf_loyerB2" type="number" min="0" step="10"><div class="hint">Hors charges, dès l'achat</div></div>
+    <div><label>Taxe foncière du 2e bien (€/an)</label><input id="cf_tfB2" type="number" min="0" step="50"></div>
+    <div><label>Copro non récupérable du 2e bien (€/an)</label><input id="cf_coproB2" type="number" min="0" step="50"></div>
+  </div></details>
 
   <div class="sect" data-revente><h3>Revente</h3><div class="grid">
     <div><label>Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
@@ -2277,7 +2290,8 @@ const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier'
   'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'tf', 'copro', 'pno',
   'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit', 'sciExist',
   'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2', 'debutLoyer1',
-  'locMode', 'nuit', 'occupation', 'sejour', 'menage', 'plateforme', 'conciergerie', 'chargesSaison', 'classe'];
+  'locMode', 'nuit', 'occupation', 'sejour', 'menage', 'plateforme', 'conciergerie', 'chargesSaison', 'classe',
+  'prixB2', 'loyerB2', 'tfB2', 'coproB2'];
 // 2e loyer (bien divisé, annexe louée à part) : absent des projets enregistrés avant lui, donc remis à zéro à leur réouverture
 const SANS_LOYER2 = {loyer2: '', debutLoyer2: 1, debutLoyer1: ''};
 // Location saisonnière (à la nuitée) : absente des anciens projets, qui restent au mois
@@ -2287,7 +2301,8 @@ const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, 
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
   gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true, sciExist: '',
-  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4, ...SANS_LOYER2, ...SANS_SAISON};
+  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4, ...SANS_LOYER2, ...SANS_SAISON,
+  prixB2: 150000, loyerB2: 600, tfB2: 600, coproB2: 300};
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
 
@@ -2376,6 +2391,7 @@ function sync(est, mode) {
   if (cle !== last) {
     set('prix', est.prix); set('loyer', est.loyer); set('surf', est.surf); set('type', est.type);
     for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);   // le 2e loyer d'un autre bien ne suit pas
+    $('boxBien2').open = false; majChips();                 // ni le 2e bien acheté avec lui
     set('meuble', est.meuble ? '1' : '0'); set('mobilier', est.mob || 0);
     for (const k in SANS_SAISON) set(k, SANS_SAISON[k]);
     if (est.saison) mettreSaison(est.saison);
@@ -2408,7 +2424,7 @@ function sync(est, mode) {
   majSauvegarde(pr);
   rendre();
 }
-const BOXES = {projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol'};
+const BOXES = {projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol', bien2: 'boxBien2'};
 let flags = {tauxManuel: false, comptaManuel: false, differeAuto: false};
 const ouvert = k => $(BOXES[k]).open;
 function etat() {
@@ -2482,7 +2498,11 @@ function simuler() {
   p.debutLoc = p.loyer2 > 0 && p.debutLoyer1 ? Math.max(0, Math.round(p.debutLoyer1) - 1) : travauxOn ? p.dureeTravaux : 0;
   // 2e loyer : son propre début (mois 1 = dès l'achat) ; tous les loyers tournent à partir de debutPlein
   p.debutLoc2 = Math.max(0, Math.round(p.debutLoyer2 || 1) - 1);
-  p.loyerTotal = p.loyer + p.loyer2;
+  // Deux biens, un seul crédit : le prix du 2e bien s'ajoute (notaire, crédit, amortissement), son loyer court dès l'achat
+  p.deuxBiens = ouvert('bien2') && p.prixB2 > 0;
+  if (!p.deuxBiens) { p.prixB2 = 0; p.loyerB2 = 0; p.tfB2 = 0; p.coproB2 = 0; }
+  p.prix1 = p.prix; p.prix += p.prixB2;
+  p.loyerTotal = p.loyer + p.loyer2 + p.loyerB2;
   p.debutPlein = p.loyer2 > 0 ? Math.max(p.debutLoc, p.debutLoc2) : p.debutLoc;
   p.projet = p.scenario === 'revendre' ? 'revente' : travauxOn ? 'location' : 'simple';
   if (!ouvert('evol')) { p.gLoyer = 0; p.gPrix = 0; p.gCharges = 0; }
@@ -2520,11 +2540,11 @@ function simuler() {
     let loyers = 0, loyers1 = 0, moisLoues = 0;
     for (let m = 12 * (y - 1); m < 12 * y; m++) {
       const hausse = Math.pow(1 + p.gLoyer / 100, y - 1), l1 = m >= p.debutLoc ? p.loyer * (1 - vac1 / 12) * hausse : 0;
-      loyers1 += l1; loyers += l1 + (m >= p.debutLoc2 ? p.loyer2 : 0) * (1 - p.vacance / 12) * hausse;
+      loyers1 += l1; loyers += l1 + ((m >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2) * (1 - p.vacance / 12) * hausse;
       if (m >= p.debutLoc) moisLoues++;
     }
     const infl = Math.pow(1 + p.gCharges / 100, y - 1);
-    const fixes = (p.tf + p.copro + p.pno + p.compta + (meuble ? p.cfe : 0)) * infl;
+    const fixes = (p.tf + p.copro + p.tfB2 + p.coproB2 + p.pno + p.compta + (meuble ? p.cfe : 0)) * infl;
     // Saisonnier : frais en % des recettes de la nuitée, charges du logement pendant les mois d'exploitation
     const fraisSaison = sz ? loyers1 * sz.pctFrais / 100 + p.chargesSaison * moisLoues * infl : 0;
     const charges = fixes + loyers * (p.gestion + p.entretien) / 100 + fraisSaison;
@@ -2600,7 +2620,7 @@ function simuler() {
   } else if (meuble) {
     const micro = impotsMicroBic(), reel = impotsLmnpReel();
     const sum = arr => arr.reduce((s, x) => s + x, 0);
-    const okMicro = (p.loyer * (1 - vac1 / 12) + p.loyer2 * (1 - p.vacance / 12)) * 12 <= microReg.plafond;
+    const okMicro = (p.loyer * (1 - vac1 / 12) + (p.loyer2 + p.loyerB2) * (1 - p.vacance / 12)) * 12 <= microReg.plafond;
     const choix = p.regime === 'micro' && okMicro ? 'micro' : p.regime === 'reel' || !okMicro ? 'reel' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
     impots = choix === 'micro' ? micro : reel;
     regime = (p.saison ? 'Meublé de tourisme ' + (p.classe === '1' ? 'classé' : 'non classé') + ', ' : 'LMNP ') + (choix === 'micro' ? `micro-BIC (abattement ${Math.round(microReg.abattement * 100)} %)` : 'au réel (avec amortissement)')
@@ -2625,7 +2645,7 @@ function simuler() {
     a.cf = a.loyers - a.charges - a.credit - a.impots;
     cumul += a.cf; a.cumul = cumul;
   });
-  const base = p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix;   // valeur de départ : après travaux s'il y en a
+  const base = (p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix1) + p.prixB2;   // valeur de départ : après travaux s'il y en a (travaux sur le 1er bien)
   const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
   return {p, st, regime, notes, pret, apportEff, base, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
 }
@@ -2676,6 +2696,7 @@ function rendre() {
     al += `<div class="okbox">Location saisonnière : <b>${eur(p.nuit)}</b> la nuit, ${fmt(p.occupation)} % d'occupation (${fmt(z.nuits)} nuits, ${fmt(z.sejours)} séjours par an), soit <b>${eur(z.brutMois)}</b> de recettes par mois en moyenne. Plateforme, conciergerie et ménage : ${pct(z.pctFrais)} des recettes ; charges du logement ${eur(p.chargesSaison)}/mois. La vacance est remplacée par le taux d'occupation.</div>`;
     al += `<div class="warnbox">Avant de louer à la nuitée : déclaration en mairie, 120 nuits par an au plus pour une résidence principale (90 dans certaines villes, dont Paris), changement d'usage souvent exigé dans les grandes villes, règlement de copropriété et DPE minimum (loi Le Meur).</div>`;
   }
+  if (p.deuxBiens) al += `<div class="okbox">Deux biens, un seul crédit : ${eur(p.prix1)} + ${eur(p.prixB2)} = <b>${eur(p.prix)}</b>, frais de notaire ${eur(s.fraisNotaire)} sur le total, un prêt de <b>${eur(s.pret)}</b>. Loyers : ${eur(p.loyerTotal - p.loyerB2)} + ${eur(p.loyerB2)} = <b>${eur(p.loyerTotal)}</b> par mois.</div>`;
   if (p.loyer2 > 0) al += `<div class="okbox">Deux loyers : <b>${eur(p.loyer)}</b> à partir du mois ${p.debutLoc + 1} et <b>${eur(p.loyer2)}</b> à partir du mois ${p.debutLoc2 + 1}, soit <b>${eur(p.loyerTotal)}</b> par mois quand les deux sont loués.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
@@ -2855,14 +2876,14 @@ function majCible() {
   const s = simuler(), p = s.p, revente = p.projet === 'revente', visee = cibleVisee();
   $('cibleLabel').textContent = revente ? 'Bénéfice net visé (€)' : 'Cash-flow visé (€/mois)';
   if (document.activeElement !== $('cibleVal')) $('cibleVal').value = visee;
-  const r = prixCible(visee), actuel = p.prix;
+  const r = prixCible(visee), actuel = p.prix1;
   const quoi = revente ? `un bénéfice net de <b>${eur(visee)}</b> à la revente` : `un cash-flow de <b>${eur(visee)} par mois</b> en année ${anneeCroisiere(s).y}${p.differe > 0 ? ' (une fois le différé terminé)' : ''}, ${p.avecImpots ? 'après' : 'avant'} impôts`;
   let h;
   if (r.impossible) h = `Pour ${quoi}, aucun prix ne suffit : ${revente ? 'la revente ne rapporte pas assez (valeur après travaux, frais et charges à revoir).' : 'les charges et le crédit dépassent le loyer même à très bas prix. Revois le loyer, les charges ou l\'apport.'}`;
   else if (r.sansLimite) h = `Pour ${quoi}, le prix n'est pas un frein : ça passe jusqu'à ${eur(r.prix)} au moins.`;
   else {
     const ecart = r.prix - actuel;
-    h = `Pour ${quoi}, il faudrait acheter à <b>${eur(r.prix)}</b>`
+    h = `Pour ${quoi}, il faudrait acheter ${p.deuxBiens ? `le 1er bien à <b>${eur(r.prix)}</b> (le 2e restant à ${eur(p.prixB2)})` : `à <b>${eur(r.prix)}</b>`}`
       + (Math.abs(ecart) < 100 ? ', soit ton prix actuel.'
         : ecart < 0 ? ` au lieu de ${eur(actuel)} : <b>${pct(ecart / actuel * 100)}</b>, soit ${eur(ecart)} à négocier.`
         : ` : ton prix de ${eur(actuel)} est déjà plus bas, il te reste ${eur(ecart)} de marge.`);
@@ -2893,7 +2914,7 @@ function instantane(ex, recalcul) {
   const resume = {v: 2, type: p.type, surf: p.surf, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
-    prix: p.prix, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
+    prix: p.prix, prixB2: p.deuxBiens ? p.prixB2 : null, loyerB2: p.deuxBiens ? p.loyerB2 : null, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
     saison: p.saison ? {nuit: p.nuit, occupation: p.occupation, net: Math.round(s.saison.netMois)} : null,
     travaux: ouvert('projet') ? p.travaux : 0, valeurApres: ouvert('projet') ? p.valeurApres : 0, impots: p.avecImpots};
   if (revente) resume.benefice = Math.round(bilanRevente(s).net);
@@ -3047,7 +3068,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=fa3ce067"></script>
+<script src="investissements.js?v=e949a468"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -3066,11 +3087,11 @@ function carteProjet(pr) {
   const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
   const sous = [r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²` : '', revente ? 'achat-revente' : r.saison ? 'location saisonnière' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
   const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
-  const cases = [!revente && r.travaux > 0 && r.valeurApres > 0 ? ['Prix estimé après projet', `<b>${eurP(r.valeurApres)}</b>` + (r.prixEstime != null ? `<small>${eurP(r.prixEstime)} aujourd'hui</small>` : '')] : ['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
+  const cases = [!revente && r.travaux > 0 && r.valeurApres > 0 ? ['Prix estimé après projet', `<b>${eurP(r.valeurApres)}</b>` + (r.prixEstime != null ? `<small>${eurP(r.prixEstime)} aujourd'hui</small>` : '')] : ['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.prixB2 ? `<small>deux biens : ${eurP(r.prix - r.prixB2)} + ${eurP(r.prixB2)}, un seul crédit</small>` : '') + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
     ['Prix d\'équilibre', `<b>${r.prixCible != null ? eurP(r.prixCible) : 'aucun'}</b><small>${revente ? 'bénéfice de ' + eurP(r.visee) : 'cash-flow de ' + eurP(r.visee) + '/mois' + (r.anneeCible ? ', année ' + r.anneeCible : '')}</small>`]];
   if (revente) cases.push(['Valeur après travaux', eurP(r.valeurApres)], ['Bénéfice net', `<b class="${signe(r.benefice)}">${eurP(r.benefice)}</b>`]);
   else cases.push(r.saison ? ['Location saisonnière', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0))}/mois</b><small>recettes moyennes : ${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation${r.loyer2 ? ` · dont ${eurP(r.loyer2)} de 2e loyer` : ''}</small>`]
-      : ['Loyer hors charges', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0))}/mois</b>` + (r.loyer2 ? `<small>${eurP(r.loyer)} + ${eurP(r.loyer2)} (2e loyer)</small>` : '')], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')]);
+      : ['Loyer hors charges', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</b>` + (r.loyer2 ? `<small>${eurP(r.loyer)} + ${eurP(r.loyer2)} (2e loyer)</small>` : '') + (r.loyerB2 ? `<small>dont ${eurP(r.loyerB2)} du 2e bien</small>` : '')], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')]);
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>

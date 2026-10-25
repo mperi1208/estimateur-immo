@@ -123,6 +123,24 @@ test('Financer : prix d\'équilibre affiché et « Mettre ce prix » l\'applique
   }
 });
 
+test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le total, loyers additionnés)', async () => {
+  if (await onglet() !== 'cashflow') await page.click('.tabs [data-tab="cashflow"]');
+  await saisir(page, '#cf_prix', 150000); await saisir(page, '#cf_loyer', 700); await saisir(page, '#cf_apport', 0);
+  const pretSeul = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
+  assert.equal(await page.locator('#cf_boxBien2 .chip').innerText(), 'non compté');
+  await page.click('#cf_boxBien2 summary');
+  await saisir(page, '#cf_prixB2', 100000); await saisir(page, '#cf_loyerB2', 500);
+  await page.waitForFunction(() => /Deux biens, un seul crédit/.test(document.getElementById('cf_alerts').innerText));
+  const al = await page.locator('#cf_alerts').innerText();
+  assert.match(al, /150\s000 € \+ 100\s000 € = 250\s000 €/);
+  assert.match(al, /700 € \+ 500 € = 1\s200 €/);
+  const pret = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
+  assert.ok(pret - pretSeul > 100000 && pret - pretSeul < 112000, `prêt ${pret} pour ${pretSeul} avec un seul bien`);   // 2e prix, son notaire et sa garantie
+  await page.waitForFunction(() => /le 1er bien à|aucun prix|pas un frein/i.test(document.getElementById('cf_cibleRes').innerText));   // prix d'équilibre : celui du 1er bien
+  await page.click('#cf_boxBien2 summary');                // refermée : plus comptée
+  await page.waitForFunction(() => !/Deux biens/.test(document.getElementById('cf_alerts').innerText));
+});
+
 test('sans compte : enregistrer un projet propose de se connecter', async () => {
   assert.equal(await page.locator('#cf_saveInvite').isVisible(), true);
   assert.equal(await page.locator('#cf_saveForm').isVisible(), false);

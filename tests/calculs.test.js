@@ -18,7 +18,7 @@ const ctx = vm.createContext({T: {}});
 vm.runInContext([
   bloc(inv, 'const somme =', 'const uid ='),
   bloc(inv, '// ---------- Mois', '// ---------- Données'),
-  'var STATUTS = {};',
+  'var STATUTS = {}, biens = [];',
   bloc(idx, 'function echeancier', '// ---------- Simulation'),
   'this.X = {pmt, solde, etatPret, planPret, analyseReneg, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
 ].join('\n'), ctx);

@@ -25,10 +25,12 @@ const kpi = async (titre, sel = '#inv_kpis') => {
   return m ? m[1].trim() : null;
 };
 const mois = k => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + k); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+// Carte d'un bien par son nom (une autre carte peut citer ce nom : « Crédit commun avec … »)
+const carteBien = nom => page.locator('#inv a.bien').filter({has: page.locator('.infos > b', {hasText: new RegExp('^' + nom + '$')})});
 const ouvrirFiche = async nom => {
   if (await onglet() !== 'investissements') await page.click('.tabs [data-tab="investissements"]');
   await page.evaluate(() => { location.hash = '#investissements'; });
-  await page.locator('#inv a.bien', {hasText: nom}).first().click();
+  await carteBien(nom).first().click();
   await page.waitForFunction(n => (document.getElementById('inv_titre') || {}).textContent === n, nom);
 };
 const pmt = (C, t, n) => C * (t / 1200) / (1 - Math.pow(1 + t / 1200, -n));
@@ -306,6 +308,53 @@ test('crédit progressif et différé : boutons visibles, mensualité actuelle q
   await page.locator('#inv [data-a="supprPret"][data-i="1"]').click();
   await page.waitForSelector('[data-resume="1"]', {state: 'detached'});
   await attendreCompte(() => bienDuCompte('Studio Test').prets.length === 1);
+});
+
+test('un seul crédit pour deux biens : prêt partagé au prorata des prix, chaque fiche compte sa part', async () => {
+  const nouveau = async (nom, valeur, prix, loyer) => {
+    await page.evaluate(() => { location.hash = '#investissements'; });
+    await page.waitForSelector('#inv .invhead');
+    await page.click('#inv [data-a="ajout"]');
+    await page.waitForSelector('#inv_titre');
+    await champ('nom', nom); await champ('valeur', valeur); await champ('achat.prix', prix); await champ('location.loyer', loyer);
+  };
+  await nouveau('T2 Vendeur', 110000, 100000, 500);
+  await nouveau('T3 Vendeur', 160000, 150000, 700);
+  await page.click('#inv [data-a="ajoutPret"]');
+  await champ('prets.0.montant', 250000); await champ('prets.0.taux', 3.5); await champ('prets.0.duree', 240); await champ('prets.0.debut', mois(-12));
+  const M = pmt(250000, 3.5, 240);
+  const boutonT2 = page.locator('#inv .partage [data-a="partagePret"]', {hasText: 'T2 Vendeur'});
+  assert.equal(await boutonT2.isVisible(), true);                                   // bouton visible, pas de menu
+  await boutonT2.click();
+  await page.waitForSelector('#inv [data-p="prets.0.partage.0.part"]');
+  assert.equal(await page.locator('#inv [data-p="prets.0.partage.0.part"]').inputValue(), '40');   // 100 000 / 250 000
+  assert.match(await page.locator('#inv .part-porteur').innerText(), /60 %/);
+  const resume = await page.locator('[data-resume="0"]').innerText();
+  assert.match(resume, /Part de ce bien \(60 %\)/i);
+  const crd = nombre(resume.match(/Restant dû\s*\n\s*([^\n]+)/i)[1]);
+  assert.ok(Math.abs(nombre(await kpi('Restant dû')) * 1000 - crd * 0.6) < 600, 'restant dû de T3 : 60 %');
+  assert.equal(nombre(await kpi('Cash-flow')), Math.round(700 - M * 0.6));
+  await attendreCompte(() => (p => p && p.partage && p.partage[0].part === 40)((bienDuCompte('T3 Vendeur') || {prets: []}).prets[0]));
+  // Fiche du T2 : sa part du prêt, en lecture
+  await ouvrirFiche('T2 Vendeur');
+  const recu = await page.locator('#inv .pret.recu').innerText();
+  assert.match(recu, /commun avec\s*T3 Vendeur/i); assert.match(recu, /Part de ce bien\s*\n\s*40 %/i);
+  assert.equal(nombre(await kpi('Cash-flow')), Math.round(500 - M * 0.4));
+  assert.ok(Math.abs(nombre(await kpi('Restant dû')) * 1000 - crd * 0.4) < 600, 'restant dû de T2 : 40 %');
+  // Liste : étiquette sur les deux cartes
+  await page.click('#inv a.retour');
+  assert.match(await carteBien('T2 Vendeur').innerText(), /Crédit commun avec T3 Vendeur/i);
+  assert.match(await carteBien('T3 Vendeur').innerText(), /Crédit commun avec T2 Vendeur/i);
+  // Part changée à la main, puis le T2 retiré du prêt
+  await ouvrirFiche('T3 Vendeur');
+  await champ('prets.0.partage.0.part', 50);
+  await page.waitForFunction(() => /50 %/.test(document.querySelector('#inv .part-porteur').innerText));
+  assert.equal(nombre(await kpi('Cash-flow')), Math.round(700 - M * 0.5));
+  await page.locator('#inv .partage [data-a="partagePret"]', {hasText: 'T2 Vendeur'}).click();
+  await page.waitForSelector('#inv .part-porteur', {state: 'detached'});
+  assert.equal(nombre(await kpi('Cash-flow')), Math.round(700 - M));
+  for (const nom of ['T2 Vendeur', 'T3 Vendeur']) { await ouvrirFiche(nom); await page.click('#inv [data-a="supprimer"]'); await page.waitForSelector('#inv .invhead'); }
+  await attendreCompte(c => !c.biens.some(b => /Vendeur/.test(b.nom)), 'biens du test supprimés');
 });
 
 test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de doublon), supprimé', async () => {
