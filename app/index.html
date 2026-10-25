@@ -975,7 +975,7 @@ async function estimerGarage() {
       <div class="kpi"><div class="k">Valeur estimée</div><div class="v">${fmtK(r.prix)}</div><div class="d">${fmtK(r.lo)} – ${fmtK(r.hi)}</div></div>
       <div class="kpi"><div class="k">Ventes comparées</div><div class="v">${r.ventes}</div><div class="d">vendus seuls, à moins de ${dist(r.rayon)}</div></div>
       <div class="kpi"><div class="k">Fiabilité</div><div class="v txt">${esc(r.fiabilite.replace(/^Fiabilité /, ''))}</div><div class="d">ventes ${r.periode}</div></div></div>
-    <div class="hint" style="margin-top:8px">Les actes ne disent pas si c'est un box fermé, une place couverte ou extérieure : la médiane des ventes vaut pour un box, ${r.place === 'ext' ? 'une place extérieure en vaut ≈ 35 %' : r.place === 'couverte' ? 'une place couverte en vaut ≈ 75 %' : 'une place couverte en vaut ≈ 75 %, une place extérieure ≈ 35 %'}. Pour un garage qui fait partie d'un appartement, sors-le en bien associé dans Mon patrimoine.</div></div>
+    <div class="hint" style="margin-top:8px">Les actes ne disent pas si c'est un box fermé, une place couverte ou extérieure : la médiane des ventes vaut pour un box, ${r.place === 'ext' ? 'une place extérieure en vaut ≈ 15 %' : r.place === 'couverte' ? 'une place couverte en vaut ≈ 75 %' : 'une place couverte en vaut ≈ 75 %, une place extérieure ≈ 15 %'}. Pour un garage qui fait partie d'un appartement, sors-le en bien associé dans Mon patrimoine.</div></div>
     <details class="detail"><summary>Ventes les plus comparables</summary>
       <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">Prix</th></tr></thead><tbody>${r.comps.map((c, k) => `<tr data-k="${k}"><td>${fmtDate(c.date)}</td><td class="n">${dist(c.d)}</td><td class="n">${fmtK(c.prix)}</td></tr>`).join('')}</tbody></table>
       <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema), ventes d'une seule dépendance.</div></details>`;
@@ -1281,7 +1281,7 @@ async function majGarageEst() {
       <div class="kpi"><div class="k">Valeur seule</div><div class="v">${fmtK(r.prix * (deux ? 2 : 1))}</div><div class="d">${fmtK(r.lo * (deux ? 2 : 1))} – ${fmtK(r.hi * (deux ? 2 : 1))}${deux ? ' (2 places)' : ''}</div></div>
       <div class="kpi"><div class="k">Ventes comparées</div><div class="v">${r.ventes}</div><div class="d">garages, box et places vendus seuls, à moins de ${r.rayon < 1000 ? fmt(r.rayon) + ' m' : (r.rayon / 1000).toFixed(1).replace('.', ',') + ' km'}</div></div>
       <div class="kpi"><div class="k">Fiabilité</div><div class="v txt">${esc(r.fiabilite.replace(/^Fiabilité /, ''))}</div><div class="d">ventes ${r.periode}</div></div></div>
-    <div class="hint" style="margin-top:6px">Le prix du bien ci-dessus compte déjà le stationnement. Cette valeur sert si tu le vends ou le loues à part${place === 'ext' ? ' (ramenée à une place extérieure, ≈ 35 % d\'un box)' : place === 'couverte' ? ' (ramenée à une place couverte, ≈ 75 % d\'un box)' : ''}.</div>`;
+    <div class="hint" style="margin-top:6px">Le prix du bien ci-dessus compte déjà le stationnement. Cette valeur sert si tu le vends ou le loues à part${place === 'ext' ? ' (ramenée à une place extérieure, ≈ 15 % d\'un box)' : place === 'couverte' ? ' (ramenée à une place couverte, ≈ 75 % d\'un box)' : ''}.</div>`;
 }
 function updateResult() {
   const el = document.getElementById('res'), r = state.base;
@@ -3056,7 +3056,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=d7842ca4"></script>
+<script src="investissements.js?v=bfadb672"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

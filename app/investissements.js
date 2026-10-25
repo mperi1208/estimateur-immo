@@ -490,9 +490,10 @@ async function estimerTerrain(lat, lon, surf, nature) {
 }
 // Garages, box et places vendus seuls (DVF : « dépendance », code 13) : prix à l'unité, ventes d'une seule dépendance
 // Les actes ne disent pas si c'est un box ou une simple place : la médiane des ventes vaut pour un box ou un garage fermé
-// (l'essentiel des dépendances vendues seules) ; une place couverte vaut ≈ 75 % d'un box, une place extérieure ≈ 35 %
-// (écarts de loyers Parkto à Paris, plus marqués en province où une place à ciel ouvert se trouve facilement)
-const PLACES = {box: {l: 'Box ou garage fermé', f: 1}, couverte: {l: 'Place couverte / en sous-sol', f: 0.75}, ext: {l: 'Place extérieure', f: 0.35}};
+// (l'essentiel des dépendances vendues seules) ; une place couverte vaut ≈ 75 % d'un box, une place extérieure ≈ 15 %
+// (place couverte : écart des loyers Parkto à Paris ; place extérieure : très en dessous en province, où une place
+// à ciel ouvert au pied d'un immeuble se trouve facilement et se revend presque rien)
+const PLACES = {box: {l: 'Box ou garage fermé', f: 1}, couverte: {l: 'Place couverte / en sous-sol', f: 0.75}, ext: {l: 'Place extérieure', f: 0.15}};
 // Type de place d'après le stationnement coché sur un appartement (ext, 1, box, 2) ou une maison (oui, place)
 const placeDe = v => ({ext: 'ext', place: 'ext', '1': 'couverte', '2': 'couverte', box: 'box', oui: 'box'})[v] || 'box';
 function versDependance(f) {
@@ -613,7 +614,7 @@ function majAuto(b) {
         <div><span>Ventes comparées</span><b>${e.ventes}</b><small>garages, box et places vendus seuls, à moins de ${dist(e.rayon)}</small></div>
 </div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
-      <div class="aide">Ventes de garages, box et places mêlés (les actes ne disent pas lequel) : valeur ramenée à ${e.place === 'ext' ? 'une place extérieure (≈ 35 % d\'un box)' : e.place === 'couverte' ? 'une place couverte (≈ 75 % d\'un box)' : 'un box ou garage fermé'}. Change le type de place au-dessus si besoin.</div>
+      <div class="aide">Ventes de garages, box et places mêlés (les actes ne disent pas lequel) : valeur ramenée à ${e.place === 'ext' ? 'une place extérieure (≈ 15 % d\'un box)' : e.place === 'couverte' ? 'une place couverte (≈ 75 % d\'un box)' : 'un box ou garage fermé'}. Change le type de place au-dessus si besoin.</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
     </div>
     ${!a_jour ? '<div class="aide">Adresse modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
