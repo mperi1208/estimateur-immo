@@ -648,13 +648,14 @@ test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, val
 
 test('logement de la famille : à part du cash-flow locatif (tuiles, carte, mode simple), puis supprimé', async () => {
   await page.evaluate(() => { location.hash = '#investissements'; });
-  await page.waitForSelector('#inv .kpis.six');
+  await page.waitForSelector('#inv .invhead');
   const avant = nombre(await kpi('Cash-flow', '#inv .kpis.six'));
   await page.click('#inv [data-a="ajout"]');
   await page.waitForSelector('#inv_titre');
   await champ('nom', 'Maison Famille'); await champ('valeur', 300); await champ('location.statut', 'rp'); await champ('chargesAn.tf', 1200);
   await page.waitForFunction(() => /Coût\s*\n\s*100 €/i.test(document.getElementById('inv_kpis').innerText));                                     // taxe foncière ÷ 12, pas un cash-flow
-  await page.click('#inv a.retour'); await page.waitForSelector('#inv .kpis.six');
+  await page.click('#inv a.retour'); await page.waitForSelector('#inv .invhead');   // la liste, pas les tuiles de la fiche
+  await page.waitForFunction(() => /Logement famille/i.test(document.querySelector('#inv .kpis.six').innerText));
   const t = await page.locator('#inv .kpis.six').innerText();
   assert.equal(nombre(t.match(/Cash-flow locatif\s*\n\s*([^\n]+)/i)[1]), avant);   // les investissements ne bougent pas
   assert.equal(nombre(t.match(/Logement famille\s*\n\s*([^\n]+)/i)[1]), 100);
