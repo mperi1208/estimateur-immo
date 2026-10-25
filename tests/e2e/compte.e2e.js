@@ -84,6 +84,34 @@ test('liste : totaux du patrimoine (valeur, restant dû, net, loyers, cash-flow)
   assert.ok(Math.abs(net + du - 200) < 1.5, `net ${net} + restant dû ${du} = valeur`);
 });
 
+test('mode simple : loyer, crédit, charges et ce qu\'il reste (liste, fiche, Financer), puis retour en Pro', async () => {
+  const M = pmt(150000, 3, 240), reste = Math.round(800 - 900 / 12 - M);
+  await page.click('.tabs [data-mode="simple"]');
+  await page.waitForSelector('#inv .bilan-simple');
+  assert.equal(await page.locator('#inv .kpis.six').count(), 0);
+  const t = await page.locator('#inv .bilan-simple').first().innerText();
+  assert.match(t, /Loyers\s*\+\s*800 €/i); assert.match(t, /Charges[^\n]*\s*−\s*75 €/i); assert.match(t, new RegExp('Mensualité du crédit\\s*−\\s*' + Math.round(M) + ' €', 'i'));
+  assert.equal(nombre(t.match(/Il te (?:reste|manque)\s*([^\n]+) par mois/i)[1]), Math.abs(reste));
+  assert.match(t, new RegExp('Le loyer paie ' + Math.round(800 / M * 100) + ' % de la mensualité', 'i'));
+  assert.match(await carteBien('Studio Test').innerText(), /Il te (reste|manque)/i);
+  await ouvrirFiche('Studio Test');
+  assert.match(await page.locator('#inv_kpis .bilan-simple').innerText(), /Il te (reste|manque)/i);
+  assert.equal(await page.locator('#inv_renta').isVisible(), false);                  // le détail du cash-flow reste en Pro
+  await page.click('.tabs [data-tab="cashflow"]');
+  await page.waitForFunction(() => /Il te (reste|manque)/i.test(document.getElementById('cf_simple').innerText));
+  assert.equal(await page.locator('#cf_boxDetail').isVisible(), false);
+  assert.equal(await page.locator('#cf_tiles').isVisible(), false);
+  assert.equal(await page.locator('#cf_prix').isVisible(), true);
+  await page.click('.tabs [data-mode="pro"]');
+  await page.waitForFunction(() => !document.body.classList.contains('simple'));
+  assert.equal(await page.locator('#cf_tiles').isVisible(), true);
+  assert.equal(await page.locator('#cf_simple').isVisible(), false);
+  assert.equal(await page.evaluate(() => localStorage.getItem('mode-affichage')), 'pro');
+  await page.click('.tabs [data-tab="investissements"]');
+  await page.evaluate(() => { location.hash = '#investissements'; });
+  await page.waitForSelector('#inv .kpis.six');
+});
+
 test('rechargement et adresse d\'une fiche : le bien revient du compte, la fiche s\'ouvre directement', async () => {
   const id = bienDuCompte('Studio Test').id;
   await page.goto(`${require('./banc').ORIGINE}/app/index.html#investissements/${id}`);
@@ -408,6 +436,13 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   c = await attendreCompte(c => c.projets.find(x => x.id === pr.id).finance.apport === 40000, 'projet mis à jour');
   assert.equal(c.projets.length, n);
   await page.click('.tabs [data-tab="projets"]');
+  assert.ok(c.projets.find(x => x.id === pr.id).resume.mois, 'détail du mois enregistré pour le mode simple');
+  await page.click('.tabs [data-mode="simple"]');                                   // mode simple : le bilan du mois remplace les chiffres
+  await carte.locator('.bilan-simple').waitFor();
+  assert.match(await carte.innerText(), /Mensualité du crédit[\s\S]*Il te (reste|manque)/i);
+  assert.equal(await carte.locator('.pj-chiffres').count(), 0);
+  await page.click('.tabs [data-mode="pro"]');
+  await carte.locator('.pj-chiffres').waitFor();
   await carte.locator('[data-a="suppr"]').click();
   await page.waitForFunction(() => !/Projet Lyon 45/.test(document.getElementById('pj').innerText));
   c = await attendreCompte(c => !c.projets.some(x => x.id === pr.id), 'projet supprimé');
