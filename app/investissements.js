@@ -149,9 +149,30 @@ function partComptaSci(b) {
   return (x.compta || 0) / Math.max(1, avecComptaSci(x, b).length);
 }
 const statutLib = b => b.amenag && !b.amenag.fait ? 'À aménager' : b.location.statut === 'avec' ? (p => p ? 'Avec ' + p.nom : '')(principalDe(b)) : (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
+// ---------- Un crédit pour plusieurs biens (achat groupé, deux appartements au même vendeur…) ----------
+// Le prêt est saisi sur la fiche d'un bien ; p.partage = [{id, part}] : les autres biens qu'il finance et leur part (%).
+// Le bien qui porte le prêt garde le reste. Chaque bien compte sa part du restant dû et des mensualités : les totaux ne le comptent qu'une fois.
+const partagesDe = p => (p.partage || []).filter(x => biens.some(y => y.id === x.id));
+const partPorteur = p => Math.max(0, 1 - somme(partagesDe(p), x => x.part) / 100);
+function pretsRecus(b) {
+  const l = [];
+  for (const y of biens) if (y !== b && y.id !== b.id) for (const p of y.prets || []) {
+    const x = (p.partage || []).find(z => z.id === b.id);
+    if (x) l.push({p, de: y, k: Math.max(0, Math.min(100, x.part || 0)) / 100});
+  }
+  return l;
+}
+// Répartition par défaut : au prorata des prix d'achat (à défaut, des valeurs ; sinon à parts égales), en % entiers
+function partsAuProrata(porteur, autres) {
+  const l = [porteur, ...autres], poids = x => x.achat && x.achat.prix > 0 ? x.achat.prix : 0;
+  const base = l.every(x => poids(x) > 0) ? poids : l.every(x => x.valeur > 0) ? x => x.valeur : () => 1;
+  const tot = somme(l, base);
+  return autres.map(x => Math.round(base(x) / tot * 100));
+}
 function calculs(b) {
-  const prets = b.prets.map(p => ({p, e: etatPret(p)}));
-  const actifs = prets.filter(x => x.e && x.e.mois > 0);
+  const prets = b.prets.map(p => ({p, e: etatPret(p), k: partPorteur(p)}));
+  const recus = pretsRecus(b).map(x => ({...x, e: etatPret(x.p)}));
+  const tous = [...prets, ...recus], actifs = tous.filter(x => x.e && x.e.mois > 0);
   const terrain = b.type === 'terrain';
   const loue = terrain ? ['loue', 'activites'].includes(b.location.statut) : LOUE.includes(b.location.statut);
   const lignes = lignesLoyer(b), vac = nuitee(b) ? 1 : 1 - Math.min(12, b.location.vacance || 0) / 12;   // à la nuitée, les nuits louées comptent déjà les creux
@@ -160,12 +181,12 @@ function calculs(b) {
   const c = b.chargesAn, compta = c.comptaSci ? partComptaSci(b) ?? (c.compta || 0) : c.compta || 0;
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + compta + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
     + (b.location.statut === 'saisonnier' && !terrain ? loyersAn * (b.location.fraisSaison || 0) / 100 : 0);   // plateforme, conciergerie, ménage
-  const creditAn = somme(actifs, x => x.e.paye12 + x.e.assur * x.e.payes);
+  const creditAn = somme(actifs, x => (x.e.paye12 + x.e.assur * x.e.payes) * x.k);
   const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
-  const crd = somme(prets, x => x.e && x.e.crd), cfAn = loyersAn - chargesAn - creditAn;
-  return {prets, loue, loyerMois, loyersAn, chargesAn, compta, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
-    mensuCredit: somme(actifs, x => x.e.pause ? 0 : x.e.M + x.e.assur), interetsAn: somme(actifs, x => x.e.interets + x.e.assur * x.e.payes),
-    capitalAn: somme(actifs, x => x.e.capital), emprunte: somme(b.prets, p => p.montant),
+  const crd = somme(tous, x => x.e && x.e.crd * x.k), cfAn = loyersAn - chargesAn - creditAn;
+  return {prets, recus, loue, loyerMois, loyersAn, chargesAn, compta, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
+    mensuCredit: somme(actifs, x => x.e.pause ? 0 : (x.e.M + x.e.assur) * x.k), interetsAn: somme(actifs, x => (x.e.interets + x.e.assur * x.e.payes) * x.k),
+    capitalAn: somme(actifs, x => x.e.capital * x.k), emprunte: somme(tous, x => (x.p.montant || 0) * x.k),
     patrimoine: b.valeur > 0 ? b.valeur - crd : null, plusValue: b.valeur > 0 && cout > 0 ? b.valeur - cout : null};
 }
 
@@ -880,10 +901,17 @@ function ligneAssociee(b) {
     <span class="chiffres-lie"><span><small>Valeur</small><b>${b.valeur ? kEur(b.valeur * k) : '—'}</b></span><span><small>Loyer</small><b>${c.loyerMois ? eur(c.loyerMois * k) + '/mois' : enProjet(b) && planAmenag(b).loyer ? '≈ ' + eur(planAmenag(b).loyer * k) + '/mois possible' : '—'}</b></span></span>
     <span class="chev" aria-hidden="true">›</span></a>`;
 }
+// Étiquette « Crédit commun avec … » : un même prêt finance ce bien et d'autres
+function creditCommun(b) {
+  const ids = new Set([...b.prets.flatMap(p => partagesDe(p).map(x => x.id)), ...pretsRecus(b).flatMap(x => [x.de.id, ...partagesDe(x.p).map(z => z.id)])]);
+  ids.delete(b.id);
+  const noms = [...ids].map(id => (biens.find(y => y.id === id) || {}).nom).filter(Boolean);
+  return noms.length ? 'Crédit commun avec ' + noms.join(', ') : '';
+}
 function carte(b, c) {
   const k = partDe(b), x = n => n * k, pr = principalDe(b);
   const tags = [pr ? 'Associé à ' + pr.nom : '', k < 1 ? `Part : ${Math.round(k * 100)} %` : '', b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
-    b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b)].filter(Boolean);
+    b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b), creditCommun(b)].filter(Boolean);
   return `<a class="bien" href="#investissements/${encodeURIComponent(b.id)}">
     <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type] ? TYPES[b.type].l : ''}</span></div>
     <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || 'Adresse à renseigner')}</span><span class="tags">${tags.map(esc).join(' · ')}</span></div>
@@ -992,7 +1020,7 @@ function vueDetail(b) {
       ${champ(b, 'achat.notaire', 'Frais de notaire (€)', {step: 100})}${champ(b, 'achat.travaux', 'Travaux (€)', {step: 500})}`}
       ${champ(b, 'achat.mobilier', 'Mobilier (€)', {step: 100})}${champ(b, 'achat.frais', 'Autres frais (€)', {step: 100, aide: b.achat.mode === 'construction' ? 'Raccordements, taxe d\'aménagement, dossier…' : 'Agence, dossier, garantie…'})}
     </div><div class="total" id="inv_cout"></div>`)}
-    ${section('Crédit' + (b.prets.length > 1 ? 's' : ''), `<div class="prets">${b.prets.map((p, i) => pretHTML(b, p, i)).join('')}</div><button data-a="ajoutPret">+ Ajouter un prêt</button>`, true)}
+    ${section('Crédit' + (b.prets.length + pretsRecus(b).length > 1 ? 's' : ''), `<div class="prets">${pretsRecus(b).map(pretRecuHTML).join('')}${b.prets.map((p, i) => pretHTML(b, p, i)).join('')}</div><button data-a="ajoutPret">+ Ajouter un prêt</button>`, true)}
     ${section('Charges du propriétaire (par an)', `${(p => p && ['gestion', 'entretien'].some(k => b.chargesAn[k] == null && p.chargesAn[k] != null) ? `<div class="reprise"><button data-a="copierCharges">Reprendre les % de ${esc(p.nom)}</button><div class="aide">Gestion et entretien, en % des loyers. Taxe foncière, assurance et copropriété restent sur la fiche de ${esc(p.nom)}.</div></div>` : '')(principalDe(b))}<div class="grille">
       ${champ(b, 'chargesAn.tf', 'Taxe foncière (€)', {step: 50})}${champ(b, 'chargesAn.copro', 'Copropriété non récupérable (€)', {step: 50})}
       ${champ(b, 'chargesAn.pno', 'Assurance PNO (€)', {step: 10})}${champ(b, 'chargesAn.gestion', 'Gestion (% des loyers)', {step: 0.5})}
@@ -1129,7 +1157,7 @@ function repriseAchat(b) {
   return {p, date: a.date, r, prix, notaire: Math.round((a.notaire || 0) * r), frais: Math.round((a.frais || 0) * r)};
 }
 // Bien associé sans achat, crédit ni charges à lui : tout est compté dans la fiche du bien principal, rien à saisir
-const lieSimple = b => !!principalDe(b) && !b.saisieAPart && !b.achat.prix && !b.achat.date && !b.prets.length && Object.values(b.chargesAn).every(v => v == null);
+const lieSimple = b => !!principalDe(b) && !b.saisieAPart && !b.achat.prix && !b.achat.date && !b.prets.length && !pretsRecus(b).length && Object.values(b.chargesAn).every(v => v == null);
 function lieSimpleHTML(b) {
   const p = principalDe(b), r = repriseAchat(b);
   return section('Achat, crédit et charges', `<div class="aide">Compris dans la fiche de <a href="#investissements/${encodeURIComponent(p.id)}">${esc(p.nom)}</a> : rien à remplir ici.</div>
@@ -1411,9 +1439,10 @@ function simulerVente(b) {
   const v = b.vente || {}, a = b.achat, sci = sciDe(b), regime = sci ? sci.regime : 'np';
   const mois = v.mois || moisCourant(), prix = v.prix ?? b.valeur ?? 0, frais = v.agence === false ? v.fraisFixe ?? FRAIS_SANS_AGENCE : prix * (v.frais ?? 4) / 100;
   // Crédits soldés à la vente : restant dû à la date de vente, et indemnités (plafond légal : 6 mois d'intérêts, 3 % du restant dû)
-  const prets = b.prets.map(p => ({p, e: etatPret(p, mois)})).filter(x => x.e && x.e.crd > 0);
-  const crd = somme(prets, x => x.e.crd);
-  const iraAuto = somme(prets, x => Math.min(0.03 * x.e.crd, 6 * x.e.crd * (x.p.taux || 0) / 1200));
+  // Crédit commun à plusieurs biens : seulement la part de ce bien (la banque demande en général de la rembourser à la vente)
+  const prets = [...b.prets.map(p => ({p, k: partPorteur(p)})), ...pretsRecus(b)].map(x => ({...x, e: etatPret(x.p, mois)})).filter(x => x.e && x.e.crd > 0 && x.k > 0);
+  const crd = somme(prets, x => x.e.crd * x.k);
+  const iraAuto = somme(prets, x => Math.min(0.03 * x.e.crd, 6 * x.e.crd * (x.p.taux || 0) / 1200) * x.k);
   const ira = v.ira ?? iraAuto;
   const annees = anneesEntre(a.date, mois);
   const partBien = partDe(b), partSci = sci ? Math.max(0, Math.min(100, v.parts ?? 100)) / 100 : 1, k = partBien * partSci;
@@ -1547,7 +1576,31 @@ function pretHTML(b, p, i) {
     <details class="releve"${p.crd ? ' open' : ''}><summary>Restant dû relevé sur le tableau d'amortissement (plus précis)</summary>
       <div class="grille">${champ(b, c + 'crd', 'Restant dû (€)', {step: 0.01})}${champ(b, c + 'mois', 'Mois restants')}${champ(b, c + 'crdLe', 'À la date du', {type: 'month'})}</div>
       <div class="aide">Tient compte d'un différé ou d'un remboursement anticipé ; le site fait avancer ce restant dû chaque mois${p.typeDiff ? ' (le différé saisi plus haut n\'est alors plus compté)' : ''}.</div></details>
+    ${partageHTML(b, p, i)}
     <div class="resume" data-resume="${i}"></div></div>`;
+}
+// Un seul prêt pour plusieurs biens : les autres biens qu'il finance (boutons), et la part de chacun
+function partageHTML(b, p, i) {
+  const autres = biens.filter(y => y !== b && !y.vendu && !(y.amenag && !y.amenag.fait));
+  const l = partagesDe(p);
+  if (!autres.length && !l.length) return '';
+  const k = partPorteur(p), trop = somme(l, x => x.part) > 100;
+  return `<div class="partage"><div class="partage-titre">Ce prêt finance aussi</div>
+    <div class="filtres">${autres.map(y => `<button type="button" data-a="partagePret" data-i="${i}" data-id="${esc(y.id)}" class="${l.some(x => x.id === y.id) ? 'on' : ''}">${esc(y.nom)}</button>`).join('')}</div>
+    ${l.length ? `<div class="grille">${(p.partage || []).map((x, j) => (y => y ? champ(b, `prets.${i}.partage.${j}.part`, `Part de ${esc(y.nom)} (%)`, {step: 1}) : '')(biens.find(z => z.id === x.id))).join('')}
+      <div><label>Part de ${esc(b.nom)}</label><div class="part-porteur${trop ? ' neg' : ''}"><b>${Math.round(k * 100)} %</b></div></div></div>
+      ${trop ? '<div class="warnbox">Les parts des autres biens dépassent 100 % : baisse-les.</div>' : ''}
+      <div class="boutons"><button type="button" data-a="partageProrata" data-i="${i}">Répartir au prorata des prix d'achat</button></div>
+      <div class="aide">Une seule mensualité et un seul restant dû, partagés entre les biens : chaque fiche compte sa part dans son cash-flow et son patrimoine net, et les totaux ne comptent le prêt qu'une fois.</div>`
+    : '<div class="aide">Un seul crédit pour plusieurs biens (par exemple deux appartements achetés au même vendeur) : choisis les autres biens qu\'il finance.</div>'}</div>`;
+}
+// Fiche d'un bien financé par le prêt d'un autre bien : sa part, en lecture (le prêt se modifie sur la fiche qui le porte)
+function pretRecuHTML(x) {
+  const e = etatPret(x.p), co = [x.de, ...partagesDe(x.p).map(z => biens.find(y => y.id === z.id))].filter(y => y && y.id !== ouvert);
+  return `<div class="pret recu"><div class="pret-tete"><b>${esc(x.p.banque || 'Prêt commun')}</b><span class="aide">commun avec ${co.map(y => `<a href="#investissements/${encodeURIComponent(y.id)}">${esc(y.nom)}</a>`).join(', ')}</span></div>
+    ${e && e.mois > 0 ? mini([['Part de ce bien', Math.round(x.k * 100) + ' %'], ['Mensualité (sa part)', eur((e.pause ? 0 : e.M + e.assur) * x.k)],
+      ['Restant dû (sa part)', eur(e.crd * x.k)], ['Prêt entier', eur(e.crd) + ' restant dû']]) : `<div class="aide">${e ? 'Prêt remboursé.' : 'Prêt pas encore rempli.'}</div>`}
+    <div class="aide">Le prêt et la répartition se modifient sur la fiche de <a href="#investissements/${encodeURIComponent(x.de.id)}">${esc(x.de.nom)}</a>.</div></div>`;
 }
 // Chiffres recalculés sans reconstruire le formulaire (pour ne pas perdre le champ en cours de saisie)
 function majCalculs(b) {
@@ -1602,6 +1655,7 @@ function resumePret(b, p, e) {
       ['Fin du prêt', libMois(e.fin)], ['Mois restants', String(e.mois - (e.pause || 0))]])}
     ${dejaPaye != null ? `<div class="barre"><span style="width:${Math.max(0, Math.min(100, dejaPaye * 100)).toFixed(1)}%"></span></div><div class="aide">${pct(dejaPaye)} du capital remboursé</div>` : ''}
     ${mini([['Intérêts sur 12 mois', eur(e.interets)], ['Capital remboursé sur 12 mois', eur(e.capital)]], 'petit')}
+    ${partagesDe(p).length ? (k => `<div class="aide">Part de ce bien (${Math.round(k * 100)} %) : <b>${eur((e.pause ? 0 : e.M + e.assur) * k)}</b> par mois assurance comprise, ${eur(e.crd * k)} restant dû. Le reste est compté dans ${partagesDe(p).map(x => esc((biens.find(y => y.id === x.id) || {}).nom || '')).join(', ')}.</div>`)(partPorteur(p)) : ''}
     ${e.prog ? `<div class="aide">Mensualité progressive : +${(e.prog.g * 100).toFixed(2).replace('.', ',')} % par an${e.prog.saisie ? '' : ' (calculée avec le montant, le taux et la durée)'}${e.prog.hausse ? `, ${eur(e.prog.hausse.M)} à partir de ${libMois(e.prog.hausse.mois)}` : ''}, jusqu'à ${eur(e.prog.max)} la dernière année.</div>` : ''}
   </div>`;
   if (a) h += `<div class="reneg ${a.netAvenant > 0 ? 'oui' : 'non'}"><div class="reneg-titre">Aux taux d'aujourd'hui : ${taux(a.tNew)}${b.structure !== 'np' ? ' (SCI)' : ''} au lieu de ${taux(p.taux)}</div>
@@ -1810,13 +1864,21 @@ racine.addEventListener('click', async e => {
   if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
   if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, progressif: '', hausse: null, mensuLe: '', typeDiff: '', differe: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
+  if (a === 'partagePret' || a === 'partageProrata') {
+    const p = b.prets[+t.dataset.i]; if (!p) return;
+    let l = partagesDe(p);
+    if (a === 'partagePret') l = l.some(x => x.id === t.dataset.id) ? l.filter(x => x.id !== t.dataset.id) : [...l, {id: t.dataset.id, part: 0}];
+    const parts = partsAuProrata(b, l.map(x => biens.find(y => y.id === x.id)));
+    p.partage = l.map((x, j) => ({id: x.id, part: parts[j]}));
+    sauver(b); return vueDetail(b);
+  }
   if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'fichier') racine.querySelector('#inv_fichier').click();
   if (a === 'supprDoc') {
     const d = b.docs.find(x => x.id === t.dataset.id);
     if (d && confirm(`Supprimer « ${d.nom} » ?`)) { await supprimerDoc(d); b.docs = b.docs.filter(x => x !== d); sauver(b); docsHTML(b); vignettes(); }
   }
-  if (a === 'supprimer' && confirm(`Supprimer « ${b.nom} » et ses documents ? C'est définitif.`)) {
+  if (a === 'supprimer' && confirm(`Supprimer « ${b.nom} » et ses documents ? C'est définitif.${b.prets.some(p => partagesDe(p).length) ? ' Son prêt commun disparaît aussi des autres biens qu\'il finance.' : ''}`)) {
     for (const d of b.docs) await supprimerDoc(d);
     const lies = associesA(b); lies.forEach(x => { delete x.lieA; if (x.location.statut === 'avec') x.location.statut = 'vacant'; });
     marquerSupprime(b.id); biens = biens.filter(x => x !== b); sauver(...lies); location.hash = '#investissements';
@@ -1905,7 +1967,7 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature', 'place'].includes(chemin)) majAuto(b);

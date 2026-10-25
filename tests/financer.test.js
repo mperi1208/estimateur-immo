@@ -30,10 +30,10 @@ const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 
 function formulaire(v = {}, ouverts = {}) {
   for (const k of FIELDS) els[k] = CASES.includes(k) ? {type: 'checkbox', checked: false} : {type: 'number', value: ''};
   for (const k of ['struct', 'meuble', 'regime', 'tmi', 'type', 'neuf', 'vieux', 'typeDiff', 'scenario', 'sciExist', 'locMode', 'classe']) els[k].type = 'select-one';
-  for (const b of ['boxProjet', 'boxImpots', 'boxEvol']) els[b] = {open: false};
+  for (const b of ['boxProjet', 'boxImpots', 'boxEvol', 'boxBien2']) els[b] = {open: false};
   const tout = {...DEFAUTS, taux: 3.39, tf: 800, copro: 0, compta: 0, vacance: 0, entretien: 0, pno: 0, ...v};
   for (const k of FIELDS) if (tout[k] != null) set(k, tout[k]);
-  for (const [k, o] of Object.entries(ouverts)) els[{projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol'}[k]].open = o;
+  for (const [k, o] of Object.entries(ouverts)) els[{projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol', bien2: 'boxBien2'}[k]].open = o;
   return simuler();
 }
 
@@ -266,4 +266,27 @@ test('année de croisière : après le différé et au moins en année 2', () =>
   assert.equal(anneeCroisiere(formulaire({differe: 24})).y, 3);
   assert.equal(anneeCroisiere(formulaire({})).y, 2);
   assert.equal(anneeRef(formulaire({})).y, 1);
+});
+
+// ---------- Deux biens, un seul crédit ----------
+test('deux biens, un seul crédit : prix, notaire et prêt sur le total, loyers et charges additionnés', () => {
+  const seul = formulaire({prix: 250000, loyer: 1200, notaire: 8, apport: 0, tf: 800, copro: 0});
+  const deux = formulaire({prix: 150000, loyer: 700, prixB2: 100000, loyerB2: 500, tfB2: 0, coproB2: 0, notaire: 8, apport: 0, tf: 800, copro: 0}, {bien2: true});
+  proche(deux.pret, seul.pret); proche(deux.ech.pmt, seul.ech.pmt);
+  assert.equal(deux.p.prix, 250000); assert.equal(deux.p.prix1, 150000); assert.equal(deux.p.loyerTotal, 1200);
+  proche(deux.annees[0].loyers, seul.annees[0].loyers); proche(deux.annees[0].charges, seul.annees[0].charges);
+  assert.equal(deux.base, 250000);
+  const tf = formulaire({prix: 150000, loyer: 700, prixB2: 100000, loyerB2: 500, tfB2: 400, coproB2: 200, tf: 800, copro: 0}, {bien2: true});
+  proche(tf.annees[0].charges - deux.annees[0].charges, 600);
+});
+test('deux biens : section fermée, le 2e bien n\'est pas compté', () => {
+  const s = formulaire({prix: 150000, loyer: 700, prixB2: 100000, loyerB2: 500});
+  assert.equal(s.p.prix, 150000); assert.equal(s.p.loyerTotal, 700); assert.equal(s.p.deuxBiens, false);
+});
+test('deux biens : le prix d\'équilibre cherché est celui du 1er bien, le 2e reste fixe', () => {
+  formulaire({prix: 150000, loyer: 700, prixB2: 100000, loyerB2: 500, apport: 0}, {bien2: true});
+  const r = prixCible(0);
+  assert.ok(r.prix > 0);
+  proche(metrique(r.prix), 0, 15);
+  assert.equal(simuler().p.prix, r.prix + 100000);
 });

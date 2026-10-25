@@ -24,10 +24,10 @@ vm.runInContext([
   bloc(inv, 'function detacher', '// Bandeaux en haut'),
   bloc(inv, '// ---------- Simulation de vente', 'function venteHTML'),
   bloc(inv, 'function totaux', 'function kpisTotaux'),
-  'this.X = {cleAmenag, planAmenag, nouvelEspace, amenagTermine, totaux, calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS};',
+  'this.X = {cleAmenag, planAmenag, nouvelEspace, amenagTermine, totaux, calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS, partsAuProrata};',
   'this.setBiens = l => { biens = l; }; this.setScis = l => { scis = l; };',
 ].join('\n'), ctx);
-const {cleAmenag, planAmenag, nouvelEspace, amenagTermine, totaux, calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS} = ctx.X;
+const {cleAmenag, planAmenag, nouvelEspace, amenagTermine, totaux, calculs, moisCourant, decalerMois, nouveauBien, planDetache, detacher, repriseAchat, lieSimple, garageLoueAvec, partSuggeree, simulerVente, surtaxePV, abatIR, abatPS, partsAuProrata} = ctx.X;
 const dans = k => decalerMois(moisCourant(), k);   // mois relatif à aujourd'hui
 const sansCharges = {tf: 0, copro: 0, pno: 0, gestion: 0, entretien: 0, compta: 0, cfe: 0, autres: 0};
 
@@ -406,4 +406,49 @@ test('comptable de la SCI : honoraires partagés entre les biens qui le choisiss
   const np = nouveauBien({chargesAn: {...sansCharges, comptaSci: '1', compta: 200}}); // plus dans une SCI : son propre montant
   ctx.setBiens([np]); assert.equal(calculs(np).compta, 200);
   ctx.setBiens([]); ctx.setScis([]);
+});
+
+// ---------- Un crédit pour deux biens ----------
+function deuxApparts(parts = 60) {
+  const pret = {id: 'p', montant: 250000, taux: 3.5, duree: 240, debut: dans(-24), assurance: 20, partage: [{id: 'b2', part: 100 - parts}]};
+  const a = nouveauBien({id: 'b1', nom: 'T3', chargesAn: sansCharges, achat: {prix: 150000}, valeur: 160000, location: {statut: 'vide', loyer: 700, vacance: 0}, prets: [pret]});
+  const b = nouveauBien({id: 'b2', nom: 'T2', chargesAn: sansCharges, achat: {prix: 100000}, valeur: 110000, location: {statut: 'vide', loyer: 500, vacance: 0}});
+  ctx.setBiens([a, b]);
+  return {a, b, pret};
+}
+test('crédit commun : chaque bien compte sa part, les totaux comptent le prêt une seule fois', () => {
+  const {a, b, pret} = deuxApparts(60);
+  const seul = calculs(nouveauBien({chargesAn: sansCharges, prets: [{...pret, partage: []}]}));
+  const ca = calculs(a), cb = calculs(b);
+  proche(ca.crd, seul.crd * 0.6); proche(cb.crd, seul.crd * 0.4);
+  proche(ca.mensuCredit + cb.mensuCredit, seul.mensuCredit);
+  proche(ca.creditAn, seul.creditAn * 0.6); proche(cb.creditAn, seul.creditAn * 0.4);
+  proche(ca.emprunte, 150000); proche(cb.emprunte, 100000);
+  proche(cb.cfAn, 500 * 12 - seul.creditAn * 0.4);
+  assert.equal(cb.recus.length, 1); assert.equal(cb.recus[0].de, a);
+  const t = totaux([a, b]);
+  proche(t.D, seul.crd); proche(t.net, 270000 - seul.crd);
+  proche(t.cf, (1200 * 12 - seul.creditAn) / 12);
+});
+test('crédit commun : bien retiré de la répartition ou supprimé, le prêt revient entier au bien qui le porte', () => {
+  const {a, pret} = deuxApparts(60);
+  const avant = calculs(a).crd / 0.6;
+  ctx.setBiens([a]);   // l'autre bien supprimé
+  proche(calculs(a).crd, avant);
+  pret.partage = []; ctx.setBiens([a]);
+  proche(calculs(a).crd, avant);
+});
+test('crédit commun : répartition par défaut au prorata des prix, sinon des valeurs, sinon à parts égales', () => {
+  const {a, b} = deuxApparts();
+  assert.deepEqual([...partsAuProrata(a, [b])], [40]);
+  const c = nouveauBien({id: 'c', valeur: 50000}), d = nouveauBien({id: 'd', valeur: 150000});
+  assert.deepEqual([...partsAuProrata(c, [d])], [75]);
+  assert.deepEqual([...partsAuProrata(nouveauBien(), [nouveauBien(), nouveauBien()])], [33, 33]);
+});
+test('crédit commun : à la vente d\'un des biens, seule sa part du restant dû est remboursée', () => {
+  const {a, b} = deuxApparts(60);
+  const cb = calculs(b), r = simulerVente(b);
+  proche(r.crd, cb.crd, 1);
+  assert.equal(r.prets, 1);
+  assert.ok(lieSimple(b) === false);
 });
