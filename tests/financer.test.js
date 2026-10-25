@@ -294,17 +294,19 @@ test('deux biens : le prix d\'équilibre cherché est celui du 1er bien, le 2e r
 
 // ---------- Deux projets de Mes projets, un seul crédit ----------
 test('deux projets regroupés : le 2e devient le 2e bien, apports additionnés, comme deux biens saisis à la main', () => {
-  const a = {...DEFAUTS, prix: 150000, loyer: 700, tf: 800, copro: 0, apport: 10000, duree: 25, taux: 3.5, ouverts: {impots: true}};
-  const b = {...DEFAUTS, prix: 100000, loyer: 450, loyer2: 50, tf: 400, copro: 200, apport: 5000, duree: 15, ouverts: {projet: true}, travaux: 20000};
+  const a = {...DEFAUTS, prix: 150000, loyer: 700, tf: 800, copro: 0, apport: 10000, duree: 25, taux: 3.5, ouverts: {impots: true}, surf: 70, mobilier: 3500, pno: 78, compta: 0, cfe: 0};
+  const b = {...DEFAUTS, prix: 100000, loyer: 450, loyer2: 50, tf: 400, copro: 200, apport: 5000, duree: 15, ouverts: {projet: true}, travaux: 20000, surf: 30, mobilier: 2000, pno: 60, compta: 400, cfe: 300};
   const {finance: v, travauxB} = financeRegroupee(a, b);
-  assert.deepEqual([v.prix, v.prixB2, v.loyerB2, v.tfB2, v.coproB2, v.apport, v.duree, v.taux], [150000, 100000, 500, 400, 200, 15000, 25, 3.5]);
+  assert.deepEqual([v.prix, v.prixB2, v.loyerB2, v.apport, v.duree, v.taux], [150000, 100000, 500, 15000, 25, 3.5]);
+  // Réglages détaillés pour les deux biens : surface, mobilier, charges additionnées ; comptable et CFE une fois
+  assert.deepEqual([v.surf, v.mobilier, v.tf, v.copro, v.pno, v.tfB2, v.coproB2, v.compta, v.cfe], [100, 5500, 1200, 200, 138, 0, 0, 400, 300]);
   assert.deepEqual(v.ouverts, {impots: true, bien2: true});
   assert.equal(travauxB, 20000);
   const s = formulaire({...v, ouverts: undefined}, {bien2: true});
   assert.equal(s.p.prix, 250000); assert.equal(s.p.loyerTotal, 1200);
   // Un projet qui finançait déjà deux biens : ses deux biens passent dans le 2e bien
   const c = financeRegroupee(a, {...b, ouverts: {bien2: true}, prixB2: 80000, loyerB2: 300, tfB2: 100, coproB2: 0});
-  assert.deepEqual([c.finance.prixB2, c.finance.loyerB2, c.finance.tfB2, c.travauxB], [180000, 800, 500, 0]);
+  assert.deepEqual([c.finance.prixB2, c.finance.loyerB2, c.finance.tf, c.travauxB], [180000, 800, 1300, 0]);
   // Section fermée dans le 1er : son 2e bien (valeurs restées dans le formulaire) n'est pas compté
   assert.equal(financeRegroupee({...a, prixB2: 99999}, b).finance.prixB2, 100000);
 });

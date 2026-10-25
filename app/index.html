@@ -2950,7 +2950,7 @@ function enregistrerProjet(nouveau) {
   inst.resume.label = r ? r.label : ex && ex.resume ? ex.resume.label : '';
   if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
   const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(),
-    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(ex && ex.regroupe ? {regroupe: ex.regroupe} : {})};
+    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(ex && ex.regroupe ? {regroupe: ex.regroupe, regroupeV: ex.regroupeV} : {})};
   PROJETS.ajouter(pr);
   fixerProjet(pr.id);
   nomTouche = false;
@@ -3026,16 +3026,19 @@ function restaurer(v, cleBien) {
 
 // ---------- Deux projets de « Mes projets », un seul crédit ----------
 // Le 1er garde ses réglages (crédit, fiscalité, travaux) ; le 2e, avec le 2e bien qu'il finançait déjà, rejoint la section
-// « Deux biens, un seul crédit » : son prix, son loyer et ses charges s'ajoutent, son apport aussi
+// « Deux biens, un seul crédit » : son prix et son loyer y vont. Les réglages détaillés comptent les deux biens : surface,
+// mobilier, taxe foncière, copro et assurance additionnées ; comptable et CFE une seule fois (la plus élevée), comme l'apport additionné
 function financeRegroupee(a, b) {
   a = {...DEFAUTS, ...a}; b = {...DEFAUTS, ...b};
   const n = x => +x || 0, deux = x => !!(x.ouverts && x.ouverts.bien2), en2 = (x, k) => deux(x) ? n(x[k + 'B2']) : 0;
   const v = {...a, ouverts: {...(a.ouverts || {}), bien2: true}};
   v.prixB2 = en2(a, 'prix') + n(b.prix) + en2(b, 'prix');
   v.loyerB2 = en2(a, 'loyer') + n(b.loyer) + n(b.loyer2) + en2(b, 'loyer');
-  v.tfB2 = en2(a, 'tf') + n(b.tf) + en2(b, 'tf');
-  v.coproB2 = en2(a, 'copro') + n(b.copro) + en2(b, 'copro');
-  v.apport = n(a.apport) + n(b.apport);
+  v.tf = n(a.tf) + en2(a, 'tf') + n(b.tf) + en2(b, 'tf');
+  v.copro = n(a.copro) + en2(a, 'copro') + n(b.copro) + en2(b, 'copro');
+  v.tfB2 = 0; v.coproB2 = 0;
+  for (const k of ['surf', 'mobilier', 'pno', 'apport']) v[k] = n(a[k]) + n(b[k]);
+  for (const k of ['compta', 'cfe']) v[k] = Math.max(n(a[k]), n(b[k]));
   return {finance: v, travauxB: b.ouverts && b.ouverts.projet ? n(b.travaux) : 0};
 }
 function regrouper(a, b) {
@@ -3154,12 +3157,17 @@ function carteAmenagement(pr) {
 }
 // Les projets enregistrés avant le nouveau calcul (cash-flow pendant le différé) sont recalculés une fois
 function rafraichirResumes() {
-  let change = false;
+  let change = false, compte = false;
   for (const pr of PROJETS.liste) {
+    // Projet regroupé avant que les réglages détaillés comptent les deux biens : refait une fois depuis ses deux projets
+    if (pr.regroupe && pr.regroupe.length === 2 && pr.regroupeV !== 2) {
+      try { const g = CF_APP.regrouper(...pr.regroupe); Object.assign(pr, {finance: g.finance, resume: g.resume, regroupeV: 2, maj: Date.now()}); change = compte = true; } catch (e) { console.warn('Projet regroupé non recalculé :', e); }
+    }
     if (!pr.finance || !pr.resume || pr.resume.v === 2) continue;
     try { pr.resume = {...pr.resume, ...CF_APP.recalculer(pr.finance, pr)}; change = true; } catch (e) { console.warn('Résumé du projet non recalculé :', e); }
   }
   if (change) { try { localStorage.setItem('projets-v1', JSON.stringify(PROJETS.liste)); } catch (e) {} }
+  if (compte && window.INV) INV.sauverCompte();
 }
 function afficherProjets() {
   rafraichirResumes();
@@ -3203,7 +3211,7 @@ function regrouperProjets(idA, idB) {
   if (g.travauxB && !confirm(`Les travaux de « ${b.nom} » (${eurP(g.travauxB)}) ne sont pas repris : seul le 1er projet garde ses travaux. Tu pourras les ajouter dans la section Travaux de Financer. Continuer ?`)) return;
   // Il remplace les deux projets (gardés dedans pour « Séparer ») ; refait avec les mêmes, il met à jour le précédent au lieu d'en créer un autre
   const nom = `${a.nom} + ${b.nom}`, ex = PROJETS.liste.find(x => x.nom === nom && x.resume && x.resume.prixB2 != null);
-  const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(), recherche: null, bien: '', finance: g.finance, resume: g.resume, regroupe: [a, b]};
+  const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(), recherche: null, bien: '', finance: g.finance, resume: g.resume, regroupe: [a, b], regroupeV: 2};
   retirerProjets([a.id, b.id]);
   PROJETS.ajouter(pr);
   ouvrirProjet(pr.id, 'cashflow');
