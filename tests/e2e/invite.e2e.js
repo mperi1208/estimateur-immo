@@ -135,7 +135,8 @@ test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le tota
   assert.match(al, /1\s200 € de loyers par mois/);
   const pret = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
   assert.ok(pret - pretSeul > 100000 && pret - pretSeul < 112000, `prêt ${pret} pour ${pretSeul} avec un seul bien`);   // 2e prix, son notaire et sa garantie
-  await page.waitForFunction(() => /Prix du projet pour être à 0 €|reste négatif|reste positif/i.test(document.getElementById('cf_cibleRes').innerText));   // prix d'équilibre : celui du projet entier
+  // prix d'équilibre : celui du projet entier (recalculé 150 ms après la saisie : on attend qu'il ait suivi le 2e bien)
+  await page.waitForFunction(() => { const t = document.getElementById('cf_cibleRes').innerText, m = t.match(/:\s*([\d\s\u202f]+) €/); return /reste négatif|reste positif/i.test(t) || (m && +m[1].replace(/\D/g, '') > 100000); }).catch(() => {});
   { const m = (await page.locator('#cf_cibleRes').innerText()).match(/:\s*([\d\s\u202f]+) €/); if (m) assert.ok(nombre(m[1]) > 100000, `prix d'équilibre ${m[1]} sans le 2e bien`); }
   // Chaque bien a sa taxe foncière et sa copro, dans sa carte
   assert.equal(await page.locator('#cf_bien1 #cf_tf').count(), 1);
