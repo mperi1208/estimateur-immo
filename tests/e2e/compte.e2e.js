@@ -568,7 +568,7 @@ test('ancien projet à deux biens (format d\'avant la liste de biens) : repris a
   const carte = page.locator('#pj .pj', {hasText: 'San gaetano'});
   assert.match(await carte.innerText(), /Deux biens, un seul crédit/i);
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'San gaetano'));
-  assert.equal(pr.resume.v, 4); assert.equal(pr.resume.cfMois, avant.cfMois); assert.equal(pr.resume.prix, 300000);
+  assert.equal(pr.resume.v, 5); assert.equal(pr.resume.cfMois, avant.cfMois); assert.equal(pr.resume.prix, 300000);
   assert.deepEqual([pr.finance.nomBien, pr.finance.biensPlus[0].nom, pr.finance.biensPlus[0].tf], ['Route de San Gaetano', 'sans Gaetan 2', 400]);
   await carte.locator('[data-a="financer"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');

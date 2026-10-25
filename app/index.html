@@ -687,7 +687,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
       <h4>Crédit</h4><div class="grid">
         <div><label>Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
         <div><label>Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
-        <div><label>Différé (mois)</label><input id="cf_differe" type="number" min="0" max="36"></div>
+        <div><label>Différé (mois, dans la durée)</label><input id="cf_differe" type="number" min="0" max="36"></div>
         <div><label>Type de différé</label><select id="cf_typeDiff"><option value="partiel">Intérêts seuls</option><option value="total">Total (intérêts ajoutés au capital)</option></select></div>
         <div><label>Frais de dossier (€)</label><input id="cf_dossier" type="number" min="0" step="100"></div>
         <div><label>Garantie (% du prêt)</label><input id="cf_garantie" type="number" step="0.1"></div>
@@ -2674,9 +2674,12 @@ function simuler() {
   const pret = besoin / (1 - p.garantie / 100);
   const fraisGarantie = pret * p.garantie / 100;
   const coutTotal = coutHorsBanque + p.dossier + fraisGarantie;
-  const moisCredit = Math.round(p.duree * 12);
+  // Le différé est compris dans la durée, comme sur une offre de prêt et dans Mon patrimoine (au moins un an de remboursement)
+  const moisTotal = Math.round(p.duree * 12);
+  p.differe = Math.max(0, Math.min(p.differe, moisTotal - 12));
+  const moisCredit = moisTotal - p.differe;
   const ech = echeancier(pret, p.taux, moisCredit, p.differe, p.typeDiff, p.assur);
-  const finCredit = Math.ceil((p.differe + moisCredit) / 12);
+  const finCredit = Math.ceil(moisTotal / 12);
   const horizon = finCredit + 5;   // 5 ans de plus pour voir l'après-crédit
   const fraisAcq = fraisNotaire + p.dossier + fraisGarantie;
   const terrain = p.terrain / 100;
@@ -3068,7 +3071,7 @@ function majSauvegarde(pr) {
 function instantane(ex, recalcul) {
   const s = simuler(), p = s.p, revente = p.projet === 'revente', c = prixCible(cibleVisee());
   const sci = mesScis().find(x => x.id === p.sciExist), exr = ex && ex.resume ? ex.resume : {};
-  const resume = {v: 4, type: p.type, surf: p.surf + p.surfB2, nbBiens: 1 + p.autres.length, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
+  const resume = {v: 5, type: p.type, surf: p.surf + p.surfB2, nbBiens: 1 + p.autres.length, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
     prix: p.prix, prixB2: p.deuxBiens ? p.prixB2 : null, loyerB2: p.deuxBiens ? p.loyerB2 : null, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
@@ -3387,7 +3390,8 @@ function rafraichirResumes() {
     if (pr.regroupe && pr.regroupe.length === 2 && pr.regroupeV === 2 && pr.finance) {
       try { pr.finance = CF_APP.chargesParBien(pr.finance, pr.regroupe[0].finance || {}); pr.regroupeV = 3; pr.resume = {...pr.resume, ...CF_APP.recalculer(pr.finance, pr)}; change = compte = true; } catch (e) { console.warn('Projet regroupé non recalculé :', e); }
     }
-    if (!pr.finance || !pr.resume || pr.resume.v === 4) continue;
+    if (!pr.finance || !pr.resume || pr.resume.v === 5) continue;
+    // v5 : différé compris dans la durée du crédit, tous les résumés sont recalculés une fois
     // v4 : les autres biens deviennent une liste (biensPlus), nommés d'après les projets regroupés quand on les connaît
     if (pr.resume.v === 3 && pr.finance.ouverts && pr.finance.ouverts.bien2 && !pr.finance.biensPlus) {
       const noms = nomsRegroupes(pr), f = CF_APP.migrerFinance(pr.finance);
@@ -3404,6 +3408,8 @@ function afficherProjets() {
   const l = [...PROJETS.liste].sort((a, b) => (b.maj || 0) - (a.maj || 0));
   const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(x.nom)}</option>`).join('');
   const anciens = anciensRegroupes(l);
+  const menuOuvert = (document.querySelector('#pj details.pj-menu[open]') || {closest: () => null}).closest('.pj');   // gardé ouvert si la liste se redessine (synchro du compte)
+  const idMenu = menuOuvert && menuOuvert.dataset.id;
   document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${achats.length > 1 ? '<button data-a="regroupe">Fusionner deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
     + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Fusionner deux projets</h2>
       <p class="aide">Les deux biens passent dans un seul projet, avec un seul crédit (par exemple deux appartements achetés au même vendeur). Les réglages de crédit sont ceux du 1er projet. « Séparer » les fait revenir.</p>
@@ -3412,6 +3418,7 @@ function afficherProjets() {
     + (l.length ? `<div class="pj-liste">${l.map(carteProjet).join('')}</div>`
       : `<div class="vide"><h2>Aucun projet pour l'instant</h2><p>Estime un bien dans l'onglet « Estimer », simule son financement dans « Financer », puis clique sur « Enregistrer dans mes projets » en bas de la page. Il apparaît ici, et tu peux le rouvrir pour en modifier l'estimation ou le financement.</p>
         <div class="boutons centre"><button class="primaire" data-a="nouveau">Estimer un bien</button></div></div>`);
+  if (idMenu) { const m = document.querySelector(`#pj .pj[data-id="${CSS.escape(idMenu)}"] details.pj-menu`); if (m) m.open = true; }
 }
 // Un seul menu « ⋯ » ouvert à la fois, refermé par un clic ailleurs
 document.addEventListener('click', e => document.querySelectorAll('#pj details.pj-menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
