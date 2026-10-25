@@ -150,11 +150,12 @@ test('apport plus grand que le coût : pas de prêt, mise de départ = coût du 
   assert.equal(s.coutTotal, 108000);
   assert.ok(s.annees.every(a => a.credit === 0));
 });
-test('durée du crédit, différé et horizon : fin du crédit arrondie à l\'année, 5 ans de plus affichés', () => {
+test('durée du crédit, différé et horizon : différé compris dans la durée, 5 ans de plus affichés', () => {
   const s = formulaire({duree: 20, differe: 6});
-  assert.equal(s.finCredit, 21); assert.equal(s.horizon, 26); assert.equal(s.annees.length, 26);
-  assert.equal(s.ech.rows.length, 246);
-  assert.equal(s.annees[25].credit, 0);
+  assert.equal(s.finCredit, 20); assert.equal(s.horizon, 25); assert.equal(s.annees.length, 25);
+  assert.equal(s.ech.rows.length, 240);                      // 6 mois de différé + 234 mensualités
+  assert.ok(s.annees[19].credit > 0); assert.equal(s.annees[20].credit, 0);
+  assert.ok(s.ech.pmt > formulaire({duree: 20, differe: 0}).ech.pmt);   // capital remboursé en moins de temps
 });
 test('différé partiel : intérêts seuls pendant le différé, puis mensualité pleine', () => {
   const s = formulaire({prix: 200000, apport: 0, differe: 12, typeDiff: 'partiel', assur: 0});
