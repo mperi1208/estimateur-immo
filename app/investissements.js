@@ -672,7 +672,7 @@ function majAuto(b) {
       c.textContent = t + ' s' + (t >= 20 ? ' (le service des ventes répond lentement)' : '');
     }, 1000);
   }
-  else if (!e) h = `<div class="aide">${estimable(b) ? 'Règle les caractéristiques, puis clique sur « Estimer ce bien ».' : 'Renseigne l\'adresse et la surface, règle les caractéristiques, puis clique sur « Estimer ce bien ».'}</div>`;
+  else if (!e) h = estimable(b) ? '' : '<div class="aide">Renseigne l\'adresse et la surface pour estimer ce bien.</div>';
   else if (e.erreur) h = `<div class="warnbox">${esc(e.erreur)}</div>`;
   else if (e.dependance) {
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
@@ -896,7 +896,7 @@ function vueListe() {
 // Organigramme du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens (montants à hauteur de la part détenue)
 function arbreHTML() {
   const biens = detenus().filter(b => !enProjet(b));
-  if (!biens.length) return '';
+  if (!biens.length || (biens.length < 2 && !scis.length)) return '';   // un seul bien en nom propre : l'arbre redirait la liste
   const chiffres = (net, cf) => `<span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${cf != null ? `<span><b class="${signe(cf)}">${eur(cf)}/mois</b></span>` : ''}</span>`;
   const tot = t => chiffres(t.V ? t.net : null, t.n ? t.cf : null);
   const feuille = (b, i, l) => {
@@ -1058,7 +1058,7 @@ function vueDetail(b) {
     </div>
     <div class="part-bien"><label for="inv_part">Part détenue ${sciDe(b) ? 'par la SCI' : 'par toi'}</label>
       <div class="part-ligne"><input type="range" id="inv_part" data-p="part" min="1" max="100" step="1" value="${Math.round(partDe(b) * 100)}"><output id="inv_partVal" for="inv_part">${Math.round(partDe(b) * 100)} %</output></div>
-      <div class="aide">Pour un bien à plusieurs (indivision, famille…) : les totaux de « Mon patrimoine » ne comptent que cette part.</div></div>
+      <div class="aide">Bien à plusieurs : les totaux ne comptent que cette part.</div></div>
     ${enProjet(b) ? '<div class="aide">Valeur et loyer une fois aménagé : voir « Projet d\'aménagement ».</div>' : `${critHTML(b)}
     ${TYPE_DVF[b.type] || b.type === 'terrain' || b.type === 'parking' ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
@@ -1231,9 +1231,7 @@ function annexeHTML(b) {
       ${mini([['Valeur', x.vendu ? null : x.valeur ? kEur(x.valeur) : '—'], ['Loyer', !x.vendu && c.loyerMois ? eur(c.loyerMois) + '/mois' : null], ['Loyer possible', enProjet(x) && planAmenag(x).loyer ? eur(planAmenag(x).loyer) + '/mois' : null], ['Vendu', x.vendu ? kEur(x.vendu.prix) : null]], 'petit')}<span class="chev" aria-hidden="true">›</span></a>`; }).join('')}</div>` : '';
   if (!ouvert_) {
     const libres = biens.filter(x => x.id !== b.id && !x.lieA && !associesA(x).length && !x.vendu);
-    h += `${lies.length ? '' : '<div class="aide">Un garage, une place ou une annexe que tu pourrais louer ou vendre à part ? Sors-le en bien à part : il garde sa valeur, sa part du prix d\'achat et son loyer, reste associé à ce bien, et peut être vendu seul.</div>'}
-      <div class="boutons"><button data-a="detacheOuvrir" data-m="separer">+ Sortir un garage ou une annexe</button><button data-a="amenagCreer">+ Espace à aménager (sous-sol, combles…)</button><button data-a="detacheOuvrir" data-m="vendre">Vendre le garage seul…</button></div>
-      ${lies.length ? '' : '<div class="aide">Un sous-sol ou des combles pas encore faits ? Ajoute-les en espace à aménager : estimation de la valeur et du loyer une fois aménagés, puis projet de travaux dans Mes projets.</div>'}
+    h += `<div class="boutons"><button data-a="detacheOuvrir" data-m="separer" title="Il garde sa valeur, sa part du prix d'achat et son loyer, et reste associé à ce bien">+ Garage ou annexe à part</button><button data-a="amenagCreer" title="Sous-sol, combles… estimés une fois aménagés, avec un projet de travaux">+ Espace à aménager</button><button data-a="detacheOuvrir" data-m="vendre">Vendre le garage seul…</button></div>
       ${libres.length ? `<div class="grille" style="margin-top:10px"><div class="large"><label for="inv_associer">Ou associer un bien déjà dans ta liste</label><select id="inv_associer" data-x="associer"><option value="">—</option>${libres.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></div></div>` : ''}`;
     return section('Garage, annexe ou espace à aménager', h);
   }
@@ -1774,7 +1772,7 @@ function docsHTML(b) {
       <a target="_blank" rel="noopener" class="apercu${d.mime.startsWith('image/') ? ' image' : ''}">${d.mime === 'application/pdf' ? '<span class="pdf">PDF</span>' : d.mime.startsWith('image/') ? '' : '<span class="pdf">Fichier</span>'}</a>
       <div class="nom" title="${esc(d.nom)}">${esc(d.nom)}</div>
       <div class="meta">${d.taille < 1e6 ? Math.max(1, Math.round(d.taille / 1024)) + ' Ko' : (d.taille / 1024 / 1024).toFixed(1).replace('.', ',') + ' Mo'}${d.local && COMPTE.user ? ' · sur cet appareil' : ''}</div>
-      <button class="lien" data-a="supprDoc" data-id="${esc(d.id)}">Supprimer</button></div>`).join('') : '<div class="aide">Aucun plan ni document pour l\'instant.</div>';
+      <button class="lien" data-a="supprDoc" data-id="${esc(d.id)}">Supprimer</button></div>`).join('') : '';
   // Liens préparés à l'avance : Safari bloque l'ouverture d'un onglet après une attente réseau
   el.querySelectorAll('.doc').forEach(async div => {
     const d = b.docs.find(x => x.id === div.dataset.id), u = await urlDoc(d).catch(() => null), a = div.querySelector('a');

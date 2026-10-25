@@ -2101,7 +2101,7 @@ function majSauveEst(msg) {
     ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet"><button class="cta" id="est_enreg">Enregistrer mon estimation</button></div>
        <div class="hint" id="est_msg">${msg || 'Garde cette estimation, avec le projet de travaux choisi ci-dessus, dans « Mes projets ».'}</div>`
     : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button></div>
-       <div class="hint">Avec un compte, tu peux enregistrer cette estimation dans « Mes projets » et la retrouver sur tous tes appareils.</div>`;
+       <div class="hint">Pour la retrouver dans « Mes projets », sur tous tes appareils.</div>`;
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
   const c = document.getElementById('est_connexion'); if (c) c.onclick = () => ouvrirCompte();
 }
@@ -3275,7 +3275,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=123a8a96"></script>
+<script src="investissements.js?v=ad252957"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
