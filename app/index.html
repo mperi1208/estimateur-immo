@@ -3023,7 +3023,7 @@ function enregistrerProjet(nouveau) {
   inst.resume.label = r ? r.label : ex && ex.resume ? ex.resume.label : '';
   if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
   const pr = {id: ex ? ex.id : nouvelId(), nom, maj: Date.now(), quand: ex ? ex.quand : new Date().toISOString(),
-    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(ex && ex.regroupe ? {regroupe: ex.regroupe, regroupeV: ex.regroupeV} : {})};
+    recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(ex && ex.regroupe ? {regroupe: ex.regroupe, regroupeV: ex.regroupeV} : {}), ...(ex && ex.estimations ? {estimations: ex.estimations} : {})};
   PROJETS.ajouter(pr);
   fixerProjet(pr.id);
   nomTouche = false;
@@ -3217,16 +3217,43 @@ function carteProjet(pr) {
     ${modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
       : `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`}
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
-      <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}${rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}" title="Estimation de « ${esc(x.nom)} »">Estimation ${i + 1}</button>` : '').join('')}${pr.regroupe ? '<button data-a="separer">Séparer</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}${rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}" title="Estimation de « ${esc(x.nom)} »">Estimation ${i + 1}</button>` : '').join('')}${r.prixB2 != null && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : ''}${pr.regroupe ? '<button data-a="separer">Séparer</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
-// Projet à un seul crédit : l'estimation de chacun des deux biens (celle des projets d'origine, sinon une recherche récente du même nom)
+// Projet à un seul crédit : l'estimation de chacun des deux biens (choisie à la main, sinon celle des projets d'origine)
+const nomsRegroupes = pr => pr.regroupe ? pr.regroupe.map(x => x.nom) : (/« (.+) » et « (.+) »$/.exec((pr.resume || {}).label || '') || ['', 'Bien 1', 'Bien 2']).slice(1, 3);
 function rechercheRegroupees(pr) {
-  const r = pr.resume || {}; if (r.prixB2 == null && !pr.regroupe) return [];
-  const noms = pr.regroupe ? pr.regroupe.map(x => x.nom) : (/« (.+) » et « (.+) »$/.exec(r.label || '') || []).slice(1, 3);
-  return noms.map((nom, i) => {
-    const o = pr.regroupe && pr.regroupe[i], rc = o && o.recherche || RECENTES.liste.find(x => x.label === nom);
+  if ((pr.resume || {}).prixB2 == null && !pr.regroupe) return [];
+  return nomsRegroupes(pr).map((nom, i) => {
+    const rc = (pr.estimations && pr.estimations[i]) || (pr.regroupe && pr.regroupe[i] && pr.regroupe[i].recherche);
     return rc ? {nom, recherche: rc} : null;
   });
+}
+// Estimations qu'on peut rattacher : recherches récentes, celles des projets, et celle en cours dans Estimer
+function estimationsConnues() {
+  const l = [], vu = new Set(), mettre = r => { const k = r && [r.cle, r.surf, r.quand].join('|'); if (r && r.cle && !vu.has(k)) { vu.add(k); l.push(r); } };
+  mettre(typeof rechercheCourante === 'function' ? rechercheCourante() : null);
+  RECENTES.liste.forEach(mettre);
+  PROJETS.liste.forEach(x => { mettre(x.recherche); (x.regroupe || []).forEach(o => mettre(o.recherche)); (x.estimations || []).forEach(mettre); });
+  return l;
+}
+// Devine laquelle va avec chaque bien : mots du nom dans l'adresse, puis prix le plus proche du prix du bien
+const motsP = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(m => m.length > 2);
+function devinerEstimations(pr, l) {
+  const f = pr.finance || {}, prix = [(+f.prix || 0), (+f.prixB2 || 0)], pris = new Set();
+  return nomsRegroupes(pr).map((nom, i) => {
+    const mots = motsP(nom), score = r => motsP(r.label).filter(m => mots.includes(m)).length * 10 - (prix[i] && r.prix ? Math.abs(r.prix - prix[i]) / prix[i] * 5 : 0);
+    const best = l.map((r, k) => [k, score(r)]).filter(([k]) => !pris.has(k)).sort((a, b) => b[1] - a[1])[0];
+    if (best && best[1] > -1) { pris.add(best[0]); return best[0]; }   // un mot du nom en commun, ou un prix à 20 % près
+    return -1;
+  });
+}
+function panneauEstimations(pr) {
+  const l = estimationsConnues(), dej = rechercheRegroupees(pr), devine = devinerEstimations(pr, l), cour = typeof rechercheCourante === 'function' ? rechercheCourante() : null;
+  const choix = i => { const k = dej[i] ? l.findIndex(r => r.cle === dej[i].recherche.cle && r.surf === dej[i].recherche.surf) : -1; return k >= 0 ? k : devine[i]; };
+  const opt = i => `<option value="-1">Aucune</option>` + l.map((r, k) => `<option value="${k}"${k === choix(i) ? ' selected' : ''}>${cour && k === 0 ? 'En cours dans Estimer : ' : ''}${esc(r.label)} · ${fmt(r.surf)} m² · ${fmtK(r.prix)}${r.quand ? ' · ' + ilYa(r.quand) : ''}</option>`).join('');
+  return `<div class="pj-regroupe pj-estim"><p class="aide">Choisis l'estimation de chacun des deux biens. Si elle n'est pas dans la liste, refais-la dans Estimer puis reviens ici : elle apparaît en premier.</p>
+    <div class="pj-choix">${nomsRegroupes(pr).map((nom, i) => `<label>Estimation ${i + 1} · ${esc(nom)}<select data-n="${i}">${opt(i)}</select></label>`).join('')}</div>
+    <div class="boutons"><button class="primaire" data-a="estGarder">Enregistrer</button><button data-a="estFermer">Annuler</button></div></div>`;
 }
 // Aménagement d'un espace d'un bien déjà à toi : pas de prix d'achat, seulement les travaux, puis le loyer
 const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y && m ? new Date(y, m - 1, 1).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : ''; };
@@ -3287,6 +3314,17 @@ document.getElementById('pj').addEventListener('click', e => {
   const id = (t.closest('.pj') || {dataset: {}}).dataset.id;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
+  else if (t.dataset.a === 'estChoisir') {
+    const art = t.closest('.pj'), ouvert = art.querySelector('.pj-estim'), pr = PROJETS.liste.find(x => x.id === id);
+    if (ouvert) ouvert.remove(); else if (pr) { art.insertAdjacentHTML('beforeend', panneauEstimations(pr)); art._estimations = estimationsConnues(); }
+  }
+  else if (t.dataset.a === 'estFermer') t.closest('.pj-estim').remove();
+  else if (t.dataset.a === 'estGarder') {   // gardées dans le projet (et le compte) : les boutons Estimation 1 et 2 les rouvrent
+    const art = t.closest('.pj'), pr = PROJETS.liste.find(x => x.id === id), l = art._estimations || estimationsConnues(); if (!pr) return;
+    pr.estimations = [...art.querySelectorAll('.pj-estim select')].map(x => l[+x.value] || null);
+    pr.maj = Date.now();
+    PROJETS.enregistrer(); afficherProjets();
+  }
   else if (t.dataset.a === 'estimerN') {   // un des deux biens d'un projet à un seul crédit : son estimation seule, le projet regroupé n'est pas touché
     const pr = PROJETS.liste.find(x => x.id === id), x = pr && rechercheRegroupees(pr)[+t.dataset.n]; if (!x) return;
     fixerProjet(null); CF_APP.liberer(); showTab('estimation'); reprendre(x.recherche); setTimeout(() => map.invalidateSize(), 60);
