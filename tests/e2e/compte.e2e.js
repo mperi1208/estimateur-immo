@@ -705,9 +705,16 @@ test('Mes projets : branches d\'un même projet (regroupées, comparées, ajout�
   await page.click('#pj [data-a="brRegrouper"]');
   const carte = page.locator('#pj .pj-groupe', {hasText: 'San Gaetano'});
   await carte.waitFor();
-  assert.deepEqual(await carte.locator('.pj-br h4').allTextContents(), ['Division', 'Garage']);
+  const division = carte.locator('.pj-br', {has: page.locator('h4', {hasText: /^Division/i})}), garage = carte.locator('.pj-br', {has: page.locator('h4', {hasText: /^Garage/i})});
+  assert.deepEqual((await carte.locator('.pj-br h4').allTextContents()).map(x => x.trim()), ['Division', 'Garage la meilleure']);
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'branches dans le compte');
-  // Comparaison des branches (ouverte après le regroupement) : meilleur chiffre et écart
+  // L'arbre : ce qui ne change pas une fois, puis dans chaque branche ce qui change et ce qu'il reste
+  assert.match(await carte.locator('.pj-fixe').innerText(), /crédit[\s\S]*apport 20\s000 €/i);
+  assert.match(await division.locator('.pj-change').innerText(), /prix 200\s000 €/i);
+  assert.match(await garage.locator('.pj-res').innerText(), /Il te reste 73 € par mois/i);
+  assert.match(await division.locator('.pj-res').innerText(), /−526 €\/mois par rapport à la meilleure/i);
+  // Tableau détaillé : meilleur chiffre et écart
+  await carte.locator('[data-a="comparerBranches"]').click();
   const cmp = carte.locator('.pj-compare');
   assert.match(await cmp.innerText(), /« Garage » te laisse le plus par mois/i);
   const ligne = k => cmp.locator('tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
@@ -717,8 +724,16 @@ test('Mes projets : branches d\'un même projet (regroupées, comparées, ajout�
   await page.waitForFunction(() => document.querySelectorAll('#pj .pj-groupe .pj-compare tbody tr').length === 3);
   await page.click('.tabs [data-mode="pro"]');
   await page.waitForFunction(() => document.querySelectorAll('#pj .pj-groupe .pj-compare tbody tr').length > 3);
+  // Replié sur une ligne (nom, branches, meilleure), gardé sur l'appareil ; « Tout déplier » le rouvre
+  await carte.locator('.pj-plier-zone').click();
+  await page.locator('#pj .pj-groupe.replie', {hasText: 'San Gaetano'}).waitFor();
+  assert.equal(await carte.locator('.pj-br').count(), 0);
+  assert.match(await carte.innerText(), /2 branches[\s\S]*Meilleure : Garage, il te reste 73 € par mois/i);
+  assert.ok(!(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-deplies') || '[]'))).length, 'replié gardé');
+  await page.click('#pj .actions [data-a="toutPlier"]');
+  await carte.locator('.pj-br').first().waitFor();
+  assert.match(await page.locator('#pj .actions [data-a="toutPlier"]').innerText(), /Tout replier/i);
   // Nouvelle branche à partir d'une autre : ouverte dans Financer, modifiée, enregistrée dans le projet
-  const division = carte.locator('.pj-br', {has: page.locator('h4', {hasText: /^Division$/i})});
   await division.locator('.pj-menu summary').click();
   await division.locator('[data-a="brNouvelle"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
@@ -737,7 +752,6 @@ test('Mes projets : branches d\'un même projet (regroupées, comparées, ajout�
   assert.equal(await carte.locator('.pj-compare thead th').count(), 5);
   assert.match(await carte.locator('.pj-compare').innerText(), /« Branche 3 » te laisse le plus par mois/i);
   // Sortir une branche : elle redevient un projet à part avec son nom d'avant
-  const garage = carte.locator('.pj-br', {has: page.locator('h4', {hasText: /^Garage$/i})});
   await garage.locator('.pj-menu summary').click();
   await garage.locator('[data-a="brSortir"]').click();
   await page.locator('#pj article.pj', {hasText: 'Gaetano garage'}).waitFor();

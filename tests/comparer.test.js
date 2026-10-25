@@ -6,11 +6,11 @@ const {bloc, idx} = require('./outils');
 
 const ctx = vm.createContext({esc: v => String(v ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';'),
   fmtK: n => Math.round(n / 1000) + ' k€', usageP: (r, revente) => revente ? 'achat-revente' : r.meuble ? 'meublé' : 'location vide', PROJETS: {liste: []}});
-const ligneMots = /^const motsP = .*$/m.exec(idx)[0];
+const ligneMots = ['motsP', 'eurP', 'signeP', 'quiP'].map(n => new RegExp('^const ' + n + ' = .*$', 'm').exec(idx)[0]).join('\n');
 vm.runInContext(ligneMots + '\n' + bloc(idx, '// ---------- Comparer des branches', '// ---------- fin de la comparaison')
   + bloc(idx, '// ---------- Branches', '// ---------- fin des branches')
-  + 'this.X = {lignesComparaison, verdictComparaison, tableComparaison, propositionsBranches, brancheAuto, nomPropose};', ctx);
-const {lignesComparaison, verdictComparaison, tableComparaison, propositionsBranches, brancheAuto} = ctx.X;
+  + 'this.X = {lignesComparaison, verdictComparaison, tableComparaison, propositionsBranches, brancheAuto, nomPropose, analyseBranches, adresseProjet};', ctx);
+const {lignesComparaison, verdictComparaison, tableComparaison, propositionsBranches, brancheAuto, analyseBranches} = ctx.X;
 const texte = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 const ligne = (l, k) => l.find(x => x.k === k);
 
@@ -85,4 +85,19 @@ test('nom de chaque branche : ce qui reste du nom sans les mots du projet, sinon
   assert.equal(brancheAuto({nom: 'San Gaetano division'}, 'San Gaetano'), 'Division');
   assert.equal(brancheAuto({nom: 'Route de San Gaetano - garage refait'}, 'Route de San Gaetano'), 'Garage refait');
   assert.equal(brancheAuto({nom: 'San Gaetano', resume: {prix: 250000, travaux: 40000, meuble: true}}, 'San Gaetano'), 'Meublé · travaux 40 k€ · 250 k€');
+});
+
+test('arbre : le 2e appart et le crédit restent fixes (une fois), seules les différences du 1er sont dans chaque branche', () => {
+  const finance = o => ({prix: 150000, loyer: 1200, surf: 60, meuble: '1', tf: 800, copro: 0, apport: 30000, taux: 3.6, duree: 25, differe: 12, nomBien: 'N*1 San Gaetano',
+    biensPlus: [{nom: 'n*2 San Gaetano', prix: 150000, loyer: 1300, surf: 45, tf: 600, copro: 0}], ...o});
+  const br = (id, branche, f, r) => ({id, branche, nom: 'San Gaetano', finance: finance(f), resume: {struct: 'is', sciNom: 'SCOPA', loyer: f.loyer || 1200, travaux: 0, ...r},
+    estimations: [{label: 'Route de San Gaetano 20600 Bastia'}, null]});
+  const a = analyseBranches([br('a', 'Garage', {loyer: 1200}, {travaux: 30000, valeurApres: 350000}), br('b', 'Division', {loyer: 1100}, {travaux: 25000, valeurApres: 308000})]);
+  const t = a.fixes.map(texte).join(' | ');
+  assert.match(t, /n\*2 San Gaetano · 150\s000 € · loyer 1\s300 €\/mois/);
+  assert.match(t, /Un seul crédit · apport 30\s000 € · taux 3,6 % · durée 25 ans · différé 12 mois · détenu par SCI à l'IS « SCOPA »/);
+  assert.match(t, /N\*1 San Gaetano · 150\s000 € · location meublée \|/);   // ce qui ne change pas pour le 1er : son prix, pas son loyer
+  assert.deepEqual(a.biens.map(b => [b.nom, b.fixe]), [['N*1 San Gaetano', false], ['n*2 San Gaetano', true]]);
+  assert.deepEqual(a.changes.get('a').map(texte), ['loyer 1 200 €/mois', 'travaux 30 000 €', 'valeur après travaux 350 000 €']);
+  assert.equal(a.adresse, 'Route de San Gaetano 20600 Bastia');
 });

@@ -268,8 +268,34 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-cmp-defile{overflow-x:auto}
 .invwrap .pj-compare{margin:10px 0 4px}
 .invwrap .pj-gr-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:10px 0 4px}
-.invwrap .pj-br{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
-.invwrap .pj-br h4{margin:0;font-size:15px;text-transform:none;letter-spacing:0;color:var(--ink)}
+.invwrap .pj-groupe.replie{padding:0}
+.invwrap button.pj-plier{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;cursor:pointer;border-radius:inherit}
+.invwrap button.pj-plier:hover,.invwrap button.pj-plier:focus-visible{background:var(--accent-soft)}
+.invwrap .pj-plier-t{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.invwrap .pj-plier-t b{font-size:16px}
+.invwrap .pj-meilleure{margin-left:auto;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.invwrap .pj-meilleure b{color:var(--ink)}.invwrap .pj-meilleure b.up{color:var(--good)}.invwrap .pj-meilleure b.down{color:var(--bad)}
+.invwrap .pj-groupe .chevron{display:inline-block;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);margin:0 4px 1px}
+.invwrap .pj-groupe:not(.replie) .chevron{transform:rotate(45deg);margin-bottom:4px}
+.invwrap .pj-plier-zone{cursor:pointer}
+.invwrap .pj-arbre{margin:12px 0 4px}
+.invwrap .pj-etiq{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px}
+.invwrap .pj-fixe{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;display:grid;gap:3px;font-variant-numeric:tabular-nums}
+.invwrap .pj-etiq-br{margin:14px 0 0 0;padding-left:2px}
+.invwrap ul.pj-branches{list-style:none;margin:0 0 0 10px;padding:0;border-left:2px solid var(--line)}
+.invwrap .pj-br{position:relative;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0;padding:12px 0 12px 22px}
+.invwrap .pj-br::before{content:'';position:absolute;left:0;top:24px;width:16px;border-top:2px solid var(--line)}
+.invwrap .pj-br:last-child::after{content:'';position:absolute;left:-2px;top:25px;bottom:0;border-left:2px solid var(--panel)}
+.invwrap .pj-br + .pj-br{border-top:1px dashed var(--line)}
+.invwrap .pj-br-corps{flex:1 1 260px;min-width:0}
+.invwrap .pj-br h4{margin:0 0 4px;font-size:15px;text-transform:none;letter-spacing:0;color:var(--ink)}
+.invwrap .pj-top{font-size:11px;font-weight:600;color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:2px}
+.invwrap .pj-change{display:flex;flex-wrap:wrap;gap:4px 6px;margin:2px 0 6px}
+.invwrap .pj-change span{font-size:12.5px;background:var(--accent-soft);border-radius:8px;padding:2px 8px;font-variant-numeric:tabular-nums}
+.invwrap .pj-res{font-size:14px;font-variant-numeric:tabular-nums}
+.invwrap .pj-res b.up{color:var(--good)}.invwrap .pj-res b.down{color:var(--bad)}
+.invwrap .pj-res small{display:block;font-size:12px;color:var(--muted)}
+.invwrap .pj-br .pj-actions{display:flex;gap:6px;align-items:center}
 .invwrap .pj-props{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}
 .invwrap .pj-props button{font-size:13px;padding:6px 10px}
 .invwrap .pj-coches{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px 12px;margin:8px 0;max-height:320px;overflow:auto}
@@ -288,7 +314,7 @@ details.plus{margin-top:12px;border-style:dashed}
 @media (max-width:600px){.invwrap .pj-cmp th,.invwrap .pj-cmp td{padding:6px 4px}.invwrap .pj-cmp{font-size:13px}}
 .invwrap .pj-choix{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
 .invwrap .pj-choix label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
-body.discret #pj :is(.pj-chiffres b, .pj-cmp td, .pj-verdict b){filter:blur(7px);user-select:none}
+body.discret #pj :is(.pj-chiffres b, .pj-cmp td, .pj-verdict b, .pj-fixe, .pj-change b, .pj-res b, .pj-res small, .pj-meilleure b.up, .pj-meilleure b.down){filter:blur(7px);user-select:none}
 /* Sections repliables de la liste */
 .invwrap details.pli{margin:0;border:0;padding:0;border-radius:0}
 .invwrap details.pli > summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;width:max-content;max-width:100%;margin:22px 0 10px;user-select:none}
@@ -3238,7 +3264,7 @@ $('enregNouveau').onclick = () => enregistrerProjet(true);
 $('enregBranche').onclick = () => {
   const pr = projetCourantId && PROJETS.liste.find(x => x.id === projetCourantId); if (!pr) return;
   const n = (prompt('Nom de la nouvelle branche (ce que tu testes) :', 'Branche ' + (branchesDe(pr).length + 1)) || '').trim();
-  if (n) enregistrerProjet(false, n);
+  if (n) { enregistrerProjet(false, n); deplier(pr.groupe); }
 };
 $('form').addEventListener('input', e => {
   const carte = e.target.closest('#cf_biensPlus [data-i]');
@@ -3395,10 +3421,8 @@ const usageP = (r, revente) => revente ? 'achat-revente' : r.saison ? 'saisonnie
 const menuP = boutons => boutons.length ? `<details class="pj-menu"><summary aria-label="Autres actions" title="Autres actions">⋯</summary><div class="pj-menu-l">${boutons.join('')}</div></details>` : '';
 function cartePj(pr, sous, corps, boutons, br) {
   boutons = [...boutons, ...boutonsBranche(pr, br)];
-  if (br) return `<section class="pj-br" data-id="${esc(pr.id)}"><div class="pj-br-tete"><h4>${esc(nomBranche(pr))}</h4>${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
-    ${corps}
-    <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
-      <div class="pj-actions">${menuP(boutons)}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></section>`;
+  if (br) return `<li class="pj-br" data-id="${esc(pr.id)}"><div class="pj-br-corps">${br.html}</div>
+    <div class="pj-actions">${menuP(boutons)}<button data-a="financer">Modifier</button></div></li>`;
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
@@ -3510,15 +3534,94 @@ function boutonsBranche(pr, br) {
   const nouvelle = pr.amenag ? '' : `<button data-a="brNouvelle">${br ? 'Nouvelle branche à partir de celle-ci' : 'Tester une autre version (nouvelle branche)'}</button>`;
   return br ? [nouvelle, '<button data-a="brRenommer">Renommer la branche</button>', '<button data-a="brSortir">Sortir de ce projet</button>', '<button data-a="suppr">Supprimer cette branche</button>'].filter(Boolean) : [nouvelle].filter(Boolean);
 }
+// Projets à branches repliés par défaut (une ligne : nom, branches, meilleure) ; ceux qu'on déplie sont gardés sur l'appareil
+const DEPLIES = (() => { try { return new Set(JSON.parse(localStorage.getItem('projets-deplies') || '[]')); } catch (e) { return new Set(); } })();
+const garderDeplies = () => { try { localStorage.setItem('projets-deplies', JSON.stringify([...DEPLIES])); } catch (e) {} };
+const deplier = (g, oui = true) => { if (oui) DEPLIES.add(g); else DEPLIES.delete(g); garderDeplies(); };
+// La meilleure branche : celle qui laisse le plus par mois (ou rapporte le plus à la revente si aucune n'est louée)
+function meilleureBranche(bs) {
+  const louees = bs.filter(x => x.resume && x.resume.scenario !== 'revendre' && x.resume.cfMois != null);
+  const [l, cle] = louees.length ? [louees, 'cfMois'] : [bs.filter(x => x.resume && x.resume.benefice != null), 'benefice'];
+  const b = l.sort((x, y) => y.resume[cle] - x.resume[cle])[0];
+  return b ? {pr: b, cle, v: b.resume[cle]} : null;
+}
+function ligneMeilleure(bs) {
+  const m = meilleureBranche(bs); if (!m) return '';
+  const lib = m.cle === 'cfMois' ? (m.v < 0 ? 'il te manque' : 'il te reste') : (m.v < 0 ? 'perte' : 'bénéfice');
+  return `Meilleure : <b>${esc(nomBranche(m.pr))}</b>, ${lib} <b class="${signeP(m.v)}">${eurP(Math.abs(m.v))}</b>${m.cle === 'cfMois' ? ' par mois' : ''}`;
+}
 function carteGroupe(bs) {
   const g = groupeDe(bs[0]), ouvert = comparees.has(g), r0 = bs[0].resume || {};
+  if (!DEPLIES.has(g)) return `<article class="pj pj-groupe replie" data-groupe="${esc(g)}"><button class="pj-plier" data-a="plier" aria-expanded="false">
+    <span class="pj-plier-t"><b>${esc(bs[0].nom)}</b><span class="pj-sous">${bs.length} branches</span></span><span class="pj-meilleure">${ligneMeilleure(bs)}</span><span class="chevron" aria-hidden="true"></span></button></article>`;
   const lieu = [...new Set(bs.map(x => (x.resume || {}).label).filter(Boolean))];
   const sousNoms = bs.map(x => x.amenag ? 'aménagement' : usageP(x.resume || {}, (x.resume || {}).scenario === 'revendre'));
   const cmp = ouvert ? `<div class="pj-compare">${tableComparaison(bs.map(x => ({nom: nomBranche(x), resume: x.resume})), {simple: modeSimple(), sous: sousNoms})}</div>` : '';
-  return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div><h3>${esc(bs[0].nom)}</h3><div class="pj-sous">${[`${bs.length} branches`, lieu.length === 1 && lieu[0] !== bs[0].nom ? esc(lieu[0]) : '', r0.surf && !r0.prixB2 ? `${r0.type === 'maison' ? 'Maison' : 'Appart.'} ${r0.surf} m²` : ''].filter(Boolean).join(' · ')}</div></div>
+  const a = analyseBranches(bs), m = meilleureBranche(bs), simple = modeSimple();
+  const lignes = bs.map(x => {
+    const r = x.resume || {}, ch = a.changes.get(x.id), meil = m && m.pr === x;
+    const ecart = m && !meil && r[m.cle] != null ? r[m.cle] - m.v : null;
+    const res = r.scenario === 'revendre'
+      ? `${(r.benefice || 0) < 0 ? 'Perte' : 'Bénéfice'} <b class="${signeP(r.benefice)}">${eurP(Math.abs(r.benefice || 0))}</b>`
+      : `${simple ? '' : `Mensualité <b>${eurP(r.mensualite)}</b> · `}${(r.cfMois || 0) < 0 ? 'Il te manque' : 'Il te reste'} <b class="${signeP(r.cfMois)}">${eurP(Math.abs(r.cfMois || 0))}</b> par mois`;
+    const html = `<h4>${esc(nomBranche(x))}${meil && bs.length > 1 ? ' <span class="pj-top">la meilleure</span>' : ''}</h4>
+      ${ch.length ? `<div class="pj-change">${ch.map(c => `<span>${c}</span>`).join('')}</div>` : ''}
+      <div class="pj-res">${res}${ecart ? ` <small>${eurP(ecart)}${m.cle === 'cfMois' ? '/mois' : ''} par rapport à la meilleure</small>` : ''}</div>`;
+    return carteProjet(x, {html});
+  });
+  const varie = a.biens.filter(b => !b.fixe).map(b => `« ${esc(b.nom)} »`);
+  return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
+    <div class="pj-sous">${a.adresse ? esc(a.adresse) : `${bs.length} branches`}</div></div>
     <button class="pj-x" data-a="supprGroupe" aria-label="Supprimer ce projet et ses branches" title="Supprimer ce projet et ses branches">${CROIX_X}</button></div>
-    <div class="pj-gr-actions">${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>'])}<button class="${ouvert ? '' : 'primaire'}" data-a="comparerBranches" aria-pressed="${ouvert}">${ouvert ? 'Fermer la comparaison' : 'Comparer les branches'}</button></div>
-    ${cmp}${bs.map(x => carteProjet(x, true)).join('')}</article>`;
+    <div class="pj-arbre">
+      ${a.fixes.length ? `<div class="pj-fixe"><span class="pj-etiq">Ne change pas</span>${a.fixes.map(l => `<div>${l}</div>`).join('')}</div>` : ''}
+      <div class="pj-etiq pj-etiq-br">${bs.length} branches${varie.length ? ` · ${varie.join(' et ')} change` : ''}</div>
+      <ul class="pj-branches">${lignes.join('')}</ul>
+    </div>
+    <div class="pj-gr-actions">${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>'])}<button class="${ouvert ? '' : 'primaire'}" data-a="comparerBranches" aria-pressed="${ouvert}">${ouvert ? 'Fermer le tableau' : 'Comparer en détail'}</button></div>
+    ${cmp}</article>`;
+}
+// Ce qui est commun à toutes les branches (affiché une fois) et ce qui change dans chacune
+const fmtTaux = v => (+v).toFixed(2).replace('.', ',').replace(/,?0+$/, '') + ' %';
+const BIEN1_P = [['Prix', x => x.finance.prix, eurP], ['Loyer', x => x.resume.loyer, v => eurP(v) + '/mois'], ['2e loyer', x => x.resume.loyer2, v => eurP(v) + '/mois'],
+  ['Travaux', x => x.resume.travaux || 0, eurP], ['Valeur après travaux', x => x.resume.travaux > 0 ? x.resume.valeurApres : null, eurP],
+  ['Location', x => x.finance.locMode === 'nuit' ? 'nuit' : x.finance.meuble, v => v === 'nuit' ? 'à la nuitée' : String(v) === '1' ? 'meublée' : 'vide'],
+  ['Prix la nuit', x => x.finance.locMode === 'nuit' ? x.finance.nuit : null, eurP], ['Surface', x => x.finance.surf, v => v + ' m²'], ['Taxe foncière', x => x.finance.tf, eurP], ['Copro', x => x.finance.copro, eurP]];
+const BIENN_P = [['Prix', b => b.prix, eurP], ['Loyer', b => b.loyer, v => eurP(v) + '/mois'], ['Surface', b => b.surf, v => v + ' m²'], ['Taxe foncière', b => b.tf, eurP], ['Copro', b => b.copro, eurP]];
+const CREDIT_P = [['Apport', x => x.finance.apport, eurP], ['Taux', x => x.finance.taux, fmtTaux], ['Durée', x => x.finance.duree, v => v + ' ans'],
+  ['Différé', x => +x.finance.differe || 0, v => v ? v + ' mois' : 'aucun'], ['Détenu par', x => quiP(x.resume) || 'nom propre', v => v]];
+function analyseBranches(bs) {
+  const egal = l => l.every(v => String(v ?? '') === String(l[0] ?? '')), changes = new Map(bs.map(x => [x.id, []])), fixes = [], biens = [];
+  const nb = Math.max(...bs.map(x => ((x.finance || {}).biensPlus || []).length));
+  // Un bien (le 1er, ou un des autres) : fixe si rien ne change, sinon chaque branche dit ce qui change pour lui
+  const bien = (nom, props, de) => {
+    const diff = props.map(([k, f, fmt]) => ({k, fmt, v: bs.map(x => { try { const d = de(x); return d == null ? null : f(d); } catch (e) { return null; } })}));
+    const fixe = diff.every(d => egal(d.v));
+    biens.push({nom, fixe});
+    // Ce qui ne bouge pas pour ce bien (même s'il change ailleurs) : une ligne en haut
+    const l = diff.filter(d => egal(d.v) && d.v[0] != null && d.v[0] !== 0 && !['Surface', 'Taxe foncière', 'Copro'].includes(d.k)).map(d => `${d.k === 'Prix' ? '' : d.k.toLowerCase() + ' '}${d.fmt(d.v[0])}`);
+    if (fixe || l.length) fixes.push(`<b>${esc(nom)}</b> · ${l.join(' · ') || '—'}`);
+    if (!fixe) varient.push({nom, diff: diff.filter(d => !egal(d.v))});
+  };
+  const varient = [];
+  const nom1 = x => (x.finance || {}).nomBien || (nb ? 'Bien 1' : 'Le bien');
+  bien(nom1(bs[0]), BIEN1_P, x => x.finance && x.resume ? x : null);
+  for (let i = 0; i < nb; i++) bien((((bs[0].finance || {}).biensPlus || [])[i] || {}).nom || `Bien ${i + 2}`, BIENN_P, x => ((x.finance || {}).biensPlus || [])[i] || null);
+  // Le nom du bien devant ce qui change, seulement si plusieurs biens changent
+  varient.forEach(({nom, diff}) => diff.forEach(d => bs.forEach((x, i) => { if (d.v[i] != null) changes.get(x.id).push(`${varient.length > 1 ? esc(nom) + ' : ' : ''}${d.k.toLowerCase()} <b>${d.fmt(d.v[i])}</b>`); })));
+  // Le crédit : une ligne commune pour ce qui ne change pas, le reste dans chaque branche
+  const cr = CREDIT_P.map(([k, f, fmt]) => ({k, fmt, v: bs.map(x => { try { return f(x); } catch (e) { return null; } })}));
+  const crFixe = cr.filter(d => egal(d.v) && d.v[0] != null && !(d.k === 'Différé' && !d.v[0]) && d.v[0] !== 'nom propre');
+  if (crFixe.length) fixes.push(`<b>${nb ? 'Un seul crédit' : 'Crédit'}</b> · ${crFixe.map(d => `${d.k.toLowerCase()} ${d.fmt(d.v[0])}`).join(' · ')}`);
+  cr.filter(d => !egal(d.v)).forEach(d => bs.forEach((x, i) => { if (d.v[i] != null) changes.get(x.id).push(`${d.k.toLowerCase()} <b>${d.fmt(d.v[i])}</b>`); }));
+  return {fixes, biens, changes, adresse: adresseProjet(bs)};
+}
+// L'adresse exacte : celle des estimations des biens (Estimer), sinon celle du projet
+function adresseProjet(bs) {
+  const l = [];
+  bs.forEach(x => [x.recherche, ...(x.estimations || []), ...(x.regroupe || []).map(o => o.recherche), {label: (x.resume || {}).label}]
+    .forEach(r => { const t = r && r.label; if (t && !/un seul crédit pour|^Point choisi/.test(t) && t !== x.nom && !l.includes(t)) l.push(t); }));
+  return l[0] || '';
 }
 const assurerGroupe = pr => { if (!pr.groupe) { pr.groupe = 'g' + nouvelId(); pr.maj = Date.now(); } return pr.groupe; };
 // Nouvelle branche : copie de celle-ci, ouverte dans Financer pour y changer ce qu'on veut tester
@@ -3529,6 +3632,7 @@ function nouvelleBranche(id) {
   delete copie.nomAvant;
   // Un seul crédit pour deux projets : la copie garde les deux estimations, pas les projets d'origine (« Séparer » reste sur l'original)
   if (pr.regroupe) { copie.estimations = rechercheRegroupees(pr).map(x => x && x.recherche); delete copie.regroupe; delete copie.regroupeV; }
+  deplier(copie.groupe);
   PROJETS.ajouter(copie);
   ouvrirProjet(copie.id, 'cashflow');
 }
@@ -3580,7 +3684,7 @@ function regrouperEnBranches(ids, nom) {
   const nomP = (nom || '').trim() || nomPropose(l);
   for (const x of l) if (x.groupe !== g) { x.nomAvant ||= x.nom; x.branche = x.branche && x.groupe ? x.branche : brancheAuto(x, nomP); }
   for (const x of PROJETS.liste) if (x.groupe === g || l.includes(x)) Object.assign(x, {groupe: g, nom: nomP, maj});
-  comparees.add(g);
+  deplier(g);
   PROJETS.enregistrer();
 }
 function panneauBranches(l) {
@@ -3603,11 +3707,12 @@ function afficherProjets() {
   const l = [...PROJETS.liste].sort((a, b) => (b.maj || 0) - (a.maj || 0));
   const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(nomComplet(x))}</option>`).join('');
   const groupes = new Map(); l.forEach(x => { const g = groupeDe(x); if (!groupes.has(g)) groupes.set(g, []); groupes.get(g).push(x); });
+  const aBranches = [...groupes.entries()].filter(([, bs]) => bs.length > 1).map(([g]) => g);
   const cartes = [...groupes.values()].map(bs => bs.length > 1 ? carteGroupe(bs.sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')))) : carteProjet(bs[0]));
   const anciens = anciensRegroupes(l);
   const menuOuvert = (document.querySelector('#pj details.pj-menu[open]') || {closest: () => null}).closest('[data-id]');   // gardé ouvert si la liste se redessine (synchro du compte)
   const idMenu = menuOuvert && menuOuvert.dataset.id;
-  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${l.length > 1 ? '<button data-a="branches">Regrouper en branches</button>' : ''}${achats.length > 1 ? '<button data-a="regroupe">Fusionner deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
+  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${aBranches.length ? `<button data-a="toutPlier">${aBranches.every(g => DEPLIES.has(g)) ? 'Tout replier' : 'Tout déplier'}</button>` : ''}${l.length > 1 ? '<button data-a="branches">Regrouper en branches</button>' : ''}${achats.length > 1 ? '<button data-a="regroupe">Fusionner deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
     + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Fusionner deux projets</h2>
       <p class="aide">Les deux biens passent dans un seul projet, avec un seul crédit (par exemple deux appartements achetés au même vendeur). Les réglages de crédit sont ceux du 1er projet. « Séparer » les fait revenir.</p>
       <div class="pj-choix"><label>1er projet<select id="pj_a">${opt(achats[0])}</select></label><label>2e projet<select id="pj_b">${opt(achats[1])}</select></label>${anciens.length ? `<label>Remplace aussi<select id="pj_c"><option value="">Aucun autre projet</option>${anciens.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>` : ''}</div>
@@ -3654,6 +3759,11 @@ document.getElementById('pj').addEventListener('click', e => {
   else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
   else if (t.dataset.a === 'separer' && confirm('Séparer ce projet ? Les deux projets d\'origine reviennent dans la liste.')) separerProjet(id);
+  else if (t.dataset.a === 'plier') { deplier(groupe, !DEPLIES.has(groupe)); afficherProjets(); }
+  else if (t.dataset.a === 'toutPlier') {
+    const gs = [...new Set(PROJETS.liste.map(groupeDe))].filter(g => PROJETS.liste.filter(x => groupeDe(x) === g).length > 1), tout = gs.every(g => DEPLIES.has(g));
+    gs.forEach(g => { if (tout) DEPLIES.delete(g); else DEPLIES.add(g); }); garderDeplies(); afficherProjets();
+  }
   else if (t.dataset.a === 'comparerBranches') { if (comparees.has(groupe)) comparees.delete(groupe); else comparees.add(groupe); afficherProjets(); }
   else if (t.dataset.a === 'brNouvelle') nouvelleBranche(id);
   else if (t.dataset.a === 'brRenommer') {
