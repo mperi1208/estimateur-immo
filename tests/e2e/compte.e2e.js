@@ -447,6 +447,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   assert.equal(+await page.inputValue('#cf_prix'), Math.round(e.prix));
   assert.equal(+await page.inputValue('#cf_prixB2'), 120000);
   assert.equal(+await page.inputValue('#cf_loyerB2'), 550);
+  assert.equal(+await page.inputValue('#cf_surf'), 90);                // surface des deux biens (45 m² chacun)
   assert.match(await page.locator('#cf').innerText(), /Deux biens, un seul crédit/i);
   const pr = (await attendreCompte(c => c.projets.some(x => x.nom === 'Lot A + Lot B'))).projets.find(x => x.nom === 'Lot A + Lot B');
   assert.equal(pr.resume.prix, Math.round(e.prix) + 120000); assert.equal(pr.resume.prixB2, 120000);
