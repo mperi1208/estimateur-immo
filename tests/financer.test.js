@@ -19,9 +19,10 @@ vm.runInContext([
   bloc(idx, '// ---------- Affichage', 'function rendre()'),
   bloc(idx, '// ---------- Achat + travaux + revente', 'function rendreRevente'),
   bloc(idx, '// ---------- Prix pour être rentable', 'function programmerCible'),
-  'this.X = {FIELDS, DEFAUTS, set, simuler, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS};',
+  bloc(idx, '// ---------- Deux projets de « Mes projets »', 'function regrouper('),
+  'this.X = {FIELDS, DEFAUTS, set, simuler, financeRegroupee, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS};',
 ].join('\n'), ctx);
-const {FIELDS, DEFAUTS, set, simuler, bilanRevente, surtaxe, prixCible, metrique, anneeRef, abatIR, abatPS} = ctx.X;
+const {FIELDS, DEFAUTS, set, simuler, financeRegroupee, bilanRevente, surtaxe, prixCible, metrique, anneeRef, abatIR, abatPS} = ctx.X;
 // Surtaxe de Mon patrimoine, pour vérifier que les deux onglets calculent pareil
 const pat = vm.createContext({}); vm.runInContext(bloc(inv, 'function surtaxePV', 'const anneesEntre') + 'this.surtaxePV = surtaxePV;', pat);
 const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 'function surtaxePV') + 'this.abatIR = abatIR; this.abatPS = abatPS;', patAbat);
@@ -289,4 +290,21 @@ test('deux biens : le prix d\'équilibre cherché est celui du 1er bien, le 2e r
   assert.ok(r.prix > 0);
   proche(metrique(r.prix), 0, 15);
   assert.equal(simuler().p.prix, r.prix + 100000);
+});
+
+// ---------- Deux projets de Mes projets, un seul crédit ----------
+test('deux projets regroupés : le 2e devient le 2e bien, apports additionnés, comme deux biens saisis à la main', () => {
+  const a = {...DEFAUTS, prix: 150000, loyer: 700, tf: 800, copro: 0, apport: 10000, duree: 25, taux: 3.5, ouverts: {impots: true}};
+  const b = {...DEFAUTS, prix: 100000, loyer: 450, loyer2: 50, tf: 400, copro: 200, apport: 5000, duree: 15, ouverts: {projet: true}, travaux: 20000};
+  const {finance: v, travauxB} = financeRegroupee(a, b);
+  assert.deepEqual([v.prix, v.prixB2, v.loyerB2, v.tfB2, v.coproB2, v.apport, v.duree, v.taux], [150000, 100000, 500, 400, 200, 15000, 25, 3.5]);
+  assert.deepEqual(v.ouverts, {impots: true, bien2: true});
+  assert.equal(travauxB, 20000);
+  const s = formulaire({...v, ouverts: undefined}, {bien2: true});
+  assert.equal(s.p.prix, 250000); assert.equal(s.p.loyerTotal, 1200);
+  // Un projet qui finançait déjà deux biens : ses deux biens passent dans le 2e bien
+  const c = financeRegroupee(a, {...b, ouverts: {bien2: true}, prixB2: 80000, loyerB2: 300, tfB2: 100, coproB2: 0});
+  assert.deepEqual([c.finance.prixB2, c.finance.loyerB2, c.finance.tfB2, c.travauxB], [180000, 800, 500, 0]);
+  // Section fermée dans le 1er : son 2e bien (valeurs restées dans le formulaire) n'est pas compté
+  assert.equal(financeRegroupee({...a, prixB2: 99999}, b).finance.prixB2, 100000);
 });

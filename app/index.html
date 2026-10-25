@@ -251,6 +251,10 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-chiffres small{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .invwrap .pj-bas{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .invwrap .pj-date{font-size:12px;color:var(--muted)}
+.invwrap .pj-regroupe{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.invwrap .pj-regroupe h2{margin:0 0 4px;font-size:16px}
+.invwrap .pj-choix{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
+.invwrap .pj-choix label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
 body.discret #pj .pj-chiffres b{filter:blur(7px);user-select:none}
 /* Sections repliables de la liste */
 .invwrap details.pli{margin:0;border:0;padding:0;border-radius:0}
@@ -3020,6 +3024,27 @@ function restaurer(v, cleBien) {
   majScis(); majChips(); sauver();
 }
 
+// ---------- Deux projets de « Mes projets », un seul crédit ----------
+// Le 1er garde ses réglages (crédit, fiscalité, travaux) ; le 2e, avec le 2e bien qu'il finançait déjà, rejoint la section
+// « Deux biens, un seul crédit » : son prix, son loyer et ses charges s'ajoutent, son apport aussi
+function financeRegroupee(a, b) {
+  a = {...DEFAUTS, ...a}; b = {...DEFAUTS, ...b};
+  const n = x => +x || 0, deux = x => !!(x.ouverts && x.ouverts.bien2), en2 = (x, k) => deux(x) ? n(x[k + 'B2']) : 0;
+  const v = {...a, ouverts: {...(a.ouverts || {}), bien2: true}};
+  v.prixB2 = en2(a, 'prix') + n(b.prix) + en2(b, 'prix');
+  v.loyerB2 = en2(a, 'loyer') + n(b.loyer) + n(b.loyer2) + en2(b, 'loyer');
+  v.tfB2 = en2(a, 'tf') + n(b.tf) + en2(b, 'tf');
+  v.coproB2 = en2(a, 'copro') + n(b.copro) + en2(b, 'copro');
+  v.apport = n(a.apport) + n(b.apport);
+  return {finance: v, travauxB: b.ouverts && b.ouverts.projet ? n(b.travaux) : 0};
+}
+function regrouper(a, b) {
+  const {finance, travauxB} = financeRegroupee(a.finance, b.finance);
+  const resume = recalculer(finance, null);
+  resume.label = `un seul crédit pour « ${a.nom} » et « ${b.nom} »`;
+  return {finance, resume, travauxB};
+}
+
 // ---------- Démarrage ----------
 charger();
 $('cibleVal').addEventListener('input', () => { cible[cleCible()] = +$('cibleVal').value || 0; try { localStorage.setItem('cashflow-cible', JSON.stringify(cible)); } catch (e) {} programmerCible(); });
@@ -3077,7 +3102,7 @@ $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxCons
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, regrouper, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
 <script src="investissements.js?v=5a9cda6f"></script>
@@ -3139,7 +3164,12 @@ function rafraichirResumes() {
 function afficherProjets() {
   rafraichirResumes();
   const l = [...PROJETS.liste].sort((a, b) => (b.maj || 0) - (a.maj || 0));
-  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions"><button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
+  const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(x.nom)}</option>`).join('');
+  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${achats.length > 1 ? '<button data-a="regroupe">Un seul crédit pour deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
+    + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Un seul crédit pour deux projets</h2>
+      <p class="aide">Par exemple deux appartements achetés au même vendeur. Un nouveau projet est créé : frais de notaire, apport et crédit sur le total, loyers et charges des deux biens additionnés. Le 1er projet garde ses réglages de crédit et de fiscalité ; tes deux projets restent tels quels.</p>
+      <div class="pj-choix"><label>1er projet<select id="pj_a">${opt(achats[0])}</select></label><label>2e projet<select id="pj_b">${opt(achats[1])}</select></label></div>
+      <div class="boutons"><button class="primaire" data-a="regrouper">Créer le projet à un seul crédit</button><button data-a="regroupe">Annuler</button></div><div class="aide" id="pj_regrMsg"></div></div>` : '')
     + (l.length ? `<div class="pj-liste">${l.map(carteProjet).join('')}</div>`
       : `<div class="vide"><h2>Aucun projet pour l'instant</h2><p>Estime un bien dans l'onglet « Estimer », simule son financement dans « Financer », puis clique sur « Enregistrer dans mes projets » en bas de la page. Il apparaît ici, et tu peux le rouvrir pour en modifier l'estimation ou le financement.</p>
         <div class="boutons centre"><button class="primaire" data-a="nouveau">Estimer un bien</button></div></div>`);
@@ -3160,8 +3190,20 @@ document.getElementById('pj').addEventListener('click', e => {
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
+  else if (t.dataset.a === 'regroupe') { const z = document.getElementById('pj_regroupe'); z.hidden = !z.hidden; }
+  else if (t.dataset.a === 'regrouper') regrouperProjets(document.getElementById('pj_a').value, document.getElementById('pj_b').value);
   else if (t.dataset.a === 'suppr' && confirm('Supprimer ce projet ?')) { PROJETS.supprimer(id); if (projetCourantId === id) fixerProjet(null); }
 });
+// Deux projets financés par un seul crédit : nouveau projet, ouvert dans Financer (section « Deux biens, un seul crédit »)
+function regrouperProjets(idA, idB) {
+  const a = PROJETS.liste.find(x => x.id === idA), b = PROJETS.liste.find(x => x.id === idB), msg = document.getElementById('pj_regrMsg');
+  if (!a || !b || a === b) { msg.textContent = 'Choisis deux projets différents.'; return; }
+  const g = CF_APP.regrouper(a, b);
+  if (g.travauxB && !confirm(`Les travaux de « ${b.nom} » (${eurP(g.travauxB)}) ne sont pas repris : seul le 1er projet garde ses travaux. Tu pourras les ajouter dans la section Travaux de Financer. Continuer ?`)) return;
+  const pr = {id: nouvelId(), nom: `${a.nom} + ${b.nom}`, maj: Date.now(), quand: new Date().toISOString(), recherche: null, bien: '', finance: g.finance, resume: g.resume};
+  PROJETS.ajouter(pr);
+  ouvrirProjet(pr.id, 'cashflow');
+}
 // Boutons d'Estimer (« Financer ce bien », « Travaux + location »...) : repartent de l'estimation en cours, même après la réouverture d'un projet
 function financerBien(mode) { CF_APP.liberer(); showTab('cashflow', true, mode || null); }
 // Mon patrimoine et Mes projets : réservés aux comptes (sans compte : Estimer et Financer)
