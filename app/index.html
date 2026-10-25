@@ -245,11 +245,22 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap button.pj-x{flex:0 0 auto;width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--muted)}
 .invwrap button.pj-x:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent);border-color:transparent}
 .invwrap button.pj-x svg{width:14px;height:14px}
-.invwrap .pj-chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 14px;margin:12px 0}
+.invwrap .pj-chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px 14px;margin:12px 0}
 .invwrap .pj-chiffres span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
 .invwrap .pj-chiffres b{font-size:16px;font-variant-numeric:tabular-nums}
 .invwrap .pj-chiffres small{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .invwrap .pj-bas{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.invwrap .pj-note{font-size:12.5px;color:var(--muted);margin:-4px 0 10px;font-variant-numeric:tabular-nums}
+.invwrap .pj-chiffres b.up{color:var(--good)}.invwrap .pj-chiffres b.down{color:var(--bad)}
+.invwrap .pj-actions{display:flex;gap:8px;align-items:center}
+.invwrap details.pj-menu{position:relative;margin:0;border:0;padding:0}
+.invwrap details.pj-menu>summary{list-style:none;cursor:pointer;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;font-size:18px;line-height:1;color:var(--muted);user-select:none}
+.invwrap details.pj-menu>summary::-webkit-details-marker{display:none}
+.invwrap details.pj-menu[open]>summary{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.invwrap .pj-menu-l{position:absolute;right:0;bottom:calc(100% + 6px);z-index:5;display:grid;min-width:220px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.invwrap .pj-menu-l button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;font-weight:400}
+.invwrap .pj-menu-l button:hover{background:var(--accent-soft)}
+@media (max-width:600px){.invwrap .pj-chiffres{gap:8px}.invwrap .pj-chiffres b{font-size:15px}.invwrap .pj-chiffres span{font-size:10px}.invwrap .pj-menu-l{left:0;right:auto}}
 .invwrap .pj-date{font-size:12px;color:var(--muted)}
 .invwrap .pj-regroupe{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .invwrap .pj-regroupe h2{margin:0 0 4px;font-size:16px}
@@ -3284,25 +3295,38 @@ function chiffresSimples(r, revente, prix) {
   const m = r.mois || {loyer: (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0), credit: r.mensualite || 0, charges: Math.max(0, (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0) - (r.mensualite || 0) - (r.cfMois || 0))};
   return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true});
 }
-function carteProjet(pr) {
-  if (pr.amenag) return carteAmenagement(pr);
-  const r = pr.resume || {}, revente = r.scenario === 'revendre';
-  const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
-  // Deux biens : pas la phrase « un seul crédit pour « A » et « B » », ni « Appartement de » pour la surface des deux additionnée
-  const deux = r.prixB2 != null;
-  const sous = [deux ? `${r.nbBiens > 2 ? r.nbBiens : 'Deux'} biens, un seul crédit` : r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²`) : '', revente ? 'achat-revente' : r.saison ? 'location saisonnière' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
-  const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
-  const cases = [!revente && r.travaux > 0 && r.valeurApres > 0 ? ['Prix estimé après projet', `<b>${eurP(r.valeurApres)}</b>` + (r.prixEstime != null ? `<small>${eurP(r.prixEstime)} aujourd'hui</small>` : '')] : ['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.prixB2 ? `<small>${eurP(r.prix - r.prixB2)} + ${eurP(r.prixB2)}</small>` : '') + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
-    ['Prix d\'équilibre', `<b>${r.prixCible != null ? eurP(r.prixCible) : 'aucun'}</b><small>${revente ? 'bénéfice de ' + eurP(r.visee) : 'cash-flow de ' + eurP(r.visee) + '/mois' + (r.anneeCible ? ', année ' + r.anneeCible : '')}</small>`]];
-  if (revente) cases.push(['Valeur après travaux', eurP(r.valeurApres)], ['Bénéfice net', `<b class="${signe(r.benefice)}">${eurP(r.benefice)}</b>`]);
-  else cases.push(r.saison ? ['Location saisonnière', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0))}/mois</b><small>recettes moyennes : ${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation${r.loyer2 ? ` · dont ${eurP(r.loyer2)} de 2e loyer` : ''}</small>`]
-      : ['Loyer hors charges', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</b>` + (r.loyer2 ? `<small>${eurP(r.loyer)} + ${eurP(r.loyer2)} (2e loyer)</small>` : '') + (r.loyerB2 ? `<small>dont ${eurP(r.loyerB2)} du 2e bien</small>` : '')], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')]);
+// Trois chiffres, les mêmes que les tuiles de Financer ; le reste (estimation, prix d'équilibre) sur une ligne discrète
+const signeP = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
+const chiffresPro = cases => `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`;
+const caseReste = r => [(r.cfMois || 0) < 0 ? 'Il te manque par mois' : 'Il te reste par mois', `<b class="${signeP(r.cfMois)}">${eurP(Math.abs(r.cfMois || 0))}</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)} pendant le différé</small>` : '')];
+const quiP = r => r.struct === 'np' || !r.struct ? '' : `SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
+const usageP = (r, revente) => revente ? 'achat-revente' : r.saison ? 'saisonnier' : r.meuble ? 'meublé' : 'location vide';
+// Actions rares rangées derrière « ⋯ » : un seul bouton visible à côté de « Modifier le financement »
+const menuP = boutons => boutons.length ? `<details class="pj-menu"><summary aria-label="Autres actions" title="Autres actions">⋯</summary><div class="pj-menu-l">${boutons.join('')}</div></details>` : '';
+function cartePj(pr, sous, corps, boutons) {
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
-    ${modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
-      : `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`}
+    ${corps}
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
-      <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}${rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}" title="Estimation de « ${esc(x.nom)} »">Estimation ${i + 1}</button>` : '').join('')}${r.prixB2 != null && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : ''}${pr.regroupe ? '<button data-a="separer">Séparer</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="pj-actions">${menuP(boutons)}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+}
+function carteProjet(pr) {
+  if (pr.amenag) return carteAmenagement(pr);
+  const r = pr.resume || {}, revente = r.scenario === 'revendre', deux = r.prixB2 != null;
+  // Deux biens : pas la phrase « un seul crédit pour « A » et « B » », ni « Appartement de » pour la surface des deux additionnée
+  const sous = [deux ? `${r.nbBiens > 2 ? r.nbBiens : 'Deux'} biens, un seul crédit` : r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appart.'} ${r.surf} m²`) : '', usageP(r, revente), quiP(r)].filter(Boolean).join(' · ');
+  const prix = ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>dont ${eurP(r.travaux)} de travaux en plus</small>` : r.apport ? `<small>apport ${eurP(r.apport)}</small>` : '')];
+  const cases = revente ? [prix, ['Valeur après travaux', eurP(r.valeurApres)], [(r.benefice || 0) < 0 ? 'Perte à la revente' : 'Bénéfice à la revente', `<b class="${signeP(r.benefice)}">${eurP(Math.abs(r.benefice || 0))}</b>`]]
+    : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>loyers ${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</small>`], caseReste(r)];
+  const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
+  const note = [estime, r.prixCible != null ? `prix d'équilibre ${eurP(r.prixCible)}` : ''].filter(Boolean).join(' · ');
+  const corps = modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
+    : chiffresPro(cases) + (note ? `<div class="pj-note">${note[0].toUpperCase() + note.slice(1)}</div>` : '');
+  const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
+    ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
+    deux && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : '',
+    pr.regroupe ? '<button data-a="separer">Séparer en deux projets</button>' : ''].filter(Boolean);
+  return cartePj(pr, sous, corps, boutons);
 }
 // Projet à un seul crédit : l'estimation de chacun des deux biens (choisie à la main, sinon celle des projets d'origine)
 const nomsRegroupes = pr => pr.regroupe ? pr.regroupe.map(x => x.nom) : (/« (.+) » et « (.+) »$/.exec((pr.resume || {}).label || '') || ['', 'Bien 1', 'Bien 2']).slice(1, 3);
@@ -3343,20 +3367,13 @@ function panneauEstimations(pr) {
 // Aménagement d'un espace d'un bien déjà à toi : pas de prix d'achat, seulement les travaux, puis le loyer
 const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y && m ? new Date(y, m - 1, 1).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : ''; };
 function carteAmenagement(pr) {
-  const r = pr.resume || {}, am = r.amenag || {}, signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
-  const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
-  const sous = [`Aménagement${am.principal ? ' de ' + esc(am.principal) : ''}`, r.surf ? `${r.surf} m²` : '', r.saison ? 'location saisonnière' : r.meuble ? 'location meublée' : 'location vide', qui].join(' · ');
-  const cases = [['Valeur une fois aménagé', `<b>${eurP(r.valeurApres)}</b>`], ['Travaux', `<b>${eurP(r.travaux)}</b>` + (am.debut ? `<small>à partir de ${moisP(am.debut)}</small>` : '')],
-    r.saison ? ['Location saisonnière', `<b>${eurP(r.loyer)}/mois</b><small>recettes : ${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation${am.loyerDes ? ', dès ' + moisP(am.loyerDes) : ''}</small>`]
-      : ['Loyer hors charges', `<b>${eurP(r.loyer)}/mois</b>` + (am.loyerDes ? `<small>dès ${moisP(am.loyerDes)}</small>` : '')],
-    ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')],
-    ['Mensualité', `<b>${eurP(r.mensualite)}/mois</b><small>crédit des travaux</small>`]];
-  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
-    <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
-    ${modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`)
-      : `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`}
-    <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
-      <div class="boutons"><button data-a="fiche">Voir la fiche</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+  const r = pr.resume || {}, am = r.amenag || {};
+  const sous = [`Aménagement${am.principal ? ' de ' + esc(am.principal) : ''}`, r.surf ? `${r.surf} m²` : '', usageP(r, false), quiP(r)].filter(Boolean).join(' · ');
+  const cases = [['Travaux', `<b>${eurP(r.travaux)}</b>` + (am.debut ? `<small>à partir de ${moisP(am.debut)}</small>` : '')],
+    ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>${r.saison ? 'recettes' : 'loyer'} ${eurP(r.loyer)}/mois${am.loyerDes ? ' dès ' + moisP(am.loyerDes) : ''}</small>`], caseReste(r)];
+  const note = [r.valeurApres ? `Vaut ${eurP(r.valeurApres)} une fois aménagé` : '', r.saison ? `${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation` : ''].filter(Boolean).join(' · ');
+  const corps = modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`) : chiffresPro(cases) + (note ? `<div class="pj-note">${note}</div>` : '');
+  return cartePj(pr, sous, corps, ['<button data-a="fiche">Voir la fiche du bien</button>']);
 }
 // Les projets enregistrés avant le nouveau calcul (cash-flow pendant le différé) sont recalculés une fois
 function rafraichirResumes() {
@@ -3387,15 +3404,17 @@ function afficherProjets() {
   const l = [...PROJETS.liste].sort((a, b) => (b.maj || 0) - (a.maj || 0));
   const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(x.nom)}</option>`).join('');
   const anciens = anciensRegroupes(l);
-  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${achats.length > 1 ? '<button data-a="regroupe">Un seul crédit pour deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
-    + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Un seul crédit pour deux projets</h2>
-      <p class="aide">Par exemple deux appartements achetés au même vendeur. Un nouveau projet est créé : frais de notaire, apport et crédit sur le total, loyers et charges des deux biens additionnés. Le 1er projet garde ses réglages de crédit et de fiscalité. Le projet regroupé remplace les deux : « Séparer » les fait revenir.</p>
+  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${achats.length > 1 ? '<button data-a="regroupe">Fusionner deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
+    + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Fusionner deux projets</h2>
+      <p class="aide">Les deux biens passent dans un seul projet, avec un seul crédit (par exemple deux appartements achetés au même vendeur). Les réglages de crédit sont ceux du 1er projet. « Séparer » les fait revenir.</p>
       <div class="pj-choix"><label>1er projet<select id="pj_a">${opt(achats[0])}</select></label><label>2e projet<select id="pj_b">${opt(achats[1])}</select></label>${anciens.length ? `<label>Remplace aussi<select id="pj_c"><option value="">Aucun autre projet</option>${anciens.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>` : ''}</div>
-      <div class="boutons"><button class="primaire" data-a="regrouper">Créer le projet à un seul crédit</button><button data-a="regroupe">Annuler</button></div><div class="aide" id="pj_regrMsg"></div></div>` : '')
+      <div class="boutons"><button class="primaire" data-a="regrouper">Fusionner</button><button data-a="regroupe">Annuler</button></div><div class="aide" id="pj_regrMsg"></div></div>` : '')
     + (l.length ? `<div class="pj-liste">${l.map(carteProjet).join('')}</div>`
       : `<div class="vide"><h2>Aucun projet pour l'instant</h2><p>Estime un bien dans l'onglet « Estimer », simule son financement dans « Financer », puis clique sur « Enregistrer dans mes projets » en bas de la page. Il apparaît ici, et tu peux le rouvrir pour en modifier l'estimation ou le financement.</p>
         <div class="boutons centre"><button class="primaire" data-a="nouveau">Estimer un bien</button></div></div>`);
 }
+// Un seul menu « ⋯ » ouvert à la fois, refermé par un clic ailleurs
+document.addEventListener('click', e => document.querySelectorAll('#pj details.pj-menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
 const majProjets = () => { if (!document.getElementById('projets').hidden) afficherProjets(); };
 // Rouvre un projet : son financement dans Financer, ou sa recherche dans Estimer
 function ouvrirProjet(id, vers) {
@@ -3407,7 +3426,8 @@ function ouvrirProjet(id, vers) {
 }
 document.getElementById('pj').addEventListener('click', e => {
   const t = e.target.closest('[data-a]'); if (!t) return;
-  const id = (t.closest('.pj') || {dataset: {}}).dataset.id;
+  const id = (t.closest('.pj') || {dataset: {}}).dataset.id, menu = t.closest('details.pj-menu');
+  if (menu) menu.open = false;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'estChoisir') {

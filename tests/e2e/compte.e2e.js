@@ -203,7 +203,8 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   const carte = page.locator('#pj .pj', {hasText: 'Sous-sol · Studio Test'});
   await carte.waitFor();
   const txt = await carte.innerText();                              // la carte dans Mes projets : travaux saisis, recettes à la nuitée
-  assert.match(txt, /location saisonnière/i); assert.match(txt, /42\s000 €/); assert.match(txt, /80 € la nuit, 60 % d'occupation/);
+  assert.match(txt, /saisonnier/i); assert.match(txt, /42\s000 €/); assert.match(txt, /80 € la nuit, 60 % d'occupation/);
+  await carte.locator('.pj-menu summary').click();                // actions rares derrière « ⋯ »
   await carte.locator('[data-a="fiche"]').click();                 // « Voir la fiche » ramène dans Mon patrimoine
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && /^Sous-sol/.test((document.getElementById('inv_titre') || {}).textContent));
   await page.click('#inv [data-a="amenagFait"]');                  // confirm() accepté par le banc
@@ -443,6 +444,9 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   assert.equal(await carte.locator('.pj-chiffres').count(), 0);
   await page.click('.tabs [data-mode="pro"]');
   await carte.locator('.pj-chiffres').waitFor();
+  // mode pro : les trois chiffres des tuiles de Financer
+  assert.deepEqual((await carte.locator('.pj-chiffres span').allInnerTexts()).map(x => x.toLowerCase()).slice(0, 2), ['prix du projet', 'mensualité']);
+  assert.match(await carte.locator('.pj-chiffres').innerText(), /Il te (reste|manque) par mois/i);
   await carte.locator('[data-a="suppr"]').click();
   await page.waitForFunction(() => !/Projet Lyon 45/.test(document.getElementById('pj').innerText));
   c = await attendreCompte(c => !c.projets.some(x => x.id === pr.id), 'projet supprimé');
@@ -497,12 +501,14 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   assert.match(await carte.innerText(), /un seul crédit/i);
   // « Estimation 1 » et « Estimation 2 » : l'estimation de chaque bien dans Estimer, sans toucher au projet regroupé
   assert.equal(await carte.locator('[data-a="estimerN"]').count(), 2);
+  await carte.locator('.pj-menu summary').click();
   await carte.locator('[data-a="estimerN"][data-n="1"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
   assert.equal(await page.inputValue('#surf'), '45');
   assert.equal(await page.evaluate(() => projetCourantId), null);
   await page.click('.tabs [data-tab="projets"]');
   // « Séparer » : les deux projets reviennent, le projet regroupé part
+  await carte.locator('.pj-menu summary').click();
   await carte.locator('[data-a="separer"]').click();
   c = await attendreCompte(c => !c.projets.some(x => x.nom === 'Lot A + Lot B') && ['Lot A', 'Lot B'].every(n => c.projets.some(x => x.nom === n)), 'projets séparés');
   assert.equal(c.projets.find(x => x.nom === 'Lot B').finance.prix, 120000);
@@ -516,6 +522,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.evaluate(() => { const p = PROJETS.liste.find(x => x.nom === 'Lot A + Lot B'); delete p.regroupe; PROJETS.enregistrer(); });
   await page.click('.tabs [data-tab="projets"]');
   assert.equal(await carte.locator('[data-a="estimerN"]').count(), 0);
+  await carte.locator('.pj-menu summary').click();
   await carte.locator('[data-a="estChoisir"]').click();
   const choix = carte.locator('.pj-estim select');
   assert.equal(await choix.count(), 2);
@@ -524,6 +531,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await carte.locator('[data-a="estGarder"]').click();
   c = await attendreCompte(c => ((c.projets.find(x => x.nom === 'Lot A + Lot B') || {}).estimations || []).filter(Boolean).length === 2, 'estimations gardées');
   assert.equal(await carte.locator('[data-a="estimerN"]').count(), 2);
+  await carte.locator('.pj-menu summary').click();
   await carte.locator('[data-a="estimerN"][data-n="0"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
   assert.equal(await page.inputValue('#surf'), '45');
