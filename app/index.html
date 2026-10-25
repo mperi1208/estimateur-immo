@@ -451,7 +451,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .sect h3{font-size:15px;margin:8px 0 2px}
 #cf .sect[hidden]{display:none}
 #cf details.reglages{border-style:solid}
-#cf details.reglages h4, #cf_boxBien2 h4{font-size:13px;margin:12px 0 0;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#cf details.reglages h4{font-size:13px;margin:12px 0 0;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 #cf .scen{max-width:420px;margin-bottom:12px;scroll-margin-top:60px}
 #cf .scen button{font-weight:600}
 #cf details.opt{border-style:dashed}
@@ -473,7 +473,28 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .grid .plein{grid-column:1/-1}
 #cf .bienbar{padding:10px 20px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-size:14px}
 #cf .voir{display:none;margin-left:8px;padding:3px 10px;font-size:13px}
-#cf .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+#cf .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+#cf .tile .v .up{color:var(--good)} #cf .tile .v .down{color:var(--bad)}
+#cf .tiles-plus{margin:8px 2px 14px}
+#cf #cf_simple .bilan-simple{margin:0 0 4px}
+/* Financer : une carte par bien, puis le financement commun */
+#cf .cf-titre{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px}
+#cf .cf-titre:not(:first-child){margin-top:18px}
+#cf .bien-carte{border:1px solid var(--line);border-radius:12px;padding:10px 14px 12px;margin:0 0 10px;background:var(--panel)}
+#cf .bien-tete{display:flex;align-items:center;gap:8px}
+#cf .bien-tete .nom-bien{flex:1;min-width:0;border:0;border-bottom:1px dashed transparent;border-radius:0;padding:4px 0;font-weight:600;font-size:16px;background:none}
+#cf .bien-tete .nom-bien:hover,#cf .bien-tete .nom-bien:focus{border-bottom-color:var(--line);outline:none}
+#cf .bien-quoi{font-size:13px;color:var(--muted);white-space:nowrap}
+#cf .bien-x{border:0;background:none;padding:6px;color:var(--muted);line-height:0}
+#cf .bien-x svg{width:14px;height:14px}
+#cf details.plus-bien{border:0;margin:8px 0 0;padding:0}
+#cf details.plus-bien summary{font-size:13px;color:var(--accent);cursor:pointer;padding:2px 0}
+#cf .ajout-bien{width:100%;border:1px dashed var(--line);background:none;color:var(--accent);padding:10px;border-radius:12px;margin:0 0 4px}
+#cf .options{margin-top:10px;border-top:1px solid var(--line)}
+#cf .options > details{border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0;padding:0}
+#cf .options > details:last-child{border-bottom:0}
+#cf .options > details > summary{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:14px;font-weight:500;cursor:pointer}
+#cf .options > details[open]{padding-bottom:10px}
 #cf .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 #cf .tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 #cf .tile .v{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
@@ -523,7 +544,7 @@ body.discret #pj .pj-simple-prix b{filter:blur(7px)}
 .aide-simple{font-size:13px;color:var(--muted);margin:0 0 12px}
 body:not(.simple) .seul-simple{display:none}
 body.simple .seul-pro{display:none}
-body.simple #cf :is(#cf_boxBien2, #cf_boxProjet, #cf_boxImpots, #cf_boxEvol, #cf_boxDetail, #cf_reset, #cf_cible, #cf_alerts, #cf_bilan, #cf_tiles, .card:has(#cf_chart), details.card, .card:has(.srcs)){display:none}
+body.simple #cf :is(.options, .plus-bien, #cf_reset, #cf_cible, #cf_alerts, #cf_bilan, #cf_tiles, #cf_tilesPlus, .card:has(#cf_chart), details.card, .card:has(.srcs)){display:none}
 body.simple #cf [data-loyer2], body.simple #cf .grid > div:has(#cf_loyer2){display:none}
 body.simple #estim details.plus{display:none}
 body.simple #invest .pli[data-pli="orga"], body.simple #invest .bloc:has(#inv_renta){display:none}
@@ -593,46 +614,52 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 <div id="cf_bien" class="bienbar"></div>
 <div class="cfwrap">
 <aside id="cf_form">
-  <div class="sect"><h3>L'essentiel</h3><div class="grid">
-    <div><label data-l1="Prix du 1er bien (€)">Prix d'achat (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
-    <div><label>Apport (€)</label><input id="cf_apport" type="number" min="0" step="1000"></div>
-    <div><label>Durée du crédit (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
-    <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
-    <div data-sci hidden><label>Dans quelle SCI</label><select id="cf_sciExist"><option value="">Une nouvelle SCI</option></select><div class="hint" id="cf_sciHint" hidden>Comptable et frais de la SCI déjà payés : pas comptés en plus.</div></div>
-    <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
-    <div class="loc-mode"><label>Loyer</label><div class="seg mini" id="cf_locSeg"><button data-v="mois">Au mois</button><button data-v="nuit">À la nuitée</button></div><select id="cf_locMode" hidden><option value="mois">mois</option><option value="nuit">nuit</option></select></div>
-    <div data-mois><label data-l1="Loyer du 1er bien (€/mois)">Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
-    <div data-nuit hidden><label>Prix par nuit (€)</label><input id="cf_nuit" type="number" min="0" step="5"></div>
-    <div data-nuit hidden><label>Période louée</label><select id="cf_periode"></select></div>
-    <div data-nuit hidden><label>Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"><div class="hint">sur l'année</div></div>
-    <div data-nuit hidden class="plein"><div class="hint" id="cf_saisonHint"></div></div>
-    <div><label>2e loyer (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="facultatif"><div class="hint">Division, garage ou annexe louée à part</div></div>
-    <div data-loyer2 hidden><label>1er loyer à partir du mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"><div class="hint" id="cf_debutLoyer1Hint">Vide : après le chantier</div></div>
-    <div data-loyer2 hidden><label>2e loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
-  </div><button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button></div>
+  <h3 class="cf-titre" id="cf_titreBiens">Le bien</h3>
+  <article class="bien-carte" id="cf_bien1">
+    <div class="bien-tete"><input id="cf_nomBien" class="nom-bien" type="text" placeholder="1er bien" aria-label="Nom du bien"><span class="bien-quoi" id="cf_bien1Quoi"></span></div>
+    <div class="grid">
+      <div><label>Prix (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
+      <div data-mois><label>Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
+      <div data-nuit hidden><label>Prix par nuit (€)</label><input id="cf_nuit" type="number" min="0" step="5"></div>
+      <div data-nuit hidden><label>Période louée</label><select id="cf_periode"></select></div>
+      <div data-nuit hidden><label>Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"></div>
+      <div data-nuit hidden class="plein"><div class="hint" id="cf_saisonHint"></div></div>
+      <div><label>Taxe foncière (€/an)</label><input id="cf_tf" type="number" min="0" step="50"></div>
+      <div><label>Copro non récupérable (€/an)</label><input id="cf_copro" type="number" min="0" step="50"></div>
+      <div class="loc-mode"><label>Louer</label><div class="seg mini" id="cf_locSeg"><button data-v="mois">Au mois</button><button data-v="nuit">À la nuitée</button></div><select id="cf_locMode" hidden><option value="mois">mois</option><option value="nuit">nuit</option></select></div>
+      <div><label>Autre loyer (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="facultatif"><div class="hint">Division, garage ou annexe louée à part</div></div>
+      <div data-loyer2 hidden><label>1er loyer à partir du mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"><div class="hint" id="cf_debutLoyer1Hint">Vide : après le chantier</div></div>
+      <div data-loyer2 hidden><label>Autre loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
+    </div>
+    <details class="plus-bien"><summary>Plus de détails</summary><div class="grid">
+      <div><label>Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
+      <div><label>Surface (m²)</label><input id="cf_surf" type="number" min="9"></div>
+      <div><label>État</label><select id="cf_neuf"><option value="0">Ancien</option><option value="1">Neuf (VEFA)</option></select></div>
+      <div><label>Assurance PNO (€/an)</label><input id="cf_pno" type="number" min="0" step="10"></div>
+      <div data-meuble><label>Mobilier (€)</label><input id="cf_mobilier" type="number" min="0" step="500"></div>
+    </div></details>
+  </article>
+  <div id="cf_biensPlus"></div>
+  <button id="cf_ajoutBien" class="ajout-bien">+ Ajouter un bien au même crédit</button>
 
-  <details class="opt" id="cf_boxBien2"><summary>Deux biens, un seul crédit <span class="chip"></span></summary><div class="hint">Un 2e bien acheté avec le même prêt : notaire, apport et crédit sur le total.</div><div class="grid">
-    <div><label>Prix du 2e bien (€)</label><input id="cf_prixB2" type="number" min="0" step="1000"></div>
-    <div><label>Loyer du 2e bien (€/mois)</label><input id="cf_loyerB2" type="number" min="0" step="10"><div class="hint">Hors charges, dès l'achat</div></div>
-  </div>
-  <h4>Charges de chaque bien</h4><div class="grid" id="cf_chargesBiens">
-    <div><label>Taxe foncière du 2e bien (€/an)</label><input id="cf_tfB2" type="number" min="0" step="50"></div>
-    <div><label>Copro non récupérable du 2e bien (€/an)</label><input id="cf_coproB2" type="number" min="0" step="50"></div>
-  </div></details>
-
-  <div class="sect" data-revente><h3>Revente</h3><div class="grid">
-    <div><label>Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
-    <div><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
-  </div></div>
-
-  <details class="opt" id="cf_boxProjet"><summary>Travaux <span class="chip"></span></summary><div class="grid">
+  <h3 class="cf-titre">Le financement</h3>
+  <article class="bien-carte" id="cf_financement">
+    <div class="grid">
+      <div><label>Apport (€)</label><input id="cf_apport" type="number" min="0" step="1000"></div>
+      <div><label>Durée du crédit (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
+      <div><label>Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
+      <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
+      <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
+      <div data-sci hidden><label>Dans quelle SCI</label><select id="cf_sciExist"><option value="">Une nouvelle SCI</option></select><div class="hint" id="cf_sciHint" hidden>Comptable et frais de la SCI déjà payés : pas comptés en plus.</div></div>
+    </div>
+    <div class="options">
+    <details class="opt" id="cf_boxProjet"><summary>Travaux <span class="chip"></span></summary><div class="grid">
     <div><label>Montant des travaux (€)</label><input id="cf_travaux" type="number" min="0" step="1000"></div>
     <div><label>Durée du chantier (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
     <div><label>Valeur après travaux (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
   </div>
   <label class="check"><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label></details>
-
-  <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="grid">
+    <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="grid">
     <div data-notis><label>Tranche d'imposition (TMI)</label><select id="cf_tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
     <div data-np><label>Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
     <div data-amort><label>Part du terrain (%)</label><input id="cf_terrain" type="number" min="0" max="80"></div>
@@ -640,51 +667,47 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   </div>
   <label class="check" data-is><input type="checkbox" id="cf_distrib"> Distribuer les bénéfices aux associés (flat tax 31,4 %)</label>
   <div id="cf_fiscNote" class="hint"></div></details>
-
-  <details class="opt" id="cf_boxEvol"><summary>Évolutions dans le temps <span class="chip"></span></summary><div class="grid">
+    <details class="opt" id="cf_boxEvol"><summary>Évolutions dans le temps <span class="chip"></span></summary><div class="grid">
     <div><label>Hausse des loyers (%/an)</label><input id="cf_gLoyer" type="number" step="0.1"></div>
     <div><label>Hausse du prix (%/an)</label><input id="cf_gPrix" type="number" step="0.1"></div>
     <div><label>Hausse des charges (%/an)</label><input id="cf_gCharges" type="number" step="0.1"></div>
   </div></details>
+    <details class="reglages" id="cf_boxDetail"><summary>Crédit et charges communes</summary>
+      <h4>Crédit</h4><div class="grid">
+        <div><label>Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
+        <div><label>Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
+        <div><label>Différé (mois)</label><input id="cf_differe" type="number" min="0" max="36"></div>
+        <div><label>Type de différé</label><select id="cf_typeDiff"><option value="partiel">Intérêts seuls</option><option value="total">Total (intérêts ajoutés au capital)</option></select></div>
+        <div><label>Frais de dossier (€)</label><input id="cf_dossier" type="number" min="0" step="100"></div>
+        <div><label>Garantie (% du prêt)</label><input id="cf_garantie" type="number" step="0.1"></div>
+      </div>
+      <div class="hint" id="cf_tauxHint"></div>
+      <button id="cf_tauxMarche" style="margin-top:6px">Mettre le taux du marché</button>
+      <label class="check"><input type="checkbox" id="cf_notaireCredit"> Inclure les frais de notaire dans le crédit (« prêt à 110 % »)</label>
+      <h4>Charges communes</h4><div class="grid">
+        <div><label>Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
+        <div><label>Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
+        <div><label>Entretien (% loyers)</label><input id="cf_entretien" type="number" min="0" step="0.5"></div>
+        <div><label>Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
+        <div data-meuble><label>CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
+      </div>
+      <h4 data-nuit hidden>Location saisonnière</h4><div class="grid" data-nuit hidden>
+        <div><label>Nuits par séjour</label><input id="cf_sejour" type="number" min="1" step="1"></div>
+        <div><label>Ménage par séjour (€)</label><input id="cf_menage" type="number" min="0" step="5"></div>
+        <div><label>Plateforme (% recettes)</label><input id="cf_plateforme" type="number" min="0" step="1"></div>
+        <div><label>Conciergerie (% recettes)</label><input id="cf_conciergerie" type="number" min="0" step="1"></div>
+        <div><label>Charges du logement (€/mois)</label><input id="cf_chargesSaison" type="number" min="0" step="10"><div class="hint">Copropriété, énergie, internet : à ta charge</div></div>
+        <div><label>Classement</label><select id="cf_classe"><option value="0">Non classé</option><option value="1">Meublé de tourisme classé</option></select></div>
+      </div>
+    </details>
+    </div>
+  </article>
+  <button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>
 
-  <details class="reglages" id="cf_boxDetail"><summary>Réglages détaillés</summary><div class="hint">Toujours comptés : valeurs par défaut réalistes.</div>
-    <h4>Crédit</h4><div class="grid">
-      <div><label>Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
-      <div><label>Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
-      <div><label>Différé (mois)</label><input id="cf_differe" type="number" min="0" max="36"></div>
-      <div><label>Type de différé</label><select id="cf_typeDiff"><option value="partiel">Intérêts seuls</option><option value="total">Total (intérêts ajoutés au capital)</option></select></div>
-      <div><label>Frais de dossier (€)</label><input id="cf_dossier" type="number" min="0" step="100"></div>
-      <div><label>Garantie (% du prêt)</label><input id="cf_garantie" type="number" step="0.1"></div>
-    </div>
-    <div class="hint" id="cf_tauxHint"></div>
-    <button id="cf_tauxMarche" style="margin-top:6px">Mettre le taux du marché</button>
-    <label class="check"><input type="checkbox" id="cf_notaireCredit"> Inclure les frais de notaire dans le crédit (« prêt à 110 % »)</label>
-    <h4>Achat</h4><div class="grid">
-      <div><label>Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
-      <div><label>État</label><select id="cf_neuf"><option value="0">Ancien</option><option value="1">Neuf (VEFA)</option></select></div>
-      <div><label>Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
-      <div><label>Surface (m²)</label><input id="cf_surf" type="number" min="9"></div>
-      <div data-meuble><label>Mobilier (€)</label><input id="cf_mobilier" type="number" min="0" step="500"></div>
-    </div>
-    <h4>Charges</h4><div class="grid">
-      <div><label>Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
-      <div><label data-l1="Taxe foncière du 1er bien (€/an)">Taxe foncière (€/an)</label><input id="cf_tf" type="number" min="0" step="50"></div>
-      <div><label data-l1="Copro non récupérable du 1er bien (€/an)">Copro non récupérable (€/an)</label><input id="cf_copro" type="number" min="0" step="50"></div>
-      <div><label>Assurance PNO (€/an)</label><input id="cf_pno" type="number" min="0" step="10"></div>
-      <div><label>Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
-      <div><label>Entretien (% loyers)</label><input id="cf_entretien" type="number" min="0" step="0.5"></div>
-      <div><label>Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
-      <div data-meuble><label>CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
-    </div>
-    <h4 data-nuit hidden>Location saisonnière</h4><div class="grid" data-nuit hidden>
-      <div><label>Nuits par séjour</label><input id="cf_sejour" type="number" min="1" step="1"></div>
-      <div><label>Ménage par séjour (€)</label><input id="cf_menage" type="number" min="0" step="5"></div>
-      <div><label>Plateforme (% recettes)</label><input id="cf_plateforme" type="number" min="0" step="1"></div>
-      <div><label>Conciergerie (% recettes)</label><input id="cf_conciergerie" type="number" min="0" step="1"></div>
-      <div><label>Charges du logement (€/mois)</label><input id="cf_chargesSaison" type="number" min="0" step="10"><div class="hint">Copropriété, énergie, internet : à ta charge</div></div>
-      <div><label>Classement</label><select id="cf_classe"><option value="0">Non classé</option><option value="1">Meublé de tourisme classé</option></select></div>
-    </div>
-  </details>
+  <div class="sect" data-revente><h3>Revente</h3><div class="grid">
+    <div><label>Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
+    <div><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
+  </div></div>
   <div class="aide-simple seul-simple">Mode simple : les autres réglages (travaux, impôts, taux du crédit, charges…) gardent leurs valeurs. Passe en « Pro » en haut pour les voir.</div>
   <select id="cf_scenario" hidden><option value="louer">louer</option><option value="revendre">revendre</option></select>
   <button id="cf_reset">Remettre les valeurs par défaut</button>
@@ -692,18 +715,19 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 
 <main>
   <div class="seg scen" id="cf_scen"><button data-v="louer">Garder et louer</button><button data-v="revendre">Revendre</button></div>
-  <div id="cf_simple" class="seul-simple"></div>
   <div class="tiles" id="cf_tiles"></div>
-  <div class="card" id="cf_cible"><h2>Prix d'équilibre</h2>
-    <div class="cible-ligne"><label for="cf_cibleVal" id="cf_cibleLabel">Cash-flow visé (€/mois)</label><input id="cf_cibleVal" type="number" step="10"></div>
-    <div id="cf_cibleRes" class="hint"></div>
-  </div>
+  <div class="hint tiles-plus" id="cf_tilesPlus"></div>
+  <div id="cf_simple"></div>
   <div id="cf_alerts"></div>
   <div class="card" id="cf_bilan" hidden></div>
   <div class="card">
     <h2 id="cf_chartTitle">Cash-flow annuel après impôts</h2>
     <div class="chart" id="cf_chart"></div>
-    <div class="hint">Bleu : le bien rapporte plus qu'il ne coûte. Rouge : effort d'épargne à prévoir. Le tableau détaillé est juste en dessous.</div>
+    <div class="hint">Bleu : le bien rapporte plus qu'il ne coûte. Rouge : effort d'épargne à prévoir.</div>
+  </div>
+  <div class="card" id="cf_cible"><h2>Prix d'équilibre</h2>
+    <div class="cible-ligne"><label for="cf_cibleVal" id="cf_cibleLabel">Cash-flow visé (€/mois)</label><input id="cf_cibleVal" type="number" step="10"></div>
+    <div id="cf_cibleRes" class="hint"></div>
   </div>
   <details class="card" style="padding:14px 16px"><summary style="padding:0">Tableau année par année</summary><div class="scroll" id="cf_table"></div></details>
   <div class="card"><h2>Sources et limites</h2>
@@ -2372,8 +2396,7 @@ const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier'
   'apport', 'duree', 'taux', 'assur', 'differe', 'typeDiff', 'dossier', 'garantie', 'loyer', 'vacance', 'tf', 'copro', 'pno',
   'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit', 'sciExist',
   'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2', 'debutLoyer1',
-  'locMode', 'nuit', 'occupation', 'sejour', 'menage', 'plateforme', 'conciergerie', 'chargesSaison', 'classe',
-  'prixB2', 'loyerB2', 'tfB2', 'coproB2'];
+  'locMode', 'nuit', 'occupation', 'sejour', 'menage', 'plateforme', 'conciergerie', 'chargesSaison', 'classe', 'nomBien'];
 // 2e loyer (bien divisé, annexe louée à part) : absent des projets enregistrés avant lui, donc remis à zéro à leur réouverture
 const SANS_LOYER2 = {loyer2: '', debutLoyer2: 1, debutLoyer1: ''};
 // Location saisonnière (à la nuitée) : absente des anciens projets, qui restent au mois
@@ -2383,8 +2406,7 @@ const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, 
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
   gLoyer: 1.5, gPrix: 1, gCharges: 2, vieux: '1', notaireCredit: true, sciExist: '',
-  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4, ...SANS_LOYER2, ...SANS_SAISON,
-  prixB2: 150000, loyerB2: 600, tfB2: 600, coproB2: 300};
+  scenario: 'louer', dureeTravaux: 6, valeurApres: 0, travauxCredit: true, moisRevente: 12, fraisRevente: 4, ...SANS_LOYER2, ...SANS_SAISON, nomBien: ''};
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
 
@@ -2421,6 +2443,7 @@ function charger() {
   for (const k in lies) set(k, lies[k]);
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
   if (v.flags) flags = {...flags, ...v.flags};
+  fixerBiensPlus(migrerFinance(saved).biensPlus);
   majChips();
 }
 function majChips() {
@@ -2446,7 +2469,7 @@ function mettreSaison(sz) {
 }
 function barreProjet(pr) {
   const r = pr.resume || {};
-  return `Projet <b>${esc(pr.nom)}</b>${r.surf ? ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²` : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
+  return `Projet <b>${esc(pr.nom)}</b>${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
 }
 function sync(est, mode) {
   if (mode) figee = undefined;   // « Travaux + location » et autres : demande explicite, on applique le projet
@@ -2473,7 +2496,7 @@ function sync(est, mode) {
   if (cle !== last) {
     set('prix', est.prix); set('loyer', est.loyer); set('surf', est.surf); set('type', est.type);
     for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);   // le 2e loyer d'un autre bien ne suit pas
-    $('boxBien2').open = false; majChips();                 // ni le 2e bien acheté avec lui
+    fixerBiensPlus([]); set('nomBien', '');                 // ni les autres biens achetés avec lui
     set('meuble', est.meuble ? '1' : '0'); set('mobilier', est.mob || 0);
     for (const k in SANS_SAISON) set(k, SANS_SAISON[k]);
     if (est.saison) mettreSaison(est.saison);
@@ -2506,7 +2529,24 @@ function sync(est, mode) {
   majSauvegarde(pr);
   rendre();
 }
-const BOXES = {projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol', bien2: 'boxBien2'};
+const BOXES = {projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol'};
+// Un projet = une liste de biens financés par un seul crédit. Le 1er bien a ses champs dans le formulaire (avec travaux,
+// location à la nuitée, autre loyer) ; les autres biens, achetés en même temps, sont dans biensPlus.
+const BIEN_VIDE = {nom: '', prix: 0, loyer: 0, tf: 0, copro: 0, pno: 0, surf: 0, mobilier: 0};
+let biensPlus = [];
+const fixerBiensPlus = l => { biensPlus = (l || []).map(b => ({...BIEN_VIDE, ...b})); if (typeof rendreBiens === 'function') rendreBiens(); };
+// Ancien format (avant la liste de biens) : un seul « 2e bien » dans prixB2, loyerB2, tfB2 et coproB2, compté si la
+// section « Deux biens, un seul crédit » était ouverte
+function migrerFinance(v) {
+  if (!v || Array.isArray(v.biensPlus)) return v || {};
+  const n = x => +x || 0, deux = !!(v.ouverts && v.ouverts.bien2) && n(v.prixB2) > 0;
+  return {...v, biensPlus: deux ? [{...BIEN_VIDE, prix: n(v.prixB2), loyer: n(v.loyerB2), tf: n(v.tfB2), copro: n(v.coproB2)}] : []};
+}
+// Garde aussi l'ancien format (totaux des autres biens), lu par une page restée ouverte sur l'ancienne version
+function avecAncienFormat(v) {
+  const l = v.biensPlus || [], somme = k => l.reduce((t, b) => t + (+b[k] || 0), 0);
+  return {...v, prixB2: somme('prix'), loyerB2: somme('loyer'), tfB2: somme('tf'), coproB2: somme('copro'), ouverts: {...(v.ouverts || {}), bien2: l.length > 0}};
+}
 let flags = {tauxManuel: false, comptaManuel: false, differeAuto: false};
 const ouvert = k => $(BOXES[k]).open;
 function etat() {
@@ -2514,7 +2554,8 @@ function etat() {
   for (const k of FIELDS) v[k] = get(k);
   v.ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
   v.flags = flags;
-  return v;
+  v.biensPlus = biensPlus.map(b => ({...b}));
+  return avecAncienFormat(v);
 }
 function sauver() { try { localStorage.setItem('cashflow-v1', JSON.stringify(etat())); } catch (e) {} }
 function afficherChamps() {
@@ -2539,12 +2580,17 @@ function afficherChamps() {
   $('debutLoyer1').placeholder = ouvert('projet') ? String(get('dureeTravaux') + 1) : '1';
   $('debutLoyer1Hint').textContent = ouvert('projet') ? `Vide : après le chantier (mois ${get('dureeTravaux') + 1}). 1 = déjà loué pendant les travaux` : '1 = dès l\'achat';
   CF.querySelectorAll('#cf_scen button').forEach(b => b.classList.toggle('on', b.dataset.v === get('scenario')));
-  // Deux biens : la taxe foncière et la copro de chaque bien côte à côte dans la section, au lieu d'une en haut et l'autre
-  // dans les charges ; les champs du 1er bien disent « du 1er bien »
-  const deux = ouvert('bien2'), tf = $('tf').parentElement, copro = $('copro').parentElement;
-  if (deux && tf.parentElement !== $('chargesBiens')) { $('tfB2').parentElement.before(tf); $('coproB2').parentElement.before(copro); }
-  if (!deux && tf.parentElement === $('chargesBiens')) $('vacance').parentElement.after(tf, copro);
-  CF.querySelectorAll('label[data-l1]').forEach(l => { l.dataset.l ??= l.textContent; l.textContent = deux ? l.dataset.l1 : l.dataset.l; });
+  $('titreBiens').textContent = biensPlus.length ? 'Les biens' : 'Le bien';
+  $('bien1Quoi').textContent = `${get('type') === 'maison' ? 'Maison' : 'Appartement'}${get('surf') ? ` · ${fmt(get('surf'))} m²` : ''}`;
+}
+// Cartes des autres biens : refaites seulement quand on en ajoute ou en retire un (pas à chaque frappe)
+function rendreBiens() {
+  const champ = (b, k, l, pas) => `<div><label>${l}</label><input type="number" min="0" step="${pas}" data-k="${k}" value="${+b[k] || ''}"></div>`;
+  $('biensPlus').innerHTML = biensPlus.map((b, i) => `<article class="bien-carte" data-i="${i}">
+    <div class="bien-tete"><input class="nom-bien" type="text" data-k="nom" value="${esc(b.nom || '')}" placeholder="${i + 2}e bien" aria-label="Nom du bien"><button class="bien-x" data-a="retirerBien" aria-label="Retirer ce bien" title="Retirer ce bien">${CROIX_X}</button></div>
+    <div class="grid">${champ(b, 'prix', 'Prix (€)', 1000)}${champ(b, 'loyer', 'Loyer hors charges (€/mois)', 10)}${champ(b, 'tf', 'Taxe foncière (€/an)', 50)}${champ(b, 'copro', 'Copro non récupérable (€/an)', 50)}</div>
+    <details class="plus-bien"><summary>Plus de détails</summary><div class="grid">${champ(b, 'surf', 'Surface (m²)', 1)}${champ(b, 'pno', 'Assurance PNO (€/an)', 10)}<div data-meuble${get('meuble') === '1' ? '' : ' hidden'}><label>Mobilier (€)</label><input type="number" min="0" step="500" data-k="mobilier" value="${+b.mobilier || ''}"></div></div></details>
+  </article>`).join('');
 }
 
 // ---------- Crédit ----------
@@ -2586,9 +2632,12 @@ function simuler() {
   p.debutLoc = p.loyer2 > 0 && p.debutLoyer1 ? Math.max(0, Math.round(p.debutLoyer1) - 1) : travauxOn ? p.dureeTravaux : 0;
   // 2e loyer : son propre début (mois 1 = dès l'achat) ; tous les loyers tournent à partir de debutPlein
   p.debutLoc2 = Math.max(0, Math.round(p.debutLoyer2 || 1) - 1);
-  // Deux biens, un seul crédit : le prix du 2e bien s'ajoute (notaire, crédit, amortissement), son loyer court dès l'achat
-  p.deuxBiens = ouvert('bien2') && p.prixB2 > 0;
-  if (!p.deuxBiens) { p.prixB2 = 0; p.loyerB2 = 0; p.tfB2 = 0; p.coproB2 = 0; }
+  // Autres biens du même crédit : leurs prix s'ajoutent (notaire, crédit, amortissement), leurs loyers courent dès l'achat,
+  // leurs charges s'ajoutent. Les totaux « B2 » sont ceux de tous les autres biens
+  p.autres = biensPlus.filter(b => +b.prix > 0 || +b.loyer > 0);
+  const somme = k => p.autres.reduce((t, b) => t + (+b[k] || 0), 0);
+  p.deuxBiens = p.autres.length > 0;
+  Object.assign(p, {prixB2: somme('prix'), loyerB2: somme('loyer'), tfB2: somme('tf'), coproB2: somme('copro'), pnoB2: somme('pno'), mobilierB2: somme('mobilier'), surfB2: somme('surf')});
   p.prix1 = p.prix; p.prix += p.prixB2;
   p.loyerTotal = p.loyer + p.loyer2 + p.loyerB2;
   p.debutPlein = p.loyer2 > 0 ? Math.max(p.debutLoc, p.debutLoc2) : p.debutLoc;
@@ -2600,7 +2649,7 @@ function simuler() {
   const notes = [];
   if (st === 'ir' && meuble) { st = 'is'; notes.push('Location meublée dans une SCI à l\'IR : au-delà de 10 % de recettes meublées, la SCI passe d\'office à l\'IS. La simulation applique donc l\'IS.'); }
   const fraisNotaire = p.prix * p.notaire / 100;
-  const mobilier = meuble ? p.mobilier : 0;
+  const mobilier = meuble ? p.mobilier + p.mobilierB2 : 0;
   const coutHorsBanque = p.prix + fraisNotaire + p.travaux + mobilier;
   // Emprunt = coût total - apport, frais bancaires inclus (garantie calculée sur le prêt).
   // Frais de notaire hors crédit : l'apport doit au moins les couvrir.
@@ -2632,7 +2681,7 @@ function simuler() {
       if (m >= p.debutLoc) moisLoues++;
     }
     const infl = Math.pow(1 + p.gCharges / 100, y - 1);
-    const fixes = (p.tf + p.copro + p.tfB2 + p.coproB2 + p.pno + p.compta + (meuble ? p.cfe : 0)) * infl;
+    const fixes = (p.tf + p.copro + p.tfB2 + p.coproB2 + p.pno + p.pnoB2 + p.compta + (meuble ? p.cfe : 0)) * infl;
     // Saisonnier : frais en % des recettes de la nuitée, charges du logement pendant les mois d'exploitation
     const fraisSaison = sz ? loyers1 * sz.pctFrais / 100 + p.chargesSaison * moisLoues * infl : 0;
     const charges = fixes + loyers * (p.gestion + p.entretien) / 100 + fraisSaison;
@@ -2763,22 +2812,23 @@ function rendre() {
   const coutCredit = s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie;
   const fin = s.annees[s.annees.length - 1];
   const patrimoine = s.valeur - fin.crd + fin.cumul;
-  const ac = anneeCroisiere(s), suiteDiffere = p.differe > 0 && ac.y !== a1.y ? ` · après le différé (année ${ac.y}) : <b>${eur(ac.cf / 12)}</b> par mois` : '';
+  const ac = anneeCroisiere(s);
+  // Trois chiffres : la mensualité, ce qu'il reste chaque mois une fois le différé passé, et le patrimoine à la fin
+  const resteMois = ac.cf / 12;
   $('tiles').innerHTML = [
-    ['Mensualité', eur(mens), `dont assurance ${eur(s.ech.assM)} · prêt de ${eur(s.pret)}, frais de notaire ${p.notaireCredit ? 'inclus' : 'payés par l\'apport'}${p.projet === 'location' ? `, travaux ${p.travauxCredit ? 'inclus' : 'payés par l\'apport'}` : ''}${p.differe > 0 ? ` · après le différé` : ''}`],
-    ...(p.differe > 0 ? [['Mensualité pendant le différé', eur(s.ech.mensDiff), `pendant ${p.differe} mois : ${p.typeDiff === 'total' ? 'assurance seule, les intérêts s\'ajoutent au capital' : `intérêts ${eur(s.ech.mensDiff - s.ech.assM)} + assurance ${eur(s.ech.assM)}, sans capital remboursé`}`]] : []),
-    ['Cash-flow / mois', eur(a1.cf / 12), (p.avecImpots ? `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, après impôts · avant impôts ${eur((a1.loyers - a1.charges - a1.credit) / 12)}` : `année ${a1.y}${a1.y > 1 ? ' (1re année pleine de location)' : ''}, impôts non comptés`) + suiteDiffere],
-    ['Cash-flow moyen', eur(cfMoyen), `par mois sur la durée du crédit`],
-    ['Coût du crédit', eur(coutCredit), `intérêts, assurance, dossier et garantie`],
-    [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
+    ['Mensualité', eur(mens), `prêt de ${eur(s.pret)}, ${p.differe > 0 ? `${eur(s.ech.mensDiff)} pendant le différé (${p.differe} mois)` : 'assurance comprise'}`],
+    [resteMois < 0 ? 'Il te manque par mois' : 'Il te reste par mois', `<span class="${resteMois < 0 ? 'down' : 'up'}">${eur(Math.abs(resteMois))}</span>`,
+      `${p.differe > 0 && ac.y !== a1.y ? `après le différé · ${eur(a1.cf / 12)} pendant` : `année ${ac.y}`}, ${p.avecImpots ? 'après' : 'avant'} impôts`],
+    [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), 'mise de départ déduite'],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
+  $('tilesPlus').textContent = `Coût du crédit ${eur(coutCredit)} (intérêts, assurance, frais) · cash-flow moyen ${eur(cfMoyen)} par mois sur la durée du crédit.`;
 
-  const ac0 = anneeCroisiere(s);
-  $('simple').innerHTML = bilanSimple({loyer: ac0.loyers / 12, credit: ac0.credit / 12, charges: ac0.charges / 12, impots: p.avecImpots ? ac0.impots / 12 : null},
-    {libLoyer: 'Loyer encaissé', note: `Moyenne par mois de l'année ${ac0.y}${ac0.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
+  $('simple').classList.remove('seul-simple');
+  $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
+    {titre: 'Un mois type', libLoyer: p.deuxBiens || p.loyer2 > 0 ? 'Loyers encaissés' : 'Loyer encaissé', note: `Moyenne par mois de l'année ${ac.y}${ac.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
   // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
-  const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
+  const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0);
   if (p.projet === 'location') al += `<div class="okbox">Travaux : loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux <b>${eur(s.base)}</b> pour ${eur(coutBien)} investis (hors mobilier) : <b>${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))}</b>.</div>`;
   if (s.saison) {
     const z = s.saison;
@@ -2786,7 +2836,7 @@ function rendre() {
     al += `<div class="okbox">Location saisonnière : <b>${eur(p.nuit)}</b> la nuit, ${fmt(p.occupation)} % d'occupation (${fmt(z.nuits)} nuits, ${fmt(z.sejours)} séjours par an), soit <b>${eur(z.brutMois)}</b> de recettes par mois en moyenne. Plateforme, conciergerie et ménage : ${pct(z.pctFrais)} des recettes ; charges du logement ${eur(p.chargesSaison)}/mois. La vacance est remplacée par le taux d'occupation.</div>`;
     al += `<div class="warnbox">Avant de louer à la nuitée : déclaration en mairie, 120 nuits par an au plus pour une résidence principale (90 dans certaines villes, dont Paris), changement d'usage souvent exigé dans les grandes villes, règlement de copropriété et DPE minimum (loi Le Meur).</div>`;
   }
-  if (p.deuxBiens) al += `<div class="okbox">Deux biens : <b>${eur(p.prix)}</b> au total (notaire ${eur(s.fraisNotaire)}), <b>${eur(p.loyerTotal)}</b> de loyers par mois.</div>`;
+  if (p.deuxBiens) al += `<div class="okbox">${p.autres.length === 1 ? 'Deux' : p.autres.length + 1} biens : <b>${eur(p.prix)}</b> au total (notaire ${eur(s.fraisNotaire)}), <b>${eur(p.loyerTotal)}</b> de loyers par mois.</div>`;
   if (p.loyer2 > 0) al += `<div class="okbox">Loyers : ${eur(p.loyer)} dès le mois ${p.debutLoc + 1}, ${eur(p.loyer2)} dès le mois ${p.debutLoc2 + 1}.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
@@ -2863,6 +2913,7 @@ function rendreRevente(s) {
     ['Effort pendant l\'opération', eur(b.sorties / b.n) + '/mois', `${eur(b.sorties)} au total : mensualités et charges${b.loyers ? ', moins les loyers' : ''}`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
   const nb = Math.round(b.net), lS = (l, v) => `<div class="bs-l"><span>${l}</span><b>${eur(v)}</b></div>`;
+  $('simple').classList.add('seul-simple'); $('tilesPlus').textContent = '';
   $('simple').innerHTML = `<div class="bilan-simple">${lS('Prix de revente', b.prixVente)}${lS('Coût du projet (achat, notaire, travaux)', b.coutAchat)}${lS('Effort par mois pendant l\'opération', b.sorties / b.n)}
     <div class="bs-l bs-total"><span>${nb < 0 ? 'Perte' : 'Bénéfice'}</span><b class="${nb > 0 ? 'up' : nb < 0 ? 'down' : ''}">${eur(Math.abs(nb))}</b></div>
     <p class="bs-phrase">${nb >= 0 ? `Revendu au bout de ${b.n} mois, ce projet te rapporte <b>${eur(nb)}</b>${p.avecImpots ? ' après impôt' : ''}.` : `Revendu au bout de ${b.n} mois, ce projet te fait perdre <b>${eur(-nb)}</b>.`} En attendant, prévois environ <b>${eur(b.sorties / b.n)}</b> par mois de mensualités et de charges.</p></div>`;
@@ -2977,7 +3028,7 @@ function majCible() {
   else if (r.sansLimite) h = `Pour ${quoi}, le prix n'est pas un frein : ça passe jusqu'à ${eur(r.prix)} au moins.`;
   else {
     const ecart = r.prix - actuel;
-    h = `Pour ${quoi}, il faudrait acheter ${p.deuxBiens ? `le 1er bien à <b>${eur(r.prix)}</b> (le 2e restant à ${eur(p.prixB2)})` : `à <b>${eur(r.prix)}</b>`}`
+    h = `Pour ${quoi}, il faudrait acheter ${p.deuxBiens ? `le 1er bien à <b>${eur(r.prix)}</b> (${p.autres.length === 1 ? 'le 2e restant' : 'les autres restant'} à ${eur(p.prixB2)})` : `à <b>${eur(r.prix)}</b>`}`
       + (Math.abs(ecart) < 100 ? ', soit ton prix actuel.'
         : ecart < 0 ? ` au lieu de ${eur(actuel)} : <b>${pct(ecart / actuel * 100)}</b>, soit ${eur(ecart)} à négocier.`
         : ` : ton prix de ${eur(actuel)} est déjà plus bas, il te reste ${eur(ecart)} de marge.`);
@@ -3006,7 +3057,7 @@ function majSauvegarde(pr) {
 function instantane(ex, recalcul) {
   const s = simuler(), p = s.p, revente = p.projet === 'revente', c = prixCible(cibleVisee());
   const sci = mesScis().find(x => x.id === p.sciExist), exr = ex && ex.resume ? ex.resume : {};
-  const resume = {v: 3, type: p.type, surf: p.surf, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
+  const resume = {v: 4, type: p.type, surf: p.surf + p.surfB2, nbBiens: 1 + p.autres.length, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
     prix: p.prix, prixB2: p.deuxBiens ? p.prixB2 : null, loyerB2: p.deuxBiens ? p.loyerB2 : null, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
@@ -3039,16 +3090,18 @@ function enregistrerProjet(nouveau) {
 }
 // Recalcule le résumé d'un projet enregistré avec ses réglages, sans toucher à ce que montre Financer
 function recalculer(v, ex) {
-  v = {...SANS_LOYER2, ...SANS_SAISON, ...v};
+  v = {...SANS_LOYER2, ...SANS_SAISON, nomBien: '', ...migrerFinance(v)};
   const avant = etat(), ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
   try {
     majScis();
     for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
     for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
+    biensPlus = v.biensPlus.map(b => ({...BIEN_VIDE, ...b}));
     return instantane(ex, true).resume;
   } finally {
     for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]);
     for (const k in BOXES) $(BOXES[k]).open = ouverts[k];
+    biensPlus = avant.biensPlus;
     majScis();
   }
 }
@@ -3064,11 +3117,12 @@ function enregistrerEstimation(est, mode, nom) {
 function enregistrerAmenagement(a) {
   const avant = etat(), ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)])), flagsAvant = flags;
   let pr;
+  biensPlus = [];   // un aménagement ne finance que ses travaux
   try {
     const ex = a.id ? PROJETS.liste.find(x => x.id === a.id) : null;
     const v = ex && ex.finance ? {...DEFAUTS, ...ex.finance} : {...DEFAUTS, struct: a.struct, sciExist: a.sciExist, tf: Math.round(a.loyer / 10) * 10, copro: 0, pno: 0};
     Object.assign(v, {prix: 0, notaire: 0, neuf: '0', type: a.type, surf: a.surf, travaux: a.travaux, valeurApres: a.valeurApres, dureeTravaux: a.duree, travauxCredit: ex ? v.travauxCredit : true,
-      scenario: 'louer', loyer: a.loyer, meuble: a.meuble ? '1' : '0', mobilier: a.mobilier || 0, ...SANS_LOYER2,
+      scenario: 'louer', loyer: a.loyer, meuble: a.meuble ? '1' : '0', mobilier: a.mobilier || 0, nomBien: '', ...SANS_LOYER2,
       // À la nuitée : prix par nuit et occupation de la fiche, frais par défaut (ou ceux déjà réglés dans le projet)
       ...(a.saison ? {locMode: 'nuit', nuit: a.saison.nuit, occupation: a.saison.occupation, chargesSaison: a.saison.charges,
         ...(ex && ex.finance.locMode === 'nuit' ? {} : {sejour: SAISON_DEFAUTS.sejour, menage: SAISON_DEFAUTS.menage, plateforme: SAISON_DEFAUTS.plateforme, conciergerie: SAISON_DEFAUTS.conciergerie, classe: '0'})} : SANS_SAISON)});
@@ -3085,15 +3139,16 @@ function enregistrerAmenagement(a) {
   } finally {
     for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]);
     for (const k in BOXES) $(BOXES[k]).open = ouverts[k];
-    flags = flagsAvant; majScis();
+    flags = flagsAvant; biensPlus = avant.biensPlus; majScis();
   }
   PROJETS.ajouter(pr);
   return pr.id;
 }
 // Rouvre un projet : champs, sections ouvertes et réglages comme à l'enregistrement
 function restaurer(v, cleBien) {
-  v = {...SANS_LOYER2, ...SANS_SAISON, ...v};
+  v = {...SANS_LOYER2, ...SANS_SAISON, nomBien: '', ...migrerFinance(v)};
   for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
+  fixerBiensPlus(v.biensPlus);
   flags = {tauxManuel: false, comptaManuel: false, differeAuto: false, ...(v.flags || {})};
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
   projetOuvert = ouvert('projet');
@@ -3105,21 +3160,17 @@ function restaurer(v, cleBien) {
 }
 
 // ---------- Deux projets de « Mes projets », un seul crédit ----------
-// Le 1er garde ses réglages (crédit, fiscalité, travaux) ; le 2e, avec le 2e bien qu'il finançait déjà, rejoint la section
-// « Deux biens, un seul crédit » : son prix, son loyer, sa taxe foncière et sa copro y vont (chaque bien garde les siennes).
-// Les réglages détaillés comptent les deux biens : surface, mobilier et assurance additionnées ; comptable et CFE une seule
-// fois (la plus élevée) ; apport additionné
-function financeRegroupee(a, b) {
-  a = {...DEFAUTS, ...a}; b = {...DEFAUTS, ...b};
-  const n = x => +x || 0, deux = x => !!(x.ouverts && x.ouverts.bien2), en2 = (x, k) => deux(x) ? n(x[k + 'B2']) : 0;
-  const v = {...a, ouverts: {...(a.ouverts || {}), bien2: true}};
-  v.prixB2 = en2(a, 'prix') + n(b.prix) + en2(b, 'prix');
-  v.loyerB2 = en2(a, 'loyer') + n(b.loyer) + n(b.loyer2) + en2(b, 'loyer');
-  v.tf = n(a.tf); v.tfB2 = en2(a, 'tf') + n(b.tf) + en2(b, 'tf');
-  v.copro = n(a.copro); v.coproB2 = en2(a, 'copro') + n(b.copro) + en2(b, 'copro');
-  for (const k of ['surf', 'mobilier', 'pno', 'apport']) v[k] = n(a[k]) + n(b[k]);
+// Le 1er garde ses réglages (crédit, fiscalité, travaux) ; le 2e devient un bien de plus, avec son prix, son loyer et ses
+// charges. Apport additionné ; comptable et CFE une seule fois (la plus élevée)
+function financeRegroupee(a, b, noms = []) {
+  a = {...DEFAUTS, ...migrerFinance(a)}; b = {...DEFAUTS, ...migrerFinance(b)};
+  const n = x => +x || 0;
+  const v = {...a, nomBien: a.nomBien || noms[0] || ''};
+  // Le 2e projet devient un bien de la liste, avec ses propres charges ; les biens qu'il finançait déjà le suivent
+  v.biensPlus = [...a.biensPlus, {...BIEN_VIDE, nom: b.nomBien || noms[1] || '', prix: n(b.prix), loyer: n(b.loyer) + n(b.loyer2), tf: n(b.tf), copro: n(b.copro), pno: n(b.pno), surf: n(b.surf), mobilier: n(b.mobilier)}, ...b.biensPlus];
+  v.apport = n(a.apport) + n(b.apport);
   for (const k of ['compta', 'cfe']) v[k] = Math.max(n(a[k]), n(b[k]));
-  return {finance: v, travauxB: b.ouverts && b.ouverts.projet ? n(b.travaux) : 0};
+  return {finance: avecAncienFormat(v), travauxB: b.ouverts && b.ouverts.projet ? n(b.travaux) : 0};
 }
 // Projet regroupé avant que chaque bien garde sa taxe foncière et sa copro (les deux étaient additionnées dans celles du
 // 1er bien) : le 1er bien reprend les siennes, le reste passe au 2e. Le total ne change pas, ni les autres réglages modifiés depuis
@@ -3133,7 +3184,7 @@ function chargesParBien(v, a) {
   return w;
 }
 function regrouper(a, b) {
-  const {finance, travauxB} = financeRegroupee(a.finance, b.finance);
+  const {finance, travauxB} = financeRegroupee(a.finance, b.finance, [a.nom, b.nom]);
   const resume = recalculer(finance, null);
   resume.label = `un seul crédit pour « ${a.nom} » et « ${b.nom} »`;
   return {finance, resume, travauxB};
@@ -3148,6 +3199,12 @@ $('connexion').onclick = () => ouvrirCompte();
 $('enreg').onclick = () => enregistrerProjet(false);
 $('enregNouveau').onclick = () => enregistrerProjet(true);
 $('form').addEventListener('input', e => {
+  const carte = e.target.closest('#cf_biensPlus [data-i]');
+  if (carte) {   // un autre bien du même crédit
+    const k = e.target.dataset.k;
+    biensPlus[+carte.dataset.i][k] = k === 'nom' ? e.target.value : +e.target.value || 0;
+    sauver(); rendre(); return;
+  }
   const id = e.target.id.replace(/^cf_/, '');
   // Ce que tu règles à la main n'est plus remplacé automatiquement
   if (id === 'taux') flags.tauxManuel = true;
@@ -3192,11 +3249,19 @@ CF.querySelectorAll('#cf_locSeg button').forEach(b => b.onclick = () => {
   sauver(); rendre();
 });
 CF.querySelectorAll('details.opt').forEach(d => d.addEventListener('toggle', () => { majChips(); sauver(); rendre(); }));
+$('ajoutBien').onclick = () => {
+  biensPlus.push({...BIEN_VIDE}); rendreBiens(); sauver(); rendre();
+  $('biensPlus').lastElementChild.querySelector('[data-k="prix"]').focus();
+};
+$('biensPlus').addEventListener('click', e => {
+  const t = e.target.closest('[data-a="retirerBien"]'); if (!t) return;
+  biensPlus.splice(+t.closest('[data-i]').dataset.i, 1); rendreBiens(); sauver(); rendre();
+});
 $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
 <script src="investissements.js?v=123a8a96"></script>
@@ -3225,7 +3290,7 @@ function carteProjet(pr) {
   const qui = r.struct === 'np' || !r.struct ? 'en nom propre' : `en SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
   // Deux biens : pas la phrase « un seul crédit pour « A » et « B » », ni « Appartement de » pour la surface des deux additionnée
   const deux = r.prixB2 != null;
-  const sous = [deux ? 'Deux biens, un seul crédit' : r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²`) : '', revente ? 'achat-revente' : r.saison ? 'location saisonnière' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
+  const sous = [deux ? `${r.nbBiens > 2 ? r.nbBiens : 'Deux'} biens, un seul crédit` : r.label && r.label !== pr.nom ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appartement'} de ${r.surf} m²`) : '', revente ? 'achat-revente' : r.saison ? 'location saisonnière' : r.meuble ? 'location meublée' : 'location vide', qui].filter(Boolean).join(' · ');
   const signe = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
   const cases = [!revente && r.travaux > 0 && r.valeurApres > 0 ? ['Prix estimé après projet', `<b>${eurP(r.valeurApres)}</b>` + (r.prixEstime != null ? `<small>${eurP(r.prixEstime)} aujourd'hui</small>` : '')] : ['Prix estimé', eurP(r.prixEstime)], ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.prixB2 ? `<small>${eurP(r.prix - r.prixB2)} + ${eurP(r.prixB2)}</small>` : '') + (r.travaux > 0 ? `<small>+ ${eurP(r.travaux)} de travaux</small>` : '')],
     ['Prix d\'équilibre', `<b>${r.prixCible != null ? eurP(r.prixCible) : 'aucun'}</b><small>${revente ? 'bénéfice de ' + eurP(r.visee) : 'cash-flow de ' + eurP(r.visee) + '/mois' + (r.anneeCible ? ', année ' + r.anneeCible : '')}</small>`]];
@@ -3305,7 +3370,13 @@ function rafraichirResumes() {
     if (pr.regroupe && pr.regroupe.length === 2 && pr.regroupeV === 2 && pr.finance) {
       try { pr.finance = CF_APP.chargesParBien(pr.finance, pr.regroupe[0].finance || {}); pr.regroupeV = 3; pr.resume = {...pr.resume, ...CF_APP.recalculer(pr.finance, pr)}; change = compte = true; } catch (e) { console.warn('Projet regroupé non recalculé :', e); }
     }
-    if (!pr.finance || !pr.resume || pr.resume.v === 3) continue;
+    if (!pr.finance || !pr.resume || pr.resume.v === 4) continue;
+    // v4 : les autres biens deviennent une liste (biensPlus), nommés d'après les projets regroupés quand on les connaît
+    if (pr.resume.v === 3 && pr.finance.ouverts && pr.finance.ouverts.bien2 && !pr.finance.biensPlus) {
+      const noms = nomsRegroupes(pr), f = CF_APP.migrerFinance(pr.finance);
+      if (f.biensPlus.length && (pr.regroupe || /« .+ » et « .+ »$/.test(pr.resume.label || ''))) { f.nomBien ||= noms[0]; f.biensPlus[0].nom ||= noms[1]; }
+      pr.finance = f; compte = true;
+    }
     try { pr.resume = {...pr.resume, ...CF_APP.recalculer(pr.finance, pr)}; change = true; } catch (e) { console.warn('Résumé du projet non recalculé :', e); }
   }
   if (change) { try { localStorage.setItem('projets-v1', JSON.stringify(PROJETS.liste)); } catch (e) {} }

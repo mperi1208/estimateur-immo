@@ -20,9 +20,9 @@ vm.runInContext([
   bloc(idx, '// ---------- Achat + travaux + revente', 'function rendreRevente'),
   bloc(idx, '// ---------- Prix pour être rentable', 'function programmerCible'),
   bloc(idx, '// ---------- Deux projets de « Mes projets »', 'function regrouper('),
-  'this.X = {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS};',
+  'this.X = {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS};',
 ].join('\n'), ctx);
-const {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, bilanRevente, surtaxe, prixCible, metrique, anneeRef, abatIR, abatPS} = ctx.X;
+const {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, abatIR, abatPS} = ctx.X;
 // Surtaxe de Mon patrimoine, pour vérifier que les deux onglets calculent pareil
 const pat = vm.createContext({}); vm.runInContext(bloc(inv, 'function surtaxePV', 'const anneesEntre') + 'this.surtaxePV = surtaxePV;', pat);
 const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 'function surtaxePV') + 'this.abatIR = abatIR; this.abatPS = abatPS;', patAbat);
@@ -34,7 +34,9 @@ function formulaire(v = {}, ouverts = {}) {
   for (const b of ['boxProjet', 'boxImpots', 'boxEvol', 'boxBien2']) els[b] = {open: false};
   const tout = {...DEFAUTS, taux: 3.39, tf: 800, copro: 0, compta: 0, vacance: 0, entretien: 0, pno: 0, ...v};
   for (const k of FIELDS) if (tout[k] != null) set(k, tout[k]);
-  for (const [k, o] of Object.entries(ouverts)) els[{projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol', bien2: 'boxBien2'}[k]].open = o;
+  for (const [k, o] of Object.entries(ouverts)) if (k !== 'bien2') els[{projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol'}[k]].open = o;
+  // Autres biens du même crédit : la liste, ou l'ancien « 2e bien » (prixB2… compté si la section bien2 était ouverte)
+  fixerBiensPlus(tout.biensPlus || migrerFinance({...tout, ouverts}).biensPlus);
   return simuler();
 }
 
@@ -298,12 +300,15 @@ test('deux projets regroupés : le 2e devient le 2e bien, apports additionnés, 
   const b = {...DEFAUTS, prix: 100000, loyer: 450, loyer2: 50, tf: 400, copro: 200, apport: 5000, duree: 15, ouverts: {projet: true}, travaux: 20000, surf: 30, mobilier: 2000, pno: 60, compta: 400, cfe: 300};
   const {finance: v, travauxB} = financeRegroupee(a, b);
   assert.deepEqual([v.prix, v.prixB2, v.loyerB2, v.apport, v.duree, v.taux], [150000, 100000, 500, 15000, 25, 3.5]);
-  // Chaque bien garde sa taxe foncière et sa copro ; surface, mobilier, assurance additionnées ; comptable et CFE une fois
-  assert.deepEqual([v.surf, v.mobilier, v.tf, v.copro, v.pno, v.tfB2, v.coproB2, v.compta, v.cfe], [100, 5500, 800, 0, 138, 400, 200, 400, 300]);
-  assert.deepEqual(v.ouverts, {impots: true, bien2: true});
+  // Le 2e projet devient un bien de la liste, avec ses propres charges ; comptable et CFE une fois
+  assert.deepEqual({...v.biensPlus[0]}, {nom: '', prix: 100000, loyer: 500, tf: 400, copro: 200, pno: 60, surf: 30, mobilier: 2000});
+  assert.deepEqual([v.surf, v.mobilier, v.tf, v.copro, v.pno, v.compta, v.cfe], [70, 3500, 800, 0, 78, 400, 300]);
+  assert.deepEqual({...v.ouverts}, {impots: true, bien2: true});   // ancien format gardé pour une page restée ouverte
   assert.equal(travauxB, 20000);
-  const s = formulaire({...v, ouverts: undefined}, {bien2: true});
+  const s = formulaire({...v, ouverts: undefined});
   assert.equal(s.p.prix, 250000); assert.equal(s.p.loyerTotal, 1200);
+  assert.deepEqual([s.p.pno + s.p.pnoB2, s.p.surf + s.p.surfB2, s.p.mobilier + s.p.mobilierB2], [138, 100, 5500]);
+  assert.deepEqual(financeRegroupee(a, b, ['Lot A', 'Lot B']).finance.biensPlus.map(x => x.nom), ['Lot B']);
   // Un projet qui finançait déjà deux biens : ses deux biens passent dans le 2e bien
   const c = financeRegroupee(a, {...b, ouverts: {bien2: true}, prixB2: 80000, loyerB2: 300, tfB2: 100, coproB2: 0});
   assert.deepEqual([c.finance.prixB2, c.finance.loyerB2, c.finance.tf, c.finance.tfB2, c.travauxB], [180000, 800, 800, 500, 0]);
@@ -323,4 +328,21 @@ test('projet regroupé avant la taxe foncière par bien : le 1er reprend la sien
   const avant = formulaire({prix: 150000, loyer: 700, prixB2: 100000, loyerB2: 500, tf: 1200, tfB2: 0, copro: 200, coproB2: 0}, {bien2: true});
   const apres = formulaire({prix: 150000, loyer: 700, prixB2: 100000, loyerB2: 500, ...chargesParBien({tf: 1200, tfB2: 0, copro: 200, coproB2: 0}, {tf: 800, copro: 0})}, {bien2: true});
   proche(apres.annees[1].cf, avant.annees[1].cf, 0.01);
+});
+
+test('plusieurs biens, un seul crédit : prix, loyers et charges de chaque bien additionnés ; ancien format repris tel quel', () => {
+  const base = {prix: 150000, loyer: 700, notaire: 8, apport: 0, tf: 800, copro: 0, pno: 100};
+  const un = formulaire(base);
+  const trois = formulaire({...base, biensPlus: [{prix: 100000, loyer: 500, tf: 400, copro: 200, pno: 60}, {prix: 50000, loyer: 300, tf: 200}]});
+  assert.equal(trois.p.prix, 300000); assert.equal(trois.p.loyerTotal, 1500); assert.equal(trois.p.autres.length, 2);
+  proche(trois.fraisNotaire, 24000, 1e-6);
+  proche(trois.annees[0].charges - un.annees[0].charges, 400 + 200 + 60 + 200, 1e-6);
+  // Un bien ajouté mais vide (ni prix ni loyer) ne compte pas
+  assert.equal(formulaire({...base, biensPlus: [{}]}).p.deuxBiens, false);
+  // Ancien « 2e bien » : même résultat qu'avec la liste
+  const ancien = formulaire({...base, prixB2: 100000, loyerB2: 500, tfB2: 400, coproB2: 200}, {bien2: true});
+  const liste = formulaire({...base, biensPlus: [{prix: 100000, loyer: 500, tf: 400, copro: 200}]});
+  proche(ancien.annees[2].cf, liste.annees[2].cf, 1e-6);
+  assert.deepEqual(migrerFinance({prixB2: 100000, ouverts: {}}).biensPlus, []);   // section fermée : pas compté
+  assert.equal(migrerFinance({biensPlus: [{prix: 1}]}).biensPlus[0].prix, 1);    // déjà au nouveau format
 });
