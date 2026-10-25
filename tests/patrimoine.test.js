@@ -16,6 +16,7 @@ vm.runInContext([
   bloc(idx, 'const COUT_LOT =', '// Gamme des finitions'), bloc(idx, 'const budgetMobilier =', 'const ORDRE_DPE'),
   'const fmt = n => String(Math.round(n));',
   bloc(inv, 'const TYPE_DVF =', 'const cleEstimation'),
+  bloc(inv, '// Les actes ne disent pas si', 'function versDependance'),
   bloc(inv, 'const sciDe =', 'const REGIMES'),
   bloc(inv, 'const partDe =', '// Biens vendus'),
   bloc(inv, '// ---------- Garage, parking, annexe', 'function annexeHTML'),
