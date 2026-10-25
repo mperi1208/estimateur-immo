@@ -95,6 +95,21 @@ test('étage : rez-de-chaussée −10 % ; 6e sans ascenseur −7 % hors Paris', 
   proche(ajust({etage: 6, ascenseur: 0})[0].p, -0.07, 1e-12);
   proche(ajust({etage: 6, ascenseur: 1, zone: 'paris'})[0].p, 0.06, 1e-12);
 });
+test('ascenseur : ne fait jamais baisser le prix, quel que soit l\'étage', () => {
+  for (const zone of ['paris', 'autre', 'corse']) for (let etage = 0; etage <= 6; etage++) {
+    const p = asc => ajust({zone, etage, ascenseur: asc}).reduce((s, l) => s + (l.p || 0), 0);
+    assert.ok(p(1) >= p(0), `${zone}, étage ${etage}`);
+    if (etage >= 3) assert.ok(p(1) > p(0), `${zone}, étage ${etage} : l'ascenseur doit compter`);
+  }
+});
+test('étage : sans ascenseur, plus on monte (au-delà du 2e) moins ça vaut ; avec, plus ça vaut', () => {
+  for (const zone of ['paris', 'autre']) {
+    const p = (etage, asc) => ajust({zone, etage, ascenseur: asc}).reduce((s, l) => s + (l.p || 0), 0);
+    for (let e = 3; e <= 6; e++) assert.ok(p(e, 1) >= p(e - 1, 1), `${zone} avec, ${e}e`);
+    if (zone === 'autre') for (let e = 3; e <= 6; e++) assert.ok(p(e, 0) < p(e - 1, 0), `${zone} sans, ${e}e`);
+    assert.ok(p(0, 0) < p(1, 0) && p(0, 1) < p(1, 1), `${zone} : le RDC reste le moins cher`);
+  }
+});
 test('critères qui se recoupent : le plus fort compte en entier, les suivants de moins en moins', () => {
   const l = ajust({exterieur: 'balcon', lumiere: 'lumineux', vue: 'deg'});
   const tri = l.sort((a, b) => b.p - a.p);
