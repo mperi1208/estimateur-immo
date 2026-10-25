@@ -452,3 +452,20 @@ test('crédit commun : à la vente d\'un des biens, seule sa part du restant dû
   assert.equal(r.prets, 1);
   assert.ok(lieSimple(b) === false);
 });
+test('totaux : logement de la famille (résidence principale, secondaire, garage avec) à part du cash-flow locatif', () => {
+  const loue = nouveauBien({valeur: 200000, chargesAn: sansCharges, location: {statut: 'vide', loyer: 900, vacance: 0},
+    prets: [{montant: 100000, taux: 3, duree: 240, debut: dans(-12)}]});
+  const maison = nouveauBien({valeur: 400000, chargesAn: {...sansCharges, tf: 1200}, location: {statut: 'rp', vacance: 0},
+    prets: [{montant: 200000, taux: 3, duree: 240, debut: dans(-12)}]});
+  const garage = nouveauBien({type: 'parking', valeur: 20000, chargesAn: {...sansCharges, tf: 120}, lieA: maison.id, location: {statut: 'avec', vacance: 0}});
+  const secondaire = nouveauBien({valeur: 150000, chargesAn: {...sansCharges, tf: 600}, location: {statut: 'secondaire', vacance: 0}});
+  ctx.setBiens([loue, maison, garage, secondaire]);
+  const t = totaux([loue, maison, garage, secondaire]), c = x => calculs(x).cfMois;
+  assert.equal(t.nLog, 3); assert.equal(t.nInv, 1);
+  proche(t.cfInv, c(loue), 1e-9);
+  proche(t.cfLog, c(maison) + c(garage) + c(secondaire), 1e-9);
+  proche(t.cf, t.cfInv + t.cfLog, 1e-9);                 // le total reste la somme des deux
+  assert.ok(t.cfLog < 0 && t.cfInv > 0);
+  proche(t.moisInv.loyer, 900, 1e-9);
+  ctx.setBiens([]);
+});

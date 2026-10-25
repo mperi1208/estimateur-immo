@@ -386,6 +386,7 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 .invwrap a.sci .ico svg{width:28px;height:28px}
 .invwrap a.sci .infos span{font-size:12px;color:var(--muted)}
 .invwrap a.sci .chiffres{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:8px;border-top:1px solid var(--line)}
+.invwrap a.sci .chiffres.trois{grid-template-columns:repeat(3,minmax(0,1fr))}
 .invwrap a.sci .chev{grid-column:3;grid-row:1}
 .invwrap .vignette.sciv svg{width:40px;height:40px}
 .invwrap .associe{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
@@ -522,11 +523,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .tile .d{font-size:12px;color:var(--muted);margin-top:2px}
 #cf .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:14px}
 #cf .card h2{font-size:15px;margin:0 0 8px}
-#cf .cible-ligne{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-#cf .cible-ligne label{margin:0}
-#cf .cible-ligne input{width:120px}
-#cf #cf_cibleRes{margin-top:0;font-size:14px;color:var(--ink)}
-#cf #cf_cibleRes button{margin-left:6px}
+#cf #cf_cible{padding:12px 16px}
+#cf #cf_cibleRes{font-size:14px;color:var(--ink)}
 #cf .saverow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px}
 #cf .saverow input{flex:1;min-width:200px}
 #cf .saverow button.cta{width:auto;margin:0;padding:10px 16px;border:0;background:var(--accent);color:#fff;font-weight:600}
@@ -565,7 +563,7 @@ body.discret #pj .pj-simple-prix b{filter:blur(7px)}
 .aide-simple{font-size:13px;color:var(--muted);margin:0 0 12px}
 body:not(.simple) .seul-simple{display:none}
 body.simple .seul-pro{display:none}
-body.simple #cf :is(.options, .plus-bien, #cf_reset, #cf_cible, #cf_alerts, #cf_bilan, #cf_tiles, #cf_tilesPlus, .card:has(#cf_chart), details.card, .card:has(.srcs)){display:none}
+body.simple #cf :is(.options, .plus-bien, #cf_reset, #cf_alerts, #cf_bilan, #cf_tiles, #cf_tilesPlus, .card:has(#cf_chart), details.card, .card:has(.srcs)){display:none}
 body.simple #cf [data-loyer2], body.simple #cf .grid > div:has(#cf_loyer2){display:none}
 body.simple #estim details.plus{display:none}
 body.simple #invest .pli[data-pli="orga"], body.simple #invest .bloc:has(#inv_renta){display:none}
@@ -746,10 +744,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
     <div class="chart" id="cf_chart"></div>
     <div class="hint">Bleu : le bien rapporte plus qu'il ne coûte. Rouge : effort d'épargne à prévoir.</div>
   </div>
-  <div class="card" id="cf_cible"><h2>Prix d'équilibre</h2>
-    <div class="cible-ligne"><label for="cf_cibleVal" id="cf_cibleLabel">Cash-flow visé (€/mois)</label><input id="cf_cibleVal" type="number" step="10"></div>
-    <div id="cf_cibleRes" class="hint"></div>
-  </div>
+  <div class="card" id="cf_cible"><div id="cf_cibleRes"></div></div>
   <details class="card" style="padding:14px 16px"><summary style="padding:0">Tableau année par année</summary><div class="scroll" id="cf_table"></div></details>
   <div class="card"><h2>Sources et limites</h2>
     <ol class="srcs">
@@ -2808,7 +2803,9 @@ function simuler() {
   });
   const base = (p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix1) + p.prixB2;   // valeur de départ : après travaux s'il y en a (travaux sur le 1er bien)
   const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
-  return {p, st, regime, notes, pret, apportEff, base, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
+  // Loyers encaissés à la fin du différé : 1er loyer, 2e loyer s'il a commencé, et ceux des autres biens du même crédit
+  const loyerDiffere = p.loyer + (p.differe - 1 >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2;
+  return {p, st, regime, notes, pret, apportEff, base, loyerDiffere, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
 }
 
 // ---------- Affichage ----------
@@ -2853,7 +2850,7 @@ function rendre() {
   // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0);
-  if (p.projet === 'location') al += `<div class="okbox">Travaux : loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux <b>${eur(s.base)}</b> pour ${eur(coutBien)} investis (hors mobilier) : <b>${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))}</b>.</div>`;
+  if (p.projet === 'location') al += `<div class="okbox">Travaux : loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, <b>${eur(s.loyerDiffere)}</b> de loyer${p.deuxBiens || p.loyer2 > 0 ? 's' : ''} pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux <b>${eur(s.base)}</b> pour ${eur(coutBien)} investis (hors mobilier) : <b>${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))}</b>.</div>`;
   if (s.saison) {
     const z = s.saison;
     $('saisonHint').innerHTML = `≈ <b>${eur(z.brutMois)}</b> de recettes par mois (${fmt(z.nuits)} nuits par an), <b>${eur(z.netMois)}</b> après frais et charges du logement. Frais détaillés dans « Réglages détaillés ».`;
@@ -3019,10 +3016,7 @@ function anneeRef(s) { const p = s.p; return s.annees.find(a => a.loyers > 0 && 
 // et une fois le différé et le chantier finis (le crédit s'amortit alors normalement). Pendant un différé on ne paie que les
 // intérêts : le cash-flow y est flatteur et ne dure pas.
 function anneeCroisiere(s) { const p = s.p, debut = Math.max(p.debutPlein, p.differe, 12); return s.annees.find(a => a.loyers > 0 && 12 * (a.y - 1) >= debut) || anneeRef(s); }
-let cible = {louer: 0, revendre: 0}, tCible = null;
-try { Object.assign(cible, JSON.parse(localStorage.getItem('cashflow-cible') || '{}')); } catch (e) {}
-const cleCible = () => get('scenario') === 'revendre' ? 'revendre' : 'louer';
-const cibleVisee = () => +cible[cleCible()] || 0;
+let tCible = null;
 // Ce qu'on cherche à atteindre : cash-flow mensuel de l'année de croisière (louer) ou bénéfice net de l'opération (revendre)
 function metrique(prix) {
   $('prix').value = prix;
@@ -3041,24 +3035,12 @@ function prixCible(visee) {
   } finally { el.value = avant; }
 }
 function programmerCible() { clearTimeout(tCible); tCible = setTimeout(majCible, 150); }
+// Une seule ligne : le prix qui met le cash-flow (ou le bénéfice de la revente) à 0
 function majCible() {
-  const s = simuler(), p = s.p, revente = p.projet === 'revente', visee = cibleVisee();
-  $('cibleLabel').textContent = revente ? 'Bénéfice net visé (€)' : 'Cash-flow visé (€/mois)';
-  if (document.activeElement !== $('cibleVal')) $('cibleVal').value = visee;
-  const r = prixCible(visee), actuel = p.prix1;
-  const quoi = revente ? `un bénéfice net de <b>${eur(visee)}</b> à la revente` : `un cash-flow de <b>${eur(visee)} par mois</b> en année ${anneeCroisiere(s).y}${p.differe > 0 ? ' (une fois le différé terminé)' : ''}, ${p.avecImpots ? 'après' : 'avant'} impôts`;
-  let h;
-  if (r.impossible) h = `Pour ${quoi}, aucun prix ne suffit : ${revente ? 'la revente ne rapporte pas assez (valeur après travaux, frais et charges à revoir).' : 'les charges et le crédit dépassent le loyer même à très bas prix. Revois le loyer, les charges ou l\'apport.'}`;
-  else if (r.sansLimite) h = `Pour ${quoi}, le prix n'est pas un frein : ça passe jusqu'à ${eur(r.prix)} au moins.`;
-  else {
-    const ecart = r.prix - actuel;
-    h = `Pour ${quoi}, il faudrait acheter ${p.deuxBiens ? `le 1er bien à <b>${eur(r.prix)}</b> (${p.autres.length === 1 ? 'le 2e restant' : 'les autres restant'} à ${eur(p.prixB2)})` : `à <b>${eur(r.prix)}</b>`}`
-      + (Math.abs(ecart) < 100 ? ', soit ton prix actuel.'
-        : ecart < 0 ? ` au lieu de ${eur(actuel)} : <b>${pct(ecart / actuel * 100)}</b>, soit ${eur(ecart)} à négocier.`
-        : ` : ton prix de ${eur(actuel)} est déjà plus bas, il te reste ${eur(ecart)} de marge.`);
-    if (Math.abs(ecart) >= 100) h += ` <button id="cf_cibleUtiliser" data-prix="${r.prix}">Mettre ce prix</button>`;
-  }
-  $('cibleRes').innerHTML = h;
+  const p = simuler().p, quoi = p.projet === 'revente' ? 'Le bénéfice' : 'Le cash-flow', r = prixCible(0);
+  $('cibleRes').innerHTML = r.impossible ? `${quoi} reste négatif même à très bas prix.`
+    : r.sansLimite ? `${quoi} reste positif jusqu'à ${eur(r.prix)} au moins.`
+    : `${quoi} serait à 0 € si ${p.deuxBiens ? 'le 1er bien coûtait' : 'le prix était de'} <b>${eur(r.prix)}</b>.`;
 }
 
 // ---------- Enregistrer dans « Mes projets » ----------
@@ -3079,12 +3061,12 @@ function majSauvegarde(pr) {
 // version 3 = détail du mois (loyer, crédit, charges, impôts) pour le mode simple.
 // recalcul : on repart des réglages d'un projet enregistré, sans l'estimation en cours
 function instantane(ex, recalcul) {
-  const s = simuler(), p = s.p, revente = p.projet === 'revente', c = prixCible(cibleVisee());
+  const s = simuler(), p = s.p, revente = p.projet === 'revente', c = prixCible(0);
   const sci = mesScis().find(x => x.id === p.sciExist), exr = ex && ex.resume ? ex.resume : {};
   const resume = {v: 5, type: p.type, surf: p.surf + p.surfB2, nbBiens: 1 + p.autres.length, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
-    prix: p.prix, prixB2: p.deuxBiens ? p.prixB2 : null, loyerB2: p.deuxBiens ? p.loyerB2 : null, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
+    prix: p.prix, prixB2: p.deuxBiens ? p.prixB2 : null, loyerB2: p.deuxBiens ? p.loyerB2 : null, prixCible: c.prix != null ? c.prix : null, loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
     saison: p.saison ? {nuit: p.nuit, occupation: p.occupation, net: Math.round(s.saison.netMois)} : null,
     travaux: ouvert('projet') ? p.travaux : 0, valeurApres: ouvert('projet') ? p.valeurApres : 0, impots: p.avecImpots};
   if (revente) resume.benefice = Math.round(bilanRevente(s).net);
@@ -3216,8 +3198,6 @@ function regrouper(a, b) {
 
 // ---------- Démarrage ----------
 charger();
-$('cibleVal').addEventListener('input', () => { cible[cleCible()] = +$('cibleVal').value || 0; try { localStorage.setItem('cashflow-cible', JSON.stringify(cible)); } catch (e) {} programmerCible(); });
-$('cibleRes').addEventListener('click', e => { if (e.target.id === 'cf_cibleUtiliser') { set('prix', e.target.dataset.prix); sauver(); rendre(); } });
 $('nomProjet').addEventListener('input', () => { nomTouche = true; });
 $('connexion').onclick = () => ouvrirCompte();
 $('enreg').onclick = () => enregistrerProjet(false);
@@ -3288,7 +3268,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=058d6db9"></script>
+<script src="investissements.js?v=2f6549d8"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -3308,7 +3288,7 @@ function chiffresSimples(r, revente, prix) {
   const m = r.mois || {loyer: (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0), credit: r.mensualite || 0, charges: Math.max(0, (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0) - (r.mensualite || 0) - (r.cfMois || 0))};
   return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true});
 }
-// Trois chiffres, les mêmes que les tuiles de Financer ; le reste (estimation, prix d'équilibre) sur une ligne discrète
+// Trois chiffres, les mêmes que les tuiles de Financer ; l'estimation et le prix d'équilibre sur des lignes discrètes
 const signeP = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
 const chiffresPro = cases => `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`;
 const caseReste = r => [(r.cfMois || 0) < 0 ? 'Il te manque par mois' : 'Il te reste par mois', `<b class="${signeP(r.cfMois)}">${eurP(Math.abs(r.cfMois || 0))}</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)} pendant le différé</small>` : '')];
@@ -3332,9 +3312,10 @@ function carteProjet(pr) {
   const cases = revente ? [prix, ['Valeur après travaux', eurP(r.valeurApres)], [(r.benefice || 0) < 0 ? 'Perte à la revente' : 'Bénéfice à la revente', `<b class="${signeP(r.benefice)}">${eurP(Math.abs(r.benefice || 0))}</b>`]]
     : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>loyers ${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</small>`], caseReste(r)];
   const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
-  const note = [estime, r.prixCible != null ? `prix d'équilibre ${eurP(r.prixCible)}` : ''].filter(Boolean).join(' · ');
-  const corps = modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
-    : chiffresPro(cases) + (note ? `<div class="pj-note">${note[0].toUpperCase() + note.slice(1)}</div>` : '');
+  // Prix d'équilibre (cash-flow à 0) ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
+  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note">${revente ? 'Le bénéfice' : 'Le cash-flow'} serait à 0 € si ${deux ? 'le 1er bien coûtait' : 'le prix était de'} ${eurP(r.prixCible)}.</div>` : '';
+  const corps = (modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
+    : chiffresPro(cases) + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
     ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
     deux && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : '',

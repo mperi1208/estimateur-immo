@@ -646,6 +646,34 @@ test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, val
   assert.ok(Math.abs(b.estimation.prix - e.prix) / e.prix < 0.05, `fiche ${b.estimation.prix} / onglet ${e.prix}`);   // même moteur, même bien
 });
 
+test('logement de la famille : à part du cash-flow locatif (tuiles, carte, mode simple), puis supprimé', async () => {
+  await page.evaluate(() => { location.hash = '#investissements'; });
+  await page.waitForSelector('#inv .kpis.six');
+  const avant = nombre(await kpi('Cash-flow', '#inv .kpis.six'));
+  await page.click('#inv [data-a="ajout"]');
+  await page.waitForSelector('#inv_titre');
+  await champ('nom', 'Maison Famille'); await champ('valeur', 300); await champ('location.statut', 'rp'); await champ('chargesAn.tf', 1200);
+  await page.waitForFunction(() => /Coût\s*\n\s*100 €/i.test(document.getElementById('inv_kpis').innerText));                                     // taxe foncière ÷ 12, pas un cash-flow
+  await page.click('#inv a.retour'); await page.waitForSelector('#inv .kpis.six');
+  const t = await page.locator('#inv .kpis.six').innerText();
+  assert.equal(nombre(t.match(/Cash-flow locatif\s*\n\s*([^\n]+)/i)[1]), avant);   // les investissements ne bougent pas
+  assert.equal(nombre(t.match(/Logement famille\s*\n\s*([^\n]+)/i)[1]), 100);
+  assert.equal(nombre(t.match(/total\s+([^\n]+)/i)[1]), avant - 100);
+  assert.match(await carteBien('Maison Famille').innerText(), /Coût\s*\n\s*100 €\/mois/i);
+  await page.click('.tabs [data-mode="simple"]');
+  await page.waitForSelector('#inv .bilan-simple.logement');
+  const s = await page.locator('#inv .bilan-simple.logement').innerText();
+  assert.match(s, /Logement de la famille[^\n]*\s*−\s*100 € par mois/i);
+  assert.equal(nombre(s.match(/Au total, il te (?:reste|manque)\s*([^\n]+) par mois/i)[1]), Math.abs(avant - 100));
+  await page.click('.tabs [data-mode="pro"]');
+  await page.waitForFunction(() => !document.body.classList.contains('simple'));
+  await ouvrirFiche('Maison Famille');
+  await page.click('#inv [data-a="supprimer"]');
+  await page.waitForSelector('#inv .kpis.six');
+  assert.match(await page.locator('#inv .kpis.six').innerText(), /Cash-flow\s*\n/i);
+  assert.doesNotMatch(await page.locator('#inv .kpis.six').innerText(), /Logement famille/i);
+});
+
 test('déconnexion : Mon patrimoine et Mes projets se ferment, rien ne reste sur l\'appareil', async () => {
   await page.evaluate(() => ouvrirCompte());
   await page.click('#cpt_out');
