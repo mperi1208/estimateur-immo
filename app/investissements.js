@@ -35,6 +35,11 @@ const solde = (P, r, M, k) => r ? P * Math.pow(1 + r, k) - M * (Math.pow(1 + r, 
 // - différé (offre seulement, compris dans la durée) : intérêts seuls (partiel) ou rien (total : les intérêts s'ajoutent au capital) ;
 // - mensualité progressive : elle augmente d'un même pourcentage chaque année, de date à date depuis la fin du différé.
 //   Avec la mensualité actuelle seule, la hausse est celle qui rembourse le prêt pile à la dernière échéance.
+// - pauses (report d'échéances, p.pauses = [{debut, mois, type, suite}]) : rien à payer (type '', les intérêts s'ajoutent
+//   au capital) ou intérêts seuls ('partiel') ; ensuite le prêt finit plus tard (suite '') ou à la même date, mensualité plus haute ('mensu').
+// - durée allongée (p.allonge = {le, ans, fait}) : à partir du mois « le », le prêt dure « ans » de plus, mensualité recalculée.
+const pausesDe = p => (p.pauses || []).map(x => ({...x, debut: normMois(x.debut), mois: Math.round(x.mois || 0)})).filter(x => x.debut && x.mois > 0);
+const allongeDe = p => p.allonge && p.allonge.fait === '1' && normMois(p.allonge.le) && p.allonge.ans > 0 ? {le: normMois(p.allonge.le), mois: Math.round(p.allonge.ans * 12)} : null;
 function planPret(p, auj = moisCourant()) {
   const r = (p.taux || 0) / 1200, releve = p.crd > 0 && p.mois > 0 && p.crdLe;
   let P, n, debut, D = 0;
@@ -44,13 +49,24 @@ function planPret(p, auj = moisCourant()) {
   else return null;
   const total = p.typeDiff === 'total';
   const jAncre = p.debut ? ecartMois(debut, decalerMois(p.debut, diff)) : 0, an = j => Math.max(0, Math.floor((j - jAncre) / 12));
-  const deroule = (M0, g) => {
-    const l = []; let c = P;
-    for (let j = 0; j < n; j++) {
+  // Pauses et allongement, en mois depuis la 1re échéance (avant un relevé : déjà comptés dans le relevé)
+  const pauses = pausesDe(p).map(x => ({...x, s: ecartMois(debut, x.debut)})).map(x => ({...x, mois: x.mois + Math.min(0, x.s), s: Math.max(0, x.s)})).filter(x => x.mois > 0);
+  // Allongement demandé pendant une pause : il compte à la reprise
+  const al = (a => { if (!a) return null; let s = Math.max(D, ecartMois(debut, a.le)), x; while ((x = pauses.find(q => s >= q.s && s < q.s + q.mois))) s = x.s + x.mois; return {...a, s}; })(allongeDe(p));
+  const deroule = (M0, g, avec) => {
+    const l = [], base = j => M0 * Math.pow(1 + g, an(j));
+    // Coefficient appliqué aux mensualités pour rembourser c en m mois à partir du mois j (le restant dû final varie en ligne droite)
+    const facteur = (c, j, m) => { let S = 0; for (let t = 0; t < m; t++) S += base(j + t) * Math.pow(1 + r, m - 1 - t); return S > 0 ? c * Math.pow(1 + r, m) / S : 1; };
+    let c = P, fin = n, k = 1;
+    for (let j = 0; j < fin && j < n + 1200; j++) {
+      const ps = avec && pauses.find(x => j >= x.s && j < x.s + x.mois);
+      if (avec && al && j === al.s) { fin += al.mois; k = facteur(c, j, fin - j); }
+      if (ps && j === ps.s && ps.suite !== 'mensu') fin += ps.mois;
+      if (avec && !ps && j >= D) { const q = pauses.find(x => j === x.s + x.mois); if (q && (q.suite === 'mensu' || q.type !== 'partiel')) k = facteur(c, j, fin - j); }
       const it = c * r; let paye, interets = it;
-      if (j < D) { if (total) { paye = 0; interets = 0; c += it; } else paye = it; }
-      else { paye = Math.max(0, Math.min(M0 * Math.pow(1 + g, an(j)), c + it)); c -= paye - it; }
-      l.push({paye, interets, capital: paye - interets, crd: c});
+      if (j < D || ps) { if (ps ? ps.type !== 'partiel' : total) { paye = 0; interets = 0; c += it; } else paye = it; }
+      else { paye = Math.max(0, Math.min(k * base(j), c + it)); c -= paye - it; }
+      l.push({paye, interets, capital: paye - interets, crd: c, pause: !!ps});
     }
     return l;
   };
@@ -71,7 +87,7 @@ function planPret(p, auj = moisCourant()) {
     } else M0 = p.mensualite;
     prog = {g, saisie: p.hausse != null && p.hausse >= 0};
   } else M0 = p.mensualite || pmt(total ? P * Math.pow(1 + r, D) : P, r, n - D);
-  return {l: deroule(M0, g), P, debut, D, total, releve, jAncre, an, prog};
+  return {l: deroule(M0, g, true), P, debut, D, total, releve, jAncre, an, prog, pauses, al};
 }
 function etatPret(p, auj = moisCourant()) {
   const pl = planPret(p, auj); if (!pl) return null;
@@ -95,15 +111,35 @@ function etatPret(p, auj = moisCourant()) {
     const jH = pl.jAncre + 12 * (pl.an(Math.max(jCour, D, pl.jAncre)) + 1);   // 1re échéance de l'année suivante
     prog = {...pl.prog, max: Math.max(...l.map(x => x.paye)), hausse: jH < n && jH >= k ? {mois: decalerMois(debut, jH), M: l[jH].paye} : null};
   }
+  // Pauses en cours ou à venir : dates, ce qu'on paie pendant, et la mensualité d'après
+  const pauses = pl.pauses.filter(x => x.s + x.mois > ecart && x.s < n).map(x => ({debut: decalerMois(debut, x.s), fin: decalerMois(debut, x.s + x.mois - 1),
+    mois: x.mois, total: x.type !== 'partiel', enCours: ecart >= x.s, apres: (l[x.s + x.mois] || {}).paye || 0, rallonge: x.suite !== 'mensu'}));
   return {crd, mois, M, pause, payes, reprise, debutFutur: pause > 0 && !pl.releve, assur: p.assurance || 0, fin: decalerMois(auj, mois),
-    interets, capital, paye12, resteAPayer, differe, prog};
+    interets, capital, paye12, resteAPayer, differe, prog, pauses, enPause: !!(n && ecart >= 0 && ecart < n && l[jCour].pause)};
 }
+// Allonger la durée d'un prêt en cours (avenant) : nouvelle mensualité, et ce que ça coûte en plus (intérêts et assurance)
+// p.allonge = {ans, le, fait} : « ans » de plus à partir du mois « le » ; tant que « fait » est vide, c'est une simulation.
+function simulerAllonge(p, auj = moisCourant()) {
+  const a = p.allonge || {}, ans = a.ans > 0 ? a.ans : 3, fait = a.fait === '1' && !!normMois(a.le);
+  const le = fait ? normMois(a.le) : decalerMois(auj, 1);
+  const sans = {...p, allonge: null}, avec = {...p, allonge: {le, ans, fait: '1'}};
+  const p0 = planPret(sans, auj), p1 = planPret(avec, auj), e0 = etatPret(sans, auj), e1 = etatPret(avec, auj);
+  if (!p0 || !(e0.mois > 0) || !(p.taux > 0)) return null;
+  let j = Math.max(p1.D, ecartMois(p1.debut, le));
+  while (p1.l[j] && p1.l[j].pause) j++;   // pendant une pause : on compare à la reprise
+  const m0 = p0.l[j], m1 = p1.l[j];
+  if (!m0 || !m1) return null;
+  return {ans, le, fait, avant: m0.paye, apres: m1.paye, diff: m0.paye - m1.paye, interets: e1.resteAPayer - e0.resteAPayer,
+    assurance: Math.max(0, e1.mois - e0.mois) * (p.assurance || 0), finAvant: e0.fin, finApres: e1.fin, duree: p0.releve ? null : p.duree};
+}
+// Mensualité d'aujourd'hui, ou celle de la reprise si le prêt est en pause
+const mensuHorsPause = e => e.enPause && e.pauses.length ? e.pauses[0].apres : e.M;
 // Renégociation ou rachat aux taux d'aujourd'hui (même calcul que l'ancien onglet « Mes crédits »)
 function analyseReneg(p, e, sci) {
   if (!e || !(e.mois > 0 && e.crd > 1000 && p.taux > 0)) return null;
   const n = e.mois - (e.pause || 0), tNew = T.tauxDuree(T.TAUX_ACTUEL, n) + (sci ? T.SURPRIME_SCI : 0);   // durée de remboursement restante
   // Gain : ce qui reste à payer (mensualités qui montent, différé…) moins la nouvelle mensualité fixe
-  const mensu2 = pmt(e.crd, tNew / 1200, n), gainMois = e.M - mensu2, gainTotal = (e.resteAPayer ?? e.M * n) - mensu2 * n;
+  const mensu2 = pmt(e.crd, tNew / 1200, n), gainMois = mensuHorsPause(e) - mensu2, gainTotal = (e.resteAPayer ?? e.M * n) - mensu2 * n;
   const ira = Math.min(0.03 * e.crd, 6 * e.crd * p.taux / 1200), fraisRachat = ira + 1000 + 0.015 * e.crd;
   let surprime = null;
   const offre = p.offre || p.debut;
@@ -151,7 +187,7 @@ function simulerRachat(b, p, auj = moisCourant()) {
   for (let j = 0; j < H; j++) { cumul += avant[j] - apres(j); net.push(cumul + crdAvant[j] - crdApres(j)); }
   for (let j = H - 1; j >= 0 && net[j] >= 0; j--) equilibre = j + 1;
   const coutAvant = somme(avant, x => x), coutApres = M2 * duree + assur * duree + comptant;
-  const mensuAvant = somme(groupe, x => (x.e.pause ? 0 : x.e.M) + x.e.assur), mensuApres = M2 + assur;
+  const mensuAvant = somme(groupe, x => (x.e.pause ? 0 : mensuHorsPause(x.e)) + x.e.assur), mensuApres = M2 + assur;
   return {reneg, groupe: groupe.length, crd, nAuj, tAuj, taux, duree, assur, assurAvant, ira, iraAuto, dossier, garantie, avenant, frais, finance, capital, M2,
     mensuAvant, mensuApres, diffMois: mensuAvant - mensuApres, coutAvant, coutApres, gain: coutAvant - coutApres,
     assurPayee, assurApres: assur * duree, interetsAvant: coutAvant - crd - assurPayee, interetsApres: M2 * duree - capital, equilibre};
@@ -1648,9 +1684,49 @@ function pretHTML(b, p, i) {
     <details class="releve"${p.crd ? ' open' : ''}><summary>Restant dû relevé sur le tableau d'amortissement (plus précis)</summary>
       <div class="grille">${champ(b, c + 'crd', 'Restant dû (€)', {step: 0.01})}${champ(b, c + 'mois', 'Mois restants')}${champ(b, c + 'crdLe', 'À la date du', {type: 'month'})}</div>
       <div class="aide">Tient compte d'un différé ou d'un remboursement anticipé ; le site fait avancer ce restant dû chaque mois${p.typeDiff ? ' (le différé saisi plus haut n\'est alors plus compté)' : ''}.</div></details>
+    ${pausesHTML(b, p, i)}
     ${partageHTML(b, p, i)}
     <div class="resume" data-resume="${i}"></div>
+    ${p.allonge && (p.allonge.ouvert || p.allonge.fait === '1') ? allongeHTML(b, p, i) : ''}
     ${p.rachat && p.rachat.ouvert ? rachatHTML(b, p, i) : ''}</div>`;
+}
+// Pauses du crédit (report d'échéances) : début, durée, ce qu'on paie pendant, et comment le prêt reprend
+function pausesHTML(b, p, i) {
+  const l = p.pauses || [];
+  return `<div class="pauses">${l.length ? '<div class="partage-titre">Pauses du crédit</div>' : ''}${l.map((x, j) => `<div class="pause"><div class="pret-tete"><b>Pause ${j + 1}</b><button class="lien" data-a="supprPause" data-i="${i}" data-j="${j}">Retirer</button></div><div class="grille">
+      ${champ(b, `prets.${i}.pauses.${j}.debut`, 'Début', {type: 'month'})}${champ(b, `prets.${i}.pauses.${j}.mois`, 'Durée (mois)', {ph: '6'})}
+      ${champ(b, `prets.${i}.pauses.${j}.type`, 'Pendant la pause', {options: [['', 'Rien à payer'], ['partiel', 'Intérêts seuls']], boutons: true, large: true})}
+      ${champ(b, `prets.${i}.pauses.${j}.suite`, 'Ensuite', {options: [['', 'Le prêt finit plus tard'], ['mensu', 'Même fin, mensualité plus haute']], boutons: true, large: true})}</div></div>`).join('')}
+    <div class="boutons"><button type="button" data-a="ajoutPause" data-i="${i}">+ Ajouter une pause</button>${p.allonge && (p.allonge.ouvert || p.allonge.fait === '1') ? '' : `<button type="button" data-a="allongeOuvrir" data-i="${i}">Allonger la durée…</button>`}</div></div>`;
+}
+// Allonger la durée : années en plus, résultats recalculés à chaque saisie, puis enregistré sur le prêt
+function allongeHTML(b, p, i) {
+  const fait = p.allonge.fait === '1';
+  return `<div class="rachat allonge"><div class="pret-tete"><b>Allonger la durée</b>${fait ? '' : `<button class="lien" data-a="allongeFermer" data-i="${i}">Fermer</button>`}</div>
+    <div class="grille">${champ(b, `prets.${i}.allonge.ans`, 'Années en plus', {step: 1, ph: '3'})}</div>
+    <div data-allonge="${i}"></div>
+    <div class="boutons">${fait ? `<button type="button" data-a="allongeAnnuler" data-i="${i}">Annuler l'allongement</button>` : `<button type="button" class="primaire" data-a="allongeFaire" data-i="${i}">Enregistrer sur le prêt</button>`}</div></div>`;
+}
+const dureeTxt = m => (m % 12 ? String(Math.round(m / 12 * 10) / 10).replace('.', ',') : m / 12) + ' ans';
+function allongeResHTML(p) {
+  const s = simulerAllonge(p);
+  if (!s) return '<div class="aide">Renseigne le taux et le restant dû (ou le montant, la durée et la 1re échéance) pour simuler.</div>';
+  return `${mini([['Nouvelle mensualité', eur(s.apres)], ['Différence', (s.diff >= 0 ? '−' : '+') + eur(Math.abs(s.diff)) + '/mois', s.diff > 0 ? 'up' : 'down'],
+      ['Intérêts en plus', '+' + eur(s.interets), 'down'], ['Fin du prêt', libMois(s.finApres)]])}
+    <div class="aide">${s.duree ? `${dureeTxt(s.duree)} → ${dureeTxt(s.duree + Math.round(s.ans * 12))}, ` : ''}fin en ${libMois(s.finApres)} au lieu de ${libMois(s.finAvant)}${s.assurance ? `, ${eur(s.assurance)} d'assurance en plus` : ''}. ${s.fait ? `Enregistré : nouvelle mensualité depuis ${libMois(s.le)}.` : 'Ta banque le fait par avenant (souvent payant).'}</div>`;
+}
+// Tableau d'amortissement par année (hors assurance), pauses et différé compris
+function amortHTML(p) {
+  const pl = planPret(p); if (!pl || !pl.l.length) return '';
+  const ans = new Map();
+  pl.l.forEach((x, j) => {
+    const y = decalerMois(pl.debut, j).slice(0, 4), a = ans.get(y) || {paye: 0, interets: 0, capital: 0, crd: 0, pause: 0};
+    a.paye += x.paye; a.interets += x.interets; a.capital += x.capital; a.crd = x.crd; a.pause += x.pause ? 1 : 0; ans.set(y, a);
+  });
+  return `<details class="amort"><summary>Tableau d'amortissement</summary><div class="amort-defile"><table>
+    <tr><th>Année</th><th>Payé</th><th>Intérêts</th><th>Capital</th><th>Restant dû</th></tr>
+    ${[...ans].map(([y, a]) => `<tr><td>${y}${a.pause ? ` <small>pause ${a.pause} mois</small>` : ''}</td><td>${eur(a.paye)}</td><td>${eur(a.interets)}</td><td>${eur(a.capital)}</td><td>${eur(Math.max(0, a.crd))}</td></tr>`).join('')}
+  </table></div><div class="aide">Hors assurance${pl.releve ? `, à partir du relevé de ${libMois(p.crdLe)}` : ''}.</div></details>`;
 }
 // Un seul prêt pour plusieurs biens : les autres biens qu'il finance (boutons), et la part de chacun
 function partageHTML(b, p, i) {
@@ -1757,9 +1833,12 @@ function majCalculs(b) {
   const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
   if (q('#inv_cout')) q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
   b.prets.forEach((p, i) => {
-    const r = racine.querySelector(`[data-resume="${i}"]`), s = racine.querySelector(`[data-rachat="${i}"]`);
+    const r = racine.querySelector(`[data-resume="${i}"]`), s = racine.querySelector(`[data-rachat="${i}"]`), al = racine.querySelector(`[data-allonge="${i}"]`);
+    const tableau = r && r.querySelector('details.amort[open]');   // tableau ouvert : il le reste
     if (r) r.innerHTML = resumePret(b, p, c.prets[i].e, i);
+    if (tableau && r.querySelector('details.amort')) r.querySelector('details.amort').open = true;
     if (s) s.innerHTML = rachatResHTML(b, p);
+    if (al) al.innerHTML = allongeResHTML(p);
   });
 }
 function resumePret(b, p, e, i) {
@@ -1770,12 +1849,14 @@ function resumePret(b, p, e, i) {
   let h = `<div class="pret-etat">
     ${e.differe ? `<div class="pret-pause">Différé ${e.differe.total ? 'total' : 'partiel'} jusqu'en ${libMois(e.differe.fin)} : ${e.differe.total ? 'assurance seule, les intérêts s\'ajoutent au capital' : `${eur(e.M)} d'intérêts par mois`}, puis ${eur(e.differe.apres)} par mois hors assurance.</div>` : ''}
     ${p.progressif && !e.prog ? '<div class="pret-pause">Mensualité progressive : saisis ta mensualité actuelle (ou la hausse par an) pour en tenir compte.</div>' : ''}
+    ${e.pauses.map(x => `<div class="pret-pause">Pause ${x.enCours ? `jusqu'en ${libMois(x.fin)}` : `de ${libMois(x.debut)} à ${libMois(x.fin)}`} : ${x.total ? 'rien à payer, les intérêts s\'ajoutent au capital' : 'intérêts seuls'}, puis ${eur(x.apres)} par mois${x.rallonge ? `, prêt rallongé de ${x.mois} mois` : ''}.</div>`).join('')}
     ${e.pause ? `<div class="pret-pause">${e.debutFutur ? `1re échéance en ${libMois(e.reprise)} : rien à payer d'ici là.` : `En pause jusqu'en ${libMois(e.reprise)} : pas d'échéance, les intérêts s'ajoutent au capital.`}</div>` : ''}
-    ${mini([[e.pause ? 'À rembourser à la reprise' : 'Restant dû', eur(e.crd)], ['Mensualité', eur(e.M) + (e.assur ? ' + ' + eur(e.assur) + ' d\'assurance' : '')],
+    ${mini([[e.pause ? 'À rembourser à la reprise' : 'Restant dû', eur(e.crd)], [e.enPause ? 'Mensualité (en pause)' : 'Mensualité', eur(e.M) + (e.assur ? ' + ' + eur(e.assur) + ' d\'assurance' : '')],
       ['Fin du prêt', libMois(e.fin)], ['Mois restants', String(e.mois - (e.pause || 0))]])}
     ${dejaPaye != null ? `<div class="barre"><span style="width:${Math.max(0, Math.min(100, dejaPaye * 100)).toFixed(1)}%"></span></div><div class="aide">${pct(dejaPaye)} du capital remboursé</div>` : ''}
     ${mini([['Intérêts sur 12 mois', eur(e.interets)], ['Capital remboursé sur 12 mois', eur(e.capital)]], 'petit')}
     ${partagesDe(p).length ? (k => `<div class="aide">Part de ce bien (${Math.round(k * 100)} %) : <b>${eur((e.pause ? 0 : e.M + e.assur) * k)}</b> par mois assurance comprise, ${eur(e.crd * k)} restant dû. Le reste est compté dans ${partagesDe(p).map(x => esc((biens.find(y => y.id === x.id) || {}).nom || '')).join(', ')}.</div>`)(partPorteur(p)) : ''}
+    ${amortHTML(p)}
     ${e.prog ? `<div class="aide">Mensualité progressive : +${(e.prog.g * 100).toFixed(2).replace('.', ',')} % par an${e.prog.saisie ? '' : ' (calculée avec le montant, le taux et la durée)'}${e.prog.hausse ? `, ${eur(e.prog.hausse.M)} à partir de ${libMois(e.prog.hausse.mois)}` : ''}, jusqu'à ${eur(e.prog.max)} la dernière année.</div>` : ''}
   </div>`;
   if (a && !(p.rachat && p.rachat.ouvert)) h += `<div class="reneg ${a.netAvenant > 0 ? 'oui' : 'non'}"><div class="reneg-titre">Aux taux d'aujourd'hui : ${taux(a.tNew)}${b.structure !== 'np' ? ' (SCI)' : ''} au lieu de ${taux(p.taux)}</div>
@@ -2000,6 +2081,12 @@ racine.addEventListener('click', async e => {
     r.avec = l.includes(id) ? l.filter(x => x !== id) : [...l, id];
     sauver(b); return vueDetail(b);
   }
+  if (a === 'ajoutPause') { const p = b.prets[+t.dataset.i]; (p.pauses = p.pauses || []).push({id: uid(), debut: moisCourant(), mois: 6, type: '', suite: ''}); sauver(b); return vueDetail(b); }
+  if (a === 'supprPause' && confirm('Retirer cette pause ?')) { b.prets[+t.dataset.i].pauses.splice(+t.dataset.j, 1); sauver(b); return vueDetail(b); }
+  if (a === 'allongeOuvrir') { const p = b.prets[+t.dataset.i]; p.allonge = {ans: 3, le: '', fait: '', ...(p.allonge || {}), ouvert: true}; sauver(b); return vueDetail(b); }
+  if (a === 'allongeFermer') { b.prets[+t.dataset.i].allonge.ouvert = false; sauver(b); return vueDetail(b); }
+  if (a === 'allongeFaire') { const x = b.prets[+t.dataset.i].allonge; x.ans = x.ans > 0 ? x.ans : 3; x.fait = '1'; x.le = decalerMois(moisCourant(), 1); sauver(b); return vueDetail(b); }
+  if (a === 'allongeAnnuler' && confirm('Annuler l\'allongement ? Le prêt reprend sa durée d\'origine.')) { Object.assign(b.prets[+t.dataset.i].allonge, {fait: '', le: '', ouvert: true}); sauver(b); return vueDetail(b); }
   if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'fichier') racine.querySelector('#inv_fichier').click();
   if (a === 'supprDoc') {
@@ -2095,7 +2182,7 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part|rachat\.mode|rachat\.finance)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part|rachat\.mode|rachat\.finance|pauses\.\d+\.(type|suite))$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature', 'place'].includes(chemin)) majAuto(b);

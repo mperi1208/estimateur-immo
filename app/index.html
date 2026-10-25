@@ -306,7 +306,7 @@ body.discret #pj .pj-chiffres b{filter:blur(7px);user-select:none}
 .invwrap .org ul.annexes-n{padding-top:10px}.invwrap .org ul.annexes-n::before{height:10px}.invwrap .org .annexes-n li{padding-top:0}
 .invwrap .org .noeud.annexe-n{flex-direction:row;gap:5px;min-width:0;max-width:200px;padding:4px 9px;border:1px dashed var(--line);background:transparent;font-size:11px;white-space:nowrap}.invwrap .org .annexe-n .ico-n{margin:0}.invwrap .org .annexe-n .ico-n svg{width:14px;height:14px}.invwrap .org .annexe-n .nom-n{font-size:11px;font-weight:500;color:var(--muted);overflow:hidden;text-overflow:ellipsis}.invwrap .org .annexe-n b{font-size:11px;font-variant-numeric:tabular-nums}
 /* Mode discret : les montants (et les champs chiffrés) sont floutés */
-body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .v, .kpi .d, .chiffres b, .mini b, .calc b, .auto-chiffres b, .auto-chiffres small, .deux-loyers b, .total, .ta-part, input[type=number], .reneg .aide, .rachat .aide, .vente .aide, .resume .aide, #inv_auto .aide, .tags, .part){filter:blur(7px);user-select:none}
+body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .v, .kpi .d, .chiffres b, .mini b, .calc b, .auto-chiffres b, .auto-chiffres small, .deux-loyers b, .total, .ta-part, input[type=number], .reneg .aide, .rachat .aide, .vente .aide, .resume .aide, .amort td:not(:first-child), #inv_auto .aide, .tags, .part){filter:blur(7px);user-select:none}
 .invwrap .dethead-actions{margin-left:auto;flex-shrink:0}
 @media (max-width:600px){.invwrap .dethead{flex-wrap:wrap}.invwrap .dethead-actions{margin-left:0;width:100%}.invwrap .dethead-actions button{width:100%}}
 .invwrap .vente .vente-params{margin-bottom:12px}
@@ -354,6 +354,16 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 .invwrap a.bien.vendu{opacity:.75}
 .invwrap .pret-etat,.invwrap .reneg{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--bg)}
 .invwrap .rachat{margin-top:10px;padding:10px 12px;border:1px solid var(--accent);border-radius:10px}
+.invwrap .pauses .pause{margin:10px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.invwrap .pauses .boutons{margin-top:10px}
+.invwrap details.amort{margin-top:10px}
+.invwrap details.amort summary{font-size:13px;color:var(--accent);cursor:pointer}
+.invwrap .amort-defile{overflow-x:auto;margin-top:6px;width:0;min-width:100%}
+.invwrap .amort table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.invwrap .amort th,.invwrap .amort td{text-align:right;padding:3px 6px;border-bottom:1px solid var(--line)}
+.invwrap .amort th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+.invwrap .amort :is(th,td):first-child{text-align:left}
+.invwrap .amort small{color:var(--warn)}
 .seg.multi{flex-wrap:wrap;gap:6px;border:0;overflow:visible}
 .seg.multi button{flex:0 1 auto;border:1px solid var(--line);border-radius:8px}
 .invwrap .reneg.oui{background:color-mix(in srgb,var(--good) 10%,transparent)}
@@ -3258,7 +3268,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=ff18cdfa"></script>
+<script src="investissements.js?v=2f6549d8"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
