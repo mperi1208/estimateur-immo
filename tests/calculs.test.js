@@ -20,7 +20,7 @@ vm.runInContext([
   bloc(inv, '// ---------- Mois', '// ---------- Données'),
   'var STATUTS = {}, biens = [];',
   bloc(idx, 'function echeancier', '// ---------- Simulation'),
-  'this.X = {pmt, solde, etatPret, planPret, analyseReneg, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
+  'this.X = {pmt, solde, etatPret, planPret, analyseReneg, simulerRachat, calculs, echeancier, ecartMois, decalerMois, normMois, moisCourant};',
 ].join('\n'), ctx);
 const {pmt, solde, etatPret, calculs, echeancier, ecartMois, decalerMois, normMois} = ctx.X;
 const proche = (a, b, eps = 0.01) => assert.ok(Math.abs(a - b) <= eps, `${a} ≠ ${b}`);
@@ -215,6 +215,54 @@ test('renégociation : nouvelle mensualité au taux du marché, indemnités plaf
   assert.ok(a.surprime && a.surprime[0] > 0);                    // 4,5 % en juin 2023 : au-dessus du marché d'alors
   proche(ctx.X.analyseReneg(p, e, true).tNew, t + 0.3, 1e-9);    // SCI : surprime
   assert.equal(ctx.X.analyseReneg(p, {...e, crd: 500}, false), null);
+});
+// ---------- Simulation de rachat ou renégociation ----------
+const avecTaux = () => ctx.T.tauxDuree || vm.runInContext(bloc(idx, 'const TAUX_ACTUEL =', 'const GAMMES_CF') + bloc(idx, 'function tauxDuree', '// ---------- Fiscalité')
+  + 'T.TAUX_ACTUEL = TAUX_ACTUEL; T.HISTO = HISTO; T.tauxDuree = tauxDuree; T.SURPRIME_SCI = 0.3;', ctx);
+const pretRachat = (o = {}) => ({id: 'p1', crd: 150000, mois: 240, crdLe: '2026-01', taux: 4.5, assurance: 30, ...o});
+test('rachat : par défaut, taux du marché sur la durée restante, frais (indemnités, dossier, garantie) payés comptant', () => {
+  avecTaux();
+  const p = pretRachat(), b = {structure: 'np', prets: [p]}, s = ctx.X.simulerRachat(b, p, '2026-01');
+  const t = Math.round(ctx.T.tauxDuree(ctx.T.TAUX_ACTUEL, 240) * 100) / 100;
+  assert.equal(s.tAuj, t); assert.equal(s.taux, t); assert.equal(s.duree, 240); assert.equal(s.assur, 30);
+  proche(s.ira, Math.min(0.03 * 150000, 6 * 150000 * 4.5 / 1200));
+  assert.equal(s.dossier, 1000); assert.equal(s.garantie, 2250); proche(s.frais, s.ira + 3250);
+  proche(s.M2, pmt(150000, t / 1200, 240)); proche(s.mensuApres, s.M2 + 30);
+  const M = pmt(150000, 4.5 / 1200, 240);
+  proche(s.mensuAvant, M + 30); proche(s.coutAvant, (M + 30) * 240, 0.05);
+  proche(s.coutApres, (s.M2 + 30) * 240 + s.frais, 0.05); proche(s.gain, s.coutAvant - s.coutApres, 1e-6);
+  proche(s.interetsAvant, M * 240 - 150000, 0.05); proche(s.interetsApres, s.M2 * 240 - 150000, 0.05);
+  // Point d'équilibre : avant « frais ÷ baisse de mensualité », car à taux plus bas le capital se rembourse aussi plus vite
+  assert.ok(s.equilibre > 12 && s.equilibre <= Math.ceil(s.frais / s.diffMois), `équilibre ${s.equilibre}`);
+});
+test('rachat : taux, durée, assurance et frais saisis ; frais ajoutés au prêt ; jamais rentable si le taux ne baisse pas', () => {
+  avecTaux();
+  const p = pretRachat({rachat: {taux: 3, duree: 300, assurance: 20, ira: 0, dossier: 500, garantie: 1500, finance: '1'}}), b = {structure: 'np', prets: [p]};
+  const s = ctx.X.simulerRachat(b, p, '2026-01');
+  assert.equal(s.frais, 2000); assert.equal(s.capital, 152000); proche(s.M2, pmt(152000, 0.03 / 12, 300));
+  proche(s.coutApres, (s.M2 + 20) * 300, 0.05);                       // rien de payé comptant
+  assert.ok(s.equilibre >= 1);
+  p.rachat = {taux: 4.5, ira: 1000};
+  const s2 = ctx.X.simulerRachat(b, p, '2026-01');
+  assert.ok(s2.gain < 0); assert.equal(s2.equilibre, null);
+});
+test('renégociation : seulement les frais d\'avenant (600 € par défaut), SCI : surprime sur le taux du marché', () => {
+  avecTaux();
+  const p = pretRachat({rachat: {mode: 'reneg'}}), s = ctx.X.simulerRachat({structure: 'np', prets: [p]}, p, '2026-01');
+  assert.equal(s.reneg, true); assert.equal(s.ira, 0); assert.equal(s.garantie, 0); assert.equal(s.frais, 600);
+  const sci = ctx.X.simulerRachat({structure: 'sci', prets: [p]}, p, '2026-01');
+  proche(sci.tAuj, s.tAuj + 0.3, 0.011);
+});
+test('rachat : deux prêts du bien regroupés en un seul', () => {
+  avecTaux();
+  const p = pretRachat({rachat: {avec: ['p2'], taux: 3, duree: 240}}), q = {id: 'p2', crd: 20000, mois: 120, crdLe: '2026-01', taux: 2, assurance: 5};
+  const b = {structure: 'np', prets: [p, q]}, s = ctx.X.simulerRachat(b, p, '2026-01');
+  assert.equal(s.groupe, 2); proche(s.crd, 170000); assert.equal(s.nAuj, 240); assert.equal(s.assur, 35);
+  proche(s.mensuAvant, pmt(150000, 4.5 / 1200, 240) + pmt(20000, 2 / 1200, 120) + 35);
+  proche(s.M2, pmt(170000, 0.03 / 12, 240));
+  p.rachat.avec = [];
+  assert.equal(ctx.X.simulerRachat(b, p, '2026-01').groupe, 1);
+  assert.equal(ctx.X.simulerRachat(b, {...p, taux: null}, '2026-01'), null);
 });
 test('taux du marché par durée : interpolé entre 15, 20 et 25 ans', () => {
   const {tauxDuree, TAUX_ACTUEL: R} = ctx.T;
