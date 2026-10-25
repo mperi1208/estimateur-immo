@@ -681,7 +681,7 @@ function majAuto(b) {
 </div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
       <div class="aide">Ventes de garages, box et places mêlés (les actes ne disent pas lequel) : valeur ramenée à ${e.place === 'ext' ? 'une place extérieure (≈ 15 % d\'un box)' : e.place === 'couverte' ? 'une place couverte (≈ 75 % d\'un box)' : 'un box ou garage fermé'}. Change le type de place au-dessus si besoin.</div>
-      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
+      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : ''}
     </div>
     ${!a_jour ? '<div class="aide">Adresse modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
   }
@@ -692,7 +692,7 @@ function majAuto(b) {
 </div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
       <div class="aide">${e.ecartees ? `${e.ecartees} vente${e.ecartees > 1 ? 's' : ''} au-dessus de ${fmt(e.seuil)} €/m² écartée${e.ecartees > 1 ? 's' : ''} (parcelles achetées pour construire). ` : ''}À confirmer par un notaire ou une agence : accès, vue, viabilisation et zonage comptent beaucoup.</div>
-      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
+      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : ''}
     </div>
     ${!a_jour ? '<div class="aide">Surface ou nature modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
   }
@@ -706,7 +706,7 @@ function majAuto(b) {
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
       ${b.location.statut === 'saisonnier' && L.meuble && loyerLogement(b) ? (net => `<div class="aide">À la nuitée : ${eur(loyerLogement(b))} de recettes par mois, ${eur(net)} après frais, soit ${pct(net / L.meuble - 1)} par rapport au meublé classique du marché (${eur(L.meuble)} hors charges).</div>`)(loyerLogement(b) * (1 - (b.location.fraisSaison || 0) / 100)) : ''}
       ${(rf => loue && rf && loyerLogement(b) && !['lots', 'saisonnier'].includes(b.location.statut) ? `<div class="aide">Ton loyer : ${eur(loyerLogement(b))}, soit ${pct(loyerLogement(b) / rf - 1)} par rapport au marché ${b.location.statut === 'colocation' ? 'en colocation' : m ? 'meublé' : 'vide'}.</div>` : '')(b.location.statut === 'colocation' && L.coloc ? L.coloc : ref)}
-      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : '<div class="aide">La valeur du bien reprend cette estimation (tu peux la remplacer à la main).</div>'}
+      ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : ''}
     </div>
     ${!a_jour ? '<div class="aide">Caractéristiques modifiées depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
   }

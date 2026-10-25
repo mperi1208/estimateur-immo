@@ -130,10 +130,10 @@ test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le tota
   assert.equal(await page.locator('#cf_boxBien2 .chip').innerText(), 'non compté');
   await page.click('#cf_boxBien2 summary');
   await saisir(page, '#cf_prixB2', 100000); await saisir(page, '#cf_loyerB2', 500);
-  await page.waitForFunction(() => /Deux biens, un seul crédit/.test(document.getElementById('cf_alerts').innerText));
+  await page.waitForFunction(() => /Deux biens :/.test(document.getElementById('cf_alerts').innerText));
   const al = await page.locator('#cf_alerts').innerText();
-  assert.match(al, /150\s000 € \+ 100\s000 € = 250\s000 €/);
-  assert.match(al, /700 € \+ 500 € = 1\s200 €/);
+  assert.match(al, /250\s000 € au total/);
+  assert.match(al, /1\s200 € de loyers par mois/);
   const pret = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
   assert.ok(pret - pretSeul > 100000 && pret - pretSeul < 112000, `prêt ${pret} pour ${pretSeul} avec un seul bien`);   // 2e prix, son notaire et sa garantie
   await page.waitForFunction(() => /le 1er bien à|aucun prix|pas un frein/i.test(document.getElementById('cf_cibleRes').innerText));   // prix d'équilibre : celui du 1er bien
@@ -251,7 +251,7 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
   assert.equal(+await valeur('travaux'), 50000);
   assert.equal(+await valeur('loyer'), pj.loyers[0]); assert.equal(+await valeur('loyer2'), pj.loyers[1]);
   assert.equal(+await valeur('debutLoyer2'), pj.duree + 1);
-  assert.match(await page.locator('#cf_alerts').innerText(), /Deux loyers/);
+  assert.match(await page.locator('#cf_alerts').innerText(), /Loyers : .* dès le mois .* dès le mois/);
 });
 
 test('diviser en 3 logements : surfaces modifiables, coûts par logement, 3 loyers (dont 2 en 2e loyer)', async () => {
