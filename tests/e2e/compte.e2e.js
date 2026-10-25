@@ -618,7 +618,7 @@ test('ancien projet à deux biens (format d\'avant la liste de biens) : repris a
   const carte = page.locator('#pj .pj', {hasText: 'San gaetano'});
   assert.match(await carte.innerText(), /Deux biens, un seul crédit/i);
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'San gaetano'));
-  assert.equal(pr.resume.v, 5); assert.equal(pr.resume.cfMois, avant.cfMois); assert.equal(pr.resume.prix, 300000);
+  assert.equal(pr.resume.v, 6); assert.equal(pr.resume.cfMois, avant.cfMois); assert.equal(pr.resume.prix, 300000);
   assert.deepEqual([pr.finance.nomBien, pr.finance.biensPlus[0].nom, pr.finance.biensPlus[0].tf], ['Route de San Gaetano', 'sans Gaetan 2', 400]);
   await carte.locator('[data-a="financer"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
@@ -674,6 +674,55 @@ test('logement de la famille : à part du cash-flow locatif (tuiles, carte, mode
   await page.waitForFunction(() => !/Logement famille/i.test(document.querySelector('#inv .kpis.six').innerText));
   assert.match(await page.locator('#inv .kpis.six').innerText(), /Cash-flow\s*\n/i);
   assert.doesNotMatch(await page.locator('#inv .kpis.six').innerText(), /Logement famille/i);
+});
+
+test('Mes projets : comparer deux projets côte à côte (meilleur chiffre et écart, mode simple, depuis le menu d\'une carte)', async () => {
+  await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
+  await page.click('#works button.cta');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  await saisir(page, '#cf_prix', 200000);
+  await saisir(page, '#cf_loyer', 900);
+  await saisir(page, '#cf_apport', 20000);
+  await page.fill('#cf_nomProjet', 'Cmp Cher');
+  await page.click('#cf_enreg');
+  await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Cmp Cher'));
+  await saisir(page, '#cf_prix', 120000);
+  await page.fill('#cf_nomProjet', 'Cmp Moins cher');
+  await page.click('#cf_enregNouveau');
+  const c = await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Cmp Moins cher'));
+  const r = c.projets.find(x => x.nom === 'Cmp Moins cher').resume;
+  assert.equal(r.v, 6); assert.ok(r.patrimoine > 0 && r.coutCredit > 0 && r.horizon > 0, 'patrimoine et coût du crédit dans le résumé');
+  await page.click('.tabs [data-tab="projets"]');
+  await page.click('#pj .actions [data-a="comparer"]');
+  const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
+  await page.selectOption('#pj_ca', await id('Cmp Cher'));
+  await page.selectOption('#pj_cb', await id('Cmp Moins cher'));
+  const cmp = page.locator('#pj_compare');
+  await page.waitForFunction(() => /Cmp Moins cher » te laisse/i.test(document.getElementById('pj_compare').innerText));
+  const ligne = k => cmp.locator('tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
+  assert.match(await ligne('Prix du projet').innerText(), /200\s000 €\s+120\s000 €\s+80\s000 € de mieux/i);
+  assert.equal(await ligne('Prix du projet').locator('td.mieux').count(), 1);
+  assert.match(await ligne('Mensualité').locator('td').nth(1).getAttribute('class') || '', /mieux/);
+  for (const k of ['Loyers par mois', 'Charges par mois', 'Il te reste par mois', 'Rendement brut', 'Patrimoine dans \\d+ ans', 'Coût du crédit']) assert.equal(await ligne(k).count(), 1, k);
+  // Mode simple : l'essentiel seulement
+  await page.click('.tabs [data-mode="simple"]');
+  await page.waitForFunction(() => document.querySelectorAll('#pj_compare tbody tr').length === 3);
+  await page.click('.tabs [data-mode="pro"]');
+  await page.waitForFunction(() => document.querySelectorAll('#pj_compare tbody tr').length > 3);
+  // Fermée puis rouverte depuis le menu « ⋯ » d'une carte : ce projet en 1er
+  await cmp.locator('[data-a="comparerFermer"]').click();
+  assert.equal(await page.locator('#pj_compare').count(), 0);
+  const carte = page.locator('#pj .pj', {hasText: 'Cmp Moins cher'});
+  await carte.locator('.pj-menu summary').click();
+  await carte.locator('[data-a="comparer"]').click();
+  await page.locator('#pj_compare').waitFor();
+  assert.equal(await page.inputValue('#pj_ca'), await id('Cmp Moins cher'));
+  assert.notEqual(await page.inputValue('#pj_cb'), await id('Cmp Moins cher'));
+  // Un des deux supprimé : la comparaison reprend un autre projet
+  await page.locator('#pj .pj', {hasText: 'Cmp Cher'}).locator('[data-a="suppr"]').click();
+  await page.waitForFunction(() => !PROJETS.liste.some(x => x.nom === 'Cmp Cher'));
+  await carte.locator('[data-a="suppr"]').click();
+  await attendreCompte(c => !c.projets.some(x => /^Cmp /.test(x.nom)), 'projets du test supprimés');
 });
 
 test('déconnexion : Mon patrimoine et Mes projets se ferment, rien ne reste sur l\'appareil', async () => {
