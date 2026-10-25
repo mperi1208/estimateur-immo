@@ -3217,7 +3217,16 @@ function carteProjet(pr) {
     ${modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
       : `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`}
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
-      <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}${pr.regroupe ? '<button data-a="separer">Séparer</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}${rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}" title="Estimation de « ${esc(x.nom)} »">Estimation ${i + 1}</button>` : '').join('')}${pr.regroupe ? '<button data-a="separer">Séparer</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+}
+// Projet à un seul crédit : l'estimation de chacun des deux biens (celle des projets d'origine, sinon une recherche récente du même nom)
+function rechercheRegroupees(pr) {
+  const r = pr.resume || {}; if (r.prixB2 == null && !pr.regroupe) return [];
+  const noms = pr.regroupe ? pr.regroupe.map(x => x.nom) : (/« (.+) » et « (.+) »$/.exec(r.label || '') || []).slice(1, 3);
+  return noms.map((nom, i) => {
+    const o = pr.regroupe && pr.regroupe[i], rc = o && o.recherche || RECENTES.liste.find(x => x.label === nom);
+    return rc ? {nom, recherche: rc} : null;
+  });
 }
 // Aménagement d'un espace d'un bien déjà à toi : pas de prix d'achat, seulement les travaux, puis le loyer
 const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y && m ? new Date(y, m - 1, 1).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : ''; };
@@ -3278,6 +3287,10 @@ document.getElementById('pj').addEventListener('click', e => {
   const id = (t.closest('.pj') || {dataset: {}}).dataset.id;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
+  else if (t.dataset.a === 'estimerN') {   // un des deux biens d'un projet à un seul crédit : son estimation seule, le projet regroupé n'est pas touché
+    const pr = PROJETS.liste.find(x => x.id === id), x = pr && rechercheRegroupees(pr)[+t.dataset.n]; if (!x) return;
+    fixerProjet(null); CF_APP.liberer(); showTab('estimation'); reprendre(x.recherche); setTimeout(() => map.invalidateSize(), 60);
+  }
   else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
   else if (t.dataset.a === 'separer' && confirm('Séparer ce projet ? Les deux projets d\'origine reviennent dans la liste.')) separerProjet(id);

@@ -492,6 +492,13 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.click('.tabs [data-tab="projets"]');
   const carte = page.locator('#pj .pj', {hasText: 'Lot A + Lot B'});
   assert.match(await carte.innerText(), /un seul crédit/i);
+  // « Estimation 1 » et « Estimation 2 » : l'estimation de chaque bien dans Estimer, sans toucher au projet regroupé
+  assert.equal(await carte.locator('[data-a="estimerN"]').count(), 2);
+  await carte.locator('[data-a="estimerN"][data-n="1"]').click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
+  assert.equal(await page.inputValue('#surf'), '45');
+  assert.equal(await page.evaluate(() => projetCourantId), null);
+  await page.click('.tabs [data-tab="projets"]');
   // « Séparer » : les deux projets reviennent, le projet regroupé part
   await carte.locator('[data-a="separer"]').click();
   c = await attendreCompte(c => !c.projets.some(x => x.nom === 'Lot A + Lot B') && ['Lot A', 'Lot B'].every(n => c.projets.some(x => x.nom === n)), 'projets séparés');
