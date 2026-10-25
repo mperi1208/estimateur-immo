@@ -114,6 +114,49 @@ function analyseReneg(p, e, sci) {
   return {tNew, mensu2, gainMois, gainTotal, ira, fraisRachat, netRachat: gainTotal - fraisRachat, netAvenant: gainTotal - 600, surprime, offre};
 }
 
+// ---------- Rachat de crédit ou renégociation : simulation modifiable ----------
+// p.rachat : mode (rachat par une autre banque / renégociation avec la sienne), nouveau taux, durée et assurance,
+// frais (indemnités, dossier, garantie ou avenant), payés de sa poche ou ajoutés au nouveau prêt, et autres prêts
+// du bien regroupés dans le même rachat (avec). Champ vide : valeur d'aujourd'hui (taux du marché, durée restante…).
+function simulerRachat(b, p, auj = moisCourant()) {
+  const r = p.rachat || {}, reneg = r.mode === 'reneg', sci = b.structure !== 'np';
+  const groupe = [p, ...b.prets.filter(q => q !== p && (r.avec || []).includes(q.id))]
+    .map(q => ({q, pl: planPret(q, auj), e: etatPret(q, auj)})).filter(x => x.e && x.e.mois > 0 && x.e.crd > 0);
+  if (!groupe.length || groupe[0].q !== p || !(p.taux > 0)) return null;
+  const crd = somme(groupe, x => x.e.crd), nAuj = Math.max(...groupe.map(x => x.e.mois - (x.e.pause || 0)));
+  const tAuj = Math.round((T.tauxDuree(T.TAUX_ACTUEL, nAuj) + (sci ? T.SURPRIME_SCI : 0)) * 100) / 100;
+  const taux = r.taux > 0 ? r.taux : tAuj, duree = r.duree > 0 ? Math.round(r.duree) : nAuj;
+  const assurAvant = somme(groupe, x => x.e.assur), assur = r.assurance ?? assurAvant;
+  const iraAuto = somme(groupe, x => Math.min(0.03 * x.e.crd, 6 * x.e.crd * (x.q.taux || 0) / 1200));
+  const ira = reneg ? 0 : r.ira ?? iraAuto, dossier = reneg ? 0 : r.dossier ?? 1000, garantie = reneg ? 0 : r.garantie ?? Math.round(0.015 * crd);
+  const avenant = reneg ? r.avenant ?? 600 : 0, frais = ira + dossier + garantie + avenant;
+  const finance = r.finance === '1', capital = crd + (finance ? frais : 0), t = taux / 1200, M2 = pmt(capital, t, duree);
+  // Mois par mois : ce qu'on paie avant (échéancier actuel, assurance comprise) et après, et le restant dû de chaque côté
+  const H = Math.max(duree, ...groupe.map(x => x.e.mois));
+  const avant = Array(H).fill(0), crdAvant = Array(H).fill(0);
+  let assurPayee = 0;
+  for (const {pl, e} of groupe) {
+    const n = pl.l.length, k = n - e.mois + (e.pause || 0);
+    for (let j = 0; j < H; j++) {
+      const i = k + j - (e.pause || 0);
+      if (j < (e.pause || 0)) crdAvant[j] += e.crd;
+      else if (i < n) { avant[j] += pl.l[i].paye + e.assur; crdAvant[j] += pl.l[i].crd; assurPayee += e.assur; }
+    }
+  }
+  const apres = j => j < duree ? M2 + assur : 0, crdApres = j => j < duree - 1 ? solde(capital, t, M2, j + 1) : 0;
+  const comptant = finance ? 0 : frais;
+  // Point d'équilibre : à partir de ce mois, on a gagné de l'argent même en revendant (restant dû compris), et ça ne s'inverse plus
+  let cumul = -comptant, equilibre = null;
+  const net = [];
+  for (let j = 0; j < H; j++) { cumul += avant[j] - apres(j); net.push(cumul + crdAvant[j] - crdApres(j)); }
+  for (let j = H - 1; j >= 0 && net[j] >= 0; j--) equilibre = j + 1;
+  const coutAvant = somme(avant, x => x), coutApres = M2 * duree + assur * duree + comptant;
+  const mensuAvant = somme(groupe, x => (x.e.pause ? 0 : x.e.M) + x.e.assur), mensuApres = M2 + assur;
+  return {reneg, groupe: groupe.length, crd, nAuj, tAuj, taux, duree, assur, assurAvant, ira, iraAuto, dossier, garantie, avenant, frais, finance, capital, M2,
+    mensuAvant, mensuApres, diffMois: mensuAvant - mensuApres, coutAvant, coutApres, gain: coutAvant - coutApres,
+    assurPayee, assurApres: assur * duree, interetsAvant: coutAvant - crd - assurPayee, interetsApres: M2 * duree - capital, equilibre};
+}
+
 // ---------- Cash-flow d'un bien (avant impôts) ----------
 const LOUE = ['vide', 'meuble', 'saisonnier', 'colocation', 'lots'];
 const LISTES = {colocation: {cle: 'chambres', nom: 'Chambre', titre: 'Chambres louées', ajout: '+ Ajouter une chambre'},
@@ -234,6 +277,8 @@ function normaliser() {
     }
     delete b.dpe; delete b.etage;
   }
+  // Chaque prêt a un identifiant (regroupement dans un rachat)
+  for (const b of biens) for (const p of b.prets || []) if (!p.id) p.id = uid();
   // Garage associé : « vacant » voulait dire loué ou habité avec le bien principal (statut « avec » depuis)
   for (const b of biens) {
     const p = b.lieA && biens.find(x => x.id === b.lieA);
@@ -1577,7 +1622,8 @@ function pretHTML(b, p, i) {
       <div class="grille">${champ(b, c + 'crd', 'Restant dû (€)', {step: 0.01})}${champ(b, c + 'mois', 'Mois restants')}${champ(b, c + 'crdLe', 'À la date du', {type: 'month'})}</div>
       <div class="aide">Tient compte d'un différé ou d'un remboursement anticipé ; le site fait avancer ce restant dû chaque mois${p.typeDiff ? ' (le différé saisi plus haut n\'est alors plus compté)' : ''}.</div></details>
     ${partageHTML(b, p, i)}
-    <div class="resume" data-resume="${i}"></div></div>`;
+    <div class="resume" data-resume="${i}"></div>
+    ${p.rachat && p.rachat.ouvert ? rachatHTML(b, p, i) : ''}</div>`;
 }
 // Un seul prêt pour plusieurs biens : les autres biens qu'il finance (boutons), et la part de chacun
 function partageHTML(b, p, i) {
@@ -1601,6 +1647,47 @@ function pretRecuHTML(x) {
     ${e && e.mois > 0 ? mini([['Part de ce bien', Math.round(x.k * 100) + ' %'], ['Mensualité (sa part)', eur((e.pause ? 0 : e.M + e.assur) * x.k)],
       ['Restant dû (sa part)', eur(e.crd * x.k)], ['Prêt entier', eur(e.crd) + ' restant dû']]) : `<div class="aide">${e ? 'Prêt remboursé.' : 'Prêt pas encore rempli.'}</div>`}
     <div class="aide">Le prêt et la répartition se modifient sur la fiche de <a href="#investissements/${encodeURIComponent(x.de.id)}">${esc(x.de.nom)}</a>.</div></div>`;
+}
+// Simulation de rachat ou renégociation : champs (vides = valeurs d'aujourd'hui), résultats mis à jour à chaque saisie
+function rachatHTML(b, p, i) {
+  const c = `prets.${i}.rachat.`, r = p.rachat, s = simulerRachat(b, p) || {}, reneg = r.mode === 'reneg';
+  const autres = b.prets.filter(q => q !== p && (e => e && e.mois > 0 && e.crd > 0)(etatPret(q)));
+  const t2 = v => v != null ? v.toFixed(2).replace('.', ',') : '';
+  return `<div class="rachat"><div class="pret-tete"><b>Simulation : rachat ou renégociation</b><button class="lien" data-a="rachatFermer" data-i="${i}">Fermer</button></div>
+    <div class="grille">
+      ${champ(b, c + 'mode', 'Qui reprend le prêt ?', {options: [['', 'Une autre banque (rachat)'], ['reneg', 'Ma banque (renégociation)']], boutons: true, large: true})}
+      ${autres.length ? `<div class="large"><label>Regrouper avec</label><div class="seg multi">${autres.map(q => `<button type="button" data-a="rachatAvec" data-i="${i}" data-id="${esc(q.id)}" class="${(r.avec || []).includes(q.id) ? 'on' : ''}">${esc(q.banque || 'Prêt ' + (b.prets.indexOf(q) + 1))}</button>`).join('')}</div><div class="aide">Les prêts choisis sont remboursés par le nouveau : un seul prêt, une seule mensualité.</div></div>` : ''}
+      ${champ(b, c + 'taux', 'Nouveau taux (%)', {step: 0.01, ph: s.tAuj != null ? t2(s.tAuj) + ' (marché)' : '', aide: `Taux du marché ${esc(T.TAUX_ACTUEL.mois)}${b.structure !== 'np' ? ', SCI comprise' : ''} pour cette durée`})}
+      ${champ(b, c + 'duree', 'Nouvelle durée (mois)', {ph: s.nAuj ? s.nAuj + ' (restante)' : '', aide: 'Par défaut, la durée qui reste'})}
+      ${champ(b, c + 'assurance', 'Nouvelle assurance (€/mois)', {step: 0.01, ph: s.assurAvant ? t2(s.assurAvant) + ' (actuelle)' : '0'})}
+      ${reneg ? champ(b, c + 'avenant', 'Frais d\'avenant (€)', {step: 50, ph: '600'})
+        : `${champ(b, c + 'ira', 'Indemnités de remboursement anticipé (€)', {step: 100, ph: s.iraAuto != null ? fmt(s.iraAuto) + ' (plafond)' : '', aide: 'Au plus 6 mois d\'intérêts ou 3 % du restant dû ; parfois 0 dans le contrat'})}
+        ${champ(b, c + 'dossier', 'Frais de dossier (€)', {step: 100, ph: '1 000'})}
+        ${champ(b, c + 'garantie', 'Garantie (€)', {step: 100, ph: s.crd ? fmt(Math.round(0.015 * s.crd)) + ' (≈ 1,5 %)' : '', aide: 'Caution (Crédit Logement…) ou hypothèque'})}`}
+      ${champ(b, c + 'finance', 'Frais', {options: [['', 'Payés de ma poche'], ['1', 'Ajoutés au nouveau prêt']], boutons: true, large: true})}
+    </div>
+    <div data-rachat="${i}"></div></div>`;
+}
+function rachatResHTML(b, p) {
+  const s = simulerRachat(b, p);
+  if (!s) return '<div class="aide">Renseigne le taux et le restant dû du prêt pour simuler.</div>';
+  const ligne = (l, a, n) => `<div class="l2"><span>${l}</span><b>${a}</b><b>${n}</b></div>`;
+  const ans = m => m < 12 ? m + ' mois' : m % 12 ? `${Math.floor(m / 12)} ans et ${m % 12} mois` : m / 12 + ' ans';
+  return `${mini([['Nouvelle mensualité', eur(s.mensuApres) + (s.assur ? ' assurance comprise' : '')],
+      ['Différence', (s.diffMois >= 0 ? '−' : '+') + eur(Math.abs(s.diffMois)) + '/mois', s.diffMois > 0 ? 'up' : 'down'],
+      ['Gain net', eur(s.gain), signe(s.gain)], ['Rentable après', s.equilibre ? ans(s.equilibre) : 'jamais', s.equilibre ? '' : 'down']])}
+    <div class="calc">
+      <div class="l2 tete"><span></span><span>Aujourd'hui</span><span>Après</span></div>
+      ${ligne('Mensualité, assurance comprise', eur(s.mensuAvant), eur(s.mensuApres))}
+      ${ligne('Durée restante', s.nAuj + ' mois', s.duree + ' mois')}
+      ${ligne('Taux', p.taux.toFixed(2).replace('.', ',') + ' %' + (s.groupe > 1 ? ' …' : ''), s.taux.toFixed(2).replace('.', ',') + ' %')}
+      ${ligne('Capital à rembourser', eur(s.crd), eur(s.crd))}
+      ${ligne('Intérêts', eur(s.interetsAvant), eur(s.interetsApres))}
+      ${ligne('Assurance', eur(s.assurPayee), eur(s.assurApres))}
+      ${ligne(s.reneg ? 'Frais d\'avenant' : 'Indemnités, dossier et garantie', '—', eur(s.frais))}
+      ${ligne('<b>Coût total</b>', eur(s.coutAvant), eur(s.coutApres))}
+    </div>
+    <div class="aide">${s.groupe > 1 ? `${s.groupe} prêts regroupés : ${eur(s.crd)} de restant dû. ` : ''}${s.reneg ? '' : `Frais : indemnités ${eur(s.ira)}, dossier ${eur(s.dossier)}, garantie ${eur(s.garantie)}. `}${s.finance ? `Frais ajoutés au nouveau prêt : ${eur(s.capital)} empruntés. ` : 'Frais payés le jour du rachat. '}${s.equilibre ? `Rentable après ${ans(s.equilibre)} : à partir de là, même en revendant ou en remboursant, tu as gagné (frais et restant dû compris).` : 'Jamais rentable avec ces chiffres : les frais ou la durée en plus coûtent plus que la baisse du taux.'}${s.duree > s.nAuj ? ' Allonger la durée baisse la mensualité mais ajoute des intérêts.' : ''}</div>`;
 }
 // Chiffres recalculés sans reconstruire le formulaire (pour ne pas perdre le champ en cours de saisie)
 function majCalculs(b) {
@@ -1640,9 +1727,13 @@ function majCalculs(b) {
     : c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
   const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
   if (q('#inv_cout')) q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
-  b.prets.forEach((p, i) => { const r = racine.querySelector(`[data-resume="${i}"]`); if (r) r.innerHTML = resumePret(b, p, c.prets[i].e); });
+  b.prets.forEach((p, i) => {
+    const r = racine.querySelector(`[data-resume="${i}"]`), s = racine.querySelector(`[data-rachat="${i}"]`);
+    if (r) r.innerHTML = resumePret(b, p, c.prets[i].e, i);
+    if (s) s.innerHTML = rachatResHTML(b, p);
+  });
 }
-function resumePret(b, p, e) {
+function resumePret(b, p, e, i) {
   if (!e) return '<div class="aide">Remplis le taux, la mensualité et le restant dû (ou le montant, la durée et la 1re échéance) pour voir où en est ce prêt.</div>';
   if (e.mois <= 0) return '<div class="pret-etat"><b>Prêt remboursé</b></div>';
   const a = analyseReneg(p, e, b.structure !== 'np'), dejaPaye = p.montant > 0 ? 1 - e.crd / p.montant : null;
@@ -1658,10 +1749,11 @@ function resumePret(b, p, e) {
     ${partagesDe(p).length ? (k => `<div class="aide">Part de ce bien (${Math.round(k * 100)} %) : <b>${eur((e.pause ? 0 : e.M + e.assur) * k)}</b> par mois assurance comprise, ${eur(e.crd * k)} restant dû. Le reste est compté dans ${partagesDe(p).map(x => esc((biens.find(y => y.id === x.id) || {}).nom || '')).join(', ')}.</div>`)(partPorteur(p)) : ''}
     ${e.prog ? `<div class="aide">Mensualité progressive : +${(e.prog.g * 100).toFixed(2).replace('.', ',')} % par an${e.prog.saisie ? '' : ' (calculée avec le montant, le taux et la durée)'}${e.prog.hausse ? `, ${eur(e.prog.hausse.M)} à partir de ${libMois(e.prog.hausse.mois)}` : ''}, jusqu'à ${eur(e.prog.max)} la dernière année.</div>` : ''}
   </div>`;
-  if (a) h += `<div class="reneg ${a.netAvenant > 0 ? 'oui' : 'non'}"><div class="reneg-titre">Aux taux d'aujourd'hui : ${taux(a.tNew)}${b.structure !== 'np' ? ' (SCI)' : ''} au lieu de ${taux(p.taux)}</div>
+  if (a && !(p.rachat && p.rachat.ouvert)) h += `<div class="reneg ${a.netAvenant > 0 ? 'oui' : 'non'}"><div class="reneg-titre">Aux taux d'aujourd'hui : ${taux(a.tNew)}${b.structure !== 'np' ? ' (SCI)' : ''} au lieu de ${taux(p.taux)}</div>
     ${mini([['Nouvelle mensualité', eur(a.mensu2)], [e.prog ? 'Différence aujourd\'hui' : 'Différence', (a.gainMois >= 0 ? '−' : '+') + eur(Math.abs(a.gainMois)) + '/mois', a.gainMois > 0 ? 'up' : 'down'],
       ['Gain net : renégociation', '≈ ' + eur(a.netAvenant), signe(a.netAvenant)], ['Gain net : rachat', '≈ ' + eur(a.netRachat), signe(a.netRachat)]])}
-    <div class="aide">Renégociation avec ta banque : avenant ≈ 600 €. Rachat par une autre banque : indemnités ≈ ${eur(a.ira)}, plus dossier et garantie.${a.surprime ? ` Surprime payée en ${libMois(a.offre)} : ${a.surprime[0] >= 0 ? '+' : ''}${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à ' + (a.surprime[1] >= 0 ? '+' : '') + a.surprime[1].toFixed(2).replace('.', ',') : ''} point par rapport au marché de l'époque.` : ''}</div></div>`;
+    <div class="aide">Renégociation avec ta banque : avenant ≈ 600 €. Rachat par une autre banque : indemnités ≈ ${eur(a.ira)}, plus dossier et garantie.${a.surprime ? ` Surprime payée en ${libMois(a.offre)} : ${a.surprime[0] >= 0 ? '+' : ''}${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à ' + (a.surprime[1] >= 0 ? '+' : '') + a.surprime[1].toFixed(2).replace('.', ',') : ''} point par rapport au marché de l'époque.` : ''}</div>
+    <div class="boutons"><button data-a="rachatOuvrir" data-i="${i}">Simuler un rachat ou une renégociation →</button></div></div>`;
   return h;
 }
 function docsHTML(b) {
@@ -1872,6 +1964,13 @@ racine.addEventListener('click', async e => {
     p.partage = l.map((x, j) => ({id: x.id, part: parts[j]}));
     sauver(b); return vueDetail(b);
   }
+  if (a === 'rachatOuvrir') { const p = b.prets[+t.dataset.i]; p.rachat = {...(p.rachat || {}), ouvert: true}; sauver(b); return vueDetail(b); }
+  if (a === 'rachatFermer') { b.prets[+t.dataset.i].rachat.ouvert = false; sauver(b); return vueDetail(b); }
+  if (a === 'rachatAvec') {
+    const r = b.prets[+t.dataset.i].rachat, id = t.dataset.id, l = r.avec || [];
+    r.avec = l.includes(id) ? l.filter(x => x !== id) : [...l, id];
+    sauver(b); return vueDetail(b);
+  }
   if (a === 'supprPret' && confirm('Retirer ce prêt ?')) { b.prets.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
   if (a === 'fichier') racine.querySelector('#inv_fichier').click();
   if (a === 'supprDoc') {
@@ -1967,7 +2066,7 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part|rachat\.mode|rachat\.finance)$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature', 'place'].includes(chemin)) majAuto(b);

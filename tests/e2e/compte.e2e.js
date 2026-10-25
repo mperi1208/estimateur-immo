@@ -357,6 +357,37 @@ test('un seul crédit pour deux biens : prêt partagé au prorata des prix, chaq
   await attendreCompte(c => !c.biens.some(b => /Vendeur/.test(b.nom)), 'biens du test supprimés');
 });
 
+test('rachat de crédit : simulation modifiable (taux, durée, frais, renégociation), résultats recalculés', async () => {
+  await ouvrirFiche('Studio Test');
+  const res = () => page.locator('[data-rachat="0"]').innerText();
+  assert.match(await page.locator('[data-resume="0"]').innerText(), /Aux taux d'aujourd'hui/i);
+  await page.click('#inv [data-a="rachatOuvrir"][data-i="0"]');
+  await page.waitForSelector('#inv [data-p="prets.0.rachat.taux"]');
+  assert.doesNotMatch(await page.locator('[data-resume="0"]').innerText(), /Aux taux d'aujourd'hui/i);   // remplacé par la simulation
+  const bouton = (cible, l) => page.locator(`#inv [data-a="segChoix"][data-cible="${cible}"]`, {hasText: l});
+  assert.equal(await bouton('inv_prets_0_rachat_mode', 'renégociation').isVisible(), true);
+  await champ('prets.0.rachat.taux', 2); await champ('prets.0.rachat.ira', 0); await champ('prets.0.rachat.dossier', 0); await champ('prets.0.rachat.garantie', 0);
+  let r = await res();
+  const crd = nombre(r.match(/Capital à rembourser\s*\n?\s*([^\n]+?€)/i)[1]);
+  assert.ok(crd > 135000 && crd < 145000, `restant dû ${crd}`);
+  assert.match(r, /Rentable après\s*\n\s*1 mois/i);                                       // aucun frais : rentable tout de suite
+  assert.ok(nombre(r.match(/Gain net\s*\n\s*([^\n]+)/i)[1]) > 10000);
+  await champ('prets.0.rachat.duree', 120);
+  r = await res();
+  assert.match(r, /Durée restante\s*\d+ mois\s*120 mois/i);
+  assert.ok(nombre(r.match(/Nouvelle mensualité\s*\n\s*([^\n]+)/i)[1]) > 1200);            // 10 ans : mensualité plus haute
+  await bouton('inv_prets_0_rachat_mode', 'renégociation').click();
+  await page.waitForSelector('#inv [data-p="prets.0.rachat.avenant"]');
+  assert.equal(await page.locator('#inv [data-p="prets.0.rachat.ira"]').count(), 0);
+  assert.match(await res(), /Frais d'avenant[^\n]*\n?\s*—\s*\n?\s*600 €/i);
+  await bouton('inv_prets_0_rachat_finance', 'Ajoutés').click();
+  await page.waitForFunction(() => /Frais ajoutés au nouveau prêt/i.test(document.querySelector('[data-rachat="0"]').innerText));
+  await attendreCompte(() => (r => r && r.ouvert && r.taux === 2 && r.duree === 120 && r.mode === 'reneg' && r.finance === '1')(bienDuCompte('Studio Test').prets[0].rachat));
+  await page.click('#inv [data-a="rachatFermer"]');
+  await page.waitForSelector('#inv [data-p="prets.0.rachat.taux"]', {state: 'detached'});
+  assert.match(await page.locator('[data-resume="0"]').innerText(), /Aux taux d'aujourd'hui/i);
+});
+
 test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de doublon), supprimé', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#works button.cta');
