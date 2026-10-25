@@ -501,6 +501,33 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .loans input{padding:5px 6px;font-size:13px}
 #cf .loans td{white-space:normal}
 @media (max-width:900px){#cf{height:auto}#cf .voir{display:inline-block}#cf .bienbar{padding:10px 16px}#cf .cfwrap{grid-template-columns:1fr;height:auto}#cf aside{border-right:0;border-bottom:1px solid var(--line)}#cf main{padding:14px;overflow:visible}}
+/* Mode simple : l'interrupteur Simple / Pro et le bilan du mois (loyer − crédit − charges = ce qu'il reste) */
+.tabs .mode{display:flex;align-items:center;border:1px solid var(--line);border-radius:99px;overflow:hidden;flex-shrink:0}
+.tabs .mode button{border:0;padding:3px 10px;font-size:12px;font-weight:600;color:var(--muted);background:none;border-radius:0;height:auto}
+.tabs .mode button[aria-pressed="true"]{background:var(--accent);color:#fff}
+@media (max-width:520px){.tabs .mode button{padding:3px 7px}}
+.bilan-simple{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 14px}
+.bilan-simple .bs-l{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px;font-variant-numeric:tabular-nums}
+.bilan-simple .bs-l span{color:var(--muted)}
+.bilan-simple .bs-l b{white-space:nowrap}
+.bilan-simple .bs-total{border-top:2px solid var(--line);margin-top:4px;padding-top:9px;font-size:19px;font-weight:700}
+.bilan-simple .bs-total span{color:var(--ink)}
+.bilan-simple .up{color:var(--good)} .bilan-simple .down{color:var(--bad)}
+.bilan-simple .bs-phrase{margin:8px 0 0;font-size:14px}
+.bilan-simple .bs-note{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.bilan-simple.compact{border:0;padding:0;margin:10px 0 0;background:none}
+.bilan-simple.compact .bs-l{font-size:14px;padding:3px 0}
+.bilan-simple.compact .bs-total{font-size:16px}
+.pj-simple-prix{font-size:14px;margin:10px 0 0}
+body.discret #pj .pj-simple-prix b{filter:blur(7px)}
+.aide-simple{font-size:13px;color:var(--muted);margin:0 0 12px}
+body:not(.simple) .seul-simple{display:none}
+body.simple .seul-pro{display:none}
+body.simple #cf :is(#cf_boxBien2, #cf_boxProjet, #cf_boxImpots, #cf_boxEvol, #cf_boxDetail, #cf_reset, #cf_cible, #cf_alerts, #cf_bilan, #cf_tiles, .card:has(#cf_chart), details.card, .card:has(.srcs)){display:none}
+body.simple #cf [data-loyer2], body.simple #cf .grid > div:has(#cf_loyer2){display:none}
+body.simple #estim details.plus{display:none}
+body.simple #invest .pli[data-pli="orga"], body.simple #invest .bloc:has(#inv_renta){display:none}
+body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 </style>
 </head>
 <body>
@@ -509,7 +536,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
   <button role="tab" data-tab="projets" data-prive aria-selected="false"><span class="long">Mes projets</span><span class="court">Projets</span></button>
   <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
   <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
-  <div class="compte"><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog"><span class="long">Se connecter</span><span class="court">Connexion</span></button></div>
+  <div class="compte"><div class="mode" role="group" aria-label="Affichage"><button data-mode="simple" aria-pressed="false" title="Mode simple : loyer, crédit et ce qu'il te reste chaque mois">Simple</button><button data-mode="pro" aria-pressed="true" title="Mode pro : tous les réglages et le détail des calculs">Pro</button></div><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog"><span class="long">Se connecter</span><span class="court">Connexion</span></button></div>
 </nav>
 <dialog id="compteDlg" aria-label="Compte">
   <form method="dialog" class="fermer"><button aria-label="Fermer">✕</button></form>
@@ -656,12 +683,14 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
       <div><label>Classement</label><select id="cf_classe"><option value="0">Non classé</option><option value="1">Meublé de tourisme classé</option></select></div>
     </div>
   </details>
+  <div class="aide-simple seul-simple">Mode simple : les autres réglages (travaux, impôts, taux du crédit, charges…) gardent leurs valeurs. Passe en « Pro » en haut pour les voir.</div>
   <select id="cf_scenario" hidden><option value="louer">louer</option><option value="revendre">revendre</option></select>
   <button id="cf_reset">Remettre les valeurs par défaut</button>
 </aside>
 
 <main>
   <div class="seg scen" id="cf_scen"><button data-v="louer">Garder et louer</button><button data-v="revendre">Revendre</button></div>
+  <div id="cf_simple" class="seul-simple"></div>
   <div class="tiles" id="cf_tiles"></div>
   <div class="card" id="cf_cible"><h2>Prix d'équilibre</h2>
     <div class="cible-ligne"><label for="cf_cibleVal" id="cf_cibleLabel">Cash-flow visé (€/mois)</label><input id="cf_cibleVal" type="number" step="10"></div>
@@ -706,6 +735,41 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
+// ---------- Mode simple ----------
+// Deux affichages : « Pro » (tout le détail) et « Simple » (loyer, crédit, charges et ce qu'il reste chaque mois).
+// Réglage gardé sur l'appareil ; le mode simple ne change aucun calcul, il en montre moins.
+let MODE = 'pro';
+try { MODE = localStorage.getItem('mode-affichage') === 'simple' ? 'simple' : 'pro'; } catch (e) {}
+const modeSimple = () => MODE === 'simple';
+const eurS = n => (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
+// x : montants par mois {loyer, credit, charges, impots (facultatif), reste (facultatif : loyer − crédit − charges − impôts)}
+function bilanSimple(x, o = {}) {
+  const loyer = x.loyer || 0, credit = x.credit || 0, charges = x.charges || 0, impots = x.impots || 0;
+  const reste = x.reste != null ? x.reste : loyer - credit - charges - impots;
+  const r = Math.round(reste), cls = r > 0 ? 'up' : r < 0 ? 'down' : '';
+  // Montant signé : + ce qui rentre, − ce qui sort
+  const ligne = (l, v) => `<div class="bs-l"><span>${l}</span><b>${Math.round(v) > 0 ? '+ ' : Math.round(v) < 0 ? '− ' : ''}${eurS(Math.abs(v))}</b></div>`;
+  return `<div class="bilan-simple${o.compact ? ' compact' : ''}">${o.titre ? `<div class="bs-l bs-titre"><b>${o.titre}</b></div>` : ''}
+    ${ligne(o.libLoyer || 'Loyer', loyer)}${ligne('Mensualité du crédit', -credit)}${ligne('Charges (taxe foncière, copro…)', -charges)}
+    ${x.impots != null ? ligne(impots < 0 ? 'Impôts (économie)' : 'Impôts', -impots) : ''}
+    <div class="bs-l bs-total"><span>${r < 0 ? 'Il te manque' : 'Il te reste'}</span><b class="${cls}">${eurS(Math.abs(r))} par mois</b></div>
+    ${o.sansPhrase ? '' : `<p class="bs-phrase">${phraseSimple(loyer, credit, r, o.plusieurs)}</p>`}${o.note ? `<p class="bs-note">${o.note}</p>` : ''}</div>`;
+}
+function phraseSimple(loyer, credit, reste, plusieurs) {
+  const couvre = loyer > 0 && credit > 0 ? ` ${plusieurs ? 'Les loyers paient' : 'Le loyer paie'} <b>${Math.round(loyer / credit * 100)} %</b> ${plusieurs ? 'des mensualités' : 'de la mensualité'}.` : '';
+  const sujet = plusieurs ? 'tes biens te' : 'ce bien te', le = plusieurs ? 'Les loyers' : 'Le loyer';
+  if (!loyer && !credit && !reste) return 'Pas de loyer ni de crédit pour l\'instant.';
+  if (!loyer) return `Pas de loyer : ${sujet} ${plusieurs ? 'coûtent' : 'coûte'} <b>${eurS(-reste)}</b> par mois${credit ? ', crédit compris' : ''}.`;
+  if (Math.abs(reste) < 5) return `${le} ${plusieurs ? 'paient' : 'paie'} tout juste ${credit ? 'le crédit et ' : ''}les charges.` + couvre;
+  if (reste > 0) return `Une fois ${credit ? 'le crédit et les charges payés' : 'les charges payées'}, ${sujet} ${plusieurs ? 'rapportent' : 'rapporte'} <b>${eurS(reste)}</b> par mois.` + couvre;
+  return `${le} ne ${plusieurs ? 'suffisent' : 'suffit'} pas : il faut ajouter <b>${eurS(-reste)}</b> par mois de ta poche.` + couvre;
+}
+// ---------- fin du mode simple
+function majMode() {
+  document.body.classList.toggle('simple', modeSimple());
+  document.querySelectorAll('.tabs .mode [data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === MODE)));
+}
+majMode();
 // Source : API Données foncières du Cerema (DVF open data), interrogée à la volée.
 const API = 'https://apidf-preprod.cerema.fr/dvf_opendata/geomutations/';
 const MAX_BOX = 0.02;    // l'API refuse les emprises > 0.02° x 0.02°
@@ -2701,6 +2765,9 @@ function rendre() {
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `bien à ${eur(s.valeur)} (+${pct(p.gPrix)}/an${p.projet === 'location' ? ' depuis la valeur après travaux' : ''}), crédit remboursé, cash-flow cumulé ${eur(fin.cumul + s.apportEff)}, mise de départ (${eur(s.apportEff)}) déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
 
+  const ac0 = anneeCroisiere(s);
+  $('simple').innerHTML = bilanSimple({loyer: ac0.loyers / 12, credit: ac0.credit / 12, charges: ac0.charges / 12, impots: p.avecImpots ? ac0.impots / 12 : null},
+    {libLoyer: 'Loyer encaissé', note: `Moyenne par mois de l'année ${ac0.y}${ac0.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '<div class="okbox">Impôts <b>non comptés</b> : ouvre la section « Impôts » pour les inclure.</div>';
   if (!ouvert('evol')) al += '<div class="hint">Loyers, prix et charges constants : ouvre « Évolutions dans le temps » pour les faire progresser.</div>';
   al += `<div class="hint">Le graphique continue 5 ans après la fin du crédit (année ${s.finCredit}) pour montrer l'après-crédit.</div>`;
@@ -2788,6 +2855,10 @@ function rendreRevente(s) {
     ['Coût de portage', eur(portage), `intérêts et assurance ${eur(b.interets + b.assurance)}, charges ${eur(b.chargesFixes + b.chargesVar)}${b.loyers ? `, moins ${eur(b.loyers)} de loyers` : ''}`],
     ['Effort pendant l\'opération', eur(b.sorties / b.n) + '/mois', `${eur(b.sorties)} au total : mensualités et charges${b.loyers ? ', moins les loyers' : ''}`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
+  const nb = Math.round(b.net), lS = (l, v) => `<div class="bs-l"><span>${l}</span><b>${eur(v)}</b></div>`;
+  $('simple').innerHTML = `<div class="bilan-simple">${lS('Prix de revente', b.prixVente)}${lS('Coût du projet (achat, notaire, travaux)', b.coutAchat)}${lS('Effort par mois pendant l\'opération', b.sorties / b.n)}
+    <div class="bs-l bs-total"><span>${nb < 0 ? 'Perte' : 'Bénéfice'}</span><b class="${nb > 0 ? 'up' : nb < 0 ? 'down' : ''}">${eur(Math.abs(nb))}</b></div>
+    <p class="bs-phrase">${nb >= 0 ? `Revendu au bout de ${b.n} mois, ce projet te rapporte <b>${eur(nb)}</b>${p.avecImpots ? ' après impôt' : ''}.` : `Revendu au bout de ${b.n} mois, ce projet te fait perdre <b>${eur(-nb)}</b>.`} En attendant, prévois environ <b>${eur(b.sorties / b.n)}</b> par mois de mensualités et de charges.</p></div>`;
   const ligne = (l, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${l}</td><td>${v < 0 ? '−' : ''} ${fmt(Math.abs(v))} €</td></tr>`;
   $('bilan').innerHTML = `<h2>Bilan de l'opération (${b.n} mois)</h2><div class="scroll"><table>
     ${ligne('Prix de revente', b.prixVente)}${ligne('Frais de revente', -b.fraisVente)}${ligne('Remboursement du crédit (capital restant dû)', -b.crd)}${ligne('Indemnités de remboursement anticipé (au plus)', -b.ira)}
@@ -2922,12 +2993,13 @@ function majSauvegarde(pr) {
   $('enregNouveau').hidden = !pr;
   $('saveMsg').textContent = '';
 }
-// Résumé d'un projet (ce que montre « Mes projets ») : version 2 = cash-flow mesuré après le différé, au bout de 2 ans au moins.
+// Résumé d'un projet (ce que montre « Mes projets ») : version 2 = cash-flow mesuré après le différé, au bout de 2 ans au moins ;
+// version 3 = détail du mois (loyer, crédit, charges, impôts) pour le mode simple.
 // recalcul : on repart des réglages d'un projet enregistré, sans l'estimation en cours
 function instantane(ex, recalcul) {
   const s = simuler(), p = s.p, revente = p.projet === 'revente', c = prixCible(cibleVisee());
   const sci = mesScis().find(x => x.id === p.sciExist), exr = ex && ex.resume ? ex.resume : {};
-  const resume = {v: 2, type: p.type, surf: p.surf, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
+  const resume = {v: 3, type: p.type, surf: p.surf, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
     prix: p.prix, prixB2: p.deuxBiens ? p.prixB2 : null, loyerB2: p.deuxBiens ? p.loyerB2 : null, prixCible: c.prix != null ? c.prix : null, visee: cibleVisee(), loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
@@ -2938,6 +3010,7 @@ function instantane(ex, recalcul) {
     const a1 = anneeRef(s);
     const ac = anneeCroisiere(s);
     resume.anneeCible = ac.y; resume.cfMois = Math.round(ac.cf / 12); resume.cfDiffere = p.differe > 0 && ac.y !== a1.y ? Math.round(a1.cf / 12) : null; resume.mensualite = Math.round(s.ech.pmt + s.ech.assM);
+    resume.mois = {loyer: Math.round(ac.loyers / 12), credit: Math.round(ac.credit / 12), charges: Math.round(ac.charges / 12), impots: p.avecImpots ? Math.round(ac.impots / 12) : null};   // bilan du mode simple
   }
   return {finance: etat(), resume};
 }
@@ -3105,10 +3178,10 @@ $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxCons
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {sync, majScis, majCompte, restaurer, recalculer, regrouper, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=5a9cda6f"></script>
+<script src="investissements.js?v=f5550182"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -3121,6 +3194,13 @@ function estimationCourante() {
 // --- Onglet « Mes projets » ---
 const eurP = n => n == null || isNaN(n) ? '—' : (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
 const dateP = t => new Date(t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'});
+// Mode simple : le bilan du mois (ou le bénéfice d'un achat-revente) à la place des chiffres détaillés
+function chiffresSimples(r, revente, prix) {
+  const tete = prix ? `<div class="pj-simple-prix">${prix}</div>` : '';
+  if (revente) return tete + `<div class="bilan-simple compact"><div class="bs-l bs-total"><span>${(r.benefice || 0) < 0 ? 'Perte' : 'Bénéfice'} à la revente</span><b class="${(r.benefice || 0) > 0 ? 'up' : (r.benefice || 0) < 0 ? 'down' : ''}">${eurP(Math.abs(r.benefice || 0))}</b></div></div>`;
+  const m = r.mois || {loyer: (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0), credit: r.mensualite || 0, charges: Math.max(0, (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0) - (r.mensualite || 0) - (r.cfMois || 0))};
+  return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true});
+}
 function carteProjet(pr) {
   if (pr.amenag) return carteAmenagement(pr);
   const r = pr.resume || {}, revente = r.scenario === 'revendre';
@@ -3134,7 +3214,8 @@ function carteProjet(pr) {
       : ['Loyer hors charges', `<b>${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</b>` + (r.loyer2 ? `<small>${eurP(r.loyer)} + ${eurP(r.loyer2)} (2e loyer)</small>` : '') + (r.loyerB2 ? `<small>dont ${eurP(r.loyerB2)} du 2e bien</small>` : '')], ['Cash-flow', `<b class="${signe(r.cfMois)}">${eurP(r.cfMois)}/mois</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)}/mois pendant le différé</small>` : '')]);
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
-    <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
+    ${modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
+      : `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`}
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
       <div class="boutons">${pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : ''}${pr.regroupe ? '<button data-a="separer">Séparer</button>' : ''}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
@@ -3151,7 +3232,8 @@ function carteAmenagement(pr) {
     ['Mensualité', `<b>${eurP(r.mensualite)}/mois</b><small>crédit des travaux</small>`]];
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
-    <div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>
+    ${modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`)
+      : `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`}
     <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
       <div class="boutons"><button data-a="fiche">Voir la fiche</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
@@ -3163,7 +3245,7 @@ function rafraichirResumes() {
     if (pr.regroupe && pr.regroupe.length === 2 && pr.regroupeV !== 2) {
       try { const g = CF_APP.regrouper(...pr.regroupe); Object.assign(pr, {finance: g.finance, resume: g.resume, regroupeV: 2, maj: Date.now()}); change = compte = true; } catch (e) { console.warn('Projet regroupé non recalculé :', e); }
     }
-    if (!pr.finance || !pr.resume || pr.resume.v === 2) continue;
+    if (!pr.finance || !pr.resume || pr.resume.v === 3) continue;
     try { pr.resume = {...pr.resume, ...CF_APP.recalculer(pr.finance, pr)}; change = true; } catch (e) { console.warn('Résumé du projet non recalculé :', e); }
   }
   if (change) { try { localStorage.setItem('projets-v1', JSON.stringify(PROJETS.liste)); } catch (e) {} }
@@ -3257,6 +3339,16 @@ function showTab(t, maj = true, mode = null, sous = null) {
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => { aNavigue = true; showTab(b.dataset.tab); });
+// Interrupteur Simple / Pro : on redessine l'onglet ouvert (Estimer ne fait que masquer des critères)
+document.querySelectorAll('.tabs .mode [data-mode]').forEach(b => b.onclick = () => {
+  if (b.dataset.mode === MODE) return;
+  MODE = b.dataset.mode; try { localStorage.setItem('mode-affichage', MODE); } catch (e) {}
+  majMode();
+  const t = document.body.dataset.onglet;
+  if (t === 'investissements' && window.INV) INV.afficher();
+  else if (t === 'projets') afficherProjets();
+  else if (t === 'cashflow' && window.CF_APP) CF_APP.rendre();
+});
 const ONGLETS = ['estimation', 'cashflow', 'investissements', 'projets'];
 function lireHash() {
   const [t, sous] = location.hash.slice(1).split('/');
