@@ -424,6 +424,37 @@ test('Estimer : « Enregistrer mon estimation » range l\'estimation dans Mes pr
   assert.equal(await onglet(), 'estimation');                        // on reste sur Estimer
 });
 
+test('Mes projets : deux projets financés par un seul crédit', async () => {
+  const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
+  await page.click('#works button.cta');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  await page.fill('#cf_nomProjet', 'Lot A');
+  await page.click('#cf_enreg');
+  await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Lot A'));
+  await saisir(page, '#cf_prix', 120000);
+  await saisir(page, '#cf_loyer', 550);
+  await page.fill('#cf_nomProjet', 'Lot B');
+  await page.click('#cf_enregNouveau');
+  await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Lot B'));
+  await page.click('.tabs [data-tab="projets"]');
+  await page.click('#pj .actions [data-a="regroupe"]');
+  const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
+  await page.selectOption('#pj_a', await id('Lot A'));
+  await page.selectOption('#pj_b', await id('Lot B'));
+  await page.click('#pj [data-a="regrouper"]');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.equal(await page.evaluate(() => document.getElementById('cf_boxBien2').open), true);
+  assert.equal(+await page.inputValue('#cf_prix'), Math.round(e.prix));
+  assert.equal(+await page.inputValue('#cf_prixB2'), 120000);
+  assert.equal(+await page.inputValue('#cf_loyerB2'), 550);
+  assert.match(await page.locator('#cf').innerText(), /Deux biens, un seul crédit/i);
+  const pr = (await attendreCompte(c => c.projets.some(x => x.nom === 'Lot A + Lot B'))).projets.find(x => x.nom === 'Lot A + Lot B');
+  assert.equal(pr.resume.prix, Math.round(e.prix) + 120000); assert.equal(pr.resume.prixB2, 120000);
+  assert.ok(await page.evaluate(() => ['Lot A', 'Lot B'].every(n => PROJETS.liste.some(x => x.nom === n))));   // les deux projets restent
+  await page.click('.tabs [data-tab="projets"]');
+  assert.match(await page.locator('#pj .pj', {hasText: 'Lot A + Lot B'}).innerText(), /un seul crédit/i);
+});
+
 test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {
   const e = await estimer(page, {surf: 52});
   await page.click('.tabs [data-tab="investissements"]');
