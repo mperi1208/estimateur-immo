@@ -137,8 +137,15 @@ test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le tota
   const pret = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
   assert.ok(pret - pretSeul > 100000 && pret - pretSeul < 112000, `prêt ${pret} pour ${pretSeul} avec un seul bien`);   // 2e prix, son notaire et sa garantie
   await page.waitForFunction(() => /le 1er bien à|aucun prix|pas un frein/i.test(document.getElementById('cf_cibleRes').innerText));   // prix d'équilibre : celui du 1er bien
+  // Taxe foncière et copro de chaque bien côte à côte dans la section, plus une fois en haut et l'autre dans les charges
+  assert.equal(await page.locator('#cf_chargesBiens #cf_tf').count(), 1);
+  assert.equal(await page.locator('#cf_boxDetail #cf_tf').count(), 0);
+  assert.match(await page.locator('#cf_chargesBiens').innerText(), /taxe foncière du 1er bien[\s\S]*taxe foncière du 2e bien/i);
+  assert.match(await page.locator('label[for], label').filter({hasText: /prix du 1er bien/i}).first().innerText(), /1er bien/i);
   await page.click('#cf_boxBien2 summary');                // refermée : plus comptée
   await page.waitForFunction(() => !/Deux biens/.test(document.getElementById('cf_alerts').innerText));
+  assert.equal(await page.locator('#cf_boxDetail #cf_tf').count(), 1);   // la taxe foncière revient dans les charges
+  assert.equal(await page.locator('label:has(+ #cf_tf)').textContent(), 'Taxe foncière (€/an)');
 });
 
 test('sans compte : enregistrer un projet propose de se connecter', async () => {
