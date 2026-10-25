@@ -3035,12 +3035,12 @@ function prixCible(visee) {
   } finally { el.value = avant; }
 }
 function programmerCible() { clearTimeout(tCible); tCible = setTimeout(majCible, 150); }
-// Une seule ligne : le prix qui met le cash-flow (ou le bénéfice de la revente) à 0
+// Une seule ligne : le prix du projet (tous les biens) qui met le cash-flow (ou le bénéfice de la revente) à 0
 function majCible() {
-  const p = simuler().p, quoi = p.projet === 'revente' ? 'Le bénéfice' : 'Le cash-flow', r = prixCible(0);
-  $('cibleRes').innerHTML = r.impossible ? `${quoi} reste négatif même à très bas prix.`
-    : r.sansLimite ? `${quoi} reste positif jusqu'à ${eur(r.prix)} au moins.`
-    : `${quoi} serait à 0 € si ${p.deuxBiens ? 'le 1er bien coûtait' : 'le prix était de'} <b>${eur(r.prix)}</b>.`;
+  const p = simuler().p, quoi = p.projet === 'revente' ? 'bénéfice' : 'cash-flow', r = prixCible(0), autres = p.prix - p.prix1;
+  $('cibleRes').innerHTML = r.impossible ? `Le ${quoi} reste négatif même à très bas prix.`
+    : r.sansLimite ? `Le ${quoi} reste positif jusqu'à ${eur(r.prix + autres)} au moins.`
+    : `Prix du projet pour être à 0 € de ${quoi} : <b>${eur(r.prix + autres)}</b>`;
 }
 
 // ---------- Enregistrer dans « Mes projets » ----------
@@ -3312,8 +3312,8 @@ function carteProjet(pr) {
   const cases = revente ? [prix, ['Valeur après travaux', eurP(r.valeurApres)], [(r.benefice || 0) < 0 ? 'Perte à la revente' : 'Bénéfice à la revente', `<b class="${signeP(r.benefice)}">${eurP(Math.abs(r.benefice || 0))}</b>`]]
     : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>loyers ${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</small>`], caseReste(r)];
   const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
-  // Prix d'équilibre (cash-flow à 0) ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
-  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note">${revente ? 'Le bénéfice' : 'Le cash-flow'} serait à 0 € si ${deux ? 'le 1er bien coûtait' : 'le prix était de'} ${eurP(r.prixCible)}.</div>` : '';
+  // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
+  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note">Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}</div>` : '';
   const corps = (modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
     : chiffresPro(cases) + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
