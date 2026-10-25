@@ -669,7 +669,8 @@ test('logement de la famille : à part du cash-flow locatif (tuiles, carte, mode
   await page.waitForFunction(() => !document.body.classList.contains('simple'));
   await ouvrirFiche('Maison Famille');
   await page.click('#inv [data-a="supprimer"]');
-  await page.waitForSelector('#inv .kpis.six');
+  await page.waitForSelector('#inv .invhead');                                          // la liste, pas les tuiles de la fiche
+  await page.waitForFunction(() => !/Logement famille/i.test(document.querySelector('#inv .kpis.six').innerText));
   assert.match(await page.locator('#inv .kpis.six').innerText(), /Cash-flow\s*\n/i);
   assert.doesNotMatch(await page.locator('#inv .kpis.six').innerText(), /Logement famille/i);
 });
