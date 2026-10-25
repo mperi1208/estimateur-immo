@@ -524,6 +524,24 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await carte.locator('[data-a="estimerN"][data-n="0"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
   assert.equal(await page.inputValue('#surf'), '45');
+  // Carte d'un projet à deux biens : pas la phrase « un seul crédit pour « A » et « B » »
+  await page.click('.tabs [data-tab="projets"]');
+  assert.doesNotMatch(await carte.innerText(), /un seul crédit pour/i);
+  assert.match(await carte.innerText(), /Deux biens, un seul crédit · 90 m² en tout/i);
+  // Ancien regroupement sans ses deux projets, qui sont revenus à côté (doublon) : le refaire le remplace
+  await page.evaluate(() => {
+    const g = PROJETS.liste.find(x => x.nom === 'Lot A + Lot B'); g.nom = 'Alpha';
+    const copie = (nom, prix) => ({id: nouvelId(), nom, maj: Date.now(), quand: new Date().toISOString(), recherche: null, bien: '', finance: {...g.finance, ouverts: {}, prix}, resume: {...g.resume, prixB2: null}});
+    PROJETS.liste.push(copie('Alpha 1', 150000), copie('Alpha 2', 120000)); PROJETS.enregistrer(); afficherProjets();
+  });
+  await page.click('#pj .actions [data-a="regroupe"]');
+  await page.selectOption('#pj_a', await id('Alpha 1'));
+  await page.selectOption('#pj_b', await id('Alpha 2'));
+  assert.equal(await page.inputValue('#pj_c'), await id('Alpha'));     // deviné d'après les noms
+  await page.click('#pj [data-a="regrouper"]');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  c = await attendreCompte(c => !c.projets.some(x => /^Alpha [12]/.test(x.nom)) && c.projets.filter(x => x.nom === 'Alpha').length === 1 && c.projets.find(x => x.nom === 'Alpha').regroupe, 'ancien regroupement remplacé');
+  assert.equal(c.projets.find(x => x.nom === 'Alpha').resume.prixB2, 120000);
 });
 
 test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {
