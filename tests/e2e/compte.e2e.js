@@ -503,6 +503,27 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await carte.locator('[data-a="separer"]').click();
   c = await attendreCompte(c => !c.projets.some(x => x.nom === 'Lot A + Lot B') && ['Lot A', 'Lot B'].every(n => c.projets.some(x => x.nom === n)), 'projets séparés');
   assert.equal(c.projets.find(x => x.nom === 'Lot B').finance.prix, 120000);
+  // Projet regroupé qui a perdu ses deux projets d'origine : on choisit ses deux estimations, gardées dans le compte
+  await page.click('.tabs [data-tab="projets"]');
+  await page.click('#pj .actions [data-a="regroupe"]');
+  await page.selectOption('#pj_a', await id('Lot A'));
+  await page.selectOption('#pj_b', await id('Lot B'));
+  await page.click('#pj [data-a="regrouper"]');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  await page.evaluate(() => { const p = PROJETS.liste.find(x => x.nom === 'Lot A + Lot B'); delete p.regroupe; PROJETS.enregistrer(); });
+  await page.click('.tabs [data-tab="projets"]');
+  assert.equal(await carte.locator('[data-a="estimerN"]').count(), 0);
+  await carte.locator('[data-a="estChoisir"]').click();
+  const choix = carte.locator('.pj-estim select');
+  assert.equal(await choix.count(), 2);
+  assert.notEqual(await choix.nth(0).inputValue(), '-1');            // devinée d'après le prix du 1er bien
+  await choix.nth(1).selectOption({index: 1});
+  await carte.locator('[data-a="estGarder"]').click();
+  c = await attendreCompte(c => ((c.projets.find(x => x.nom === 'Lot A + Lot B') || {}).estimations || []).filter(Boolean).length === 2, 'estimations gardées');
+  assert.equal(await carte.locator('[data-a="estimerN"]').count(), 2);
+  await carte.locator('[data-a="estimerN"][data-n="0"]').click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
+  assert.equal(await page.inputValue('#surf'), '45');
 });
 
 test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {
