@@ -611,7 +611,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
     <div data-loyer2 hidden><label>2e loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
   </div><button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button></div>
 
-  <details class="opt" id="cf_boxBien2"><summary>Deux biens, un seul crédit <span class="chip"></span></summary><div class="hint">Ouverte : un 2e bien acheté en même temps avec le même prêt (par exemple deux appartements au même vendeur). Frais de notaire, apport et crédit portent sur le total ; les loyers et les charges des deux biens s'additionnent.</div><div class="grid">
+  <details class="opt" id="cf_boxBien2"><summary>Deux biens, un seul crédit <span class="chip"></span></summary><div class="hint">Un 2e bien acheté avec le même prêt : notaire, apport et crédit sur le total.</div><div class="grid">
     <div><label>Prix du 2e bien (€)</label><input id="cf_prixB2" type="number" min="0" step="1000"></div>
     <div><label>Loyer du 2e bien (€/mois)</label><input id="cf_loyerB2" type="number" min="0" step="10"><div class="hint">Hors charges, dès l'achat</div></div>
   </div>
@@ -625,14 +625,14 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
     <div><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
   </div></div>
 
-  <details class="opt" id="cf_boxProjet"><summary>Travaux <span class="chip"></span></summary><div class="hint">Ouverte : les travaux sont comptés, et le loyer démarre à la fin du chantier.</div><div class="grid">
+  <details class="opt" id="cf_boxProjet"><summary>Travaux <span class="chip"></span></summary><div class="grid">
     <div><label>Montant des travaux (€)</label><input id="cf_travaux" type="number" min="0" step="1000"></div>
     <div><label>Durée du chantier (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
     <div><label>Valeur après travaux (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
   </div>
   <label class="check"><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label></details>
 
-  <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="hint">Fermée : cash-flow avant impôts. Ouverte : impôts selon « Achat en » (nom propre, SCI à l'IR ou à l'IS).</div><div class="grid">
+  <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="grid">
     <div data-notis><label>Tranche d'imposition (TMI)</label><select id="cf_tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
     <div data-np><label>Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
     <div data-amort><label>Part du terrain (%)</label><input id="cf_terrain" type="number" min="0" max="80"></div>
@@ -641,13 +641,13 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <label class="check" data-is><input type="checkbox" id="cf_distrib"> Distribuer les bénéfices aux associés (flat tax 31,4 %)</label>
   <div id="cf_fiscNote" class="hint"></div></details>
 
-  <details class="opt" id="cf_boxEvol"><summary>Évolutions dans le temps <span class="chip"></span></summary><div class="hint">Fermée : loyers, prix et charges restent constants.</div><div class="grid">
+  <details class="opt" id="cf_boxEvol"><summary>Évolutions dans le temps <span class="chip"></span></summary><div class="grid">
     <div><label>Hausse des loyers (%/an)</label><input id="cf_gLoyer" type="number" step="0.1"></div>
     <div><label>Hausse du prix (%/an)</label><input id="cf_gPrix" type="number" step="0.1"></div>
     <div><label>Hausse des charges (%/an)</label><input id="cf_gCharges" type="number" step="0.1"></div>
   </div></details>
 
-  <details class="reglages" id="cf_boxDetail"><summary>Réglages détaillés</summary><div class="hint">Toujours comptés, avec des valeurs par défaut réalistes : ajuste-les si tu les connais.</div>
+  <details class="reglages" id="cf_boxDetail"><summary>Réglages détaillés</summary><div class="hint">Toujours comptés : valeurs par défaut réalistes.</div>
     <h4>Crédit</h4><div class="grid">
       <div><label>Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
       <div><label>Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
@@ -2776,19 +2776,18 @@ function rendre() {
   const ac0 = anneeCroisiere(s);
   $('simple').innerHTML = bilanSimple({loyer: ac0.loyers / 12, credit: ac0.credit / 12, charges: ac0.charges / 12, impots: p.avecImpots ? ac0.impots / 12 : null},
     {libLoyer: 'Loyer encaissé', note: `Moyenne par mois de l'année ${ac0.y}${ac0.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
-  let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '<div class="okbox">Impôts <b>non comptés</b> : ouvre la section « Impôts » pour les inclure.</div>';
-  if (!ouvert('evol')) al += '<div class="hint">Loyers, prix et charges constants : ouvre « Évolutions dans le temps » pour les faire progresser.</div>';
-  al += `<div class="hint">Le graphique continue 5 ans après la fin du crédit (année ${s.finCredit}) pour montrer l'après-crédit.</div>`;
+  // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
+  let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier : 0);
-  if (p.projet === 'location') al += `<div class="okbox">Travaux : <b>${eur(p.travaux)}</b> ${p.travauxCredit ? 'financés par le crédit' : 'payés par l\'apport'}, chantier de ${p.dureeTravaux} mois${p.differe ? ` (intérêts seuls pendant ${p.differe} mois)` : ''}, loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, tu encaisses environ <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux : <b>${eur(s.base)}</b> pour un coût de ${eur(coutBien)} (achat, notaire, travaux et frais bancaires, hors mobilier), soit ${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))} de création de valeur.</div>`;
+  if (p.projet === 'location') al += `<div class="okbox">Travaux : loyer à partir du mois ${p.debutLoc + 1}.${p.differe > p.debutLoc ? ` Pendant ${p.differe - p.debutLoc} mois, <b>${eur(p.loyer)}</b> de loyer pour <b>${eur(s.ech.mensDiff)}</b> d'intérêts et d'assurance par mois.` : ''} Valeur après travaux <b>${eur(s.base)}</b> pour ${eur(coutBien)} investis (hors mobilier) : <b>${s.base >= coutBien ? '+' : '−'}${eur(Math.abs(s.base - coutBien))}</b>.</div>`;
   if (s.saison) {
     const z = s.saison;
     $('saisonHint').innerHTML = `≈ <b>${eur(z.brutMois)}</b> de recettes par mois (${fmt(z.nuits)} nuits par an), <b>${eur(z.netMois)}</b> après frais et charges du logement. Frais détaillés dans « Réglages détaillés ».`;
     al += `<div class="okbox">Location saisonnière : <b>${eur(p.nuit)}</b> la nuit, ${fmt(p.occupation)} % d'occupation (${fmt(z.nuits)} nuits, ${fmt(z.sejours)} séjours par an), soit <b>${eur(z.brutMois)}</b> de recettes par mois en moyenne. Plateforme, conciergerie et ménage : ${pct(z.pctFrais)} des recettes ; charges du logement ${eur(p.chargesSaison)}/mois. La vacance est remplacée par le taux d'occupation.</div>`;
     al += `<div class="warnbox">Avant de louer à la nuitée : déclaration en mairie, 120 nuits par an au plus pour une résidence principale (90 dans certaines villes, dont Paris), changement d'usage souvent exigé dans les grandes villes, règlement de copropriété et DPE minimum (loi Le Meur).</div>`;
   }
-  if (p.deuxBiens) al += `<div class="okbox">Deux biens, un seul crédit : ${eur(p.prix1)} + ${eur(p.prixB2)} = <b>${eur(p.prix)}</b>, frais de notaire ${eur(s.fraisNotaire)} sur le total, un prêt de <b>${eur(s.pret)}</b>. Loyers : ${eur(p.loyerTotal - p.loyerB2)} + ${eur(p.loyerB2)} = <b>${eur(p.loyerTotal)}</b> par mois.</div>`;
-  if (p.loyer2 > 0) al += `<div class="okbox">Deux loyers : <b>${eur(p.loyer)}</b> à partir du mois ${p.debutLoc + 1} et <b>${eur(p.loyer2)}</b> à partir du mois ${p.debutLoc2 + 1}, soit <b>${eur(p.loyerTotal)}</b> par mois quand les deux sont loués.</div>`;
+  if (p.deuxBiens) al += `<div class="okbox">Deux biens : <b>${eur(p.prix)}</b> au total (notaire ${eur(s.fraisNotaire)}), <b>${eur(p.loyerTotal)}</b> de loyers par mois.</div>`;
+  if (p.loyer2 > 0) al += `<div class="okbox">Loyers : ${eur(p.loyer)} dès le mois ${p.debutLoc + 1}, ${eur(p.loyer2)} dès le mois ${p.debutLoc2 + 1}.</div>`;
   s.notes.forEach(n => al += `<div class="warnbox">${n}</div>`);
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
@@ -3200,7 +3199,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=f5550182"></script>
+<script src="investissements.js?v=123a8a96"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
