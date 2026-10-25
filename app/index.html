@@ -376,6 +376,7 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 .invwrap a.sci .ico svg{width:28px;height:28px}
 .invwrap a.sci .infos span{font-size:12px;color:var(--muted)}
 .invwrap a.sci .chiffres{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:8px;border-top:1px solid var(--line)}
+.invwrap a.sci .chiffres.trois{grid-template-columns:repeat(3,minmax(0,1fr))}
 .invwrap a.sci .chev{grid-column:3;grid-row:1}
 .invwrap .vignette.sciv svg{width:40px;height:40px}
 .invwrap .associe{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
@@ -3278,7 +3279,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=ad252957"></script>
+<script src="investissements.js?v=ff18cdfa"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
