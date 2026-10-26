@@ -307,8 +307,9 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-legende{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:#344054;margin-right:6px}
 .invwrap .pj-legende i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-left:6px}
 .invwrap .f-avant{background:#7a8aa3}.invwrap .f-travaux{background:#c2620c}.invwrap .f-apres{background:var(--accent)}.invwrap i.f-diff{background:none;border:2px solid #3e4c9b;border-top:0;height:6px}
-.invwrap .pj-cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
-.invwrap .pj-carte{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);min-width:0}
+.invwrap .pj-cartes{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
+.invwrap .pj-liste > *{min-width:0}
+.invwrap .pj-carte{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);flex:1 1 0;min-width:150px}
 .invwrap .pj-carte.best{border:2px solid var(--accent)}
 .invwrap .pj-c-tete{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .invwrap .pj-c-tete .pj-etiq,.invwrap .pj-c-tete .pj-top{margin:0}
@@ -329,6 +330,27 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-c-l b.up{color:var(--good)}.invwrap .pj-c-l b.down{color:var(--bad)}
 .invwrap .pj-carte .pj-opt-act{margin-top:auto;padding-top:6px;justify-content:stretch}
 .invwrap .pj-carte .pj-opt-act > button{flex:1}
+/* Toutes les options sur une ligne : les cartes rapetissent quand il y en a beaucoup */
+.invwrap .pj-cartes.serre{gap:8px}
+.invwrap .serre .pj-carte{padding:12px;gap:8px;min-width:120px}
+.invwrap .serre .pj-carte h4.pj-opt-nom{font-size:15px}
+.invwrap .serre .pj-c-change{font-size:12px}
+.invwrap .serre .pj-c-gros b{font-size:21px}
+.invwrap .serre .pj-c-gros span,.invwrap .serre .pj-c-gros small{font-size:11.5px}
+.invwrap .serre .pj-c-l{font-size:12px;flex-wrap:wrap;gap:0 6px}
+.invwrap .serre .pj-frise-l{font-size:10px}
+.invwrap .serre .pj-opt-act{flex-wrap:wrap}
+.invwrap .serre .pj-opt-act button{padding:6px 8px;font-size:13px}
+.invwrap .pj-cartes.mini{gap:6px}
+.invwrap .mini .pj-carte{padding:10px 6px;gap:6px;min-width:72px;border-radius:12px}
+.invwrap .mini .pj-carte h4.pj-opt-nom{font-size:13px;margin:-4px 0 0}
+.invwrap .mini :is(.pj-c-change, .pj-frise-l, .pj-frise-d, .pj-c-l, .pj-c-gros span, .pj-c-gros small, .pj-top){display:none}
+.invwrap .mini .pj-c-gros{padding-top:6px}
+.invwrap .mini .pj-c-gros b{font-size:16px}
+.invwrap .mini .pj-etiq{font-size:10px}
+.invwrap .mini .pj-opt-act{gap:4px;flex-direction:row-reverse;flex-wrap:nowrap}
+.invwrap .mini .pj-opt-act > button{padding:4px 2px;font-size:12px;min-width:0}
+.invwrap .mini details.pj-menu>summary{width:22px;height:28px;font-size:14px;border:0}
 body.discret #pj :is(.pj-c-gros b, .pj-c-l b, .pj-tuile-d){filter:blur(7px);user-select:none}
 /* Ce qui ne change pas, puis le tableau des options */
 .invwrap .pj-fixe{background:var(--bg);border-radius:12px;padding:12px 14px;font-size:14px;font-variant-numeric:tabular-nums}
@@ -617,6 +639,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf details.carte > summary::after{content:'';margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg)}
 #cf details.carte[open] > summary::after{transform:rotate(-135deg)}
 #cf details.carte[open]{padding-bottom:18px}
+#cf .charges-detail{display:flex;flex-wrap:wrap;gap:6px 18px;margin:4px 0 14px;font-size:14px;color:var(--muted)}
+#cf .charges-detail b{color:var(--ink);font-variant-numeric:tabular-nums}
 #cf .chip{font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--bg);color:var(--muted)}
 #cf .chip.on{background:var(--accent-soft);color:var(--accent)}
 #cf .hint{font-size:13px;color:var(--muted);margin-top:6px}
@@ -726,6 +750,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf #cf_alerts:empty{display:none}
 #cf #cf_alerts > :first-child{margin-top:0}
 #cf #cf_cibleRes{font-size:14px;color:var(--ink)}
+#cf #cf_cibleRes,.invwrap .pj-nego{display:flex;flex-wrap:wrap;gap:4px 20px}
+:is(#cf #cf_cibleRes, .invwrap .pj-nego) b.up{color:var(--good)}:is(#cf #cf_cibleRes, .invwrap .pj-nego) b.down{color:var(--bad)}
 #cf details.card > summary{font-weight:700}
 #cf table{width:100%;border-collapse:collapse;font-size:13px}
 #cf th,#cf td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -942,6 +968,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
     <div class="loyers-bas"><button id="cf_ajoutL2" class="ajout-bien">+ Un logement loué à part (studio, garage…)</button></div>
   </article>
   <details class="carte" id="cf_boxCharges"><summary>Charges et gestion <span class="chip" id="cf_chargesChip"></span></summary>
+    <div class="charges-detail" id="cf_chargesDetail"></div>
     <div class="grid">
       <div><label for="cf_vacance">Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
       <div><label for="cf_gestion">Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
@@ -2718,6 +2745,15 @@ document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter'
 </script>
 <script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
 <script>
+// (hors du module Financer : Mes projets s'en sert aussi)
+// Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
+function margeNego(prix, max, quoi, f) {
+  const d = max - prix, pct = prix > 0 ? Math.round(Math.abs(d) / prix * 100) : 0;
+  const marge = Math.abs(d) < 100 ? 'pile au prix actuel'
+    : d > 0 ? `<b class="up">${f(d)} de marge</b> (tu peux monter jusqu'à +${pct} %)`
+    : `<b class="down">il faut négocier ${f(-d)}</b> (−${pct} %)`;
+  return `<span>Prix actuel : <b>${f(prix)}</b></span><span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
+}
 (() => {
 // ---------- Taux de marché (série Observatoire Crédit Logement / CSA : taux moyens accordés) ----------
 // Sept. 2026 : 3,39 % sur 20 ans ; 15 et 25 ans estimés avec les écarts d'août 2026 (-0,13 / +0,08 pt).
@@ -3264,6 +3300,18 @@ function etapes(s) {
   const mob = p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0, l = (k, v, c = '') => `<div class="l ${c}"><span>${k}</span><b>${v}</b></div>`;
   const ac = s.p.projet === 'revente' ? null : anneeCroisiere(s);
   $('chargesChip').textContent = ac ? `≈ ${eur(ac.charges / 12)} par mois` : '';
+  // Ce que contient ce total : les charges fixes de tous les biens (saisies à l'étape 1) et celles qui suivent les loyers
+  let det = '';
+  if (ac) {
+    const infl = Math.pow(1 + p.gCharges / 100, ac.y - 1), m = v => v * infl / 12, pct = k => ac.loyers * p[k] / 100 / 12;
+    const parts = [['Taxe foncière', m(p.tf + p.tfB2)], ['Copro', m(p.copro + p.coproB2)], ['Assurance PNO', m(p.pno + p.pnoB2)], ['Comptable', m(p.compta)], ['CFE', s.meuble ? m(p.cfe) : 0],
+      [`Gestion ${p.gestion} %`, pct('gestion')], [`Entretien ${p.entretien} %`, pct('entretien')]];
+    const autres = ac.charges / 12 - parts.reduce((t, x) => t + x[1], 0);
+    if (autres > 0.5) parts.push(['Frais de la location à la nuitée', autres]);
+    det = parts.filter(x => Math.round(x[1]) > 0).map(([k, v]) => `<span>${k} <b>${eur(v)}</b></span>`).join('');
+    if (det) det = '<span>Dont, par mois :</span>' + det;
+  }
+  $('chargesDetail').innerHTML = det;
   $('empruntL').innerHTML = l(p.deuxBiens ? `Prix des ${p.autres.length + 1} biens` : 'Prix d\'achat', eur(p.prix)) + l('Frais de notaire', eur(s.fraisNotaire))
     + (p.travaux > 0 && travauxOn ? l('Travaux', eur(p.travaux)) : '') + (mob ? l('Mobilier', eur(mob)) : '') + (p.dossier + s.fraisGarantie > 0 ? l('Frais de dossier et garantie', eur(p.dossier + s.fraisGarantie)) : '')
     + (s.apportEff > 0 ? l('Apport', '− ' + eur(s.apportEff)) : '') + l('Prêt', eur(s.pret), 'tot') + l('Coût du crédit', eur(coutCredit));
@@ -3532,7 +3580,7 @@ function majCible() {
   const p = simuler().p, quoi = p.projet === 'revente' ? 'bénéfice' : 'cash-flow', r = prixCible(0), autres = p.prix - p.prix1;
   $('cibleRes').innerHTML = r.impossible ? `Le ${quoi} reste négatif même à très bas prix.`
     : r.sansLimite ? `Le ${quoi} reste positif jusqu'à ${eur(r.prix + autres)} au moins.`
-    : `Prix du projet pour être à 0 € de ${quoi} : <b>${eur(r.prix + autres)}</b>`;
+    : `${margeNego(p.prix, r.prix + autres, quoi, eur)}`;
 }
 
 // ---------- Enregistrer dans « Mes projets » ----------
@@ -3938,7 +3986,7 @@ function carteProjet(pr, br) {
     : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>loyers ${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</small>`], caseReste(r)];
   const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
   // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
-  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note">Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}</div>` : '';
+  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP) : `Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
   const corps = (modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
     : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
@@ -4084,14 +4132,15 @@ function friseOption(x) {
 }
 function cartesOptions(bs, a, m) {
   const revente = m && m.cle === 'benefice';
-  return `<div class="pj-cartes">${bs.map((x, i) => {
+  const n = bs.length;
+  return `<div class="pj-cartes${n >= 4 ? ' serre' : ''}${n >= 7 ? ' mini' : ''}">${bs.map((x, i) => {
     const r = x.resume || {}, f = x.finance || {}, best = m && m.pr === x && bs.length > 1;
     const v = revente ? r.benefice : r.scenario === 'revendre' ? null : r.cfMois, ecart = m && !best && v != null ? m.v - v : 0;
     const fin = Math.max(+f.differe || 0, r.travaux > 0 ? Math.max(1, +f.debutTravaux || 1) - 1 + (+f.dureeTravaux || 0) : 0);
     const change = (a.changes.get(x.id) || []).slice(0, 3).join(' · ');
     const loyers = r.mois ? r.mois.loyer : (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0);
     const l = (k, val, cls = '') => `<div class="pj-c-l"><span>${k}</span><b class="${cls}">${val}</b></div>`;
-    return `<article class="pj-carte${best ? ' best' : ''}"><div class="pj-c-tete"><span class="pj-etiq">Option ${String.fromCharCode(65 + i)}</span>${best ? '<span class="pj-top">La meilleure</span>' : ''}</div>
+    return `<article class="pj-carte${best ? ' best' : ''}"><div class="pj-c-tete"><span class="pj-etiq">Option ${i < 26 ? String.fromCharCode(65 + i) : i + 1}</span>${best ? '<span class="pj-top">La meilleure</span>' : ''}</div>
       <h4 class="pj-opt-nom">${esc(nomBranche(x))}</h4>${change ? `<div class="pj-c-change">${change}</div>` : ''}
       ${friseOption(x)}
       <div class="pj-c-gros"><span>${revente ? 'Bénéfice à la revente' : fin ? `Chaque mois, dès le mois ${fin + 1}` : 'Chaque mois'}</span>${v == null ? '<b>—</b>' : `<b class="${signeP(v)}">${v < 0 ? '−' : v > 0 ? '+' : ''}${eurP(Math.abs(v))}</b>`}
