@@ -750,6 +750,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf #cf_alerts:empty{display:none}
 #cf #cf_alerts > :first-child{margin-top:0}
 #cf #cf_cibleRes{font-size:14px;color:var(--ink)}
+#cf #cf_cibleRes,.invwrap .pj-nego{display:flex;flex-wrap:wrap;gap:4px 20px}
+:is(#cf #cf_cibleRes, .invwrap .pj-nego) b.up{color:var(--good)}:is(#cf #cf_cibleRes, .invwrap .pj-nego) b.down{color:var(--bad)}
 #cf details.card > summary{font-weight:700}
 #cf table{width:100%;border-collapse:collapse;font-size:13px}
 #cf th,#cf td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -3564,12 +3566,20 @@ function prixCible(visee) {
   } finally { el.value = avant; }
 }
 function programmerCible() { clearTimeout(tCible); tCible = setTimeout(majCible, 150); }
+// Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
+function margeNego(prix, max, quoi, f) {
+  const d = max - prix, pct = prix > 0 ? Math.round(Math.abs(d) / prix * 100) : 0;
+  const marge = Math.abs(d) < 100 ? 'pile au prix actuel'
+    : d > 0 ? `<b class="up">${f(d)} de marge</b> (tu peux monter jusqu'à +${pct} %)`
+    : `<b class="down">il faut négocier ${f(-d)}</b> (−${pct} %)`;
+  return `<span>Prix actuel : <b>${f(prix)}</b></span><span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
+}
 // Une seule ligne : le prix du projet (tous les biens) qui met le cash-flow (ou le bénéfice de la revente) à 0
 function majCible() {
   const p = simuler().p, quoi = p.projet === 'revente' ? 'bénéfice' : 'cash-flow', r = prixCible(0), autres = p.prix - p.prix1;
   $('cibleRes').innerHTML = r.impossible ? `Le ${quoi} reste négatif même à très bas prix.`
     : r.sansLimite ? `Le ${quoi} reste positif jusqu'à ${eur(r.prix + autres)} au moins.`
-    : `Prix du projet pour être à 0 € de ${quoi} : <b>${eur(r.prix + autres)}</b>`;
+    : `${margeNego(p.prix, r.prix + autres, quoi, eur)}`;
 }
 
 // ---------- Enregistrer dans « Mes projets » ----------
@@ -3975,7 +3985,7 @@ function carteProjet(pr, br) {
     : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>loyers ${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</small>`], caseReste(r)];
   const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
   // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
-  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note">Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}</div>` : '';
+  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP) : `Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
   const corps = (modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
     : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
