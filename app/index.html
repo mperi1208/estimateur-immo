@@ -48,11 +48,11 @@ h1{font-size:20px;margin:0 0 2px}
 .sauveEst .hint a{color:#7CD4AE}
 /* Estimer rouvert depuis un projet : même en-tête que Financer (projet › option, les 4 étapes) */
 #estim{grid-template-rows:auto minmax(0,1fr)}
-#est_tete{grid-column:1/-1;grid-row:1}
+#est_tete{grid-column:1/-1;grid-row:1;min-width:0}
 #est_tete > *{max-width:none;padding-left:20px;padding-right:20px}
 #estim > aside,#estim > .droite{grid-row:2}
 #est_tete .cf-etapes button[aria-current="step"]{cursor:default}
-@media (max-width:800px){#estim{grid-template-rows:none}#estim > *{grid-row:auto}#est_tete > *{padding-left:16px;padding-right:16px}}
+@media (max-width:800px){#estim{grid-template-rows:none;grid-template-columns:minmax(0,1fr)}#estim > *,#estim > aside,#estim > .droite{grid-row:auto}#est_tete > *{padding-left:16px;padding-right:16px}}
 .recentes .rec-ligne{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
 .recentes .rec-ligne button.rec{width:auto;flex:1;min-width:0;border-bottom:0;text-align:left}
 .recentes button.rec-x{flex:0 0 40px;display:flex;align-items:center;justify-content:center;border:0;border-left:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;padding:0}
@@ -535,7 +535,7 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 .droite{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,440px);grid-template-rows:auto 1fr;gap:16px;align-items:start;padding:16px;overflow-y:auto;min-width:0;min-height:0}
 .droite #out{grid-column:1;grid-row:1/span 2;min-width:0}
 .droite #map{grid-column:2;grid-row:1;height:300px;min-height:0;border:1px solid var(--line);border-radius:12px;position:sticky;top:0;z-index:0}
-@media (max-width:1100px){.droite{grid-template-columns:minmax(0,1fr)}.droite #map{grid-column:1;grid-row:1;order:-1;position:static}.droite #out{grid-column:1;grid-row:2}}
+@media (max-width:1100px){.droite{grid-template-columns:minmax(0,1fr)}.droite #map{grid-column:1;grid-row:1;order:-1;position:relative}.droite #out{grid-column:1;grid-row:2}}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;grid-template-rows:none;height:auto}.droite{overflow:visible;padding:12px}.droite #out{grid-row:1}.droite #map{grid-row:2;order:0;height:260px}aside{border-right:0;padding:16px}}
 
 [hidden]{display:none!important}
