@@ -307,8 +307,9 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-legende{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:#344054;margin-right:6px}
 .invwrap .pj-legende i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-left:6px}
 .invwrap .f-avant{background:#7a8aa3}.invwrap .f-travaux{background:#c2620c}.invwrap .f-apres{background:var(--accent)}.invwrap i.f-diff{background:none;border:2px solid #3e4c9b;border-top:0;height:6px}
-.invwrap .pj-cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
-.invwrap .pj-carte{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);min-width:0}
+.invwrap .pj-cartes{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
+.invwrap .pj-liste > *{min-width:0}
+.invwrap .pj-carte{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);flex:1 1 0;min-width:150px}
 .invwrap .pj-carte.best{border:2px solid var(--accent)}
 .invwrap .pj-c-tete{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .invwrap .pj-c-tete .pj-etiq,.invwrap .pj-c-tete .pj-top{margin:0}
@@ -329,6 +330,27 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-c-l b.up{color:var(--good)}.invwrap .pj-c-l b.down{color:var(--bad)}
 .invwrap .pj-carte .pj-opt-act{margin-top:auto;padding-top:6px;justify-content:stretch}
 .invwrap .pj-carte .pj-opt-act > button{flex:1}
+/* Toutes les options sur une ligne : les cartes rapetissent quand il y en a beaucoup */
+.invwrap .pj-cartes.serre{gap:8px}
+.invwrap .serre .pj-carte{padding:12px;gap:8px;min-width:120px}
+.invwrap .serre .pj-carte h4.pj-opt-nom{font-size:15px}
+.invwrap .serre .pj-c-change{font-size:12px}
+.invwrap .serre .pj-c-gros b{font-size:21px}
+.invwrap .serre .pj-c-gros span,.invwrap .serre .pj-c-gros small{font-size:11.5px}
+.invwrap .serre .pj-c-l{font-size:12px;flex-wrap:wrap;gap:0 6px}
+.invwrap .serre .pj-frise-l{font-size:10px}
+.invwrap .serre .pj-opt-act{flex-wrap:wrap}
+.invwrap .serre .pj-opt-act button{padding:6px 8px;font-size:13px}
+.invwrap .pj-cartes.mini{gap:6px}
+.invwrap .mini .pj-carte{padding:10px 6px;gap:6px;min-width:72px;border-radius:12px}
+.invwrap .mini .pj-carte h4.pj-opt-nom{font-size:13px;margin:-4px 0 0}
+.invwrap .mini :is(.pj-c-change, .pj-frise-l, .pj-frise-d, .pj-c-l, .pj-c-gros span, .pj-c-gros small, .pj-top){display:none}
+.invwrap .mini .pj-c-gros{padding-top:6px}
+.invwrap .mini .pj-c-gros b{font-size:16px}
+.invwrap .mini .pj-etiq{font-size:10px}
+.invwrap .mini .pj-opt-act{gap:4px;flex-direction:row-reverse;flex-wrap:nowrap}
+.invwrap .mini .pj-opt-act > button{padding:4px 2px;font-size:12px;min-width:0}
+.invwrap .mini details.pj-menu>summary{width:22px;height:28px;font-size:14px;border:0}
 body.discret #pj :is(.pj-c-gros b, .pj-c-l b, .pj-tuile-d){filter:blur(7px);user-select:none}
 /* Ce qui ne change pas, puis le tableau des options */
 .invwrap .pj-fixe{background:var(--bg);border-radius:12px;padding:12px 14px;font-size:14px;font-variant-numeric:tabular-nums}
@@ -4099,14 +4121,15 @@ function friseOption(x) {
 }
 function cartesOptions(bs, a, m) {
   const revente = m && m.cle === 'benefice';
-  return `<div class="pj-cartes">${bs.map((x, i) => {
+  const n = bs.length;
+  return `<div class="pj-cartes${n >= 4 ? ' serre' : ''}${n >= 7 ? ' mini' : ''}">${bs.map((x, i) => {
     const r = x.resume || {}, f = x.finance || {}, best = m && m.pr === x && bs.length > 1;
     const v = revente ? r.benefice : r.scenario === 'revendre' ? null : r.cfMois, ecart = m && !best && v != null ? m.v - v : 0;
     const fin = Math.max(+f.differe || 0, r.travaux > 0 ? Math.max(1, +f.debutTravaux || 1) - 1 + (+f.dureeTravaux || 0) : 0);
     const change = (a.changes.get(x.id) || []).slice(0, 3).join(' · ');
     const loyers = r.mois ? r.mois.loyer : (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0);
     const l = (k, val, cls = '') => `<div class="pj-c-l"><span>${k}</span><b class="${cls}">${val}</b></div>`;
-    return `<article class="pj-carte${best ? ' best' : ''}"><div class="pj-c-tete"><span class="pj-etiq">Option ${String.fromCharCode(65 + i)}</span>${best ? '<span class="pj-top">La meilleure</span>' : ''}</div>
+    return `<article class="pj-carte${best ? ' best' : ''}"><div class="pj-c-tete"><span class="pj-etiq">Option ${i < 26 ? String.fromCharCode(65 + i) : i + 1}</span>${best ? '<span class="pj-top">La meilleure</span>' : ''}</div>
       <h4 class="pj-opt-nom">${esc(nomBranche(x))}</h4>${change ? `<div class="pj-c-change">${change}</div>` : ''}
       ${friseOption(x)}
       <div class="pj-c-gros"><span>${revente ? 'Bénéfice à la revente' : fin ? `Chaque mois, dès le mois ${fin + 1}` : 'Chaque mois'}</span>${v == null ? '<b>—</b>' : `<b class="${signeP(v)}">${v < 0 ? '−' : v > 0 ? '+' : ''}${eurP(Math.abs(v))}</b>`}
