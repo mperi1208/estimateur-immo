@@ -736,6 +736,25 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.waitForFunction(() => document.querySelectorAll('#pj .pj-groupe .pj-compare tbody tr').length === 3);
   await page.click('.tabs [data-mode="pro"]');
   await page.waitForFunction(() => document.querySelectorAll('#pj .pj-groupe .pj-compare tbody tr').length > 3);
+  // « Modifier » une option : Financer l'ouvre sous son nom, l'enregistrement la met à jour (pas un autre projet)
+  const nDiv = await page.evaluate(() => PROJETS.liste.find(x => x.branche === 'Division').id);
+  await (await col('Division')).locator('[data-a="financer"]').click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.match(await page.locator('#cf_bien').innerText(), /San Gaetano · option Division/i);
+  assert.equal(await page.inputValue('#cf_nomProjet'), 'Division');
+  await saisir(page, '#cf_loyer', 950);
+  await page.click('#cf_enreg');
+  c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {finance: {}}).finance.loyer === 950, 'option modifiée');
+  assert.deepEqual(c.projets.filter(x => /Gaetano/.test(x.nom)).map(x => [x.nom, x.branche]).sort(), [['San Gaetano', 'Division'], ['San Gaetano', 'Garage']]);
+  // Le nom tapé dans Financer est celui de l'option
+  await page.fill('#cf_nomProjet', 'Division en 2');
+  await page.click('#cf_enreg');
+  c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {}).branche === 'Division en 2', 'option renommée');
+  assert.ok(c.projets.filter(x => x.groupe === c.projets.find(y => y.id === nDiv).groupe).every(x => x.nom === 'San Gaetano'), 'le projet garde son nom');
+  await page.fill('#cf_nomProjet', 'Division');
+  await page.click('#cf_enreg');
+  c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {}).branche === 'Division', 'nom remis');
+  await page.click('.tabs [data-tab="projets"]');
   // Replié sur une ligne (nom, branches, meilleure), gardé sur l'appareil ; « Tout déplier » le rouvre
   await carte.locator('.pj-plier-zone').click();
   await page.locator('#pj .pj-groupe.replie', {hasText: 'San Gaetano'}).waitFor();

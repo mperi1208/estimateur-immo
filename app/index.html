@@ -2567,9 +2567,11 @@ function mettreSaison(sz) {
   if (!get('nuit')) set('nuit', nuitConseillee(get('loyer')));
   if ($('chargesSaison').value === '') set('chargesSaison', chargesSaisonDefaut(get('surf'), get('type') === 'appart'));
 }
+// Une option d'un projet à plusieurs options (les options sont définies dans le script de Mes projets, chargé après)
+const estOption = pr => !!(pr && pr.groupe && typeof branchesDe === 'function' && branchesDe(pr).length > 1);
 function barreProjet(pr) {
   const r = pr.resume || {};
-  return `Projet <b>${esc(pr.nom)}</b>${pr.groupe && branchesDe(pr).length > 1 ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
+  return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
 }
 function sync(est, mode) {
   if (mode) figee = undefined;   // « Travaux + location » et autres : demande explicite, on applique le projet
@@ -3145,7 +3147,10 @@ function majCompte() {
   majScis();
 }
 function majSauvegarde(pr) {
-  if (!nomTouche) $('nomProjet').value = pr ? pr.nom : bienUtile ? bienUtile.label : '';
+  // Une option d'un projet : le champ est son nom à elle (le nom du projet se change dans Mes projets)
+  const opt = estOption(pr);
+  if (!nomTouche) $('nomProjet').value = pr ? (opt ? nomBranche(pr) : pr.nom) : bienUtile ? bienUtile.label : '';
+  $('nomProjet').placeholder = opt ? 'Nom de l\'option' : 'Nom du projet'; $('nomProjet').setAttribute('aria-label', $('nomProjet').placeholder);
   $('enreg').textContent = pr ? 'Enregistrer les modifications' : 'Enregistrer dans mes projets';
   $('enregNouveau').hidden = !pr;
   $('enregBranche').hidden = !pr || !!pr.amenag;
@@ -3181,7 +3186,8 @@ function enregistrerProjet(nouveau, branche) {
   const r = bienUtile && typeof rechercheCourante === 'function' ? rechercheCourante() : null;
   let ex = !nouveau && projetCourantId ? PROJETS.liste.find(x => x.id === projetCourantId) : null;
   if (ex && r && ex.recherche && ex.recherche.cle !== r.cle) ex = null;   // autre bien que le projet ouvert : nouveau projet
-  const nom = $('nomProjet').value.trim() || (r ? r.label : 'Mon projet');
+  const saisi = $('nomProjet').value.trim(), opt = estOption(ex);
+  const nom = opt ? ex.nom : saisi || (r ? r.label : 'Mon projet');   // option : le champ porte son nom, le projet garde le sien
   const inst = instantane(ex);
   inst.resume.label = r ? r.label : ex && ex.resume ? ex.resume.label : '';
   if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
@@ -3189,7 +3195,8 @@ function enregistrerProjet(nouveau, branche) {
   const estimations = ex && (ex.estimations || (branche && ex.regroupe ? rechercheRegroupees(ex).map(x => x && x.recherche) : null));
   const pr = {id: meme ? ex.id : nouvelId(), nom, maj: Date.now(), quand: meme ? ex.quand : new Date().toISOString(),
     recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(meme && ex.regroupe ? {regroupe: ex.regroupe, regroupeV: ex.regroupeV} : {}), ...(estimations ? {estimations} : {}),
-    ...(branche && ex ? {groupe: assurerGroupe(ex), branche} : meme ? Object.fromEntries(['groupe', 'branche', 'nomAvant'].filter(k => ex[k]).map(k => [k, ex[k]])) : {})};
+    ...(branche && ex ? {groupe: assurerGroupe(ex), branche} : meme ? Object.fromEntries(['groupe', 'branche', 'nomAvant'].filter(k => ex[k]).map(k => [k, ex[k]])) : {}),
+    ...(meme && opt && saisi ? {branche: saisi} : {})};
   // Le nom est celui du projet : changé ici, il change pour toutes ses branches
   if (pr.groupe) PROJETS.liste.forEach(x => { if (x.groupe === pr.groupe && x.id !== pr.id && x.nom !== nom) Object.assign(x, {nom, maj: Date.now()}); });
   PROJETS.ajouter(pr);
