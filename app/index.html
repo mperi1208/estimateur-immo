@@ -302,7 +302,7 @@ details.plus{margin-top:12px;border-style:dashed}
 /* Ce qui ne change pas, puis le tableau des options */
 .invwrap .pj-fixe{background:var(--bg);border-radius:12px;padding:12px 14px;font-size:14px;font-variant-numeric:tabular-nums}
 .invwrap .pj-fixe dl{display:grid;grid-template-columns:minmax(90px,max-content) minmax(0,1fr);gap:6px 14px;margin:0}
-.invwrap .pj-fixe dt{font-weight:600}.invwrap .pj-fixe dd{margin:0;color:var(--ink)}
+.invwrap .pj-fixe dt{font-weight:600}.invwrap .pj-fixe .pj-lien{all:unset;cursor:pointer;color:var(--accent);font-size:13px;margin-left:8px;white-space:nowrap}.invwrap .pj-fixe .pj-lien:hover{text-decoration:underline}.invwrap .pj-fixe dd{margin:0;color:var(--ink)}
 @media (max-width:600px){.invwrap .pj-fixe dl{grid-template-columns:1fr;gap:0}.invwrap .pj-fixe dd{margin-bottom:6px}}
 .invwrap .pj-opts-tete{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:16px 0 6px}
 .invwrap .pj-opts-tete h4{margin:0;font-size:15px;text-transform:none;letter-spacing:0;color:var(--ink)}
@@ -314,6 +314,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-opts tbody th{text-align:left;font-weight:400;color:var(--muted);font-size:13px}
 .invwrap .pj-opts small{display:block;font-size:12px;font-weight:600}
 .invwrap .pj-opts small.down{color:var(--bad)}
+.invwrap .pj-opts small.pj-moy{font-weight:400;color:var(--muted)}
 .invwrap .pj-opts .best{background:var(--accent-soft)}
 .invwrap .pj-opts thead .best{border-radius:12px 12px 0 0}.invwrap .pj-opts tfoot .best{border-radius:0 0 12px 12px}
 .invwrap .pj-gros{font-size:24px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
@@ -2927,7 +2928,7 @@ function rendre() {
       `${p.differe > 0 && ac.y !== a1.y ? `après le différé · ${eur(a1.cf / 12)} pendant` : `année ${ac.y}`}, ${p.avecImpots ? 'après' : 'avant'} impôts`],
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), 'mise de départ déduite'],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
-  $('tilesPlus').textContent = `Coût du crédit ${eur(coutCredit)} (intérêts, assurance, frais) · cash-flow moyen ${eur(cfMoyen)} par mois sur la durée du crédit${s.totalDiffere != null ? ` · ${s.totalDiffere < 0 ? '' : '+'}${eur(s.totalDiffere)} en tout pendant les ${p.differe} mois de différé` : ''}.`;
+  $('tilesPlus').textContent = `Coût du crédit ${eur(coutCredit)} (intérêts, assurance, frais) · cash-flow moyen ${eur(cfMoyen)} par mois sur la durée du crédit${s.totalDiffere != null ? ` · ${s.totalDiffere < 0 ? '' : '+'}${eur(s.totalDiffere)} en tout pendant les ${p.differe} mois de différé, soit ${eur(s.totalDiffere / p.differe)} par mois en moyenne` : ''}.`;
 
   $('simple').classList.remove('seul-simple');
   $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
@@ -3393,7 +3394,7 @@ function chiffresSimples(r, revente, prix) {
 // ---------- Comparer des branches
 // Les chiffres de plusieurs branches côte à côte, le meilleur mis en avant avec son avance sur le suivant ; en mode simple, seulement l'essentiel
 const eurC = n => (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
-const totalC = r => r.totalDiffere != null && r.differe ? `Pendant les ${r.differe} mois de différé : <b class="${r.totalDiffere > 0 ? 'up' : r.totalDiffere < 0 ? 'down' : ''}">${r.totalDiffere > 0 ? '+' : ''}${eurC(r.totalDiffere)}</b> en tout` : '';
+const totalC = r => r.totalDiffere != null && r.differe ? `Pendant les ${r.differe} mois de différé : <b class="${r.totalDiffere > 0 ? 'up' : r.totalDiffere < 0 ? 'down' : ''}">${r.totalDiffere > 0 ? '+' : ''}${eurC(r.totalDiffere)}</b> en tout, soit <b>${eurC(Math.round(r.totalDiffere / r.differe))}</b>/mois en moyenne` : '';
 const pctC = n => (n * 100).toFixed(1).replace('.', ',') + ' %';
 const reventeC = r => r.scenario === 'revendre';
 const loyerC = r => reventeC(r) ? null : r.mois ? r.mois.loyer : (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0);
@@ -3590,6 +3591,15 @@ function ligneMeilleure(bs) {
   const lib = m.cle === 'cfMois' ? (m.v < 0 ? 'il te manque' : 'il te reste') : (m.v < 0 ? 'perte' : 'bénéfice');
   return `La meilleure : <b>${esc(nomBranche(m.pr))}</b>, ${lib} <b class="${signeP(m.v)}">${eurP(Math.abs(m.v))}</b>${m.cle === 'cfMois' ? ' par mois' : ''}`;
 }
+// « Revoir l'estimation » d'un bien du projet (le n-ième), prise dans la première option qui en a une
+function boutonEstimation(bs, n) {
+  if (n == null) return '';
+  for (const x of bs) {
+    const l = rechercheRegroupees(x);
+    if (l.length ? l[n] : n === 0 && x.recherche) return `<button class="pj-lien" data-id="${esc(x.id)}" ${l.length ? `data-a="estimerN" data-n="${n}"` : 'data-a="estimer"'}>Revoir l'estimation</button>`;
+  }
+  return '';
+}
 // Le petit arbre du haut : le projet, ses biens (celui qui change porte les options), sinon les options directement
 function arbreProjet(nom, a, bs, m) {
   const opts = `<ul>${bs.map(x => `<li><span class="nd${m && m.pr === x && bs.length > 1 ? ' best' : ''}">${esc(nomBranche(x))}</span></li>`).join('')}</ul>`;
@@ -3611,7 +3621,7 @@ function tableOptions(bs, a, m, simple) {
   const lignes = [`<tr class="pj-principal"><th>${revente ? 'Bénéfice à la revente' : 'Il te reste par mois'}</th>${gros.join('')}</tr>`];
   if (rs.some(r => r.totalDiffere != null)) {
     const d = rs.map(r => r.differe || 0), meme = d.every(x => x === d[0]);
-    lignes.push(`<tr><th>${meme ? `Pendant les ${d[0]} mois de différé, en tout` : 'Pendant le différé, en tout'}</th>${rs.map((r, i) => `<td${cl(i)}>${r.totalDiffere == null ? '—' : `<b class="${signeP(r.totalDiffere)}">${r.totalDiffere < 0 ? '−' : ''}${eurP(Math.abs(r.totalDiffere))}</b>`}${!meme && d[i] ? `<small>${d[i]} mois</small>` : ''}</td>`).join('')}</tr>`);
+    lignes.push(`<tr><th>${meme ? `Pendant les ${d[0]} mois de différé, en tout` : 'Pendant le différé, en tout'}</th>${rs.map((r, i) => `<td${cl(i)}>${r.totalDiffere == null ? '—' : `<b class="${signeP(r.totalDiffere)}">${r.totalDiffere < 0 ? '−' : ''}${eurP(Math.abs(r.totalDiffere))}</b>${r.differe ? `<small class="pj-moy">soit ${r.totalDiffere < 0 ? '−' : ''}${eurP(Math.abs(Math.round(r.totalDiffere / r.differe)))}/mois en moyenne</small>` : ''}`}${!meme && d[i] ? `<small>${d[i]} mois</small>` : ''}</td>`).join('')}</tr>`);
   }
   a.lignes.forEach(l => lignes.push(`<tr><th>${l.k}</th>${l.v.map((v, i) => `<td${cl(i)}>${v}</td>`).join('')}</tr>`));
   if (!simple && !revente) lignes.push(`<tr><th>Mensualité du crédit</th>${rs.map((r, i) => `<td${cl(i)}>${r.mensualite != null ? eurP(r.mensualite) : '—'}</td>`).join('')}</tr>`);
@@ -3632,7 +3642,7 @@ function carteGroupe(bs) {
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
     <div class="pj-gr-actions">${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${arbreProjet(bs[0].nom, a, bs, m)}
-    ${a.fixes.length ? `<div class="pj-fixe"><span class="pj-etiq">Ce qui ne change pas</span><dl>${a.fixes.map(f => `<dt>${esc(f.t)}</dt><dd>${f.d}</dd>`).join('')}</dl></div>` : ''}
+    ${a.fixes.length ? `<div class="pj-fixe"><span class="pj-etiq">Ce qui ne change pas</span><dl>${a.fixes.map(f => `<dt>${esc(f.t)}</dt><dd>${f.d}${boutonEstimation(bs, f.n)}</dd>`).join('')}</dl></div>` : ''}
     <div class="pj-opts-tete"><h4>${titre}</h4>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Ajouter une option</button>` : ''}</div>
     ${tableOptions(bs, a, m, modeSimple())}
     <div class="pj-gr-bas"><button data-a="comparerBranches" aria-pressed="${ouvert}">${ouvert ? 'Masquer le détail' : 'Voir tous les chiffres'}</button></div>
@@ -3651,19 +3661,19 @@ function analyseBranches(bs) {
   const egal = l => l.every(v => String(v ?? '') === String(l[0] ?? '')), changes = new Map(bs.map(x => [x.id, []])), fixes = [], biens = [];
   const nb = Math.max(...bs.map(x => ((x.finance || {}).biensPlus || []).length));
   // Un bien (le 1er, ou un des autres) : fixe si rien ne change, sinon chaque branche dit ce qui change pour lui
-  const bien = (nom, props, de) => {
+  const bien = (nom, props, de, n) => {
     const diff = props.map(([k, f, fmt]) => ({k, fmt, v: bs.map(x => { try { const d = de(x); return d == null ? null : f(d); } catch (e) { return null; } })}));
     const fixe = diff.every(d => egal(d.v));
     biens.push({nom, fixe});
     // Ce qui ne bouge pas pour ce bien (même s'il change ailleurs) : une ligne en haut
     const l = diff.filter(d => egal(d.v) && d.v[0] != null && d.v[0] !== 0 && !['Surface', 'Taxe foncière', 'Copro'].includes(d.k)).map(d => `${d.k === 'Prix' ? 'acheté' : d.k.toLowerCase()} ${d.fmt(d.v[0])}`);
-    if (fixe || l.length) fixes.push({t: nom, d: l.join(' · ') || '—'});
+    if (fixe || l.length) fixes.push({t: nom, d: l.join(' · ') || '—', n});
     if (!fixe) varient.push({nom, diff: diff.filter(d => !egal(d.v))});
   };
   const varient = [];
   const nom1 = x => (x.finance || {}).nomBien || (nb ? 'Bien 1' : 'Le bien');
-  bien(nom1(bs[0]), BIEN1_P, x => x.finance && x.resume ? x : null);
-  for (let i = 0; i < nb; i++) bien((((bs[0].finance || {}).biensPlus || [])[i] || {}).nom || `Bien ${i + 2}`, BIENN_P, x => ((x.finance || {}).biensPlus || [])[i] || null);
+  bien(nom1(bs[0]), BIEN1_P, x => x.finance && x.resume ? x : null, 0);
+  for (let i = 0; i < nb; i++) bien((((bs[0].finance || {}).biensPlus || [])[i] || {}).nom || `Bien ${i + 2}`, BIENN_P, x => ((x.finance || {}).biensPlus || [])[i] || null, i + 1);
   // Le nom du bien devant ce qui change, seulement si plusieurs biens changent
   const lignes = [], ligne = (k, d) => lignes.push({k, v: d.v.map(v => v == null ? '—' : d.fmt(v))});
   varient.forEach(({nom, diff}) => diff.forEach(d => {
