@@ -2745,6 +2745,15 @@ document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter'
 </script>
 <script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
 <script>
+// (hors du module Financer : Mes projets s'en sert aussi)
+// Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
+function margeNego(prix, max, quoi, f) {
+  const d = max - prix, pct = prix > 0 ? Math.round(Math.abs(d) / prix * 100) : 0;
+  const marge = Math.abs(d) < 100 ? 'pile au prix actuel'
+    : d > 0 ? `<b class="up">${f(d)} de marge</b> (tu peux monter jusqu'à +${pct} %)`
+    : `<b class="down">il faut négocier ${f(-d)}</b> (−${pct} %)`;
+  return `<span>Prix actuel : <b>${f(prix)}</b></span><span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
+}
 (() => {
 // ---------- Taux de marché (série Observatoire Crédit Logement / CSA : taux moyens accordés) ----------
 // Sept. 2026 : 3,39 % sur 20 ans ; 15 et 25 ans estimés avec les écarts d'août 2026 (-0,13 / +0,08 pt).
@@ -3566,14 +3575,6 @@ function prixCible(visee) {
   } finally { el.value = avant; }
 }
 function programmerCible() { clearTimeout(tCible); tCible = setTimeout(majCible, 150); }
-// Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
-function margeNego(prix, max, quoi, f) {
-  const d = max - prix, pct = prix > 0 ? Math.round(Math.abs(d) / prix * 100) : 0;
-  const marge = Math.abs(d) < 100 ? 'pile au prix actuel'
-    : d > 0 ? `<b class="up">${f(d)} de marge</b> (tu peux monter jusqu'à +${pct} %)`
-    : `<b class="down">il faut négocier ${f(-d)}</b> (−${pct} %)`;
-  return `<span>Prix actuel : <b>${f(prix)}</b></span><span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
-}
 // Une seule ligne : le prix du projet (tous les biens) qui met le cash-flow (ou le bénéfice de la revente) à 0
 function majCible() {
   const p = simuler().p, quoi = p.projet === 'revente' ? 'bénéfice' : 'cash-flow', r = prixCible(0), autres = p.prix - p.prix1;
