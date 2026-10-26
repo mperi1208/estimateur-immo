@@ -98,6 +98,8 @@ test('arbre : le 2e appart et le crédit restent fixes (une fois), seules les di
   assert.match(t, /Crédit commun · apport 30\s000 € · taux 3,6 % · durée 25 ans · différé 12 mois · détenu par SCI à l'IS « SCOPA »/);
   assert.match(t, /N\*1 San Gaetano · acheté 150\s000 € · location meublée \|/);   // ce qui ne change pas pour le 1er : son prix, pas son loyer
   assert.deepEqual(a.biens.map(b => [b.nom, b.fixe]), [['N*1 San Gaetano', false], ['n*2 San Gaetano', true]]);
+  assert.deepEqual(a.fixes.map(f => f.n), [0, 1, undefined]);   // le rang du bien, pour « Revoir l'estimation »
+  assert.deepEqual(a.biens[1].details.map(d => texte(d.k + ' ' + d.v)), ['Prix 150 000 €', 'Loyer 1 300 €/mois', 'Surface 45 m²', 'Taxe foncière 600 €']);   // le détail du bien fixe (clic dans l'arbre)
   assert.deepEqual(a.changes.get('a').map(texte), ['loyer 1 200 €/mois', 'travaux 30 000 €', 'valeur après travaux 350 000 €']);
   assert.deepEqual(a.lignes.map(l => [l.k, l.v.map(texte)]), [['Loyer', ['1 200 €/mois', '1 100 €/mois']], ['Travaux', ['30 000 €', '25 000 €']], ['Valeur après travaux', ['350 000 €', '308 000 €']]]);
   assert.equal(a.adresse, 'Route de San Gaetano 20600 Bastia');
