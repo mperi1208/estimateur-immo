@@ -260,7 +260,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap button.pj-x svg{width:14px;height:14px}
 .invwrap .pj-chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px 14px;margin:12px 0}
 .invwrap .pj-chiffres span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
-.invwrap .pj-chiffres b{font-size:16px;font-variant-numeric:tabular-nums}
+.invwrap .pj-chiffres b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
 .invwrap .pj-chiffres small{display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .invwrap .pj-bas{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .invwrap .pj-note{font-size:12.5px;color:var(--muted);margin:-4px 0 10px;font-variant-numeric:tabular-nums}
@@ -285,6 +285,20 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap button.pj-plier{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;cursor:pointer;border-radius:inherit}
 .invwrap button.pj-plier:hover,.invwrap button.pj-plier:focus-visible{background:var(--accent-soft)}
 .invwrap .pj-plier-t{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.invwrap .pj-groupe.replie button.pj-plier{padding:18px 20px;gap:16px 24px;flex-wrap:nowrap}
+.invwrap .pj-r-g{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.invwrap .pj-r-nom{font-size:19px;font-weight:800}
+.invwrap .pj-r-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.invwrap .pj-r-opt{font-size:12.5px;padding:3px 10px;border-radius:99px;background:var(--bg);color:var(--muted);white-space:nowrap}
+.invwrap .pj-r-opt b{color:var(--ink);font-variant-numeric:tabular-nums}.invwrap .pj-r-opt b.up{color:var(--good)}.invwrap .pj-r-opt b.down{color:var(--bad)}
+.invwrap .pj-r-best{display:grid;grid-template-columns:auto;justify-items:end;text-align:right;padding:12px 16px;border-radius:14px;background:var(--accent-soft);min-width:170px}
+.invwrap .pj-r-lab{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent)}
+.invwrap .pj-r-bnom{font-size:15px;margin-top:2px}
+.invwrap .pj-r-val{font-size:28px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.invwrap .pj-r-val.up{color:var(--good)}.invwrap .pj-r-val.down{color:var(--bad)}
+.invwrap .pj-r-lib{font-size:12px;color:var(--muted)}
+@media (max-width:600px){.invwrap .pj-groupe.replie button.pj-plier{flex-wrap:wrap}.invwrap .pj-r-g{flex-basis:calc(100% - 40px)}.invwrap .pj-r-best{flex:1;justify-items:start;text-align:left}}
+body.discret #pj :is(.pj-r-val, .pj-r-opt b){filter:blur(7px);user-select:none}
 .invwrap .pj-plier-t b{font-size:16px}
 .invwrap .pj-meilleure{margin-left:auto;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .invwrap .pj-meilleure b{color:var(--ink)}.invwrap .pj-meilleure b.up{color:var(--good)}.invwrap .pj-meilleure b.down{color:var(--bad)}
@@ -580,8 +594,8 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 @media (max-width:420px){.tabs{gap:0;padding-left:8px;padding-right:8px}.tabs button{font-size:12.5px!important;padding:0 3px!important}.tabs .compte{padding-left:4px}.tabs .compte button{padding:0 9px!important;font-size:12px!important;height:30px}}
 @media (max-width:360px){.tabs button{font-size:11.5px!important}.tabs .compte button{padding:0 7px!important;font-size:11px!important}}
 @media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte .statut.connecte{display:flex;padding:0 6px}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
-/* Mon patrimoine : onglets et compte alignés sur la colonne centrale (1040 px) au lieu des bords de la fenêtre */
-body[data-onglet="investissements"] .tabs,body[data-onglet="projets"] .tabs{padding-left:max(16px, calc((100% - 1040px) / 2 + 4px));padding-right:max(16px, calc((100% - 1040px) / 2 + 16px))}
+/* Onglets et compte au même endroit sur tous les onglets : alignés sur la colonne centrale (1040 px) */
+@media (min-width:521px){.tabs{padding-left:max(16px, calc((100% - 1040px) / 2 + 4px));padding-right:max(16px, calc((100% - 1040px) / 2 + 16px))}}
 #compteDlg{border:1px solid var(--line);border-radius:14px;padding:20px;width:min(380px,calc(100vw - 32px));background:var(--panel);color:var(--ink)}
 #compteDlg::backdrop{background:rgba(0,0,0,.35)}
 #compteDlg .fermer{position:absolute;top:10px;right:10px;margin:0}
@@ -3901,7 +3915,7 @@ function chiffresSimples(r, revente, prix) {
 // ---------- Comparer des branches
 // Les chiffres de plusieurs branches côte à côte, le meilleur mis en avant avec son avance sur le suivant ; en mode simple, seulement l'essentiel
 const eurC = n => (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
-const totalC = r => r.totalDiffere != null && r.differe ? `Pendant les ${r.differe} mois de différé : <b class="${r.totalDiffere > 0 ? 'up' : r.totalDiffere < 0 ? 'down' : ''}">${r.totalDiffere > 0 ? '+' : ''}${eurC(r.totalDiffere)}</b> en tout, soit <b>${eurC(Math.round(r.totalDiffere / r.differe))}</b>/mois en moyenne` : '';
+const totalC = r => r.totalDiffere != null && r.differe ? `Pendant les ${r.differe} mois de différé : <b class="${r.totalDiffere > 0 ? 'up' : r.totalDiffere < 0 ? 'down' : ''}">${r.totalDiffere > 0 ? '+' : ''}${eurC(r.totalDiffere)}</b> en tout` : '';
 const pctC = n => (n * 100).toFixed(1).replace('.', ',') + ' %';
 const reventeC = r => r.scenario === 'revendre';
 const loyerC = r => reventeC(r) ? null : r.mois ? r.mois.loyer : (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0);
@@ -3962,7 +3976,7 @@ function tableComparaison(prs, o = {}) {
 // Trois chiffres, les mêmes que les tuiles de Financer ; l'estimation et le prix d'équilibre sur des lignes discrètes
 const signeP = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
 const chiffresPro = cases => `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`;
-const caseReste = r => [(r.cfMois || 0) < 0 ? 'Il te manque par mois' : 'Il te reste par mois', `<b class="${signeP(r.cfMois)}">${eurP(Math.abs(r.cfMois || 0))}</b>` + (r.cfDiffere != null ? `<small>${eurP(r.cfDiffere)} pendant le différé</small>` : '')];
+const caseReste = r => [(r.cfMois || 0) < 0 ? 'Il te manque par mois' : 'Il te reste par mois', `<b class="${signeP(r.cfMois)}">${eurP(Math.abs(r.cfMois || 0))}</b>`];
 const quiP = r => r.struct === 'np' || !r.struct ? '' : `SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
 const usageP = (r, revente) => revente ? 'achat-revente' : r.saison ? 'saisonnier' : r.meuble ? 'meublé' : 'location vide';
 // Actions rares rangées derrière « ⋯ » : un seul bouton visible à côté de « Modifier le financement »
@@ -3973,7 +3987,7 @@ function cartePj(pr, sous, corps, boutons, br) {
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
-    <div class="pj-bas"><span class="pj-date">${pr.maj ? 'Mis à jour le ' + dateP(pr.maj) : ''}</span>
+    <div class="pj-bas"><span></span>
       <div class="pj-actions">${menuP(boutons)}<button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
 function carteProjet(pr, br) {
@@ -3981,9 +3995,9 @@ function carteProjet(pr, br) {
   const r = pr.resume || {}, revente = r.scenario === 'revendre', deux = r.prixB2 != null;
   // Deux biens : pas la phrase « un seul crédit pour « A » et « B » », ni « Appartement de » pour la surface des deux additionnée
   const sous = [deux ? `${r.nbBiens > 2 ? r.nbBiens : 'Deux'} biens, un seul crédit` : r.label && r.label !== pr.nom && !br ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appart.'} ${r.surf} m²`) : '', usageP(r, revente), quiP(r)].filter(Boolean).join(' · ');
-  const prix = ['Prix du projet', `<b>${eurP(r.prix)}</b>` + (r.travaux > 0 ? `<small>dont ${eurP(r.travaux)} de travaux en plus</small>` : r.apport ? `<small>apport ${eurP(r.apport)}</small>` : '')];
+  const prix = ['Prix du projet', `<b>${eurP(r.prix)}</b>`];
   const cases = revente ? [prix, ['Valeur après travaux', eurP(r.valeurApres)], [(r.benefice || 0) < 0 ? 'Perte à la revente' : 'Bénéfice à la revente', `<b class="${signeP(r.benefice)}">${eurP(Math.abs(r.benefice || 0))}</b>`]]
-    : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>loyers ${eurP((r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0))}/mois</small>`], caseReste(r)];
+    : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b>`], caseReste(r)];
   const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
   // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
   const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP) : `Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
@@ -4036,10 +4050,8 @@ const moisP = ym => { const [y, m] = String(ym).split('-').map(Number); return y
 function carteAmenagement(pr, br) {
   const r = pr.resume || {}, am = r.amenag || {};
   const sous = [`Aménagement${am.principal ? ' de ' + esc(am.principal) : ''}`, r.surf ? `${r.surf} m²` : '', usageP(r, false), quiP(r)].filter(Boolean).join(' · ');
-  const cases = [['Travaux', `<b>${eurP(r.travaux)}</b>` + (am.debut ? `<small>à partir de ${moisP(am.debut)}</small>` : '')],
-    ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>${r.saison ? 'recettes' : 'loyer'} ${eurP(r.loyer)}/mois${am.loyerDes ? ' dès ' + moisP(am.loyerDes) : ''}</small>`], caseReste(r)];
-  const note = [r.valeurApres ? `Vaut ${eurP(r.valeurApres)} une fois aménagé` : '', r.saison ? `${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation` : ''].filter(Boolean).join(' · ');
-  const corps = modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`) : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (note ? `<div class="pj-note">${note}</div>` : '');
+  const cases = [['Travaux', `<b>${eurP(r.travaux)}</b>`], ['Mensualité', `<b>${eurP(r.mensualite)}</b>`], caseReste(r)];
+  const corps = modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`) : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '');
   return cartePj(pr, sous, corps, ['<button data-a="fiche">Voir la fiche du bien</button>'], br);
 }
 // Les projets enregistrés avant le nouveau calcul (cash-flow pendant le différé) sont recalculés une fois
@@ -4167,10 +4179,20 @@ function tableOptions(bs, a, m, simple) {
   if (!simple && !revente) lignes.push(`<tr><th>Mensualité du crédit</th>${rs.map((r, i) => `<td${cl(i)}>${r.mensualite != null ? eurP(r.mensualite) : '—'}</td>`).join('')}</tr>`);
   return `<div class="pj-cmp-defile"><table class="pj-opts"><thead>${tete}</thead><tbody>${lignes.join('')}</tbody></table></div>`;
 }
+// Projet replié : son nom et ses options en petit à gauche, la meilleure option en gros à droite
+function carteRepliee(bs, g) {
+  const m = meilleureBranche(bs), a = analyseBranches(bs), cle = m ? m.cle : 'cfMois';
+  const val = v => v == null ? '—' : `${v < 0 ? '−' : v > 0 ? '+' : ''}${eurP(Math.abs(v))}`;
+  const autres = bs.filter(x => !m || x !== m.pr).map(x => { const v = (x.resume || {})[cle]; return `<span class="pj-r-opt">${esc(nomBranche(x))} <b class="${signeP(v)}">${val(v)}</b></span>`; }).join('');
+  const lib = cle === 'cfMois' ? (m && m.v < 0 ? 'il te manque, par mois' : 'il te reste, par mois') : m && m.v < 0 ? 'perte à la revente' : 'bénéfice à la revente';
+  return `<article class="pj pj-groupe replie" data-groupe="${esc(g)}"><button class="pj-plier" data-a="plier" aria-expanded="false">
+    <span class="pj-r-g"><b class="pj-r-nom">${esc(bs[0].nom)}</b><span class="pj-sous">${[`${bs.length} options`, a.adresse ? esc(a.adresse) : ''].filter(Boolean).join(' · ')}</span>${autres ? `<span class="pj-r-opts">${autres}</span>` : ''}</span>
+    ${m ? `<span class="pj-r-best"><span class="pj-r-lab">La meilleure option</span><b class="pj-r-bnom">${esc(nomBranche(m.pr))}</b><span class="pj-r-val ${signeP(m.v)}">${val(m.v)}</span><span class="pj-r-lib">${lib}</span></span>` : ''}
+    <span class="chevron" aria-hidden="true"></span></button></article>`;
+}
 function carteGroupe(bs) {
   const g = groupeDe(bs[0]), ouvert = comparees.has(g);
-  if (!DEPLIES.has(g)) return `<article class="pj pj-groupe replie" data-groupe="${esc(g)}"><button class="pj-plier" data-a="plier" aria-expanded="false">
-    <span class="pj-plier-t"><b>${esc(bs[0].nom)}</b><span class="pj-sous">${bs.length} options</span></span><span class="pj-meilleure">${ligneMeilleure(bs)}</span><span class="chevron" aria-hidden="true"></span></button></article>`;
+  if (!DEPLIES.has(g)) return carteRepliee(bs, g);
   const sousNoms = bs.map(x => x.amenag ? 'aménagement' : usageP(x.resume || {}, (x.resume || {}).scenario === 'revendre'));
   const cmp = ouvert ? `<div class="pj-compare">${tableComparaison(bs.map(x => ({nom: nomBranche(x), resume: x.resume})), {simple: modeSimple(), sous: sousNoms})}</div>` : '';
   const a = analyseBranches(bs), m = meilleureBranche(bs), cache = SANS_TABLEAU.has(g);
