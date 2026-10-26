@@ -282,30 +282,43 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-plier-zone{cursor:pointer}
 .invwrap .pj-etiq{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
 .invwrap .pj-top{display:inline-block;font-size:11px;font-weight:600;color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent);border-radius:99px;padding:2px 8px;margin-top:4px}
-/* Petit arbre du projet : le projet, ses biens, les options sous celui qui change */
-.invwrap .pj-arbre{display:flex;overflow-x:auto;margin:14px 0 12px;padding-bottom:2px}
-.invwrap .pj-arbre ul{position:relative;display:flex;justify-content:center;margin:0;padding:12px 0 0;list-style:none}
-.invwrap .pj-arbre>ul{padding-top:0;margin:0 auto}
-.invwrap .pj-arbre li{position:relative;padding:12px 4px 0;text-align:center}
-.invwrap .pj-arbre li::before,.invwrap .pj-arbre li::after{content:'';position:absolute;top:0;right:50%;width:50%;height:12px;border-top:1.5px solid var(--line)}
-.invwrap .pj-arbre li::after{right:auto;left:50%;border-left:1.5px solid var(--line)}
-.invwrap .pj-arbre li:only-child{padding-top:0}
-.invwrap .pj-arbre li:only-child::before,.invwrap .pj-arbre li:only-child::after{display:none}
-.invwrap .pj-arbre li:first-child::before,.invwrap .pj-arbre li:last-child::after{border:0}
-.invwrap .pj-arbre li:last-child::before{border-right:1.5px solid var(--line);border-radius:0 6px 0 0}
-.invwrap .pj-arbre li:first-child::after{border-radius:6px 0 0 0}
-.invwrap .pj-arbre ul ul::before{content:'';position:absolute;top:0;left:50%;height:12px;border-left:1.5px solid var(--line)}
-.invwrap .pj-arbre li:only-child>ul::before{display:block}
-.invwrap .pj-arbre .nd{display:inline-block;font-size:12.5px;line-height:1.3;padding:4px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);white-space:nowrap}
-.invwrap .pj-arbre .nd small{display:block;font-size:10.5px;color:var(--muted)}
-.invwrap .pj-arbre .racine{font-weight:700}
-.invwrap .pj-arbre .fixe{background:var(--bg)}
-.invwrap .pj-arbre button.nd{font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer;min-height:0;margin:0}
-.invwrap .pj-arbre button.nd:hover{border-color:var(--accent)}
-.invwrap .pj-arbre button.nd.racine{font-weight:700}
-.invwrap .pj-arbre .nd.choisi{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .invwrap .pj-bien-detail{margin-bottom:6px}.invwrap .pj-bien-bas{display:flex;gap:16px;margin-top:10px}.invwrap .pj-fixe .pj-bien-bas .pj-lien{margin-left:0}
-.invwrap .pj-arbre .best{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,transparent);font-weight:600}
+/* Un projet ouvert : une tuile par bien et pour le crédit, puis une carte par option (frise des travaux et du différé) */
+.invwrap .pj-groupe:not(.replie){padding:20px 22px;border-radius:18px}
+.invwrap .pj-groupe h3{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.invwrap .pj-tuiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:16px 0 4px;padding:0;background:none}
+.invwrap .pj-tuile{display:flex;flex-direction:column;gap:2px;background:var(--bg);border-radius:12px;padding:12px 14px;min-width:0}
+.invwrap .pj-tuile .pj-etiq{margin:0 0 2px;font-weight:700}
+.invwrap .pj-tuile b{font-size:15px}
+.invwrap .pj-tuile-d{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.invwrap .pj-tuile .pj-lien{all:unset;cursor:pointer;color:var(--accent);font-size:13px;font-weight:700;margin-top:4px}
+.invwrap .pj-tuile .pj-lien:hover{text-decoration:underline}
+.invwrap .pj-legende{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:#344054;margin-right:6px}
+.invwrap .pj-legende i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-left:6px}
+.invwrap .f-avant{background:#7a8aa3}.invwrap .f-travaux{background:#c2620c}.invwrap .f-apres{background:var(--accent)}.invwrap i.f-diff{background:none;border:2px solid #3e4c9b;border-top:0;height:6px}
+.invwrap .pj-cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.invwrap .pj-carte{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);min-width:0}
+.invwrap .pj-carte.best{border:2px solid var(--accent)}
+.invwrap .pj-c-tete{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.invwrap .pj-c-tete .pj-etiq,.invwrap .pj-c-tete .pj-top{margin:0}
+.invwrap .pj-carte h4.pj-opt-nom{margin:-6px 0 0;font-size:18px;font-weight:800;text-transform:none;letter-spacing:0;color:var(--ink);overflow-wrap:anywhere}
+.invwrap .pj-c-change{font-size:13px;color:var(--muted);margin-top:-4px}
+.invwrap .pj-c-change b{color:var(--ink);font-weight:600}
+.invwrap .pj-frise-b{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#e8ecf2}
+.invwrap .pj-frise-b span{display:block;height:100%}
+.invwrap .pj-frise-d{height:6px;border:2px solid #3e4c9b;border-top:0;border-radius:0 0 4px 4px;margin-top:3px}
+.invwrap .pj-frise-l{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;color:var(--muted);margin-top:3px}
+.invwrap .pj-c-gros{border-top:1px solid var(--bg);padding-top:10px}
+.invwrap .pj-c-gros span{display:block;font-size:13px;color:var(--muted)}
+.invwrap .pj-c-gros b{display:block;font-size:28px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.invwrap .pj-c-gros small{display:block;font-size:12.5px;font-weight:600}
+.invwrap .pj-c-gros b.up{color:var(--good)}.invwrap .pj-c-gros b.down,.invwrap .pj-c-gros small.down{color:var(--bad)}
+.invwrap .pj-c-l{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-variant-numeric:tabular-nums}
+.invwrap .pj-c-l span{color:var(--muted)}
+.invwrap .pj-c-l b.up{color:var(--good)}.invwrap .pj-c-l b.down{color:var(--bad)}
+.invwrap .pj-carte .pj-opt-act{margin-top:auto;padding-top:6px;justify-content:stretch}
+.invwrap .pj-carte .pj-opt-act > button{flex:1}
+body.discret #pj :is(.pj-c-gros b, .pj-c-l b, .pj-tuile-d){filter:blur(7px);user-select:none}
 /* Ce qui ne change pas, puis le tableau des options */
 .invwrap .pj-fixe{background:var(--bg);border-radius:12px;padding:12px 14px;font-size:14px;font-variant-numeric:tabular-nums}
 .invwrap .pj-fixe dl{display:grid;grid-template-columns:minmax(90px,max-content) minmax(0,1fr);gap:6px 14px;margin:0}
@@ -3885,7 +3898,7 @@ const usageP = (r, revente) => revente ? 'achat-revente' : r.saison ? 'saisonnie
 const menuP = boutons => boutons.length ? `<details class="pj-menu"><summary aria-label="Autres actions" title="Autres actions">⋯</summary><div class="pj-menu-l">${boutons.join('')}</div></details>` : '';
 function cartePj(pr, sous, corps, boutons, br) {
   boutons = [...boutons, ...boutonsBranche(pr, br)];
-  if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${menuP(boutons)}<button data-a="financer">Modifier</button></div>`;
+  if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
@@ -3994,7 +4007,6 @@ const nomBranche = pr => pr.branche || 'Version de départ';
 const branchesDe = pr => PROJETS.liste.filter(x => groupeDe(x) === groupeDe(pr)).sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')));
 const nomComplet = pr => pr.groupe && branchesDe(pr).length > 1 ? `${pr.nom} · ${nomBranche(pr)}` : pr.nom;
 const comparees = new Set();   // projets dont la comparaison des branches est ouverte
-const VUE_BIEN = new Map();   // projet → rang du bien fixe dont on regarde le détail (clic dans l'arbre)
 function boutonsBranche(pr, br) {
   const nouvelle = pr.amenag ? '' : `<button data-a="brNouvelle">${br ? 'Nouvelle option à partir de celle-ci' : 'Ajouter une option (autre façon de faire)'}</button>`;
   return br ? [nouvelle, '<button data-a="brRenommer">Renommer l\'option</button>', '<button data-a="brSortir">Sortir de ce projet</button>', '<button data-a="suppr">Supprimer cette option</button>'].filter(Boolean) : [nouvelle].filter(Boolean);
@@ -4027,16 +4039,43 @@ function boutonEstimation(bs, n) {
   }
   return '';
 }
-// Le petit arbre du haut : le projet, ses biens (celui qui change porte les options), sinon les options directement
-// Avec un bien qui change et d'autres fixes, les biens sont cliquables : le fixe montre son détail, l'autre les options
-function arbreProjet(nom, a, bs, m, vue) {
-  const opts = `<ul>${bs.map(x => `<li><span class="nd${m && m.pr === x && bs.length > 1 ? ' best' : ''}">${esc(nomBranche(x))}</span></li>`).join('')}</ul>`;
-  const varient = a.biens.filter(b => !b.fixe), cliquable = a.biens.length > 1 && varient.length === 1;
-  const noeud = (b, cl, small) => `<button class="nd${cl}${(b.fixe ? vue === b.n : vue == null) ? ' choisi' : ''}" data-a="voirBien"${b.fixe ? ` data-n="${b.n}"` : ''} aria-pressed="${b.fixe ? vue === b.n : vue == null}">${esc(b.nom)}<small>${small}</small></button>`;
-  const sous = cliquable
-    ? `<ul>${a.biens.map(b => b.fixe ? `<li>${noeud(b, ' fixe', 'ne change pas')}</li>` : `<li>${noeud(b, '', bs.length + ' options')}${opts}</li>`).join('')}</ul>` : opts;
-  const racine = cliquable ? `<button class="nd racine" data-a="voirBien">${esc(nom)}</button>` : `<span class="nd racine">${esc(nom)}</span>`;
-  return `<div class="pj-arbre" aria-label="Organisation du projet"><ul><li>${racine}${sous}</li></ul></div>`;
+// En haut d'un projet : une tuile par bien (fixe ou qui change selon l'option) et une pour le crédit commun
+function tuilesProjet(bs, a) {
+  const tuile = (etiq, nom, d, bouton) => `<div class="pj-tuile"><span class="pj-etiq">${etiq}</span><b>${esc(nom)}</b>${d ? `<span class="pj-tuile-d">${d}</span>` : ''}${bouton || ''}</div>`;
+  const plusieurs = a.biens.length > 1;
+  const t = a.biens.map(b => {
+    const f = a.fixes.find(x => x.n === b.n);
+    return tuile(`${plusieurs ? `Bien ${b.n + 1} · ` : ''}${b.fixe ? 'ne change pas' : 'change selon l\'option'}`, b.nom, f && f.d !== '—' ? f.d : '', boutonEstimation(bs, b.n));
+  });
+  a.fixes.filter(x => x.n == null).forEach(f => t.push(tuile('ne change pas', f.t, f.d)));
+  return `<div class="pj-fixe pj-tuiles">${t.join('')}</div>`;
+}
+// Une option en carte : ce qu'elle change, sa frise (avant, pendant, après les travaux ; le différé), ce qu'il reste chaque mois
+function friseOption(x) {
+  const f = x.finance || {}, r = x.resume || {}, trav = r.travaux > 0, dT = trav ? Math.max(1, +f.debutTravaux || 1) - 1 : 0, fT = trav ? dT + (+f.dureeTravaux || 0) : 0, diff = +f.differe || 0;
+  const H = Math.max(24, Math.ceil((Math.max(diff, fT) + 12) / 12) * 12), w = n => (n / H * 100).toFixed(2) + '%';
+  const seg = (cls, a, b) => b > a ? `<span class="${cls}" style="width:${w(b - a)}"></span>` : '';
+  const leg = trav ? [dT ? 'achat' : '', `travaux ${fT - dT > 1 ? `mois ${dT + 1}–${fT}` : `mois ${dT + 1}`}`, `${H / 12} ans`] : ['achat', `${H / 12} ans`];
+  return `<div class="pj-frise" aria-hidden="true"><div class="pj-frise-b">${trav ? seg('f-avant', 0, dT) + seg('f-travaux', dT, fT) + seg('f-apres', fT, H) : seg('f-avant', 0, H)}</div>
+    ${diff ? `<div class="pj-frise-d" style="width:${w(diff)}"></div>` : ''}<div class="pj-frise-l">${leg.filter(Boolean).map(l => `<span>${l}</span>`).join('')}</div></div>`;
+}
+function cartesOptions(bs, a, m) {
+  const revente = m && m.cle === 'benefice';
+  return `<div class="pj-cartes">${bs.map((x, i) => {
+    const r = x.resume || {}, f = x.finance || {}, best = m && m.pr === x && bs.length > 1;
+    const v = revente ? r.benefice : r.scenario === 'revendre' ? null : r.cfMois, ecart = m && !best && v != null ? m.v - v : 0;
+    const fin = Math.max(+f.differe || 0, r.travaux > 0 ? Math.max(1, +f.debutTravaux || 1) - 1 + (+f.dureeTravaux || 0) : 0);
+    const change = (a.changes.get(x.id) || []).slice(0, 3).join(' · ');
+    const loyers = r.mois ? r.mois.loyer : (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0);
+    const l = (k, val, cls = '') => `<div class="pj-c-l"><span>${k}</span><b class="${cls}">${val}</b></div>`;
+    return `<article class="pj-carte${best ? ' best' : ''}"><div class="pj-c-tete"><span class="pj-etiq">Option ${String.fromCharCode(65 + i)}</span>${best ? '<span class="pj-top">La meilleure</span>' : ''}</div>
+      <h4 class="pj-opt-nom">${esc(nomBranche(x))}</h4>${change ? `<div class="pj-c-change">${change}</div>` : ''}
+      ${friseOption(x)}
+      <div class="pj-c-gros"><span>${revente ? 'Bénéfice à la revente' : fin ? `Chaque mois, dès le mois ${fin + 1}` : 'Chaque mois'}</span>${v == null ? '<b>—</b>' : `<b class="${signeP(v)}">${v < 0 ? '−' : v > 0 ? '+' : ''}${eurP(Math.abs(v))}</b>`}
+        ${Math.round(ecart) > 0 ? `<small class="down">${eurP(ecart)} de moins que la meilleure</small>` : ''}</div>
+      ${revente ? '' : (r.totalDiffere != null ? l('Pendant le différé', `${r.totalDiffere < 0 ? '−' : '+'}${eurP(Math.abs(r.totalDiffere))} en tout`, signeP(r.totalDiffere)) : '') + l('Loyers par mois', eurP(loyers)) + (r.mensualite != null ? l('Mensualité', eurP(r.mensualite)) : '')}
+      ${carteProjet(x, {})}</article>`;
+  }).join('')}</div>`;
 }
 // Les options côte à côte : ce qu'il reste par mois en gros, le total du différé, puis seulement ce qui change
 function tableOptions(bs, a, m, simple) {
@@ -4054,8 +4093,7 @@ function tableOptions(bs, a, m, simple) {
   }
   a.lignes.forEach(l => lignes.push(`<tr><th>${l.k}</th>${l.v.map((v, i) => `<td${cl(i)}>${v}</td>`).join('')}</tr>`));
   if (!simple && !revente) lignes.push(`<tr><th>Mensualité du crédit</th>${rs.map((r, i) => `<td${cl(i)}>${r.mensualite != null ? eurP(r.mensualite) : '—'}</td>`).join('')}</tr>`);
-  const pied = `<tr><td></td>${bs.map((x, i) => `<td${cl(i)}>${carteProjet(x, {})}</td>`).join('')}</tr>`;
-  return `<div class="pj-cmp-defile"><table class="pj-opts"><thead>${tete}</thead><tbody>${lignes.join('')}</tbody><tfoot>${pied}</tfoot></table></div>`;
+  return `<div class="pj-cmp-defile"><table class="pj-opts"><thead>${tete}</thead><tbody>${lignes.join('')}</tbody></table></div>`;
 }
 function carteGroupe(bs) {
   const g = groupeDe(bs[0]), ouvert = comparees.has(g);
@@ -4063,27 +4101,28 @@ function carteGroupe(bs) {
     <span class="pj-plier-t"><b>${esc(bs[0].nom)}</b><span class="pj-sous">${bs.length} options</span></span><span class="pj-meilleure">${ligneMeilleure(bs)}</span><span class="chevron" aria-hidden="true"></span></button></article>`;
   const sousNoms = bs.map(x => x.amenag ? 'aménagement' : usageP(x.resume || {}, (x.resume || {}).scenario === 'revendre'));
   const cmp = ouvert ? `<div class="pj-compare">${tableComparaison(bs.map(x => ({nom: nomBranche(x), resume: x.resume})), {simple: modeSimple(), sous: sousNoms})}</div>` : '';
-  const a = analyseBranches(bs), m = meilleureBranche(bs), varient = a.biens.filter(b => !b.fixe), vue = a.biens.find(b => b.fixe && b.n === VUE_BIEN.get(g) && varient.length === 1), cache = SANS_TABLEAU.has(g);
+  const a = analyseBranches(bs), m = meilleureBranche(bs), cache = SANS_TABLEAU.has(g);
   const sous = [a.adresse ? esc(a.adresse) : '', a.biens.length > 1 ? `${a.biens.length} biens, un seul crédit` : ''].filter(Boolean).join(' · ');
-  const titre = a.biens.length > 1 && varient.length === 1 ? `Ce qui change selon l'option : ${esc(varient[0].nom)}` : 'Ce qui change selon l\'option';
+  const titre = 'Comparer les chiffres';
   const depart = bs.find(x => !x.amenag);
   return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
     <div class="pj-gr-actions">${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
-    ${arbreProjet(bs[0].nom, a, bs, m, vue && vue.n)}
-    ${vue ? `<div class="pj-fixe pj-bien-detail"><span class="pj-etiq">${esc(vue.nom)} · ne change pas d'une option à l'autre</span><dl>${vue.details.map(d => `<dt>${d.k}</dt><dd>${d.v}</dd>`).join('')}</dl>
-      <div class="pj-bien-bas">${boutonEstimation(bs, vue.n)}<button class="pj-lien" data-a="voirBien">Voir les options</button></div></div>` : `${a.fixes.length ? `<div class="pj-fixe"><span class="pj-etiq">Ce qui ne change pas</span><dl>${a.fixes.map(f => `<dt>${esc(f.t)}</dt><dd>${f.d}${boutonEstimation(bs, f.n)}</dd>`).join('')}</dl></div>` : ''}
-    <div class="pj-opts-tete"><h4>${titre}</h4><div class="pj-opts-btns"><button data-a="tableau" aria-expanded="${!cache}">${cache ? 'Afficher le tableau' : 'Masquer le tableau'}</button>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Ajouter une option</button>` : ''}</div></div>
+    ${tuilesProjet(bs, a)}
+    <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><i class="f-avant"></i>Avant travaux <i class="f-travaux"></i>Travaux <i class="f-apres"></i>Après <i class="f-diff"></i>Différé</span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
+    ${cartesOptions(bs, a, m)}
+    <div class="pj-opts-tete"><h4>${titre}</h4><div class="pj-opts-btns"><button data-a="tableau" aria-expanded="${!cache}">${cache ? 'Comparer les chiffres' : 'Masquer le tableau'}</button></div></div>
     ${cache ? `<div class="pj-meilleure pj-sans-tableau">${bs.length} options · ${ligneMeilleure(bs)}</div>` : `${tableOptions(bs, a, m, modeSimple())}
     <div class="pj-gr-bas"><button data-a="comparerBranches" aria-pressed="${ouvert}">${ouvert ? 'Masquer le détail' : 'Voir tous les chiffres'}</button></div>
-    ${cmp}`}`}</article>`;
+    ${cmp}`}</article>`;
 }
 // Ce qui est commun à toutes les options (affiché une fois) et ce qui change dans chacune (une ligne du tableau par chose qui change)
 const fmtTaux = v => (+v).toFixed(2).replace('.', ',').replace(/,?0+$/, '') + ' %';
-const BIEN1_P = [['Prix', x => x.finance.prix, eurP], ['Loyer', x => x.resume.loyer, v => eurP(v) + '/mois'], ['2e loyer', x => x.resume.loyer2, v => eurP(v) + '/mois'],
-  ['Travaux', x => x.resume.travaux || 0, eurP], ['Valeur après travaux', x => x.resume.travaux > 0 ? x.resume.valeurApres : null, eurP],
-  ['Début des travaux', x => x.resume.travaux > 0 ? Math.max(1, +x.finance.debutTravaux || 1) - 1 : null, v => v ? `mois ${v + 1}` : 'dès l\'achat'],
+const BIEN1_P = [['Prix', x => x.finance.prix, eurP],
+  ['Travaux', x => x.resume.travaux || 0, eurP], ['Début des travaux', x => x.resume.travaux > 0 ? Math.max(1, +x.finance.debutTravaux || 1) - 1 : null, v => v ? `mois ${v + 1}` : 'dès l\'achat'],
+  ['Valeur après travaux', x => x.resume.travaux > 0 ? x.resume.valeurApres : null, eurP],
   ['Loyer avant travaux', x => x.resume.travaux > 0 ? +x.finance.loyerAvant || 0 : null, v => v ? eurP(v) + '/mois' : 'pas loué'],
+  ['Loyer', x => x.resume.loyer, v => eurP(v) + '/mois'], ['Logement à part', x => x.resume.loyer2, v => eurP(v) + '/mois'],
   ['Location', x => x.finance.locMode === 'nuit' ? 'nuit' : x.finance.meuble, v => v === 'nuit' ? 'à la nuitée' : String(v) === '1' ? 'meublée' : 'vide'],
   ['Prix la nuit', x => x.finance.locMode === 'nuit' ? x.finance.nuit : null, eurP], ['Surface', x => x.finance.surf, v => v + ' m²'], ['Taxe foncière', x => x.finance.tf, eurP], ['Copro', x => x.finance.copro, eurP]];
 const BIENN_P = [['Prix', b => b.prix, eurP], ['Loyer', b => b.loyer, v => eurP(v) + '/mois'], ['Surface', b => b.surf, v => v + ' m²'], ['Taxe foncière', b => b.tf, eurP], ['Copro', b => b.copro, eurP]];
@@ -4117,6 +4156,7 @@ function analyseBranches(bs) {
   const crFixe = cr.filter(d => egal(d.v) && d.v[0] != null && !(d.k === 'Différé' && !d.v[0]) && d.v[0] !== 'nom propre');
   if (crFixe.length) fixes.push({t: nb ? 'Crédit commun' : 'Crédit', d: crFixe.map(d => `${d.k.toLowerCase()} ${d.fmt(d.v[0])}`).join(' · ')});
   cr.filter(d => !egal(d.v)).forEach(d => { ligne(d.k === 'Détenu par' ? d.k : `${d.k} du crédit`, d); bs.forEach((x, i) => { if (d.v[i] != null) changes.get(x.id).push(`${d.k.toLowerCase()} <b>${d.fmt(d.v[i])}</b>`); }); });
+  if (bs.some(x => (x.resume || {}).travaux > 0)) lignes.forEach(l => { l.k = l.k.replace(/^Loyer$/, 'Loyer après travaux').replace(/· loyer$/, '· loyer après travaux'); });
   return {fixes, biens, changes, lignes, adresse: adresseProjet(bs)};
 }
 // L'adresse exacte : celle des estimations des biens (Estimer), sinon celle du projet
@@ -4286,7 +4326,6 @@ document.getElementById('pj').addEventListener('click', e => {
     gs.forEach(g => { if (tout) DEPLIES.delete(g); else DEPLIES.add(g); }); garderDeplies(); afficherProjets();
   }
   else if (t.dataset.a === 'tableau') { basculerTableau(groupe); afficherProjets(); }
-  else if (t.dataset.a === 'voirBien') { if (t.dataset.n != null) VUE_BIEN.set(groupe, +t.dataset.n); else VUE_BIEN.delete(groupe); afficherProjets(); }
   else if (t.dataset.a === 'comparerBranches') { if (comparees.has(groupe)) comparees.delete(groupe); else comparees.add(groupe); afficherProjets(); }
   else if (t.dataset.a === 'brNouvelle') nouvelleBranche(id);
   else if (t.dataset.a === 'brRenommer') {
