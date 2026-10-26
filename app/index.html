@@ -328,6 +328,8 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-opt-act details.pj-menu[open]{order:2;flex-basis:100%;display:grid;justify-items:end}
 .invwrap .pj-opt-act .pj-menu-l{position:static;margin-top:6px;min-width:0;width:100%;box-shadow:none;text-align:left}
 .invwrap .pj-gr-actions .pj-menu-l{top:calc(100% + 6px);bottom:auto;right:0;left:auto}
+.invwrap .pj-opts-btns{display:flex;gap:8px;flex-wrap:wrap}
+.invwrap .pj-sans-tableau{margin:4px 0 2px;font-size:14px}
 .invwrap .pj-gr-bas{display:flex;justify-content:flex-end;margin:10px 0 2px}
 @media (max-width:600px){.invwrap .pj-opts th,.invwrap .pj-opts td{padding:8px 6px}.invwrap .pj-gros{font-size:20px}.invwrap .pj-opts thead th:first-child{width:auto}}
 .invwrap .pj-props{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}
@@ -3585,6 +3587,9 @@ function boutonsBranche(pr, br) {
 const DEPLIES = (() => { try { return new Set(JSON.parse(localStorage.getItem('projets-deplies') || '[]')); } catch (e) { return new Set(); } })();
 const garderDeplies = () => { try { localStorage.setItem('projets-deplies', JSON.stringify([...DEPLIES])); } catch (e) {} };
 const deplier = (g, oui = true) => { if (oui) DEPLIES.add(g); else DEPLIES.delete(g); garderDeplies(); };
+// Tableau des options masqué (gardé sur l'appareil) : il reste l'arbre, ce qui ne change pas et la meilleure option
+const SANS_TABLEAU = (() => { try { return new Set(JSON.parse(localStorage.getItem('projets-sans-tableau') || '[]')); } catch (e) { return new Set(); } })();
+const basculerTableau = g => { if (SANS_TABLEAU.has(g)) SANS_TABLEAU.delete(g); else SANS_TABLEAU.add(g); try { localStorage.setItem('projets-sans-tableau', JSON.stringify([...SANS_TABLEAU])); } catch (e) {} };
 // La meilleure option : celle qui laisse le plus par mois (ou rapporte le plus à la revente si aucune n'est louée)
 function meilleureBranche(bs) {
   const louees = bs.filter(x => x.resume && x.resume.scenario !== 'revendre' && x.resume.cfMois != null);
@@ -3642,7 +3647,7 @@ function carteGroupe(bs) {
     <span class="pj-plier-t"><b>${esc(bs[0].nom)}</b><span class="pj-sous">${bs.length} options</span></span><span class="pj-meilleure">${ligneMeilleure(bs)}</span><span class="chevron" aria-hidden="true"></span></button></article>`;
   const sousNoms = bs.map(x => x.amenag ? 'aménagement' : usageP(x.resume || {}, (x.resume || {}).scenario === 'revendre'));
   const cmp = ouvert ? `<div class="pj-compare">${tableComparaison(bs.map(x => ({nom: nomBranche(x), resume: x.resume})), {simple: modeSimple(), sous: sousNoms})}</div>` : '';
-  const a = analyseBranches(bs), m = meilleureBranche(bs), varient = a.biens.filter(b => !b.fixe), vue = a.biens.find(b => b.fixe && b.n === VUE_BIEN.get(g) && varient.length === 1);
+  const a = analyseBranches(bs), m = meilleureBranche(bs), varient = a.biens.filter(b => !b.fixe), vue = a.biens.find(b => b.fixe && b.n === VUE_BIEN.get(g) && varient.length === 1), cache = SANS_TABLEAU.has(g);
   const sous = [a.adresse ? esc(a.adresse) : '', a.biens.length > 1 ? `${a.biens.length} biens, un seul crédit` : ''].filter(Boolean).join(' · ');
   const titre = a.biens.length > 1 && varient.length === 1 ? `Ce qui change selon l'option : ${esc(varient[0].nom)}` : 'Ce qui change selon l\'option';
   const depart = bs.find(x => !x.amenag);
@@ -3652,10 +3657,10 @@ function carteGroupe(bs) {
     ${arbreProjet(bs[0].nom, a, bs, m, vue && vue.n)}
     ${vue ? `<div class="pj-fixe pj-bien-detail"><span class="pj-etiq">${esc(vue.nom)} · ne change pas d'une option à l'autre</span><dl>${vue.details.map(d => `<dt>${d.k}</dt><dd>${d.v}</dd>`).join('')}</dl>
       <div class="pj-bien-bas">${boutonEstimation(bs, vue.n)}<button class="pj-lien" data-a="voirBien">Voir les options</button></div></div>` : `${a.fixes.length ? `<div class="pj-fixe"><span class="pj-etiq">Ce qui ne change pas</span><dl>${a.fixes.map(f => `<dt>${esc(f.t)}</dt><dd>${f.d}${boutonEstimation(bs, f.n)}</dd>`).join('')}</dl></div>` : ''}
-    <div class="pj-opts-tete"><h4>${titre}</h4>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Ajouter une option</button>` : ''}</div>
-    ${tableOptions(bs, a, m, modeSimple())}
+    <div class="pj-opts-tete"><h4>${titre}</h4><div class="pj-opts-btns"><button data-a="tableau" aria-expanded="${!cache}">${cache ? 'Afficher le tableau' : 'Masquer le tableau'}</button>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Ajouter une option</button>` : ''}</div></div>
+    ${cache ? `<div class="pj-meilleure pj-sans-tableau">${bs.length} options · ${ligneMeilleure(bs)}</div>` : `${tableOptions(bs, a, m, modeSimple())}
     <div class="pj-gr-bas"><button data-a="comparerBranches" aria-pressed="${ouvert}">${ouvert ? 'Masquer le détail' : 'Voir tous les chiffres'}</button></div>
-    ${cmp}`}</article>`;
+    ${cmp}`}`}</article>`;
 }
 // Ce qui est commun à toutes les options (affiché une fois) et ce qui change dans chacune (une ligne du tableau par chose qui change)
 const fmtTaux = v => (+v).toFixed(2).replace('.', ',').replace(/,?0+$/, '') + ' %';
@@ -3844,6 +3849,7 @@ document.getElementById('pj').addEventListener('click', e => {
     const gs = [...new Set(PROJETS.liste.map(groupeDe))].filter(g => PROJETS.liste.filter(x => groupeDe(x) === g).length > 1), tout = gs.every(g => DEPLIES.has(g));
     gs.forEach(g => { if (tout) DEPLIES.delete(g); else DEPLIES.add(g); }); garderDeplies(); afficherProjets();
   }
+  else if (t.dataset.a === 'tableau') { basculerTableau(groupe); afficherProjets(); }
   else if (t.dataset.a === 'voirBien') { if (t.dataset.n != null) VUE_BIEN.set(groupe, +t.dataset.n); else VUE_BIEN.delete(groupe); afficherProjets(); }
   else if (t.dataset.a === 'comparerBranches') { if (comparees.has(groupe)) comparees.delete(groupe); else comparees.add(groupe); afficherProjets(); }
   else if (t.dataset.a === 'brNouvelle') nouvelleBranche(id);

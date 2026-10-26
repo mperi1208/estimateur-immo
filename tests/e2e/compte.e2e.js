@@ -717,6 +717,14 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await rangee('Il te reste par mois').innerText(), /−453 €\s+526 € de moins\s+73 €/);
   assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
+  // Tableau masqué puis réaffiché (gardé sur l'appareil)
+  await carte.locator('[data-a="tableau"]').click();
+  await carte.locator('.pj-sans-tableau').waitFor();
+  assert.equal(await carte.locator('.pj-opts').count(), 0);
+  assert.match(await carte.locator('.pj-sans-tableau').innerText(), /2 options · La meilleure : Garage/);
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-sans-tableau')).length), 1);
+  await carte.locator('[data-a="tableau"]').click();
+  await carte.locator('.pj-opts').waitFor();
   // Tableau détaillé : meilleur chiffre et écart
   await carte.locator('[data-a="comparerBranches"]').click();
   const cmp = carte.locator('.pj-compare');
