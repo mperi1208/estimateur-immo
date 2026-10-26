@@ -37,11 +37,22 @@ h1{font-size:20px;margin:0 0 2px}
 .recentes button.rec:hover{background:var(--accent-soft)}
 .recentes .rec b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .recentes .rec span{font-size:12px;color:var(--muted)}
-.sauveEst{margin-top:12px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.sauveEst{position:sticky;bottom:0;z-index:5;margin-top:12px;padding:12px 16px;background:var(--ink);color:#fff;border-radius:12px}
 .sauveEst .sauve-ligne{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.sauveEst input{flex:1;min-width:180px}
-.sauveEst button.cta{width:auto;margin:0;padding:10px 16px}
-.sauveEst .hint{margin-top:6px}
+.sauveEst input{flex:1;min-width:180px;background:rgba(255,255,255,.08);border-color:#475467;color:#fff}
+.sauveEst input::placeholder{color:#98A2B3}
+.sauveEst button{background:transparent;color:#fff;border:1px solid #475467;border-radius:10px;font:inherit;font-weight:600;padding:10px 16px;cursor:pointer}
+.sauveEst button:hover{border-color:#fff}
+.sauveEst button.cta{width:auto;margin:0;background:var(--accent);border-color:var(--accent)}
+.sauveEst .hint{margin-top:6px;color:#C9D2DE}
+.sauveEst .hint a{color:#7CD4AE}
+/* Estimer rouvert depuis un projet : même en-tête que Financer (projet › option, les 4 étapes) */
+#estim{grid-template-rows:auto minmax(0,1fr)}
+#est_tete{grid-column:1/-1;grid-row:1;min-width:0}
+#est_tete > *{max-width:none;padding-left:20px;padding-right:20px}
+#estim > aside,#estim > .droite{grid-row:2}
+#est_tete .cf-etapes button[aria-current="step"]{cursor:default}
+@media (max-width:800px){#estim{grid-template-rows:none;grid-template-columns:minmax(0,1fr)}#estim > *,#estim > aside,#estim > .droite{grid-row:auto}#est_tete > *{padding-left:16px;padding-right:16px}}
 .recentes .rec-ligne{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
 .recentes .rec-ligne button.rec{width:auto;flex:1;min-width:0;border-bottom:0;text-align:left}
 .recentes button.rec-x{flex:0 0 40px;display:flex;align-items:center;justify-content:center;border:0;border-left:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;padding:0}
@@ -524,7 +535,7 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 .droite{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,440px);grid-template-rows:auto 1fr;gap:16px;align-items:start;padding:16px;overflow-y:auto;min-width:0;min-height:0}
 .droite #out{grid-column:1;grid-row:1/span 2;min-width:0}
 .droite #map{grid-column:2;grid-row:1;height:300px;min-height:0;border:1px solid var(--line);border-radius:12px;position:sticky;top:0;z-index:0}
-@media (max-width:1100px){.droite{grid-template-columns:minmax(0,1fr)}.droite #map{grid-column:1;grid-row:1;order:-1;position:static}.droite #out{grid-column:1;grid-row:2}}
+@media (max-width:1100px){.droite{grid-template-columns:minmax(0,1fr)}.droite #map{grid-column:1;grid-row:1;order:-1;position:relative}.droite #out{grid-column:1;grid-row:2}}
 @media (max-width:800px){.wrap{grid-template-columns:1fr;grid-template-rows:none;height:auto}.droite{overflow:visible;padding:12px}.droite #out{grid-row:1}.droite #map{grid-row:2;order:0;height:260px}aside{border-right:0;padding:16px}}
 
 [hidden]{display:none!important}
@@ -565,17 +576,17 @@ body[data-onglet="investissements"] .tabs,body[data-onglet="projets"] .tabs{padd
 button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 /* Financer : un projet en 4 étapes (le bien, travaux et loyers, le crédit, le résultat), la barre d'enregistrement toujours en bas */
 #cf{min-height:calc(100vh - 56px);display:flex;flex-direction:column}
-#cf .cf-tete{background:var(--panel);border-bottom:1px solid var(--line)}
-#cf .cf-tete > *{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
-#cf .bienbar{padding-top:14px;font-size:14px;color:var(--muted)}
-#cf .bienbar b{color:var(--ink)}
-#cf .bienbar a{color:var(--accent);font-weight:600}
-#cf .cf-etapes{display:flex;gap:4px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
-#cf .cf-etapes button{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:12px 16px;border:0;border-radius:12px 12px 0 0;background:none;color:#344054;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
-#cf .cf-etapes button i{font-style:normal;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:13px;background:#E8ECF2;color:#344054}
-#cf .cf-etapes button:hover{background:var(--bg)}
-#cf .cf-etapes button[aria-current="step"]{background:var(--ink);color:#fff}
-#cf .cf-etapes button[aria-current="step"] i{background:#fff;color:var(--ink)}
+#cf .cf-tete,#est_tete{background:var(--panel);border-bottom:1px solid var(--line)}
+#cf .cf-tete > *,#est_tete > *{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
+:is(#cf, #est_tete) .bienbar{padding-top:14px;font-size:14px;color:var(--muted)}
+:is(#cf, #est_tete) .bienbar b{color:var(--ink)}
+:is(#cf, #est_tete) .bienbar a{color:var(--accent);font-weight:600}
+:is(#cf, #est_tete) .cf-etapes{display:flex;gap:4px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
+:is(#cf, #est_tete) .cf-etapes button{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:12px 16px;border:0;border-radius:12px 12px 0 0;background:none;color:#344054;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+:is(#cf, #est_tete) .cf-etapes button i{font-style:normal;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:13px;background:#E8ECF2;color:#344054}
+:is(#cf, #est_tete) .cf-etapes button:hover{background:var(--bg)}
+:is(#cf, #est_tete) .cf-etapes button[aria-current="step"]{background:var(--ink);color:#fff}
+:is(#cf, #est_tete) .cf-etapes button[aria-current="step"] i{background:#fff;color:var(--ink)}
 #cf .cfwrap{flex:1;width:100%;max-width:1200px;margin:0 auto;padding:24px 24px 32px}
 #cf aside{background:none;border:0;padding:0;overflow:visible;height:auto}
 #cf .etape{display:none;flex-direction:column;gap:18px}
@@ -803,6 +814,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <div class="version" id="versionSite"></div>
 </dialog>
 <div class="wrap" id="estim">
+<div class="cf-tete" id="est_tete" hidden></div>
 <aside>
   <div class="titre-ligne"><h1>Estimer un bien</h1><button id="recentesBtn" class="recentes-btn" hidden aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Récentes</button></div>
   <div id="recentes" class="recentes" hidden></div>
@@ -1472,7 +1484,6 @@ function render(r) {
     <div class="works saison" id="saison" hidden></div>
     <div class="works garage-est" id="garageEst" hidden></div>
     <div class="works" id="works"></div>
-    <div class="sauveEst" id="sauveEst"></div>
     <details class="detail"><summary>Détail du calcul, sources et ventes comparables</summary>
       <div class="result" id="res"></div>
       <div class="result rent" id="rent"></div>
@@ -1480,7 +1491,8 @@ function render(r) {
       <h2>Ventes les plus comparables</h2>
       <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">m²</th><th class="n">Prix</th><th class="n">€/m² (vente)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema) — hors Alsace-Moselle et Mayotte.</div>
-    </details>`;
+    </details>
+    <div class="sauveEst" id="sauveEst"></div>`;
   out.querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => {
     const c = r.comps[+tr.dataset.k];
     map.setView([c.lat, c.lon], Math.max(map.getZoom(), 16));
@@ -2388,7 +2400,18 @@ const CROIX_X = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke=
 // Tant que l'adresse ne change pas, le bouton met à jour l'estimation de ce projet au lieu d'en créer un autre
 let estRevue = null;
 const revueEnCours = () => { const rc = estRevue && rechercheCourante(), pr = rc && rc.cle === estRevue.cle && PROJETS.liste.find(x => x.id === estRevue.id); return pr ? {pr, rc} : null; };
+const ETAPES = ['Le bien', 'Travaux et loyers', 'Le crédit', 'Le résultat'];
+function majTeteEst() {
+  const el = document.getElementById('est_tete'); if (!el) return;
+  const rv = estRevue && revueEnCours(); el.hidden = !rv;
+  if (!rv) { el.innerHTML = ''; return; }
+  const pr = rv.pr, n = estRevue.n, bien = n != null ? ((rechercheRegroupees(pr)[n] || {}).nom || `bien ${n + 1}`) : '';
+  el.innerHTML = `<div class="bienbar"><a href="#projets">Mes projets</a> › <b>${esc(pr.nom)}</b>${pr.groupe && PROJETS.liste.filter(x => x.groupe === pr.groupe).length > 1 ? ` › option <b>${esc(pr.branche || 'Version de départ')}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''} · l'estimation du bien</div>
+    <nav class="cf-etapes" aria-label="Étapes du projet">${ETAPES.map((t, i) => `<button data-etape="${i + 1}"${i ? '' : ' aria-current="step"'}><i>${i + 1}</i>${t}</button>`).join('')}</nav>`;
+  el.querySelectorAll('button[data-etape]').forEach(b => b.onclick = () => { const k = +b.dataset.etape; if (k > 1) { ouvrirProjet(pr.id, 'cashflow'); CF_APP.etape(k); } });
+}
 function majSauveEst(msg) {
+  majTeteEst();
   const el = document.getElementById('sauveEst'); if (!el) return;
   const co = !!COMPTE.user || !COMPTE.actif(), rv = co && revueEnCours();
   const nomBien = rv && estRevue.n != null ? ((rechercheRegroupees(rv.pr)[estRevue.n] || {}).nom || `bien ${estRevue.n + 1}`) : '';
@@ -4292,7 +4315,8 @@ function ouvrirProjet(id, vers) {
   CF_APP.restaurer(pr.finance, pr.bien);
   if (vers === 'cashflow') CF_APP.etape(4);   // un projet rouvert : d'abord son résultat
   showTab(vers);
-  if (vers === 'estimation' && pr.recherche) { reprendre(pr.recherche); setTimeout(() => map.invalidateSize(), 60); }
+  if (vers === 'estimation' && pr.recherche) { estRevue = {id, cle: pr.recherche.cle}; reprendre(pr.recherche); setTimeout(() => map.invalidateSize(), 60); }
+  else if (vers === 'estimation') { estRevue = null; majSauveEst(); }
 }
 document.getElementById('pj').addEventListener('click', e => {
   const t = e.target.closest('[data-a]'); if (!t) return;
@@ -4300,7 +4324,7 @@ document.getElementById('pj').addEventListener('click', e => {
   const groupe = (t.closest('[data-groupe]') || {dataset: {}}).dataset.groupe, membres = () => PROJETS.liste.filter(x => groupeDe(x) === groupe);
   if (menu) menu.open = false;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
-  else if (t.dataset.a === 'estimer') { const pr = PROJETS.liste.find(x => x.id === id); estRevue = pr && pr.recherche ? {id, cle: pr.recherche.cle} : null; ouvrirProjet(id, 'estimation'); }
+  else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'estChoisir') {
     const art = t.closest('[data-id]'), ouvert = art.querySelector('.pj-estim'), pr = PROJETS.liste.find(x => x.id === id);
     if (ouvert) ouvert.remove(); else if (pr) { art.insertAdjacentHTML('beforeend', panneauEstimations(pr)); art._estimations = estimationsConnues(); }
