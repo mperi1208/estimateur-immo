@@ -2,7 +2,7 @@
 // Mes projets (depuis Financer et Estimer), deux appareils sur le même compte, déconnexion
 const test = require('node:test');
 const assert = require('node:assert');
-const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, nombre} = require('./banc');
+const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, nombre, cliquer, versEtape} = require('./banc');
 
 const EMAIL = 'marc@exemple.fr', MDP = 'secret123';
 let nav, base, page, journal;
@@ -101,10 +101,10 @@ test('mode simple : loyer, crédit, charges et ce qu\'il reste (liste, fiche, Fi
   await page.waitForFunction(() => /Il te (reste|manque)/i.test(document.getElementById('cf_simple').innerText));
   assert.equal(await page.locator('#cf_boxDetail').isVisible(), false);
   assert.equal(await page.locator('#cf_tiles').isVisible(), false);
-  assert.equal(await page.locator('#cf_prix').isVisible(), true);
+  await versEtape(page, '#cf_prix'); assert.equal(await page.locator('#cf_prix').isVisible(), true);
   await page.click('.tabs [data-mode="pro"]');
   await page.waitForFunction(() => !document.body.classList.contains('simple'));
-  assert.equal(await page.locator('#cf_tiles').isVisible(), true);
+  await versEtape(page, '#cf_tiles'); assert.equal(await page.locator('#cf_tiles').isVisible(), true);
   assert.match(await page.locator('#cf_simple').innerText(), /Un mois type/i);    // le mois type reste, sous les 3 chiffres
   assert.equal(await page.evaluate(() => localStorage.getItem('mode-affichage')), 'pro');
   await page.click('.tabs [data-tab="investissements"]');
@@ -472,7 +472,7 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   await page.click('#works button.cta');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.fill('#cf_nomProjet', 'Projet Lyon 45');
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   await page.waitForFunction(() => /Enregistré dans/.test(document.getElementById('cf_saveMsg').innerText));
   let c = await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Projet Lyon 45'));
   const n = c.projets.length, pr = c.projets.find(x => x.nom === 'Projet Lyon 45');
@@ -483,7 +483,7 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(+await page.inputValue('#cf_prix'), Math.round(e.prix));
   await saisir(page, '#cf_apport', 40000);
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => c.projets.find(x => x.id === pr.id).finance.apport === 40000, 'projet mis à jour');
   assert.equal(c.projets.length, n);
   await page.click('.tabs [data-tab="projets"]');
@@ -533,7 +533,7 @@ test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option
   assert.equal(opt.finance.travaux, pj.travaux); assert.equal(+opt.finance.loyerAvant, +pr.finance.loyer);
   assert.equal(opt.finance.loyer, pj.loyers[0]); assert.equal(opt.finance.loyer2, pj.loyers[1]);
   assert.equal(+await page.inputValue('#cf_loyer2'), pj.loyers[1]);
-  await page.fill('#cf_debutTravaux', '25'); await page.dispatchEvent('#cf_debutTravaux', 'input');
+  await saisir(page, '#cf_debutTravaux', 25);
   assert.equal(+await page.inputValue('#cf_debutLoyer2'), 24 + pj.duree + 1);
   // Rangement pour les tests suivants : option retirée, projet refermé
   await page.evaluate(() => { const o = PROJETS.liste.find(x => x.branche === 'Division'); PROJETS.supprimer(o.id); deplier(o.groupe, false); fixerProjet(null); });
@@ -546,12 +546,12 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.click('#works button.cta');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.fill('#cf_nomProjet', 'Lot A');
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Lot A'));
   await saisir(page, '#cf_prix', 120000);
   await saisir(page, '#cf_loyer', 550);
   await page.fill('#cf_nomProjet', 'Lot B');
-  await page.click('#cf_enregNouveau');
+  await cliquer(page, '#cf_enregNouveau');
   await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Lot B'));
   await page.click('.tabs [data-tab="projets"]');
   await page.click('#pj .actions [data-a="regroupe"]');
@@ -566,7 +566,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   assert.equal(await carte2.locator('[data-k="nom"]').inputValue(), 'Lot B');
   assert.equal(await page.inputValue('#cf_nomBien'), 'Lot A');
   assert.equal(+await carte2.locator('[data-k="prix"]').inputValue(), 120000);
-  assert.equal(+await carte2.locator('[data-k="loyer"]').inputValue(), 550);
+  assert.equal(+await page.locator('#cf_loyersPlus [data-i="0"] [data-k="loyer"]').inputValue(), 550);
   assert.equal(+await page.inputValue('#cf_surf'), 45); assert.equal(+await carte2.locator('[data-k="surf"]').inputValue(), 45);
   assert.match(await page.locator('#cf_bien').innerText(), /2 biens, 90 m² en tout/i);
   const pr = (await attendreCompte(c => c.projets.some(x => x.nom === 'Lot A + Lot B'))).projets.find(x => x.nom === 'Lot A + Lot B');
@@ -720,11 +720,11 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await saisir(page, '#cf_loyer', 900);
   await saisir(page, '#cf_apport', 20000);
   await page.fill('#cf_nomProjet', 'Gaetano division');
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Gaetano division'));
   await saisir(page, '#cf_prix', 120000);
   await page.fill('#cf_nomProjet', 'Gaetano garage');
-  await page.click('#cf_enregNouveau');
+  await cliquer(page, '#cf_enregNouveau');
   let c = await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Gaetano garage'));
   const r = c.projets.find(x => x.nom === 'Gaetano garage').resume;
   assert.equal(r.v, 7); assert.ok(r.patrimoine > 0 && r.coutCredit > 0 && r.horizon > 0, 'patrimoine et coût du crédit dans le résumé');
@@ -778,16 +778,16 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await page.locator('#cf_bien').innerText(), /San Gaetano · option Division/i);
   assert.equal(await page.inputValue('#cf_nomProjet'), 'Division');
   await saisir(page, '#cf_loyer', 950);
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {finance: {}}).finance.loyer === 950, 'option modifiée');
   assert.deepEqual(c.projets.filter(x => /Gaetano/.test(x.nom)).map(x => [x.nom, x.branche]).sort(), [['San Gaetano', 'Division'], ['San Gaetano', 'Garage']]);
   // Le nom tapé dans Financer est celui de l'option
   await page.fill('#cf_nomProjet', 'Division en 2');
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {}).branche === 'Division en 2', 'option renommée');
   assert.ok(c.projets.filter(x => x.groupe === c.projets.find(y => y.id === nDiv).groupe).every(x => x.nom === 'San Gaetano'), 'le projet garde son nom');
   await page.fill('#cf_nomProjet', 'Division');
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {}).branche === 'Division', 'nom remis');
   await page.click('.tabs [data-tab="projets"]');
   // Replié sur une ligne (nom, branches, meilleure), gardé sur l'appareil ; « Tout déplier » le rouvre
@@ -805,11 +805,11 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.match(await page.locator('#cf_bien').innerText(), /option Option 3/i);
   await saisir(page, '#cf_loyer', 1900);
-  await page.click('#cf_enreg');
+  await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.branche === 'Option 3') || {finance: {}}).finance.loyer === 1900, 'nouvelle option enregistrée');
   // Depuis Financer : « Enregistrer comme nouvelle option »
   await saisir(page, '#cf_loyer', 700);
-  await page.click('#cf_enregBranche');
+  await cliquer(page, '#cf_enregBranche');
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano').length === 4, 'option ajoutée depuis Financer');
   assert.equal(c.projets.find(x => x.branche === 'Option 4').finance.loyer, 700);
   assert.equal(c.projets.find(x => x.branche === 'Option 3').finance.loyer, 1900);
