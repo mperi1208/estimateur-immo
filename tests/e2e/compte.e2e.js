@@ -618,7 +618,7 @@ test('ancien projet à deux biens (format d\'avant la liste de biens) : repris a
   const carte = page.locator('#pj .pj', {hasText: 'San gaetano'});
   assert.match(await carte.innerText(), /Deux biens, un seul crédit/i);
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'San gaetano'));
-  assert.equal(pr.resume.v, 6); assert.equal(pr.resume.cfMois, avant.cfMois); assert.equal(pr.resume.prix, 300000);
+  assert.equal(pr.resume.v, 7); assert.equal(pr.resume.cfMois, avant.cfMois); assert.equal(pr.resume.prix, 300000);
   assert.deepEqual([pr.finance.nomBien, pr.finance.biensPlus[0].nom, pr.finance.biensPlus[0].tf], ['Route de San Gaetano', 'sans Gaetan 2', 400]);
   await carte.locator('[data-a="financer"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
@@ -692,7 +692,7 @@ test('Mes projets : branches d\'un même projet (regroupées, comparées, ajout�
   await page.click('#cf_enregNouveau');
   let c = await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Gaetano garage'));
   const r = c.projets.find(x => x.nom === 'Gaetano garage').resume;
-  assert.equal(r.v, 6); assert.ok(r.patrimoine > 0 && r.coutCredit > 0 && r.horizon > 0, 'patrimoine et coût du crédit dans le résumé');
+  assert.equal(r.v, 7); assert.ok(r.patrimoine > 0 && r.coutCredit > 0 && r.horizon > 0, 'patrimoine et coût du crédit dans le résumé');
   const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
   const ids = [await id('Gaetano division'), await id('Gaetano garage')];
   // « Regrouper en branches » : les deux sont proposés ensemble (même nom), cochés, puis regroupés sous un nom

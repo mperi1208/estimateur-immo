@@ -101,3 +101,11 @@ test('arbre : le 2e appart et le crédit restent fixes (une fois), seules les di
   assert.deepEqual(a.changes.get('a').map(texte), ['loyer 1 200 €/mois', 'travaux 30 000 €', 'valeur après travaux 350 000 €']);
   assert.equal(a.adresse, 'Route de San Gaetano 20600 Bastia');
 });
+
+test('total pendant le différé : ligne du tableau (aussi en mode simple), gagnant seulement à durée égale', () => {
+  const l = lignesComparaison([{...A, differe: 36, totalDiffere: 4000}, {...B, differe: 36, totalDiffere: -1500}], true);
+  const d = ligne(l, 'Total pendant les 36 mois de différé');
+  assert.deepEqual([d.v, d.gagnant, d.ecart], [[4000, -1500], 0, 5500]);
+  assert.equal(ligne(lignesComparaison([{...A, differe: 36, totalDiffere: 4000}, {...B, differe: 24, totalDiffere: 5000}]), 'Total pendant le différé').gagnant, null);
+  assert.equal(ligne(lignesComparaison([A, B]), 'Total pendant le différé'), undefined);   // pas de différé : rien
+});

@@ -294,6 +294,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-change span{font-size:12.5px;background:var(--accent-soft);border-radius:8px;padding:2px 8px;font-variant-numeric:tabular-nums}
 .invwrap .pj-res{font-size:14px;font-variant-numeric:tabular-nums}
 .invwrap .pj-res b.up{color:var(--good)}.invwrap .pj-res b.down{color:var(--bad)}
+.invwrap .pj-total{font-size:13px;color:var(--muted);margin-top:2px}.invwrap .pj-total b{color:var(--ink)}.invwrap .pj-total b.up{color:var(--good)}.invwrap .pj-total b.down{color:var(--bad)}
 .invwrap .pj-res small{display:block;font-size:12px;color:var(--muted)}
 .invwrap .pj-br .pj-actions{display:flex;gap:6px;align-items:center}
 .invwrap .pj-props{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}
@@ -314,7 +315,7 @@ details.plus{margin-top:12px;border-style:dashed}
 @media (max-width:600px){.invwrap .pj-cmp th,.invwrap .pj-cmp td{padding:6px 4px}.invwrap .pj-cmp{font-size:13px}}
 .invwrap .pj-choix{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}
 .invwrap .pj-choix label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
-body.discret #pj :is(.pj-chiffres b, .pj-cmp td, .pj-verdict b, .pj-fixe, .pj-change b, .pj-res b, .pj-res small, .pj-meilleure b.up, .pj-meilleure b.down){filter:blur(7px);user-select:none}
+body.discret #pj :is(.pj-total b, .pj-chiffres b, .pj-cmp td, .pj-verdict b, .pj-fixe, .pj-change b, .pj-res b, .pj-res small, .pj-meilleure b.up, .pj-meilleure b.down){filter:blur(7px);user-select:none}
 /* Sections repliables de la liste */
 .invwrap details.pli{margin:0;border:0;padding:0;border-radius:0}
 .invwrap details.pli > summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;width:max-content;max-width:100%;margin:22px 0 10px;user-select:none}
@@ -2739,19 +2740,22 @@ function simuler() {
   const amortAn = y => (y <= AMORT.bati ? p.prix * (1 - terrain) / AMORT.bati : 0)
     + (y <= AMORT.travaux ? p.travaux / AMORT.travaux : 0) + (y <= AMORT.mobilier ? mobilier / AMORT.mobilier : 0);
 
-  const annees = [];
+  const annees = [], mois = [];   // mois : loyers et charges qui suivent les loyers, mois par mois (total du différé)
   for (let y = 1; y <= horizon; y++) {
     let loyers = 0, loyers1 = 0, moisLoues = 0;
     for (let m = 12 * (y - 1); m < 12 * y; m++) {
       const hausse = Math.pow(1 + p.gLoyer / 100, y - 1), l1 = m >= p.debutLoc ? p.loyer * (1 - vac1 / 12) * hausse : 0;
-      loyers1 += l1; loyers += l1 + ((m >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2) * (1 - p.vacance / 12) * hausse;
+      const lm = l1 + ((m >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2) * (1 - p.vacance / 12) * hausse;
+      loyers1 += l1; loyers += lm;
       if (m >= p.debutLoc) moisLoues++;
+      mois.push({loyers: lm, l1, loue: m >= p.debutLoc});
     }
     const infl = Math.pow(1 + p.gCharges / 100, y - 1);
     const fixes = (p.tf + p.copro + p.tfB2 + p.coproB2 + p.pno + p.pnoB2 + p.compta + (meuble ? p.cfe : 0)) * infl;
     // Saisonnier : frais en % des recettes de la nuitée, charges du logement pendant les mois d'exploitation
     const fraisSaison = sz ? loyers1 * sz.pctFrais / 100 + p.chargesSaison * moisLoues * infl : 0;
     const charges = fixes + loyers * (p.gestion + p.entretien) / 100 + fraisSaison;
+    mois.slice(12 * (y - 1)).forEach(x => { x.charges = fixes / 12 + x.loyers * (p.gestion + p.entretien) / 100 + (sz ? x.l1 * sz.pctFrais / 100 + (x.loue ? p.chargesSaison * infl : 0) : 0); });
     const rows = ech.rows.slice(12 * (y - 1), 12 * y);
     const interets = rows.reduce((s, r) => s + r.i, 0), assurance = rows.reduce((s, r) => s + r.ass, 0);
     const capital = rows.reduce((s, r) => s + r.cap, 0);
@@ -2849,11 +2853,17 @@ function simuler() {
     a.cf = a.loyers - a.charges - a.credit - a.impots;
     cumul += a.cf; a.cumul = cumul;
   });
+  // Ce que le différé rapporte (ou coûte) en tout : chaque mois, loyers − charges − ce qu'on paie à la banque − impôts (part du mois),
+  // chantier sans loyer compris ; sur des années pleines, c'est la somme de leurs cash-flows
+  const totalDiffere = p.differe > 0 ? mois.slice(0, p.differe).reduce((t, x, m) => {
+    const r = ech.rows[m] || {i: 0, cap: 0, ass: 0};
+    return t + x.loyers - x.charges - (r.i + r.cap + r.ass) - annees[Math.floor(m / 12)].impots / 12;
+  }, 0) : null;
   const base = (p.projet !== 'simple' && p.valeurApres > 0 ? p.valeurApres : p.prix1) + p.prixB2;   // valeur de départ : après travaux s'il y en a (travaux sur le 1er bien)
   const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
   // Loyers encaissés à la fin du différé : 1er loyer, 2e loyer s'il a commencé, et ceux des autres biens du même crédit
   const loyerDiffere = p.loyer + (p.differe - 1 >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2;
-  return {p, st, regime, notes, pret, apportEff, base, loyerDiffere, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
+  return {p, st, regime, notes, pret, apportEff, base, loyerDiffere, totalDiffere, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
 }
 
 // ---------- Affichage ----------
@@ -2890,7 +2900,7 @@ function rendre() {
       `${p.differe > 0 && ac.y !== a1.y ? `après le différé · ${eur(a1.cf / 12)} pendant` : `année ${ac.y}`}, ${p.avecImpots ? 'après' : 'avant'} impôts`],
     [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), 'mise de départ déduite'],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
-  $('tilesPlus').textContent = `Coût du crédit ${eur(coutCredit)} (intérêts, assurance, frais) · cash-flow moyen ${eur(cfMoyen)} par mois sur la durée du crédit.`;
+  $('tilesPlus').textContent = `Coût du crédit ${eur(coutCredit)} (intérêts, assurance, frais) · cash-flow moyen ${eur(cfMoyen)} par mois sur la durée du crédit${s.totalDiffere != null ? ` · ${s.totalDiffere < 0 ? '' : '+'}${eur(s.totalDiffere)} en tout pendant les ${p.differe} mois de différé` : ''}.`;
 
   $('simple').classList.remove('seul-simple');
   $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
@@ -3112,7 +3122,7 @@ function majSauvegarde(pr) {
 function instantane(ex, recalcul) {
   const s = simuler(), p = s.p, revente = p.projet === 'revente', c = prixCible(0);
   const sci = mesScis().find(x => x.id === p.sciExist), exr = ex && ex.resume ? ex.resume : {};
-  const resume = {v: 6, type: p.type, surf: p.surf + p.surfB2, nbBiens: 1 + p.autres.length, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
+  const resume = {v: 7, type: p.type, surf: p.surf + p.surfB2, nbBiens: 1 + p.autres.length, struct: p.struct, sciNom: sci ? sci.nom : recalcul ? exr.sciNom || '' : '', scenario: p.scenario, meuble: p.meuble === '1',
     prixEstime: !recalcul && bienUtile ? bienUtile.prix : exr.prixEstime != null ? exr.prixEstime : null,
     loyerEstime: !recalcul && bienUtile ? bienUtile.loyer : exr.loyerEstime != null ? exr.loyerEstime : null,
     prix: p.prix, prixB2: p.deuxBiens ? p.prixB2 : null, loyerB2: p.deuxBiens ? p.loyerB2 : null, prixCible: c.prix != null ? c.prix : null, loyer: p.loyer, loyer2: p.loyer2 > 0 ? p.loyer2 : null, apport: p.apport,
@@ -3127,6 +3137,7 @@ function instantane(ex, recalcul) {
     // v6 : pour comparer deux projets (mêmes chiffres que la tuile Patrimoine et la ligne « Coût du crédit » de Financer)
     const fin = s.annees[s.annees.length - 1];
     resume.patrimoine = Math.round(s.valeur - fin.crd + fin.cumul); resume.horizon = s.horizon;
+    resume.differe = p.differe; resume.totalDiffere = s.totalDiffere != null ? Math.round(s.totalDiffere) : null;   // v7 : total gagné pendant le différé
     resume.coutCredit = Math.round(s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie);
   }
   return {finance: etat(), resume};
@@ -3350,11 +3361,12 @@ function chiffresSimples(r, revente, prix) {
   const tete = prix ? `<div class="pj-simple-prix">${prix}</div>` : '';
   if (revente) return tete + `<div class="bilan-simple compact"><div class="bs-l bs-total"><span>${(r.benefice || 0) < 0 ? 'Perte' : 'Bénéfice'} à la revente</span><b class="${(r.benefice || 0) > 0 ? 'up' : (r.benefice || 0) < 0 ? 'down' : ''}">${eurP(Math.abs(r.benefice || 0))}</b></div></div>`;
   const m = r.mois || {loyer: (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0), credit: r.mensualite || 0, charges: Math.max(0, (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0) - (r.mensualite || 0) - (r.cfMois || 0))};
-  return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true});
+  return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true}) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '');
 }
 // ---------- Comparer des branches
 // Les chiffres de plusieurs branches côte à côte, le meilleur mis en avant avec son avance sur le suivant ; en mode simple, seulement l'essentiel
 const eurC = n => (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
+const totalC = r => r.totalDiffere != null && r.differe ? `Pendant les ${r.differe} mois de différé : <b class="${r.totalDiffere > 0 ? 'up' : r.totalDiffere < 0 ? 'down' : ''}">${r.totalDiffere > 0 ? '+' : ''}${eurC(r.totalDiffere)}</b> en tout` : '';
 const pctC = n => (n * 100).toFixed(1).replace('.', ',') + ' %';
 const reventeC = r => r.scenario === 'revendre';
 const loyerC = r => reventeC(r) ? null : r.mois ? r.mois.loyer : (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0);
@@ -3369,9 +3381,10 @@ const CRITERES_C = [
   {k: 'Impôts par mois', v: r => r.mois ? r.mois.impots : null, mieux: -1},
   {k: 'Il te reste par mois', v: r => reventeC(r) ? null : r.cfMois, mieux: 1, simple: true},
   {k: 'Pendant le différé', v: r => r.cfDiffere, mieux: 1},
+  {k: 'Total pendant le différé', v: r => r.totalDiffere, mieux: 1, simple: true, sous: r => r.differe ? `${r.differe} mois` : '', memeHorizon: true, pareil: x => `Total pendant les ${x} de différé`},
   {k: 'Rendement brut', v: r => (c => loyerC(r) != null && c > 0 ? loyerC(r) * 12 / c : null)((r.prix || 0) + (r.travaux || 0)), mieux: 1, pct: true},
   {k: 'Bénéfice à la revente', v: r => reventeC(r) ? r.benefice : null, mieux: 1, simple: true},
-  {k: 'Patrimoine à la fin', v: r => r.patrimoine, mieux: 1, sous: r => r.horizon ? `dans ${r.horizon} ans` : '', memeHorizon: true},
+  {k: 'Patrimoine à la fin', v: r => r.patrimoine, mieux: 1, sous: r => r.horizon ? `dans ${r.horizon} ans` : '', memeHorizon: true, pareil: x => 'Patrimoine ' + x},
   {k: 'Coût du crédit', v: r => r.coutCredit, mieux: -1},
 ];
 // Lignes : une valeur par branche, le gagnant (son rang dans la liste, ou null) et son avance sur le 2e
@@ -3386,7 +3399,7 @@ function lignesComparaison(rs, simple = false) {
       const tri = v.map((x, i) => [x * c.mieux, i]).sort((a, b) => b[0] - a[0]);
       if (tri[0][0] !== tri[1][0]) { gagnant = tri[0][1]; ecart = tri[0][0] - tri[1][0]; }
     }
-    return {k: pareil ? 'Patrimoine ' + sous[0] : c.k, v, pct: !!c.pct, gagnant, ecart, sous: pareil ? null : sous};
+    return {k: pareil ? c.pareil(sous[0]) : c.k, v, pct: !!c.pct, gagnant, ecart, sous: pareil ? null : sous};
   }).filter(Boolean);
 }
 // La phrase du haut : ce qui compte le plus (le reste par mois, ou le bénéfice si toutes sont des achats-reventes)
@@ -3401,7 +3414,7 @@ function verdictComparaison(noms, rs) {
 function tableComparaison(prs, o = {}) {
   const rs = prs.map(p => p.resume || {}), noms = prs.map(p => esc(p.nom)), f = (x, l) => x == null ? '—' : l.pct ? pctC(x) : eurC(x);
   const cellule = (l, i) => {
-    const x = l.v[i], g = l.gagnant === i, signe = /reste|différé|Bénéfice/.test(l.k) && x != null ? (x < 0 ? 'down' : x > 0 ? 'up' : '') : '';
+    const x = l.v[i], g = l.gagnant === i, signe = /reste|différé|Bénéfice/i.test(l.k) && x != null ? (x < 0 ? 'down' : x > 0 ? 'up' : '') : '';
     const plus = g ? `<small>${l.pct ? (l.ecart * 100).toFixed(1).replace('.', ',') + ' pt' : eurC(l.ecart)} de mieux</small>` : l.sous && l.sous[i] ? `<small>${l.sous[i]}</small>` : '';
     return `<td${g ? ' class="mieux"' : ''}><b class="${signe}">${f(x, l)}</b>${plus}</td>`;
   };
@@ -3441,7 +3454,7 @@ function carteProjet(pr, br) {
   // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
   const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note">Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}</div>` : '';
   const corps = (modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
-    : chiffresPro(cases) + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
+    : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
     ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
     deux && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : '',
@@ -3492,7 +3505,7 @@ function carteAmenagement(pr, br) {
   const cases = [['Travaux', `<b>${eurP(r.travaux)}</b>` + (am.debut ? `<small>à partir de ${moisP(am.debut)}</small>` : '')],
     ['Mensualité', `<b>${eurP(r.mensualite)}</b><small>${r.saison ? 'recettes' : 'loyer'} ${eurP(r.loyer)}/mois${am.loyerDes ? ' dès ' + moisP(am.loyerDes) : ''}</small>`], caseReste(r)];
   const note = [r.valeurApres ? `Vaut ${eurP(r.valeurApres)} une fois aménagé` : '', r.saison ? `${eurP(r.saison.nuit)} la nuit, ${r.saison.occupation} % d'occupation` : ''].filter(Boolean).join(' · ');
-  const corps = modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`) : chiffresPro(cases) + (note ? `<div class="pj-note">${note}</div>` : '');
+  const corps = modeSimple() ? chiffresSimples(r, false, `Travaux : <b>${eurP(r.travaux)}</b>`) : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (note ? `<div class="pj-note">${note}</div>` : '');
   return cartePj(pr, sous, corps, ['<button data-a="fiche">Voir la fiche du bien</button>'], br);
 }
 // Les projets enregistrés avant le nouveau calcul (cash-flow pendant le différé) sont recalculés une fois
@@ -3507,7 +3520,8 @@ function rafraichirResumes() {
     if (pr.regroupe && pr.regroupe.length === 2 && pr.regroupeV === 2 && pr.finance) {
       try { pr.finance = CF_APP.chargesParBien(pr.finance, pr.regroupe[0].finance || {}); pr.regroupeV = 3; pr.resume = {...pr.resume, ...CF_APP.recalculer(pr.finance, pr)}; change = compte = true; } catch (e) { console.warn('Projet regroupé non recalculé :', e); }
     }
-    if (!pr.finance || !pr.resume || pr.resume.v === 6) continue;
+    if (!pr.finance || !pr.resume || pr.resume.v === 7) continue;
+    // v7 : total gagné pendant le différé
     // v6 : patrimoine et coût du crédit, pour la comparaison
     // v5 : différé compris dans la durée du crédit, tous les résumés sont recalculés une fois
     // v4 : les autres biens deviennent une liste (biensPlus), nommés d'après les projets regroupés quand on les connaît
@@ -3566,7 +3580,7 @@ function carteGroupe(bs) {
       : `${simple ? '' : `Mensualité <b>${eurP(r.mensualite)}</b> · `}${(r.cfMois || 0) < 0 ? 'Il te manque' : 'Il te reste'} <b class="${signeP(r.cfMois)}">${eurP(Math.abs(r.cfMois || 0))}</b> par mois`;
     const html = `<h4>${esc(nomBranche(x))}${meil && bs.length > 1 ? ' <span class="pj-top">la meilleure</span>' : ''}</h4>
       ${ch.length ? `<div class="pj-change">${ch.map(c => `<span>${c}</span>`).join('')}</div>` : ''}
-      <div class="pj-res">${res}${ecart ? ` <small>${eurP(ecart)}${m.cle === 'cfMois' ? '/mois' : ''} par rapport à la meilleure</small>` : ''}</div>`;
+      <div class="pj-res">${res}${totalC(r) ? `<div class="pj-total">${totalC(r)}</div>` : ''}${ecart ? ` <small>${eurP(ecart)}${m.cle === 'cfMois' ? '/mois' : ''} par rapport à la meilleure</small>` : ''}</div>`;
     return carteProjet(x, {html});
   });
   const varie = a.biens.filter(b => !b.fixe).map(b => `« ${esc(b.nom)} »`);

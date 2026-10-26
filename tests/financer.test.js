@@ -364,3 +364,16 @@ test('différé : le loyer affiché compte tous les loyers déjà encaissés (2e
   assert.equal(s.loyerDiffere, 2500);
   assert.equal(formulaire({loyer: 1200, loyer2: 500, debutLoyer2: 40, differe: 36, typeDiff: 'partiel'}).loyerDiffere, 1200);
 });
+test('total pendant le différé : somme des mois du différé (chantier sans loyer compris), = somme des années pleines', () => {
+  const somme = (s, n) => s.annees.slice(0, n).reduce((t, a) => t + a.cf, 0);
+  // 36 mois = 3 années pleines : même total que leurs cash-flows, impôts compris
+  const t = formulaire({prix: 200000, apport: 0, loyer: 1400, travaux: 30000, dureeTravaux: 6, valeurApres: 260000, differe: 36, typeDiff: 'partiel', avecImpots: true}, {projet: true, impots: true});
+  proche(t.totalDiffere, somme(t, 3), 0.01);
+  // Loyers décalés par les travaux : 6 mois sans loyer, puis 30 mois de loyer ; différé partiel = intérêts + assurance seulement
+  const d = formulaire({prix: 200000, apport: 0, loyer: 1000, travaux: 20000, dureeTravaux: 6, differe: 12, typeDiff: 'partiel', assur: 0, tf: 1200, gestion: 0, entretien: 0}, {projet: true});
+  proche(d.totalDiffere, 1000 * 6 - 1200 - d.ech.rows.slice(0, 12).reduce((x, r) => x + r.i, 0), 0.01);
+  // Différé total : rien payé à la banque (sans assurance), seulement loyers − charges
+  const tot = formulaire({prix: 200000, apport: 0, loyer: 1000, differe: 18, typeDiff: 'total', assur: 0, tf: 1200, gestion: 0, entretien: 0});
+  proche(tot.totalDiffere, 1000 * 18 - 1200 * 1.5, 0.01);
+  assert.equal(formulaire({differe: 0}).totalDiffere, null);
+});
