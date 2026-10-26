@@ -1852,17 +1852,23 @@ function projetSurface(el, niveau, question, z, surf) {
   let lots, couts, duree, champs, avertissement;
   if (niveau === 'diviser') {
     const n = Math.max(2, Math.min(4, +c.nbLots || 2));
-    lots = Array.from({length: n}, (_, i) => ({nom: 'Logement ' + (i + 1), surf: Math.max(9, +((c.surfaces || [])[i]) || Math.round(surf / n))}));
+    // Garage (ou autre surface) rattaché à un des logements : il l'agrandit (ex. une chambre en plus), comme « Aménager »
+    const gM2 = Math.max(0, +c.divM2 || 0), gLot = Math.min(n - 1, Math.max(0, +c.divLot || 0)), gUtile = Math.round(gM2 * (1 - AMENAG.autre.decote / 100));
+    lots = Array.from({length: n}, (_, i) => { const base = Math.max(9, +((c.surfaces || [])[i]) || Math.round(surf / n));
+      return i === gLot && gM2 ? {nom: `Logement ${i + 1} + garage ${fmt(gM2)} m²`, surf: base + gM2, base, surfMoteur: base + gUtile} : {nom: 'Logement ' + (i + 1), surf: base, base}; });
     const renov = Math.round(NIVEAUX.travaux[z] * GAMMES[gamme].mult) * surf, energie = coutEnergie(dpe, cible, 'travaux') * surf;
     couts = [[`Rénovation (gros travaux, gamme ${GAMMES[gamme].l.toLowerCase()}) : ${fmt(renov / surf)} €/m² × ${fmt(surf)} m²`, renov],
       energie ? [`Énergie (DPE visé ${cible})`, energie] : null,
       [`${n - 1} logement${n > 2 ? 's' : ''} en plus : cuisine, salle d'eau, cloisons, compteurs`, (n - 1) * COUT_LOT[z]],
+      gM2 ? [`Garage rattaché au logement ${gLot + 1} : ${fmt(AMENAG.autre.m2)} €/m² × ${fmt(gM2)} m²`, gM2 * AMENAG.autre.m2] : null,
       ['Géomètre, règlement de copropriété, déclaration en mairie', FRAIS_DIVISION]].filter(Boolean);
-    duree = 6 + (n - 2) * 2;
+    duree = 6 + (n - 2) * 2 + (gM2 ? 2 : 0);
     champs = `<div><label>Nombre de logements</label><select id="w_nb">${opt({2: '2', 3: '3', 4: '4'}, n)}</select></div>
       <div><label>Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
-      <div class="w-surfaces"><label>Surface de chaque logement (m²)</label><div class="w-lots">${lots.map((l, i) => `<input type="number" min="9" data-lot="${i}" value="${l.surf}">`).join('')}</div>
-        <div class="hint">Total ${fmt(lots.reduce((t, l) => t + l.surf, 0))} m² pour ${fmt(surf)} m² aujourd'hui.</div></div>`;
+      <div class="w-surfaces"><label>Surface de chaque logement (m²)</label><div class="w-lots">${lots.map((l, i) => `<input type="number" min="9" data-lot="${i}" value="${l.base}">`).join('')}</div>
+        <div class="hint">Total ${fmt(lots.reduce((t, l) => t + l.base, 0))} m² pour ${fmt(surf)} m² aujourd'hui.</div></div>
+      <div><label>Garage rattaché (m²)</label><input type="number" id="w_divM2" min="0" value="${gM2 || ''}" placeholder="0"><div class="hint">Aménagé en pièce (ex. une chambre) et relié à un des logements. Vide : aucun</div></div>
+      ${gM2 ? `<div><label>Relié au</label><select id="w_divLot">${opt(Object.fromEntries(lots.map((l, i) => [i, 'Logement ' + (i + 1)])), gLot)}</select></div>` : ''}`;
     avertissement = 'Copropriété : accord de l\'assemblée générale (règlement et état descriptif de division). Chaque logement : au moins 9 m² et 2,20 m sous plafond. Déclaration préalable en mairie, parfois permis de construire ; certaines communes demandent un « permis de diviser ».';
   } else {
     const t = AMENAG[c.amenType] ? c.amenType : 'soussol', m2 = Math.max(5, +c.amenM2 || 20), cm2 = AMENAG[t].m2;
@@ -1886,7 +1892,7 @@ function projetSurface(el, niveau, question, z, surf) {
   const saisi = +c.totalTravaux > 0, budget = saisi ? +c.totalTravaux : suggere, mobilier = saisi ? 0 : mobSuggere;
   champs += `<div><label>Coût total des travaux (€)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? +c.totalTravaux : ''}" placeholder="${fmt(suggere + mobSuggere)} (estimé)"><div class="hint">Ton devis ou ton budget, tout compris${meuble ? ' (mobilier aussi)' : ''}. Vide : estimé ci-dessous.</div></div>`;
   const criteresLot = l => ({...saved, ...(niveau === 'diviser' ? {etat: GAMMES[gamme].etat, dpe: cible} : {}), location: meuble ? 'meuble' : 'vide', chambre: false});
-  const cle = JSON.stringify([state.lat, state.lon, state.type, niveau, lots.map(l => [l.surf, !!l.actuel]), gamme, cible, meuble, saved]);
+  const cle = JSON.stringify([state.lat, state.lon, state.type, niveau, lots.map(l => l.surfMoteur ? [l.surf, !!l.actuel, l.surfMoteur] : [l.surf, !!l.actuel]), gamme, cible, meuble, saved]);
   const calc = state.calcProjet && state.calcProjet.cle === cle ? state.calcProjet : null;
   let res = '';
   if (calc && calc.erreur) res = `<div class="warnbox">${calc.erreur}</div>`;
@@ -1924,7 +1930,8 @@ function projetSurface(el, niveau, question, z, surf) {
   on('w_nb', v => { c.nbLots = +v; c.surfaces = []; }); on('w_gamme', v => c.gamme = v);
   on('w_m2', v => c.amenM2 = +v); on('w_type', v => { c.amenType = v; c.amenDecote = null; }); on('w_usage', v => c.amenUsage = v);
   on('w_decote', v => c.amenDecote = v);
-  el.querySelectorAll('[data-lot]').forEach(x => x.onchange = () => { c.surfaces = lots.map((l, i) => i === +x.dataset.lot ? +x.value : l.surf); maj(); });
+  on('w_divM2', v => c.divM2 = +v || 0); on('w_divLot', v => c.divLot = +v);
+  el.querySelectorAll('[data-lot]').forEach(x => x.onchange = () => { c.surfaces = lots.map((l, i) => i === +x.dataset.lot ? +x.value : l.base ?? l.surf); maj(); });
   // Estimation de chaque logement par le moteur
   document.getElementById('w_calc').onclick = async () => {
     const btn = document.getElementById('w_calc'), etat = document.getElementById('w_etat');
@@ -2186,16 +2193,45 @@ const ilYa = iso => {
 const CROIX_X = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 // Bouton « Enregistrer mon estimation » : range l'estimation, avec le projet de travaux choisi (aménager, diviser, gamme...),
 // dans Mes projets sans passer par Financer. Sans compte : invitation à se connecter.
+// « Revoir l'estimation » depuis Mes projets : {id, n, cle} (n = n-ième bien d'un projet à plusieurs biens, sinon absent).
+// Tant que l'adresse ne change pas, le bouton met à jour l'estimation de ce projet au lieu d'en créer un autre
+let estRevue = null;
+const revueEnCours = () => { const rc = estRevue && rechercheCourante(), pr = rc && rc.cle === estRevue.cle && PROJETS.liste.find(x => x.id === estRevue.id); return pr ? {pr, rc} : null; };
 function majSauveEst(msg) {
   const el = document.getElementById('sauveEst'); if (!el) return;
-  const co = !!COMPTE.user || !COMPTE.actif();
-  el.innerHTML = co
+  const co = !!COMPTE.user || !COMPTE.actif(), rv = co && revueEnCours();
+  const nomBien = rv && estRevue.n != null ? ((rechercheRegroupees(rv.pr)[estRevue.n] || {}).nom || `bien ${estRevue.n + 1}`) : '';
+  el.innerHTML = rv
+    ? `<div class="sauve-ligne"><button class="cta" id="est_maj">Mettre à jour l'estimation du projet</button><button id="est_nouveau">Enregistrer comme nouveau projet</button></div>
+       <div class="hint" id="est_msg">${msg || `Remplace l'estimation de${nomBien ? ` « ${esc(nomBien)} » dans` : ''} « ${esc(rv.pr.nom)} » par celle-ci. Ton financement (prix, loyers) ne change pas.`}</div>`
+    : co
     ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet"><button class="cta" id="est_enreg">Enregistrer mon estimation</button></div>
        <div class="hint" id="est_msg">${msg || 'Garde cette estimation, avec le projet de travaux choisi ci-dessus, dans « Mes projets ».'}</div>`
     : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button></div>
        <div class="hint">Pour la retrouver dans « Mes projets », sur tous tes appareils.</div>`;
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
+  const m = document.getElementById('est_maj'); if (m) m.onclick = majEstimationProjet;
+  const nv = document.getElementById('est_nouveau'); if (nv) nv.onclick = () => { estRevue = null; fixerProjet(null); majSauveEst(); };
   const c = document.getElementById('est_connexion'); if (c) c.onclick = () => ouvrirCompte();
+}
+// Met à jour l'estimation gardée dans le projet (et ses autres options), sans toucher au financement
+function majEstimationProjet() {
+  const rv = revueEnCours(); if (!rv) return majSauveEst();
+  const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
+  const membres = PROJETS.liste.filter(x => rv.pr.groupe ? x.groupe === rv.pr.groupe : x.id === rv.pr.id);
+  for (const x of membres) {
+    if (estRevue.n != null) {
+      const l = rechercheRegroupees(x); if (!l.length) continue;
+      x.estimations = l.map((y, i) => i === estRevue.n ? rv.rc : y && y.recherche);
+    } else {
+      if (x.recherche && x.recherche.cle !== rv.rc.cle) continue;
+      x.recherche = rv.rc;
+      if (est && x.resume) Object.assign(x.resume, {prixEstime: est.prix, loyerEstime: est.loyer});
+    }
+    x.maj = Date.now();
+  }
+  PROJETS.enregistrer();
+  majSauveEst(`Estimation mise à jour dans <a href="#projets">« ${esc(rv.pr.nom)} »</a>.`);
 }
 function enregistrerEstimation() {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
@@ -2630,15 +2666,17 @@ function sync(est, mode) {
     $('boxProjet').open = true; majChips();
     set('scenario', mode === 'revente' ? 'revendre' : 'louer'); set('travaux', pj.travaux); set('valeurApres', pj.valeurApres); set('dureeTravaux', pj.duree);
     // Surface en plus (garage, sous-sol, combles) : le logement est loué en l'état avant et pendant le chantier
+    // Division : loué en l'état tant que le chantier n'a pas commencé (« Début des travaux » à régler dans Financer)
     const enPlus = pj.niveau === 'amenager' && mode !== 'revente';
     for (const k in SANS_DEBUT) set(k, SANS_DEBUT[k]);
     if (enPlus && pj.lots === 1) { set('loyerAvant', est.loyer); set('loueChantier', true); }
+    if (pj.niveau === 'diviser' && mode !== 'revente') set('loyerAvant', est.loyer);
     differeTravaux();
     set('moisRevente', pj.duree + 6);
     // Plusieurs logements : le premier en loyer, les autres en 2e loyer (à partir de la fin du chantier)
     const [l1, ...autres] = pj.loyers && pj.loyers.length > 1 ? pj.loyers : [pj.loyerApres], l2 = autres.reduce((t, x) => t + x, 0);
     set('loyer', l1); flags.loyers = {avant: est.loyer, apres: l1, loyer2: l2 || null}; set('meuble', pj.meuble || get('locMode') === 'nuit' ? '1' : '0'); set('mobilier', pj.mobilier || 0);
-    if (l2) { set('loyer2', l2); set('debutLoyer2', pj.duree + 1); set('debutLoyer1', enPlus ? 1 : ''); } else for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
+    if (l2) { set('loyer2', l2); set('debutLoyer2', pj.duree + 1); set('debutLoyer1', enPlus ? 1 : ''); flags.debutL2Auto = !enPlus; } else for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]);
     if (!flags.comptaManuel) set('compta', comptaDefaut(pj.meuble));
     sauver();
   }
@@ -3374,6 +3412,10 @@ $('form').addEventListener('input', e => {
   if ((id === 'struct' || id === 'meuble' || id === 'sciExist') && !flags.comptaManuel) set('compta', comptaDefaut());
   if (id === 'periode' && PERIODES_SAISON[get('periode')]) set('occupation', PERIODES_SAISON[get('periode')].occ);
   if (id === 'neuf') { set('notaire', get('neuf') === '1' ? 2.5 : 8); set('vieux', get('neuf') === '1' ? '0' : '1'); }
+  if (id === 'debutLoyer2') flags.debutL2Auto = false;
+  // Logements créés par les travaux (division) : leur loyer commence à la fin du chantier, qui suit le début des travaux
+  if (id === 'loyer2' && ouvert('projet') && get('loyerAvant') > 0 && get('debutLoyer2') <= 1) flags.debutL2Auto = true;
+  if (['dureeTravaux', 'debutTravaux', 'loyer2'].includes(id) && ouvert('projet') && flags.debutL2Auto && get('loyer2') > 0) set('debutLoyer2', finChantier() + 1);
   if ((id === 'dureeTravaux' || id === 'debutTravaux') && ouvert('projet')) differeTravaux();
   sauver(); rendre();
 });
@@ -3866,7 +3908,7 @@ document.getElementById('pj').addEventListener('click', e => {
   const groupe = (t.closest('[data-groupe]') || {dataset: {}}).dataset.groupe, membres = () => PROJETS.liste.filter(x => groupeDe(x) === groupe);
   if (menu) menu.open = false;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
-  else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
+  else if (t.dataset.a === 'estimer') { const pr = PROJETS.liste.find(x => x.id === id); estRevue = pr && pr.recherche ? {id, cle: pr.recherche.cle} : null; ouvrirProjet(id, 'estimation'); }
   else if (t.dataset.a === 'estChoisir') {
     const art = t.closest('[data-id]'), ouvert = art.querySelector('.pj-estim'), pr = PROJETS.liste.find(x => x.id === id);
     if (ouvert) ouvert.remove(); else if (pr) { art.insertAdjacentHTML('beforeend', panneauEstimations(pr)); art._estimations = estimationsConnues(); }
@@ -3880,6 +3922,7 @@ document.getElementById('pj').addEventListener('click', e => {
   }
   else if (t.dataset.a === 'estimerN') {   // un des deux biens d'un projet à un seul crédit : son estimation seule, le projet regroupé n'est pas touché
     const pr = PROJETS.liste.find(x => x.id === id), x = pr && rechercheRegroupees(pr)[+t.dataset.n]; if (!x) return;
+    estRevue = {id, n: +t.dataset.n, cle: x.recherche.cle};
     fixerProjet(null); CF_APP.liberer(); showTab('estimation'); reprendre(x.recherche); setTimeout(() => map.invalidateSize(), 60);
   }
   else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
