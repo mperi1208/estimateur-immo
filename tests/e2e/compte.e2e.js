@@ -556,6 +556,13 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
   assert.equal(await page.inputValue('#surf'), '45');
   assert.equal(await page.evaluate(() => projetCourantId), null);
+  // Estimation revue depuis le projet : le bouton la met à jour dans le projet, sans en créer un autre
+  await page.waitForSelector('#est_maj');
+  const nbAvant = await page.evaluate(() => PROJETS.liste.length);
+  await page.click('#est_maj');
+  assert.match(await page.locator('#est_msg').innerText(), /Estimation mise à jour/);
+  assert.equal(await page.evaluate(() => PROJETS.liste.length), nbAvant);
+  assert.equal(await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Lot A + Lot B').estimations[1].surf), 45);
   await page.click('.tabs [data-tab="projets"]');
   // « Séparer » : les deux projets reviennent, le projet regroupé part
   await carte.locator('.pj-menu summary').click();

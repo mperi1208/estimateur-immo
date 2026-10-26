@@ -299,6 +299,31 @@ test('diviser en 3 logements : surfaces modifiables, coûts par logement, 3 loye
   await page.selectOption('#w_niveau', 'non');
 });
 
+test('diviser en 2 et rattacher le garage à un logement, travaux au mois 25 : loué en l\'état avant, 2 loyers après', async () => {
+  await page.click('.tabs [data-tab="estimation"]');
+  await page.selectOption('#w_niveau', 'diviser');
+  await page.selectOption('#w_nb', '2');
+  await page.fill('[data-lot="0"]', '40'); await page.dispatchEvent('[data-lot="0"]', 'change');
+  await page.fill('[data-lot="1"]', '30'); await page.dispatchEvent('[data-lot="1"]', 'change');
+  await page.fill('#w_divM2', '15'); await page.dispatchEvent('#w_divM2', 'change');
+  assert.equal(await page.locator('#w_divLot').inputValue(), '0');
+  await page.click('#w_calc');
+  await page.waitForFunction(() => state.projet && state.projet.lots === 2, null, {timeout: 40000});
+  assert.match(await page.locator('#works').innerText(), /Garage rattaché au logement 1/);
+  const pj = await page.evaluate(() => state.projet), lots = await page.evaluate(() => state.calcProjet.lots);
+  assert.equal(lots[0].surf, 55); assert.equal(pj.duree, 8);
+  assert.ok(pj.loyers[0] > pj.loyers[1]);                           // le logement avec le garage se loue plus cher
+  await page.click('#works .row button.cta >> nth=0');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.ok(+await valeur('loyerAvant') > 0);
+  await page.fill('#cf_debutTravaux', '25'); await page.dispatchEvent('#cf_debutTravaux', 'input');
+  assert.equal(+await valeur('debutLoyer2'), 24 + 8 + 1);           // le studio est loué à la fin du chantier
+  assert.match(await page.locator('#cf_alerts').innerText(), /Travaux du mois 25 au mois 32 : loué .* en l'état jusqu'au mois 24/);
+  await page.click('.tabs [data-tab="estimation"]');
+  await page.fill('#w_divM2', ''); await page.dispatchEvent('#w_divM2', 'change');
+  await page.selectOption('#w_niveau', 'non');
+});
+
 test('nouvelle version en ligne : la page se recharge toute seule, une fois par version', async () => {
   const lm = new Date(Date.now() + 3600e3).toUTCString();          // le serveur annonce une page plus récente que celle affichée
   await page.route(u => u.pathname === '/app/index.html', route => route.request().isNavigationRequest() ? route.fallback()
