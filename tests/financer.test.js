@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const vm = require('vm');
 const {bloc, proche, inv, idx} = require('./outils');
 
-const CASES = ['travauxCredit', 'distrib', 'notaireCredit'];
+const CASES = ['travauxCredit', 'distrib', 'notaireCredit', 'loueChantier'];
 const els = {};
 const ctx = vm.createContext({els});
 vm.runInContext([
@@ -363,6 +363,29 @@ test('différé : le loyer affiché compte tous les loyers déjà encaissés (2e
   const s = formulaire({loyer: 1200, loyer2: 500, debutLoyer2: 6, travaux: 25000, dureeTravaux: 5, differe: 36, typeDiff: 'partiel', biensPlus: [{prix: 80000, loyer: 800}]}, {projet: true});
   assert.equal(s.loyerDiffere, 2500);
   assert.equal(formulaire({loyer: 1200, loyer2: 500, debutLoyer2: 40, differe: 36, typeDiff: 'partiel'}).loyerDiffere, 1200);
+});
+test('travaux lancés plus tard (mois 25, différé de 36 mois) : loué en l\'état avant, nouveau loyer après le chantier', () => {
+  // Appartement loué 700 € ; au mois 25, 4 mois de travaux dans le garage (une chambre en plus) ; loué 1 100 € ensuite
+  const v = {prix: 200000, apport: 0, loyer: 1100, loyerAvant: 700, loueChantier: true, travaux: 40000, travauxCredit: true, debutTravaux: 25, dureeTravaux: 4,
+    valeurApres: 250000, differe: 36, typeDiff: 'partiel', assur: 0, tf: 0, gestion: 0, entretien: 0};
+  const s = formulaire(v, {projet: true});
+  assert.equal(s.p.debutT, 24); assert.equal(s.p.finT, 28); assert.equal(s.p.debutLoc, 28);
+  assert.equal(s.annees[0].loyers, 700 * 12); assert.equal(s.annees[1].loyers, 700 * 12);
+  assert.equal(s.annees[2].loyers, 700 * 4 + 1100 * 8);
+  // Pendant le chantier, pas loué si on ne coche pas la case
+  assert.equal(formulaire({...v, loueChantier: false}, {projet: true}).annees[2].loyers, 1100 * 8);
+  // Travaux déduits l'année où ils sont faits
+  assert.equal(s.annees[0].travaux1, 0); assert.equal(s.annees[2].travaux1, 40000);
+  // La banque verse les 40 000 € des travaux au mois 25 : avant, intérêts sur le reste seulement
+  const r = 0.0339 / 12;
+  proche(s.ech.rows[0].i, (s.pret - 40000) * r, 0.01); proche(s.ech.rows[24].i, s.pret * r, 0.01);
+  proche(s.ech.mensAvant, (s.pret - 40000) * r, 0.01); assert.equal(s.ech.debloc, 24);
+  // Le total du différé compte les loyers d'avant travaux et les intérêts réellement payés
+  proche(s.totalDiffere, 700 * 28 + 1100 * 8 - s.ech.rows.slice(0, 36).reduce((t, x) => t + x.i, 0), 0.01);
+  // Sans début réglé : chantier dès l'achat, comme avant (tout le prêt versé au début)
+  const avant = formulaire({...v, debutTravaux: '', loyerAvant: ''}, {projet: true});
+  assert.equal(avant.p.debutLoc, 4); assert.equal(avant.ech.mensAvant, null); proche(avant.ech.rows[0].i, avant.pret * r, 0.01);
+  assert.equal(avant.annees[0].travaux1, 40000);
 });
 test('total pendant le différé : somme des mois du différé (chantier sans loyer compris), = somme des années pleines', () => {
   const somme = (s, n) => s.annees.slice(0, n).reduce((t, a) => t + a.cf, 0);

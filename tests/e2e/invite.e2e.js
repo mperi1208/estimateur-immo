@@ -95,7 +95,7 @@ test('Estimer « rénovation complète » → « Travaux + location » : travaux
   assert.equal(+await valeur('loyer'), pj.loyerApres); assert.equal(+await valeur('dureeTravaux'), pj.duree);
   assert.ok(+await valeur('differe') >= pj.duree);
   assert.match(await page.locator('#cf_tiles').innerText(), /Mensualité[\s\S]*pendant le différé \(\d+ mois\)/i);
-  assert.match(await page.locator('#cf_alerts').innerText(), new RegExp(`loyer à partir du mois ${pj.duree + 1}`));
+  assert.match(await page.locator('#cf_alerts').innerText(), new RegExp(`loyer de .* à partir du mois ${pj.duree + 1}`));
 });
 
 test('Travaux + revente : scénario « Revendre », bilan de l\'opération', async () => {
@@ -257,6 +257,31 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
   assert.equal(+await valeur('loyer'), pj.loyers[0]); assert.equal(+await valeur('loyer2'), pj.loyers[1]);
   assert.equal(+await valeur('debutLoyer2'), pj.duree + 1);
   assert.match(await page.locator('#cf_alerts').innerText(), /Loyers : .* dès le mois .* dès le mois/);
+});
+
+test('garage aménagé en chambre : loyer après travaux estimé, loué en l\'état avant, travaux lancés au mois 25', async () => {
+  await page.click('.tabs [data-tab="estimation"]');
+  await page.selectOption('#w_niveau', 'amenager');
+  await page.selectOption('#w_usage', 'agrandir');
+  await page.selectOption('#w_type', 'autre');
+  await page.fill('#w_total', ''); await page.dispatchEvent('#w_total', 'change');
+  await page.fill('#w_m2', '15'); await page.dispatchEvent('#w_m2', 'change');
+  await page.click('#w_calc');
+  await page.waitForFunction(() => state.projet && state.projet.lots === 1 && state.projet.niveau === 'amenager', null, {timeout: 30000});
+  const pj = await page.evaluate(() => state.projet), avant = await page.evaluate(() => Math.round(state.loyerHC));
+  assert.ok(pj.loyerApres > avant);                                // une chambre en plus : le loyer monte
+  await page.click('#works .row button.cta >> nth=0');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.equal(+await valeur('loyer'), pj.loyerApres);
+  assert.ok(+await valeur('loyerAvant') > 0);
+  assert.equal(await page.locator('#cf_loueChantier').isChecked(), true);
+  assert.equal(await page.locator('#cf_loyerLib').textContent(), 'Loyer après travaux (€/mois)');
+  await page.evaluate(() => { const d = document.getElementById('cf_differe'); d.value = 36; d.dispatchEvent(new Event('input', {bubbles: true})); });   // réglage replié
+  await page.fill('#cf_debutTravaux', '25'); await page.dispatchEvent('#cf_debutTravaux', 'input');
+  assert.equal(+await valeur('differe'), 36);                      // le différé choisi ne bouge pas
+  assert.match(await page.locator('#cf_alerts').innerText(), new RegExp(`Travaux du mois 25 au mois ${24 + pj.duree}`));
+  await page.click('.tabs [data-tab="estimation"]');
+  await page.selectOption('#w_niveau', 'non');
 });
 
 test('diviser en 3 logements : surfaces modifiables, coûts par logement, 3 loyers (dont 2 en 2e loyer)', async () => {
