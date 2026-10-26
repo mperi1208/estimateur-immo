@@ -298,6 +298,11 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-arbre .nd small{display:block;font-size:10.5px;color:var(--muted)}
 .invwrap .pj-arbre .racine{font-weight:700}
 .invwrap .pj-arbre .fixe{background:var(--bg)}
+.invwrap .pj-arbre button.nd{font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer;min-height:0;margin:0}
+.invwrap .pj-arbre button.nd:hover{border-color:var(--accent)}
+.invwrap .pj-arbre button.nd.racine{font-weight:700}
+.invwrap .pj-arbre .nd.choisi{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.invwrap .pj-bien-detail{margin-bottom:6px}.invwrap .pj-bien-bas{display:flex;gap:16px;margin-top:10px}.invwrap .pj-fixe .pj-bien-bas .pj-lien{margin-left:0}
 .invwrap .pj-arbre .best{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,transparent);font-weight:600}
 /* Ce qui ne change pas, puis le tableau des options */
 .invwrap .pj-fixe{background:var(--bg);border-radius:12px;padding:12px 14px;font-size:14px;font-variant-numeric:tabular-nums}
@@ -3571,6 +3576,7 @@ const nomBranche = pr => pr.branche || 'Version de départ';
 const branchesDe = pr => PROJETS.liste.filter(x => groupeDe(x) === groupeDe(pr)).sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')));
 const nomComplet = pr => pr.groupe && branchesDe(pr).length > 1 ? `${pr.nom} · ${nomBranche(pr)}` : pr.nom;
 const comparees = new Set();   // projets dont la comparaison des branches est ouverte
+const VUE_BIEN = new Map();   // projet → rang du bien fixe dont on regarde le détail (clic dans l'arbre)
 function boutonsBranche(pr, br) {
   const nouvelle = pr.amenag ? '' : `<button data-a="brNouvelle">${br ? 'Nouvelle option à partir de celle-ci' : 'Ajouter une option (autre façon de faire)'}</button>`;
   return br ? [nouvelle, '<button data-a="brRenommer">Renommer l\'option</button>', '<button data-a="brSortir">Sortir de ce projet</button>', '<button data-a="suppr">Supprimer cette option</button>'].filter(Boolean) : [nouvelle].filter(Boolean);
@@ -3601,13 +3607,15 @@ function boutonEstimation(bs, n) {
   return '';
 }
 // Le petit arbre du haut : le projet, ses biens (celui qui change porte les options), sinon les options directement
-function arbreProjet(nom, a, bs, m) {
+// Avec un bien qui change et d'autres fixes, les biens sont cliquables : le fixe montre son détail, l'autre les options
+function arbreProjet(nom, a, bs, m, vue) {
   const opts = `<ul>${bs.map(x => `<li><span class="nd${m && m.pr === x && bs.length > 1 ? ' best' : ''}">${esc(nomBranche(x))}</span></li>`).join('')}</ul>`;
-  const varient = a.biens.filter(b => !b.fixe);
-  const sous = a.biens.length > 1 && varient.length === 1
-    ? `<ul>${a.biens.map(b => b.fixe ? `<li><span class="nd fixe">${esc(b.nom)}<small>ne change pas</small></span></li>`
-      : `<li><span class="nd">${esc(b.nom)}<small>${bs.length} options</small></span>${opts}</li>`).join('')}</ul>` : opts;
-  return `<div class="pj-arbre" aria-label="Organisation du projet"><ul><li><span class="nd racine">${esc(nom)}</span>${sous}</li></ul></div>`;
+  const varient = a.biens.filter(b => !b.fixe), cliquable = a.biens.length > 1 && varient.length === 1;
+  const noeud = (b, cl, small) => `<button class="nd${cl}${(b.fixe ? vue === b.n : vue == null) ? ' choisi' : ''}" data-a="voirBien"${b.fixe ? ` data-n="${b.n}"` : ''} aria-pressed="${b.fixe ? vue === b.n : vue == null}">${esc(b.nom)}<small>${small}</small></button>`;
+  const sous = cliquable
+    ? `<ul>${a.biens.map(b => b.fixe ? `<li>${noeud(b, ' fixe', 'ne change pas')}</li>` : `<li>${noeud(b, '', bs.length + ' options')}${opts}</li>`).join('')}</ul>` : opts;
+  const racine = cliquable ? `<button class="nd racine" data-a="voirBien">${esc(nom)}</button>` : `<span class="nd racine">${esc(nom)}</span>`;
+  return `<div class="pj-arbre" aria-label="Organisation du projet"><ul><li>${racine}${sous}</li></ul></div>`;
 }
 // Les options côte à côte : ce qu'il reste par mois en gros, le total du différé, puis seulement ce qui change
 function tableOptions(bs, a, m, simple) {
@@ -3634,19 +3642,20 @@ function carteGroupe(bs) {
     <span class="pj-plier-t"><b>${esc(bs[0].nom)}</b><span class="pj-sous">${bs.length} options</span></span><span class="pj-meilleure">${ligneMeilleure(bs)}</span><span class="chevron" aria-hidden="true"></span></button></article>`;
   const sousNoms = bs.map(x => x.amenag ? 'aménagement' : usageP(x.resume || {}, (x.resume || {}).scenario === 'revendre'));
   const cmp = ouvert ? `<div class="pj-compare">${tableComparaison(bs.map(x => ({nom: nomBranche(x), resume: x.resume})), {simple: modeSimple(), sous: sousNoms})}</div>` : '';
-  const a = analyseBranches(bs), m = meilleureBranche(bs), varient = a.biens.filter(b => !b.fixe);
+  const a = analyseBranches(bs), m = meilleureBranche(bs), varient = a.biens.filter(b => !b.fixe), vue = a.biens.find(b => b.fixe && b.n === VUE_BIEN.get(g) && varient.length === 1);
   const sous = [a.adresse ? esc(a.adresse) : '', a.biens.length > 1 ? `${a.biens.length} biens, un seul crédit` : ''].filter(Boolean).join(' · ');
   const titre = a.biens.length > 1 && varient.length === 1 ? `Ce qui change selon l'option : ${esc(varient[0].nom)}` : 'Ce qui change selon l\'option';
   const depart = bs.find(x => !x.amenag);
   return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
     <div class="pj-gr-actions">${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
-    ${arbreProjet(bs[0].nom, a, bs, m)}
-    ${a.fixes.length ? `<div class="pj-fixe"><span class="pj-etiq">Ce qui ne change pas</span><dl>${a.fixes.map(f => `<dt>${esc(f.t)}</dt><dd>${f.d}${boutonEstimation(bs, f.n)}</dd>`).join('')}</dl></div>` : ''}
+    ${arbreProjet(bs[0].nom, a, bs, m, vue && vue.n)}
+    ${vue ? `<div class="pj-fixe pj-bien-detail"><span class="pj-etiq">${esc(vue.nom)} · ne change pas d'une option à l'autre</span><dl>${vue.details.map(d => `<dt>${d.k}</dt><dd>${d.v}</dd>`).join('')}</dl>
+      <div class="pj-bien-bas">${boutonEstimation(bs, vue.n)}<button class="pj-lien" data-a="voirBien">Voir les options</button></div></div>` : `${a.fixes.length ? `<div class="pj-fixe"><span class="pj-etiq">Ce qui ne change pas</span><dl>${a.fixes.map(f => `<dt>${esc(f.t)}</dt><dd>${f.d}${boutonEstimation(bs, f.n)}</dd>`).join('')}</dl></div>` : ''}
     <div class="pj-opts-tete"><h4>${titre}</h4>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Ajouter une option</button>` : ''}</div>
     ${tableOptions(bs, a, m, modeSimple())}
     <div class="pj-gr-bas"><button data-a="comparerBranches" aria-pressed="${ouvert}">${ouvert ? 'Masquer le détail' : 'Voir tous les chiffres'}</button></div>
-    ${cmp}</article>`;
+    ${cmp}`}</article>`;
 }
 // Ce qui est commun à toutes les options (affiché une fois) et ce qui change dans chacune (une ligne du tableau par chose qui change)
 const fmtTaux = v => (+v).toFixed(2).replace('.', ',').replace(/,?0+$/, '') + ' %';
@@ -3664,7 +3673,7 @@ function analyseBranches(bs) {
   const bien = (nom, props, de, n) => {
     const diff = props.map(([k, f, fmt]) => ({k, fmt, v: bs.map(x => { try { const d = de(x); return d == null ? null : f(d); } catch (e) { return null; } })}));
     const fixe = diff.every(d => egal(d.v));
-    biens.push({nom, fixe});
+    biens.push({nom, fixe, n, details: fixe ? diff.filter(d => d.v[0] != null && d.v[0] !== 0 && d.v[0] !== '').map(d => ({k: d.k, v: d.fmt(d.v[0])})) : []});
     // Ce qui ne bouge pas pour ce bien (même s'il change ailleurs) : une ligne en haut
     const l = diff.filter(d => egal(d.v) && d.v[0] != null && d.v[0] !== 0 && !['Surface', 'Taxe foncière', 'Copro'].includes(d.k)).map(d => `${d.k === 'Prix' ? 'acheté' : d.k.toLowerCase()} ${d.fmt(d.v[0])}`);
     if (fixe || l.length) fixes.push({t: nom, d: l.join(' · ') || '—', n});
@@ -3835,6 +3844,7 @@ document.getElementById('pj').addEventListener('click', e => {
     const gs = [...new Set(PROJETS.liste.map(groupeDe))].filter(g => PROJETS.liste.filter(x => groupeDe(x) === g).length > 1), tout = gs.every(g => DEPLIES.has(g));
     gs.forEach(g => { if (tout) DEPLIES.delete(g); else DEPLIES.add(g); }); garderDeplies(); afficherProjets();
   }
+  else if (t.dataset.a === 'voirBien') { if (t.dataset.n != null) VUE_BIEN.set(groupe, +t.dataset.n); else VUE_BIEN.delete(groupe); afficherProjets(); }
   else if (t.dataset.a === 'comparerBranches') { if (comparees.has(groupe)) comparees.delete(groupe); else comparees.add(groupe); afficherProjets(); }
   else if (t.dataset.a === 'brNouvelle') nouvelleBranche(id);
   else if (t.dataset.a === 'brRenommer') {
