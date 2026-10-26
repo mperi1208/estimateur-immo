@@ -518,6 +518,11 @@ test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option
   await page.click('.tabs [data-tab="projets"]');
   await page.evaluate(id => document.querySelector(`#pj [data-id="${id}"] [data-a="estimer"], #pj [data-a="estimer"][data-id="${id}"]`).click(), pr.id);
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation' && state.loyerHC);
+  // même en-tête que Financer : le projet, puis les 4 étapes (« Le bien » ouverte)
+  await page.waitForFunction(() => !document.getElementById('est_tete').hidden);
+  assert.match(await page.locator('#est_tete .bienbar').innerText(), /Mes projets › Estimation 52 m²/);
+  assert.equal(await page.locator('#est_tete [aria-current="step"]').innerText(), '1\nLe bien');
+  assert.match(await page.locator('#sauveEst').innerText(), /Mettre à jour l'estimation du projet/);
   await page.selectOption('#w_niveau', 'diviser');
   await page.click('#w_calc');
   await page.waitForFunction(() => state.projet && state.projet.lots === 2, null, {timeout: 40000});
