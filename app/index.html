@@ -617,6 +617,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf details.carte > summary::after{content:'';margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg)}
 #cf details.carte[open] > summary::after{transform:rotate(-135deg)}
 #cf details.carte[open]{padding-bottom:18px}
+#cf .charges-detail{display:flex;flex-wrap:wrap;gap:6px 18px;margin:4px 0 14px;font-size:14px;color:var(--muted)}
+#cf .charges-detail b{color:var(--ink);font-variant-numeric:tabular-nums}
 #cf .chip{font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--bg);color:var(--muted)}
 #cf .chip.on{background:var(--accent-soft);color:var(--accent)}
 #cf .hint{font-size:13px;color:var(--muted);margin-top:6px}
@@ -942,6 +944,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
     <div class="loyers-bas"><button id="cf_ajoutL2" class="ajout-bien">+ Un logement loué à part (studio, garage…)</button></div>
   </article>
   <details class="carte" id="cf_boxCharges"><summary>Charges et gestion <span class="chip" id="cf_chargesChip"></span></summary>
+    <div class="charges-detail" id="cf_chargesDetail"></div>
     <div class="grid">
       <div><label for="cf_vacance">Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
       <div><label for="cf_gestion">Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
@@ -3264,6 +3267,18 @@ function etapes(s) {
   const mob = p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0, l = (k, v, c = '') => `<div class="l ${c}"><span>${k}</span><b>${v}</b></div>`;
   const ac = s.p.projet === 'revente' ? null : anneeCroisiere(s);
   $('chargesChip').textContent = ac ? `≈ ${eur(ac.charges / 12)} par mois` : '';
+  // Ce que contient ce total : les charges fixes de tous les biens (saisies à l'étape 1) et celles qui suivent les loyers
+  let det = '';
+  if (ac) {
+    const infl = Math.pow(1 + p.gCharges / 100, ac.y - 1), m = v => v * infl / 12, pct = k => ac.loyers * p[k] / 100 / 12;
+    const parts = [['Taxe foncière', m(p.tf + p.tfB2)], ['Copro', m(p.copro + p.coproB2)], ['Assurance PNO', m(p.pno + p.pnoB2)], ['Comptable', m(p.compta)], ['CFE', s.meuble ? m(p.cfe) : 0],
+      [`Gestion ${p.gestion} %`, pct('gestion')], [`Entretien ${p.entretien} %`, pct('entretien')]];
+    const autres = ac.charges / 12 - parts.reduce((t, x) => t + x[1], 0);
+    if (autres > 0.5) parts.push(['Frais de la location à la nuitée', autres]);
+    det = parts.filter(x => Math.round(x[1]) > 0).map(([k, v]) => `<span>${k} <b>${eur(v)}</b></span>`).join('');
+    if (det) det = '<span>Dont, par mois :</span>' + det;
+  }
+  $('chargesDetail').innerHTML = det;
   $('empruntL').innerHTML = l(p.deuxBiens ? `Prix des ${p.autres.length + 1} biens` : 'Prix d\'achat', eur(p.prix)) + l('Frais de notaire', eur(s.fraisNotaire))
     + (p.travaux > 0 && travauxOn ? l('Travaux', eur(p.travaux)) : '') + (mob ? l('Mobilier', eur(mob)) : '') + (p.dossier + s.fraisGarantie > 0 ? l('Frais de dossier et garantie', eur(p.dossier + s.fraisGarantie)) : '')
     + (s.apportEff > 0 ? l('Apport', '− ' + eur(s.apportEff)) : '') + l('Prêt', eur(s.pret), 'tot') + l('Coût du crédit', eur(coutCredit));
