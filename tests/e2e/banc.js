@@ -161,8 +161,18 @@ async function estimer(page, {surf = 50, type, details = {}} = {}) {
   await page.waitForFunction(() => state.base && state.prix != null && state.loyerHC != null && document.querySelector('#works .crit'), null, {timeout: 20000});
   return page.evaluate(() => ({prix: state.prix, loyer: state.loyerHC, mob: state.mob, surf: state.base.surf}));
 }
+// Financer est en 4 étapes : avant de toucher un élément de l'onglet, ouvrir l'étape qui le contient
+async function versEtape(page, sel) {
+  await page.evaluate(sel => {
+    const e = document.querySelector(sel); if (!e || !e.closest('#cf') || !window.CF_APP) return;
+    const et = e.closest('#cf section.etape'), n = e.closest('#cf main') ? 4 : et ? +et.dataset.etape : null;
+    if (n) CF_APP.etape(n);
+  }, sel);
+}
+async function cliquer(page, sel) { await versEtape(page, sel); await page.click(sel); }
 // Champ d'un formulaire : valeur tapée puis validée (événements « input » et « change », comme au clavier)
 async function saisir(page, sel, v) {
+  await versEtape(page, sel);
   const l = page.locator(sel);
   if (await l.evaluate(e => e.tagName === 'SELECT')) await l.selectOption(String(v));
   else { await l.fill(String(v)); await l.dispatchEvent('change'); }
@@ -172,4 +182,4 @@ const lireNombre = async (page, sel) => nombre(await page.locator(sel).first().i
 // Valeurs lisibles : « 1 234 € » → 1234 (espaces insécables, signe moins typographique)
 const nombre = t => +String(t).replace(/[\s  €%]|k€|\/mois/g, '').replace('−', '-').replace(',', '.');
 
-module.exports = {ORIGINE, ADRESSE, ANNEE, lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, nombre, ventesDvf, estimer, saisir, lireNombre};
+module.exports = {ORIGINE, ADRESSE, ANNEE, lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, nombre, ventesDvf, estimer, saisir, lireNombre, cliquer, versEtape};

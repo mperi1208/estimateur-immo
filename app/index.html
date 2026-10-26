@@ -4,24 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="only light">
-<meta name="theme-color" content="#f6f5f2">
+<meta name="theme-color" content="#101828">
 <title>Patrimoniu</title>
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Patrimoniu">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 :root{
   color-scheme:only light;
-  --bg:#f6f5f2;--panel:#ffffff;--ink:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;
-  --accent:#2f6fde;--accent-soft:#e6eefc;--good:#1f8a4c;--warn:#b7791f;--bad:#c0392b;
-  --pos:#2a78d6;--neg:#e34948;--grid:#ecebe7;
+  --bg:#eef1f4;--panel:#ffffff;--ink:#101828;--muted:#556070;--line:#dce1e7;
+  --accent:#0b6e4f;--accent-soft:#e3f1eb;--good:#0b6e4f;--warn:#c2620c;--bad:#b42318;
+  --pos:#0b6e4f;--neg:#d92d20;--grid:#e6e9ee;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-.wrap{display:grid;grid-template-columns:400px 1fr;height:calc(100vh - 48px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:400px 1fr;height:calc(100vh - 56px)}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:20px}
 #map{height:100%;min-height:320px}
 h1{font-size:20px;margin:0 0 2px}
@@ -143,7 +145,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .calc .tot{border-top:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);margin-top:4px;padding-top:6px}
 @media (max-width:420px){.kpi .v{font-size:18px}}
 /* --- Mon patrimoine --- */
-#invest{min-height:calc(100vh - 48px)}
+#invest{min-height:calc(100vh - 56px)}
 .invwrap{max-width:1040px;margin:0 auto;padding:20px 16px 40px}
 .invwrap h1{font-size:24px;margin:0}
 .invwrap .invhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
@@ -515,19 +517,20 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 [hidden]{display:none!important}
 /* Jamais de défilement de côté : un élément trop large ne décale plus toute la page (clip garde la barre d'onglets collante) */
 html,body{overflow-x:clip;max-width:100%}
-.tabs{position:sticky;top:0;z-index:1100;display:flex;align-items:stretch;gap:4px;height:48px;padding:0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));min-width:0;background:var(--panel);border-bottom:1px solid var(--line)}
-.tabs .brand{display:flex;align-items:center;font-weight:700;margin-right:12px}
-.tabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:0 12px;cursor:pointer;border-bottom:3px solid transparent}
-.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs{position:sticky;top:0;z-index:1100;display:flex;align-items:center;gap:4px;height:56px;padding:0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));min-width:0;background:var(--ink);border-bottom:0;color:#fff}
+.tabs .brand{display:flex;align-items:center;font-weight:800;font-size:19px;margin-right:16px}
+.tabs button{border:0;background:none;color:#c9d2de;font:inherit;font-weight:600;padding:0 14px;height:40px;border-radius:10px;cursor:pointer}
+.tabs button:hover{color:#fff}
+.tabs button[aria-selected="true"]{color:#fff;background:rgba(255,255,255,.12);font-weight:700}
 .tabs .court{display:none}
 body:not(.connecte) .tabs [data-prive]{display:none}
 @media (max-width:520px){.tabs .long{display:none}.tabs .court{display:inline}}
 .tabs .compte{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;padding-left:8px}
-.tabs .compte .statut{cursor:pointer;display:flex;align-items:center;gap:5px;color:var(--muted);font-size:14px;font-weight:600;max-width:220px;min-width:0}
+.tabs .compte .statut{cursor:pointer;display:flex;align-items:center;gap:5px;color:#c9d2de;font-size:14px;font-weight:600;max-width:220px;min-width:0}
 .tabs .compte .statut span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tabs .compte .statut.connecte{color:var(--accent)}
+.tabs .compte .statut.connecte{color:#7cd4ae}
 .tabs .compte button{height:34px;padding:0 14px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
-.tabs .compte button.sortir{background:none;border:1px solid var(--line);color:var(--ink)}
+.tabs .compte button.sortir{background:none;border:1px solid #475467;color:#fff}
 @media (max-width:420px){.tabs{gap:0;padding-left:8px;padding-right:8px}.tabs button{font-size:12.5px!important;padding:0 3px!important}.tabs .compte{padding-left:4px}.tabs .compte button{padding:0 9px!important;font-size:12px!important;height:30px}}
 @media (max-width:360px){.tabs button{font-size:11.5px!important}.tabs .compte button{padding:0 7px!important;font-size:11px!important}}
 @media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte .statut.connecte{display:flex;padding:0 6px}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
@@ -546,77 +549,164 @@ body[data-onglet="investissements"] .tabs,body[data-onglet="projets"] .tabs{padd
 #compteDlg .msg{margin-top:10px;font-size:13px}
 #compteDlg .msg.err{color:var(--bad)}
 #compteDlg .version{margin-top:16px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}#compteDlg .version .lien{font-size:12px;margin:0 0 0 6px}
-#cf .voirRes{display:none}
-@media (max-width:900px){#cf .voirRes{display:block;width:100%;margin-top:10px}}
 button.cta{border:0;width:100%;font:inherit;cursor:pointer}
-#cf{display:flex;flex-direction:column;height:calc(100vh - 48px)}
-#cf .cfwrap{display:grid;grid-template-columns:420px 1fr;flex:1;min-height:0}
-#cf main{padding:20px;min-width:0;overflow-y:auto}
-#cf details{margin:0 0 12px}
-#cf .sect{border:1px solid var(--line);border-radius:10px;padding:4px 12px 12px;margin:0 0 12px}
-#cf .sect h3{font-size:15px;margin:8px 0 2px}
-#cf .sect[hidden]{display:none}
-#cf details.reglages{border-style:solid}
-#cf details.reglages h4{font-size:13px;margin:12px 0 0;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-#cf .scen{max-width:420px;margin-bottom:12px;scroll-margin-top:60px}
-#cf .scen button{font-weight:600}
-#cf details.opt{border-style:dashed}
-#cf details.opt[open]{border-style:solid}
-#cf .chip{font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;margin-left:6px;vertical-align:1px;background:var(--line);color:var(--muted)}
-#cf .chip.on{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good)}
-#cf .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+/* Financer : un projet en 4 étapes (le bien, travaux et loyers, le crédit, le résultat), la barre d'enregistrement toujours en bas */
+#cf{min-height:calc(100vh - 56px);display:flex;flex-direction:column}
+#cf .cf-tete{background:var(--panel);border-bottom:1px solid var(--line)}
+#cf .cf-tete > *{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
+#cf .bienbar{padding-top:14px;font-size:14px;color:var(--muted)}
+#cf .bienbar b{color:var(--ink)}
+#cf .bienbar a{color:var(--accent);font-weight:600}
+#cf .cf-etapes{display:flex;gap:4px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
+#cf .cf-etapes button{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:12px 16px;border:0;border-radius:12px 12px 0 0;background:none;color:#344054;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+#cf .cf-etapes button i{font-style:normal;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:13px;background:#E8ECF2;color:#344054}
+#cf .cf-etapes button:hover{background:var(--bg)}
+#cf .cf-etapes button[aria-current="step"]{background:var(--ink);color:#fff}
+#cf .cf-etapes button[aria-current="step"] i{background:#fff;color:var(--ink)}
+#cf .cfwrap{flex:1;width:100%;max-width:1200px;margin:0 auto;padding:24px 24px 32px}
+#cf aside{background:none;border:0;padding:0;overflow:visible;height:auto}
+#cf .etape{display:none;flex-direction:column;gap:18px}
+#cf[data-etape="1"] .etape[data-etape="1"],#cf[data-etape="2"] .etape[data-etape="2"],#cf[data-etape="3"] .etape[data-etape="3"]{display:flex}
+#cf[data-etape="4"] #cf_form,#cf:not([data-etape="4"]) main{display:none}
+#cf main{display:flex;flex-direction:column;gap:18px;min-width:0}
+#cf .carte,#cf .bien-carte,#cf .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px;margin:0}
+#cf .carte h2,#cf .card h2{font-size:18px;font-weight:800;margin:0}
+#cf .carte-tete{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#cf .cf-titre{font-size:18px;font-weight:800;margin:0;text-transform:none;letter-spacing:0;color:var(--ink)}
+#cf .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 14px}
 #cf .grid [hidden]{display:none}
-#cf label{margin:10px 0 4px}
-#cf input,#cf select{padding:8px 10px}
-#cf .check{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:14px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}
-#cf .check input{width:auto}
-#cf button{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
-#cf .seg.scen button{border:0;border-radius:0;padding:9px}
-#cf .seg.scen button.on{background:var(--accent);color:#fff}
-#cf .loc-mode .seg{margin-top:2px}
-#cf .loc-mode .seg button{border:0;border-radius:0;padding:9px 6px;white-space:nowrap}
-#cf .loc-mode .seg button.on{background:var(--accent);color:#fff}
 #cf .grid .plein{grid-column:1/-1}
-#cf .bienbar{padding:10px 20px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-size:14px}
-#cf .voir{display:none;margin-left:8px;padding:3px 10px;font-size:13px}
-#cf .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-#cf .tile .v .up{color:var(--good)} #cf .tile .v .down{color:var(--bad)}
-#cf .tiles-plus{margin:8px 2px 14px}
-#cf #cf_simple .bilan-simple{margin:0 0 4px}
-/* Financer : une carte par bien, puis le financement commun */
-#cf .cf-titre{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px}
-#cf .cf-titre:not(:first-child){margin-top:18px}
-#cf .bien-carte{border:1px solid var(--line);border-radius:12px;padding:10px 14px 12px;margin:0 0 10px;background:var(--panel)}
+#cf label{margin:12px 0 6px;font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;color:#344054}
+#cf input,#cf select{min-height:44px;padding:8px 12px;border:1px solid #CBD2DA;border-radius:10px;background:#fff;font-size:15px}
+#cf input:focus,#cf select:focus{outline:2px solid color-mix(in srgb,var(--accent) 35%,transparent);border-color:var(--accent)}
+#cf .check{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:14px;font-weight:600;color:var(--ink)}
+#cf .check input{width:20px;height:20px;min-height:0;accent-color:var(--accent)}
+#cf button{min-height:44px;padding:0 16px;border:1px solid #CBD2DA;border-radius:10px;background:#fff;color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+#cf button:hover{border-color:var(--ink)}
+#cf .seg{display:inline-flex;border:0;border-radius:10px;background:var(--bg);padding:3px;gap:2px;overflow:visible}
+#cf .seg button{flex:0 0 auto;min-height:38px;border:0;border-radius:8px;background:transparent;color:#344054;padding:0 14px}
+#cf .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.14)}
+#cf details{margin:0}
+#cf details.carte{padding:6px 22px}
+#cf details.carte > summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 0;font-weight:800;font-size:16px;list-style:none}
+#cf details.carte > summary::-webkit-details-marker{display:none}
+#cf details.carte > summary::after{content:'';margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg)}
+#cf details.carte[open] > summary::after{transform:rotate(-135deg)}
+#cf details.carte[open]{padding-bottom:18px}
+#cf .chip{font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--bg);color:var(--muted)}
+#cf .chip.on{background:var(--accent-soft);color:var(--accent)}
+#cf .hint{font-size:13px;color:var(--muted);margin-top:6px}
+/* Étape 1 : une carte par bien */
 #cf .bien-tete{display:flex;align-items:center;gap:8px}
-#cf .bien-tete .nom-bien{flex:1;min-width:0;border:0;border-bottom:1px dashed transparent;border-radius:0;padding:4px 0;font-weight:600;font-size:16px;background:none}
+#cf .bien-tete .nom-bien{flex:1;min-width:0;border:0;border-bottom:1px dashed transparent;border-radius:0;padding:4px 0;font-weight:800;font-size:18px;background:none;min-height:0}
 #cf .bien-tete .nom-bien:hover,#cf .bien-tete .nom-bien:focus{border-bottom-color:var(--line);outline:none}
 #cf .bien-quoi{font-size:13px;color:var(--muted);white-space:nowrap}
-#cf .bien-x{border:0;background:none;padding:6px;color:var(--muted);line-height:0}
+#cf .bien-x{border:0;background:none;padding:6px;color:var(--muted);line-height:0;min-height:0}
 #cf .bien-x svg{width:14px;height:14px}
-#cf details.plus-bien{border:0;margin:8px 0 0;padding:0}
-#cf details.plus-bien summary{font-size:13px;color:var(--accent);cursor:pointer;padding:2px 0}
-#cf .ajout-bien{width:100%;border:1px dashed var(--line);background:none;color:var(--accent);padding:10px;border-radius:12px;margin:0 0 4px}
-#cf .options{margin-top:10px;border-top:1px solid var(--line)}
-#cf .options > details{border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0;padding:0}
-#cf .options > details:last-child{border-bottom:0}
-#cf .options > details > summary{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:14px;font-weight:500;cursor:pointer}
-#cf .options > details[open]{padding-bottom:10px}
-#cf .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-#cf .tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-#cf .tile .v{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
-#cf .tile .d{font-size:12px;color:var(--muted);margin-top:2px}
-#cf .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:14px}
-#cf .card h2{font-size:15px;margin:0 0 8px}
-#cf #cf_cible{padding:12px 16px}
+#cf details.plus-bien{border:0;margin:12px 0 0;padding:0}
+#cf details.plus-bien summary{font-size:14px;color:var(--accent);font-weight:700;cursor:pointer;padding:4px 0}
+#cf .ajout-bien{width:100%;border:1px dashed #CBD2DA;background:none;color:var(--muted);border-radius:14px}
+/* Étape 2 : travaux, calendrier, tableau des loyers par période */
+#cf #cf_boxProjet{border:0;padding:0}
+#cf #cf_boxProjet > summary{display:none}
+#cf .cal{margin-top:16px}
+#cf .cal-barre{display:flex;height:44px;border-radius:10px;overflow:hidden;font-size:13px;font-weight:700}
+#cf .cal-barre > div{display:flex;align-items:center;padding:0 10px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:6px solid}
+#cf .ph-avant{background:#E8ECF2;color:#344054;border-color:#7A8AA3!important}
+#cf .ph-travaux{background:#FBEBD9;color:#7A3E06;border-color:#C2620C!important}
+#cf .ph-apres{background:var(--accent-soft);color:#08513A;border-color:var(--accent)!important}
+#cf .cal-diff{position:relative;height:36px;margin-top:8px;font-size:13px;font-weight:700}
+#cf .cal-diff .acc{position:absolute;left:0;top:4px;height:10px;border:2px solid #3E4C9B;border-top:0;border-radius:0 0 6px 6px}
+#cf .cal-diff .txt{position:absolute;top:18px;color:#3E4C9B;white-space:nowrap}
+#cf .cal-diff .apres{color:#344054}
+#cf table.loyers{width:100%;border-collapse:separate;border-spacing:8px 6px;margin:8px -8px 0;min-width:560px;font-variant-numeric:tabular-nums}
+#cf table.loyers th,#cf table.loyers td{border:0;padding:0;text-align:left;vertical-align:top;white-space:normal;font-size:14px}
+#cf table.loyers thead th{padding:10px 12px;border-radius:10px;font-weight:700;color:#344054;background:var(--bg)}
+#cf table.loyers thead th small{display:block;font-weight:500;font-size:12px}
+#cf table.loyers thead th:first-child{background:none}
+#cf table.loyers tbody th{width:28%;padding-top:8px}
+#cf table.loyers tbody th b{display:block;font-weight:800;font-size:15px;color:var(--ink)}
+#cf table.loyers tbody th small{display:block;font-size:13px;font-weight:400;color:var(--muted)}
+#cf table.loyers td input{width:100%;text-align:right}
+#cf table.loyers td .calc-l{display:flex;align-items:center;justify-content:flex-end;min-height:44px;padding:0 12px;border-radius:10px;background:var(--bg);color:#344054}
+#cf table.loyers td .des{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted)}
+#cf table.loyers td .des input{width:72px;min-height:32px;padding:2px 8px;font-size:13px}
+#cf table.loyers td .check{margin-top:6px;font-size:12px;font-weight:500;color:var(--muted)}
+#cf table.loyers td .check input{width:16px;height:16px}
+#cf table.loyers tfoot td,#cf table.loyers tfoot th{border-top:2px solid var(--ink);padding:10px 12px 0;font-weight:800;font-size:18px;text-align:right}
+#cf table.loyers tfoot th{text-align:left;font-size:15px;padding-left:0}
+#cf table.loyers.sans-travaux [data-col="avant"],#cf table.loyers.sans-travaux [data-col="pendant"]{display:none}
+#cf table.loyers .retirer{min-height:0;padding:2px 0;border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;text-decoration:underline}
+#cf .loyers-bas{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+#cf .loyers-bas .ajout-bien{width:auto}
+#cf .scroll{overflow-x:auto}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Étape 3 : le prêt, le différé (ce qu'on paie chaque mois, période par période), ce qu'on emprunte */
+#cf .etape-cols{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+#cf .etape-cols > .col{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:18px}
+#cf .etape-cols > aside{flex:1 1 300px}
+#cf .carte.differe{border:2px solid #3E4C9B}
+#cf .mens-per{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px;font-variant-numeric:tabular-nums}
+#cf .mens-per > div{border-radius:12px;padding:12px 14px}
+#cf .mens-per span{display:block;font-size:13px;font-weight:700}
+#cf .mens-per b{display:block;font-size:22px;font-weight:800}
+#cf .mens-per small{display:block;font-size:12px}
+#cf .mens-per .plein{background:var(--ink);color:#fff}
+#cf .emprunt .l{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--bg);font-size:15px;font-variant-numeric:tabular-nums}
+#cf .emprunt .l span{color:var(--muted)}
+#cf .emprunt .l b{white-space:nowrap}
+#cf .emprunt .l.tot{border-top:2px solid var(--ink);font-size:18px;font-weight:800}
+#cf .emprunt .l.tot span{color:var(--ink)}
+#cf .emprunt button{width:100%;margin-top:12px}
+#cf .sect h3{font-size:16px;margin:0}
+#cf #cf_reset{align-self:flex-start;border:0;background:none;color:var(--muted);text-decoration:underline;padding:0}
+/* Aperçu du résultat sous les étapes 1 à 3 */
+#cf .apercu{margin-top:18px;display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;padding:14px 18px;border-radius:14px;background:var(--panel);border:1px dashed #CBD2DA;font-size:15px;font-variant-numeric:tabular-nums}
+#cf .apercu b.up{color:var(--good)}#cf .apercu b.down{color:var(--bad)}
+#cf .apercu button{margin-left:auto}
+/* Étape 4 : le résultat */
+#cf .scen{max-width:420px}
+#cf .res-tete{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+#cf .res-tete > div{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px}
+#cf .res-tete > div.fonce{background:var(--ink);border-color:var(--ink);color:#fff}
+#cf .res-tete span{display:block;font-size:14px;font-weight:700;color:var(--muted)}
+#cf .res-tete .fonce span,#cf .res-tete .fonce small{color:#C9D2DE}
+#cf .res-tete b{display:block;font-size:40px;font-weight:800;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums}
+#cf .res-tete b em{font-style:normal;font-size:17px;font-weight:600;color:var(--muted)}
+#cf .res-tete .fonce b em{color:#C9D2DE}
+#cf .res-tete small{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+#cf .res-tete b.up{color:var(--good)}#cf .res-tete b.down{color:var(--bad)}
+#cf .res-tete .fonce b.up{color:#7CD4AE}#cf .res-tete .fonce b.down{color:#FDA29B}
+#cf .phases-t{font-size:18px;font-weight:800;margin:0 0 12px}
+#cf .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;font-variant-numeric:tabular-nums}
+#cf .phase{background:var(--panel);border:1px solid var(--line);border-top:6px solid #7A8AA3;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:5px}
+#cf .phase.c-travaux{border-top-color:#C2620C}
+#cf .phase.c-apres{border-top-color:var(--accent)}
+#cf .phase.c-diff{border-top-color:#3E4C9B}
+#cf .phase.croisiere{border:2px solid var(--ink);border-top:6px solid var(--ink)}
+#cf .phase .t{font-weight:800}
+#cf .phase .s{font-size:13px;color:var(--muted);margin-bottom:6px}
+#cf .phase .l{display:flex;justify-content:space-between;font-size:14px}
+#cf .phase .l span{color:var(--muted)}
+#cf .phase .l.tot{border-top:1px solid var(--line);padding-top:8px;margin-top:2px;font-size:16px;font-weight:800}
+#cf .phase .l.tot span{color:var(--ink)}
+#cf .phase .up{color:var(--good)}#cf .phase .down{color:var(--bad)}
+#cf .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+#cf .tile{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+#cf .tile .k{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+#cf .tile .v{font-size:24px;font-weight:800;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums}
+#cf .tile .d{font-size:13px;color:var(--muted);margin-top:2px}
+#cf .tile .v .up{color:var(--good)} #cf .tile .v .down{color:var(--bad)}
+#cf .tiles-plus{margin:-6px 2px 0}
+#cf #cf_simple .bilan-simple{margin:0}
+#cf #cf_alerts:empty{display:none}
+#cf #cf_alerts > :first-child{margin-top:0}
 #cf #cf_cibleRes{font-size:14px;color:var(--ink)}
-#cf .saverow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px}
-#cf .saverow input{flex:1;min-width:200px}
-#cf .saverow button.cta{width:auto;margin:0;padding:10px 16px;border:0;background:var(--accent);color:#fff;font-weight:600}
+#cf details.card > summary{font-weight:700}
 #cf table{width:100%;border-collapse:collapse;font-size:13px}
 #cf th,#cf td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 #cf th:first-child,#cf td:first-child{text-align:left}
 #cf th{color:var(--muted);font-weight:600}
-#cf .scroll{overflow-x:auto}
 #cf .pos{color:var(--good)} #cf .negt{color:var(--bad)}
 #cf .chart{position:relative}
 #cf .chart svg{display:block;width:100%;height:auto}
@@ -624,11 +714,43 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 .cftip{position:absolute;z-index:1200;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap;display:none}
 #cf .loans input{padding:5px 6px;font-size:13px}
 #cf .loans td{white-space:normal}
-@media (max-width:900px){#cf{height:auto}#cf .voir{display:inline-block}#cf .bienbar{padding:10px 16px}#cf .cfwrap{grid-template-columns:1fr;height:auto}#cf aside{border-right:0;border-bottom:1px solid var(--line)}#cf main{padding:14px;overflow:visible}}
+/* La barre d'enregistrement : toujours en bas, au même endroit */
+#cf .cf-barre{position:sticky;bottom:0;z-index:900;background:var(--ink);color:#fff}
+#cf .cf-barre-in{max-width:1200px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#cf .cf-barre #cf_saveForm,#cf .cf-barre #cf_saveInvite{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;min-width:0}
+#cf .cf-barre #cf_saveForm[hidden],#cf .cf-barre #cf_saveInvite[hidden]{display:none}
+#cf .cf-barre input{flex:1 1 200px;min-width:160px;max-width:340px;background:rgba(255,255,255,.08);border-color:#475467;color:#fff}
+#cf .cf-barre input::placeholder{color:#98A2B3}
+#cf .cf-barre button{background:transparent;color:#fff;border-color:#475467}
+#cf .cf-barre button:hover{border-color:#fff}
+#cf .cf-barre button.cta{width:auto;margin:0;background:var(--accent);border:1px solid var(--accent);color:#fff}
+#cf .cf-barre #cf_saveMsg{flex-basis:100%;margin:0;color:#C9D2DE;font-size:13px}
+#cf .cf-barre #cf_saveMsg:empty{display:none}
+#cf .cf-barre #cf_saveMsg a{color:#7CD4AE}
+#cf .cf-barre .invite{font-size:14px;color:#C9D2DE}
+#cf .cf-barre #cf_suivant{margin-left:auto;background:#fff;color:var(--ink);border-color:#fff}
+@media (max-width:700px){
+  #cf .cal-diff{height:auto}#cf .cal-diff .acc{position:relative;top:0}#cf .cal-diff .txt{position:static;display:block;margin-top:4px;white-space:normal}
+  #cf .cf-barre .invite{display:none}
+  #cf table.loyers{min-width:0;margin:8px 0 0;border-spacing:0}
+  #cf table.loyers thead{display:none}
+  #cf table.loyers,#cf table.loyers tbody,#cf table.loyers tfoot{display:block}
+  #cf table.loyers tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+  #cf table.loyers.sans-travaux tr{grid-template-columns:minmax(0,1fr)}
+  #cf table.loyers tr > th{grid-column:1/-1;width:auto;padding:0}
+  #cf table.loyers td::before{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px}
+  #cf table.loyers td[data-col="avant"]::before{content:'Avant travaux'}
+  #cf table.loyers td[data-col="pendant"]::before{content:'Pendant'}
+  #cf table.loyers td[data-col="apres"]::before{content:'Après travaux'}
+  #cf table.loyers.sans-travaux td[data-col="apres"]::before{content:none}
+  #cf table.loyers tfoot tr{border-top:2px solid var(--ink)}
+  #cf table.loyers tfoot td,#cf table.loyers tfoot th{border:0;padding:0;font-size:16px}
+}
+@media (max-width:700px){#cf .cf-tete > *{padding-left:16px;padding-right:16px}#cf .cfwrap{padding:16px}#cf .cf-barre-in{padding:10px 16px}#cf .carte,#cf .bien-carte,#cf .card{padding:16px}#cf .res-tete b{font-size:32px}#cf .etape-cols > aside{position:static}#cf .cf-barre input{max-width:none}}
 /* Mode simple : l'interrupteur Simple / Pro et le bilan du mois (loyer − crédit − charges = ce qu'il reste) */
-.tabs .mode{display:flex;align-items:center;border:1px solid var(--line);border-radius:99px;overflow:hidden;flex-shrink:0}
-.tabs .mode button{border:0;padding:3px 10px;font-size:12px;font-weight:600;color:var(--muted);background:none;border-radius:0;height:auto}
-.tabs .mode button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.tabs .mode{display:flex;align-items:center;border-radius:10px;background:rgba(255,255,255,.1);padding:3px;flex-shrink:0}
+.tabs .mode button{border:0;padding:5px 11px;font-size:12px;font-weight:600;color:#c9d2de;background:none;border-radius:8px;height:auto}
+.tabs .mode button[aria-pressed="true"]{background:#fff;color:var(--ink)}
 @media (max-width:520px){.tabs .mode button{padding:3px 7px}}
 .bilan-simple{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 14px}
 .bilan-simple .bs-l{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px;font-variant-numeric:tabular-nums}
@@ -647,8 +769,7 @@ body.discret #pj .pj-simple-prix b{filter:blur(7px)}
 .aide-simple{font-size:13px;color:var(--muted);margin:0 0 12px}
 body:not(.simple) .seul-simple{display:none}
 body.simple .seul-pro{display:none}
-body.simple #cf :is(.options, .plus-bien, #cf_reset, #cf_alerts, #cf_bilan, #cf_tiles, #cf_tilesPlus, .card:has(#cf_chart), details.card, .card:has(.srcs)){display:none}
-body.simple #cf [data-loyer2], body.simple #cf .grid > div:has(#cf_loyer2){display:none}
+body.simple #cf :is(.plus-bien, #cf_reset, #cf_alerts, #cf_bilan, #cf_tiles, #cf_tilesPlus, .card:has(#cf_chart), details.card, .card:has(.srcs), #cf_boxDetail, #cf_boxImpots, #cf_boxEvol, #cf_boxCharges){display:none}
 body.simple #estim details.plus{display:none}
 body.simple #invest .pli[data-pli="orga"], body.simple #invest .bloc:has(#inv_renta){display:none}
 body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
@@ -656,6 +777,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 </head>
 <body>
 <nav class="tabs" role="tablist">
+  <span class="brand">Patrimoniu</span>
   <button role="tab" data-tab="investissements" data-prive aria-selected="false"><span class="long">Mon patrimoine</span><span class="court">Patrimoine</span></button>
   <button role="tab" data-tab="projets" data-prive aria-selected="false"><span class="long">Mes projets</span><span class="court">Projets</span></button>
   <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
@@ -713,126 +835,178 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <div id="map"></div>
 </div>
 </div>
-<section id="cf" hidden>
-<div id="cf_bien" class="bienbar"></div>
+<section id="cf" hidden data-etape="1">
+<div class="cf-tete">
+  <div id="cf_bien" class="bienbar"></div>
+  <nav class="cf-etapes" id="cf_etapes" aria-label="Étapes du projet">
+    <button data-etape="1"><i>1</i>Le bien</button>
+    <button data-etape="2"><i>2</i>Travaux et loyers</button>
+    <button data-etape="3"><i>3</i>Le crédit</button>
+    <button data-etape="4"><i>4</i>Le résultat</button>
+  </nav>
+</div>
 <div class="cfwrap">
 <aside id="cf_form">
-  <h3 class="cf-titre" id="cf_titreBiens">Le bien</h3>
+<section class="etape" data-etape="1">
+  <h2 class="cf-titre" id="cf_titreBiens">Le bien</h2>
   <article class="bien-carte" id="cf_bien1">
     <div class="bien-tete"><input id="cf_nomBien" class="nom-bien" type="text" placeholder="1er bien" aria-label="Nom du bien"><span class="bien-quoi" id="cf_bien1Quoi"></span></div>
     <div class="grid">
-      <div><label>Prix (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
-      <div data-mois><label id="cf_loyerLib">Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div>
-      <div data-nuit hidden><label>Prix par nuit (€)</label><input id="cf_nuit" type="number" min="0" step="5"></div>
-      <div data-nuit hidden><label>Période louée</label><select id="cf_periode"></select></div>
-      <div data-nuit hidden><label>Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"></div>
-      <div data-nuit hidden class="plein"><div class="hint" id="cf_saisonHint"></div></div>
-      <div><label>Taxe foncière (€/an)</label><input id="cf_tf" type="number" min="0" step="50"></div>
-      <div><label>Copro non récupérable (€/an)</label><input id="cf_copro" type="number" min="0" step="50"></div>
-      <div class="loc-mode"><label>Louer</label><div class="seg mini" id="cf_locSeg"><button data-v="mois">Au mois</button><button data-v="nuit">À la nuitée</button></div><select id="cf_locMode" hidden><option value="mois">mois</option><option value="nuit">nuit</option></select></div>
-      <div><label>Autre loyer (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="facultatif"><div class="hint">Division, garage ou annexe louée à part</div></div>
-      <div data-loyer2 hidden><label>1er loyer à partir du mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"><div class="hint" id="cf_debutLoyer1Hint">Vide : après le chantier</div></div>
-      <div data-loyer2 hidden><label>Autre loyer à partir du mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"><div class="hint">1 = dès l'achat</div></div>
+      <div><label for="cf_prix">Prix d'achat (€)</label><input id="cf_prix" type="number" min="0" step="1000"></div>
+      <div><label for="cf_tf">Taxe foncière (€/an)</label><input id="cf_tf" type="number" min="0" step="50"></div>
+      <div><label for="cf_copro">Copro non récupérable (€/an)</label><input id="cf_copro" type="number" min="0" step="50"></div>
     </div>
     <details class="plus-bien"><summary>Plus de détails</summary><div class="grid">
-      <div><label>Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
-      <div><label>Surface (m²)</label><input id="cf_surf" type="number" min="9"></div>
-      <div><label>État</label><select id="cf_neuf"><option value="0">Ancien</option><option value="1">Neuf (VEFA)</option></select></div>
-      <div><label>Assurance PNO (€/an)</label><input id="cf_pno" type="number" min="0" step="10"></div>
-      <div data-meuble><label>Mobilier (€)</label><input id="cf_mobilier" type="number" min="0" step="500"></div>
+      <div><label for="cf_type">Type</label><select id="cf_type"><option value="appart">Appartement</option><option value="maison">Maison</option></select></div>
+      <div><label for="cf_surf">Surface (m²)</label><input id="cf_surf" type="number" min="9"></div>
+      <div><label for="cf_neuf">État</label><select id="cf_neuf"><option value="0">Ancien</option><option value="1">Neuf (VEFA)</option></select></div>
+      <div><label for="cf_pno">Assurance PNO (€/an)</label><input id="cf_pno" type="number" min="0" step="10"></div>
+      <div data-meuble><label for="cf_mobilier">Mobilier (€)</label><input id="cf_mobilier" type="number" min="0" step="500"></div>
     </div></details>
   </article>
   <div id="cf_biensPlus"></div>
   <button id="cf_ajoutBien" class="ajout-bien">+ Ajouter un bien au même crédit</button>
+</section>
 
-  <h3 class="cf-titre">Le financement</h3>
-  <article class="bien-carte" id="cf_financement">
-    <div class="grid">
-      <div><label>Apport (€)</label><input id="cf_apport" type="number" min="0" step="1000"></div>
-      <div><label>Durée du crédit (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
-      <div><label>Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
-      <div><label>Location</label><select id="cf_meuble"><option value="0">Vide</option><option value="1">Meublée</option></select></div>
-      <div><label>Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
-      <div data-sci hidden><label>Dans quelle SCI</label><select id="cf_sciExist"><option value="">Une nouvelle SCI</option></select><div class="hint" id="cf_sciHint" hidden>Comptable et frais de la SCI déjà payés : pas comptés en plus.</div></div>
-    </div>
-    <div class="options">
+<section class="etape" data-etape="2">
+  <article class="carte" id="cf_carteTravaux">
+    <div class="carte-tete"><h2>Les travaux</h2><div class="seg" id="cf_travauxSeg" role="group" aria-label="Travaux"><button data-v="0">Pas de travaux</button><button data-v="1">Travaux sur le 1er bien</button></div></div>
     <details class="opt" id="cf_boxProjet"><summary>Travaux <span class="chip"></span></summary><div class="grid">
-    <div><label>Montant des travaux (€)</label><input id="cf_travaux" type="number" min="0" step="1000"></div>
-    <div><label>Début des travaux (mois)</label><input id="cf_debutTravaux" type="number" min="1" max="120" placeholder="1"><div class="hint">1 = dès l'achat · 25 = au bout de 2 ans</div></div>
-    <div><label>Durée du chantier (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
-    <div><label>Valeur après travaux (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
-    <div><label>Loyer avant travaux (€/mois)</label><input id="cf_loyerAvant" type="number" min="0" step="10" placeholder="pas loué"><div class="hint">Loué en l'état en attendant le chantier</div></div>
-  </div>
-  <label class="check" data-avant hidden><input type="checkbox" id="cf_loueChantier"> Reste loué pendant le chantier (ex. travaux dans le garage)</label>
-  <label class="check"><input type="checkbox" id="cf_travauxCredit"> Financer les travaux par le crédit</label></details>
-    <details class="opt" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="grid">
-    <div data-notis><label>Tranche d'imposition (TMI)</label><select id="cf_tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
-    <div data-np><label>Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
-    <div data-amort><label>Part du terrain (%)</label><input id="cf_terrain" type="number" min="0" max="80"></div>
-    <div data-is><label>Bâtiment de plus de 15 ans</label><select id="cf_vieux"><option value="1">Oui (contribution 2,5 %)</option><option value="0">Non</option></select></div>
+      <div><label for="cf_travaux">Montant (€)</label><input id="cf_travaux" type="number" min="0" step="1000"></div>
+      <div><label for="cf_debutTravaux">Ils commencent au mois</label><input id="cf_debutTravaux" type="number" min="1" max="120" placeholder="1"><div class="hint">1 = dès l'achat · 25 = au bout de 2 ans</div></div>
+      <div><label for="cf_dureeTravaux">Ils durent (mois)</label><input id="cf_dureeTravaux" type="number" min="0" max="36"></div>
+      <div><label for="cf_valeurApres">Valeur du bien après (€)</label><input id="cf_valeurApres" type="number" min="0" step="1000"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="cf_travauxCredit"> Payés par le crédit</label></details>
+  </article>
+  <article class="carte" id="cf_carteCal"><h2>Le calendrier</h2><div class="hint">Il se dessine tout seul à partir des travaux et du différé du crédit.</div><div id="cf_calendrier" class="cal"></div></article>
+  <article class="carte" id="cf_carteLoyers">
+    <div class="carte-tete"><h2>Les loyers, période par période</h2>
+      <div class="loc-mode" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><div class="seg" id="cf_locSeg" role="group" aria-label="Louer"><button data-v="mois">Au mois</button><button data-v="nuit">À la nuitée</button></div><select id="cf_locMode" hidden><option value="mois">mois</option><option value="nuit">nuit</option></select>
+      <select id="cf_meuble" aria-label="Location vide ou meublée" style="width:auto"><option value="0">Location vide</option><option value="1">Meublée</option></select></div>
+    </div>
+    <div class="hint">Hors charges, par mois. Vide = pas loué.</div>
+    <div class="grid" data-nuit hidden>
+      <div><label for="cf_nuit">Prix par nuit (€)</label><input id="cf_nuit" type="number" min="0" step="5"></div>
+      <div><label for="cf_periode">Période louée</label><select id="cf_periode"></select></div>
+      <div><label for="cf_occupation">Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"></div>
+      <div class="plein"><div class="hint" id="cf_saisonHint"></div></div>
+    </div>
+    <div class="scroll"><table class="loyers" id="cf_loyers">
+      <thead><tr><th></th>
+        <th data-col="avant" class="ph-avant">Avant travaux<small id="cf_colAvant"></small></th>
+        <th data-col="pendant" class="ph-travaux">Pendant les travaux<small id="cf_colPendant"></small></th>
+        <th data-col="apres" class="ph-apres" id="cf_colApresT">Après travaux<small id="cf_colApres"></small></th></tr></thead>
+      <tbody>
+        <tr id="cf_rangBien1"><th><b id="cf_nomL1">1er bien</b><small id="cf_quoiL1"></small></th>
+          <td data-col="avant"><label for="cf_loyerAvant" class="sr">Loyer avant travaux (€/mois)</label><input id="cf_loyerAvant" type="number" min="0" step="10" placeholder="pas loué"></td>
+          <td data-col="pendant"><div class="calc-l" id="cf_pendant1">pas loué</div><label class="check" data-avant hidden><input type="checkbox" id="cf_loueChantier"> reste loué pendant le chantier</label></td>
+          <td data-col="apres"><div data-mois><label id="cf_loyerLib" for="cf_loyer" class="sr">Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div><div data-nuit hidden class="calc-l" id="cf_nuitL1"></div>
+            <div class="des" data-loyer2 hidden><label for="cf_debutLoyer1" style="margin:0">loué dès le mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"></div><div class="sr" id="cf_debutLoyer1Hint"></div></td>
+        </tr>
+        <tr id="cf_rangL2" hidden><th><b>Logement à part</b><small>studio, garage, annexe…</small><button class="retirer" id="cf_retirerL2">Retirer</button></th>
+          <td data-col="avant"><div class="calc-l" id="cf_l2Avant"></div></td>
+          <td data-col="pendant"><div class="calc-l" id="cf_l2Pendant"></div></td>
+          <td data-col="apres"><label for="cf_loyer2" class="sr">Loyer du logement à part (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="0">
+            <div class="des"><label for="cf_debutLoyer2" style="margin:0">loué dès le mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"></div></td>
+        </tr>
+      </tbody>
+      <tbody id="cf_loyersPlus"></tbody>
+      <tfoot><tr><th>Total encaissé</th><td data-col="avant" id="cf_totAvant"></td><td data-col="pendant" id="cf_totPendant"></td><td data-col="apres" id="cf_totApres"></td></tr></tfoot>
+    </table></div>
+    <div class="loyers-bas"><button id="cf_ajoutL2" class="ajout-bien">+ Un logement loué à part (studio, garage…)</button></div>
+  </article>
+  <details class="carte" id="cf_boxCharges"><summary>Charges et gestion <span class="chip" id="cf_chargesChip"></span></summary>
+    <div class="grid">
+      <div><label for="cf_vacance">Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
+      <div><label for="cf_gestion">Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
+      <div><label for="cf_entretien">Entretien (% loyers)</label><input id="cf_entretien" type="number" min="0" step="0.5"></div>
+      <div><label for="cf_compta">Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
+      <div data-meuble><label for="cf_cfe">CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
+    </div>
+    <div class="grid" data-nuit hidden>
+      <div><label for="cf_sejour">Nuits par séjour</label><input id="cf_sejour" type="number" min="1" step="1"></div>
+      <div><label for="cf_menage">Ménage par séjour (€)</label><input id="cf_menage" type="number" min="0" step="5"></div>
+      <div><label for="cf_plateforme">Plateforme (% recettes)</label><input id="cf_plateforme" type="number" min="0" step="1"></div>
+      <div><label for="cf_conciergerie">Conciergerie (% recettes)</label><input id="cf_conciergerie" type="number" min="0" step="1"></div>
+      <div><label for="cf_chargesSaison">Charges du logement (€/mois)</label><input id="cf_chargesSaison" type="number" min="0" step="10"><div class="hint">Copropriété, énergie, internet : à ta charge</div></div>
+      <div><label for="cf_classe">Classement</label><select id="cf_classe"><option value="0">Non classé</option><option value="1">Meublé de tourisme classé</option></select></div>
+    </div>
+  </details>
+</section>
+
+<section class="etape" data-etape="3">
+  <div class="etape-cols"><div class="col">
+  <article class="carte" id="cf_financement">
+    <h2>Le prêt</h2>
+    <div class="grid">
+      <div><label for="cf_apport">Apport (€)</label><input id="cf_apport" type="number" min="0" step="1000"></div>
+      <div><label for="cf_duree">Durée (ans)</label><input id="cf_duree" type="number" min="5" max="30"></div>
+      <div><label for="cf_taux">Taux nominal (%)</label><input id="cf_taux" type="number" step="0.01"></div>
+      <div><label for="cf_assur">Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
+      <div><label for="cf_struct">Achat en</label><select id="cf_struct"><option value="np">Nom propre</option><option value="ir">SCI à l'IR</option><option value="is">SCI à l'IS</option></select></div>
+      <div data-sci hidden><label for="cf_sciExist">Dans quelle SCI</label><select id="cf_sciExist"><option value="">Une nouvelle SCI</option></select><div class="hint" id="cf_sciHint" hidden>Comptable et frais de la SCI déjà payés : pas comptés en plus.</div></div>
+    </div>
+    <div class="hint" id="cf_tauxHint"></div>
+  </article>
+  <article class="carte differe" id="cf_carteDiffere">
+    <div class="carte-tete"><h2>Le différé</h2><div class="seg" id="cf_differeSeg" role="group" aria-label="Différé"><button data-v="0">Sans</button><button data-v="1">Avec différé</button></div></div>
+    <div class="hint">Tu paies moins au début. Il est compté dans la durée du crédit.</div>
+    <div class="grid" id="cf_differeChamps">
+      <div><label for="cf_differe">Durée du différé (mois)</label><input id="cf_differe" type="number" min="0" max="36"></div>
+      <div><label for="cf_typeDiff">Pendant le différé, tu paies</label><select id="cf_typeDiff"><option value="partiel">Les intérêts seulement</option><option value="total">Rien (intérêts ajoutés au prêt)</option></select></div>
+    </div>
+    <div id="cf_mensPeriodes"></div>
+  </article>
+  <details class="carte" id="cf_boxDetail"><summary>Réglages avancés : notaire, frais de dossier, garantie</summary>
+    <div class="grid">
+      <div><label for="cf_notaire">Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
+      <div><label for="cf_dossier">Frais de dossier (€)</label><input id="cf_dossier" type="number" min="0" step="100"></div>
+      <div><label for="cf_garantie">Garantie (% du prêt)</label><input id="cf_garantie" type="number" step="0.1"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="cf_notaireCredit"> Frais de notaire dans le crédit (« prêt à 110 % »)</label>
+  </details>
+  <details class="opt carte" id="cf_boxImpots"><summary>Impôts <span class="chip"></span></summary><div class="grid">
+    <div data-notis><label for="cf_tmi">Tranche d'imposition (TMI)</label><select id="cf_tmi"><option>0</option><option>11</option><option selected>30</option><option>41</option><option>45</option></select></div>
+    <div data-np><label for="cf_regime">Régime</label><select id="cf_regime"><option value="auto">Le plus avantageux</option><option value="micro">Micro</option><option value="reel">Réel</option></select></div>
+    <div data-amort><label for="cf_terrain">Part du terrain (%)</label><input id="cf_terrain" type="number" min="0" max="80"></div>
+    <div data-is><label for="cf_vieux">Bâtiment de plus de 15 ans</label><select id="cf_vieux"><option value="1">Oui (contribution 2,5 %)</option><option value="0">Non</option></select></div>
   </div>
   <label class="check" data-is><input type="checkbox" id="cf_distrib"> Distribuer les bénéfices aux associés (flat tax 31,4 %)</label>
   <div id="cf_fiscNote" class="hint"></div></details>
-    <details class="opt" id="cf_boxEvol"><summary>Évolutions dans le temps <span class="chip"></span></summary><div class="grid">
-    <div><label>Hausse des loyers (%/an)</label><input id="cf_gLoyer" type="number" step="0.1"></div>
-    <div><label>Hausse du prix (%/an)</label><input id="cf_gPrix" type="number" step="0.1"></div>
-    <div><label>Hausse des charges (%/an)</label><input id="cf_gCharges" type="number" step="0.1"></div>
+  <details class="opt carte" id="cf_boxEvol"><summary>Évolutions dans le temps <span class="chip"></span></summary><div class="grid">
+    <div><label for="cf_gLoyer">Hausse des loyers (%/an)</label><input id="cf_gLoyer" type="number" step="0.1"></div>
+    <div><label for="cf_gPrix">Hausse du prix (%/an)</label><input id="cf_gPrix" type="number" step="0.1"></div>
+    <div><label for="cf_gCharges">Hausse des charges (%/an)</label><input id="cf_gCharges" type="number" step="0.1"></div>
   </div></details>
-    <details class="reglages" id="cf_boxDetail"><summary>Crédit et charges communes</summary>
-      <h4>Crédit</h4><div class="grid">
-        <div><label>Assurance (%/an)</label><input id="cf_assur" type="number" step="0.01"></div>
-        <div><label>Frais de notaire (%)</label><input id="cf_notaire" type="number" step="0.1"></div>
-        <div><label>Différé (mois, dans la durée)</label><input id="cf_differe" type="number" min="0" max="36"></div>
-        <div><label>Type de différé</label><select id="cf_typeDiff"><option value="partiel">Intérêts seuls</option><option value="total">Total (intérêts ajoutés au capital)</option></select></div>
-        <div><label>Frais de dossier (€)</label><input id="cf_dossier" type="number" min="0" step="100"></div>
-        <div><label>Garantie (% du prêt)</label><input id="cf_garantie" type="number" step="0.1"></div>
-      </div>
-      <div class="hint" id="cf_tauxHint"></div>
-      <button id="cf_tauxMarche" style="margin-top:6px">Mettre le taux du marché</button>
-      <label class="check"><input type="checkbox" id="cf_notaireCredit"> Inclure les frais de notaire dans le crédit (« prêt à 110 % »)</label>
-      <h4>Charges communes</h4><div class="grid">
-        <div><label>Vacance (mois/an)</label><input id="cf_vacance" type="number" min="0" max="12" step="0.5"></div>
-        <div><label>Gestion (% loyers)</label><input id="cf_gestion" type="number" min="0" step="0.5"></div>
-        <div><label>Entretien (% loyers)</label><input id="cf_entretien" type="number" min="0" step="0.5"></div>
-        <div><label>Comptable (€/an)</label><input id="cf_compta" type="number" min="0" step="50"></div>
-        <div data-meuble><label>CFE (€/an)</label><input id="cf_cfe" type="number" min="0" step="50"></div>
-      </div>
-      <h4 data-nuit hidden>Location saisonnière</h4><div class="grid" data-nuit hidden>
-        <div><label>Nuits par séjour</label><input id="cf_sejour" type="number" min="1" step="1"></div>
-        <div><label>Ménage par séjour (€)</label><input id="cf_menage" type="number" min="0" step="5"></div>
-        <div><label>Plateforme (% recettes)</label><input id="cf_plateforme" type="number" min="0" step="1"></div>
-        <div><label>Conciergerie (% recettes)</label><input id="cf_conciergerie" type="number" min="0" step="1"></div>
-        <div><label>Charges du logement (€/mois)</label><input id="cf_chargesSaison" type="number" min="0" step="10"><div class="hint">Copropriété, énergie, internet : à ta charge</div></div>
-        <div><label>Classement</label><select id="cf_classe"><option value="0">Non classé</option><option value="1">Meublé de tourisme classé</option></select></div>
-      </div>
-    </details>
-    </div>
-  </article>
-  <button class="voirRes" onclick="document.getElementById('cf_scen').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>
-
-  <div class="sect" data-revente><h3>Revente</h3><div class="grid">
-    <div><label>Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
-    <div><label>Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
+  <div class="carte sect" data-revente><h3>Revente</h3><div class="grid">
+    <div><label for="cf_moisRevente">Revente au bout de (mois)</label><input id="cf_moisRevente" type="number" min="1" max="120"></div>
+    <div><label for="cf_fraisRevente">Frais de revente (% du prix)</label><input id="cf_fraisRevente" type="number" min="0" step="0.5"></div>
   </div></div>
-  <div class="aide-simple seul-simple">Mode simple : les autres réglages (travaux, impôts, taux du crédit, charges…) gardent leurs valeurs. Passe en « Pro » en haut pour les voir.</div>
   <select id="cf_scenario" hidden><option value="louer">louer</option><option value="revendre">revendre</option></select>
   <button id="cf_reset">Remettre les valeurs par défaut</button>
+  </div>
+  <aside class="carte emprunt" id="cf_emprunt"><h2>Ce que tu empruntes</h2><div id="cf_empruntL"></div><button id="cf_tauxMarche">Mettre le taux du marché</button></aside>
+  </div>
+</section>
+<div class="apercu" id="cf_apercu"></div>
 </aside>
 
 <main>
   <div class="seg scen" id="cf_scen"><button data-v="louer">Garder et louer</button><button data-v="revendre">Revendre</button></div>
+  <div class="res-tete" id="cf_tete"></div>
+  <div id="cf_simple"></div>
   <div class="tiles" id="cf_tiles"></div>
   <div class="hint tiles-plus" id="cf_tilesPlus"></div>
-  <div id="cf_simple"></div>
   <div id="cf_alerts"></div>
   <div class="card" id="cf_bilan" hidden></div>
   <div class="card">
     <h2 id="cf_chartTitle">Cash-flow annuel après impôts</h2>
     <div class="chart" id="cf_chart"></div>
-    <div class="hint">Bleu : le bien rapporte plus qu'il ne coûte. Rouge : effort d'épargne à prévoir.</div>
+    <div class="hint">Vert : le bien rapporte plus qu'il ne coûte. Rouge : effort d'épargne à prévoir.</div>
   </div>
   <div class="card" id="cf_cible"><div id="cf_cibleRes"></div></div>
-  <details class="card" style="padding:14px 16px"><summary style="padding:0">Tableau année par année</summary><div class="scroll" id="cf_table"></div></details>
+  <details class="card"><summary>Tableau année par année</summary><div class="scroll" id="cf_table"></div></details>
   <div class="card"><h2>Sources et limites</h2>
     <ol class="srcs">
       <li><a href="https://www.weblex.fr/chiffres-cles/indice-du-taux-moyen-des-credits-immobiliers-annee-2024" target="_blank" rel="noopener">Observatoire Crédit Logement / CSA — taux moyens accordés par durée (historique 2023-2024)</a> ; <a href="https://www.meilleurtaux.com/credit-immobilier/actualites/2026-octobre/credit-immobilier-taux-a-3-40-et-durees-record.html" target="_blank" rel="noopener">septembre 2026 : 3,40 %, 3,39 % sur 20 ans</a>.</li>
@@ -844,21 +1018,19 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
     </ol>
     <div class="hint">Simulation indicative : la fiscalité réelle dépend de ta situation (autres revenus, déficits passés, statut des associés). À valider avec ton comptable ou ta banque.</div>
   </div>
-  <div class="card" id="cf_save"><h2>Enregistrer ce projet</h2>
-    <div id="cf_saveForm">
-      <div class="hint">Il rejoint l'onglet « Mes projets » : tu pourras le rouvrir, changer l'estimation ou le financement, et le comparer aux autres.</div>
-      <div class="saverow"><input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregNouveau" hidden>Enregistrer comme nouveau projet</button><button id="cf_enregBranche" hidden>Enregistrer comme nouvelle option</button></div>
-      <div id="cf_saveMsg" class="hint" role="status"></div>
-    </div>
-    <div id="cf_saveInvite" hidden>
-      <div class="hint">Connecte-toi pour enregistrer ce projet : il rejoint l'onglet « Mes projets », que tu retrouves sur tous tes appareils.</div>
-      <div class="saverow"><button class="cta" id="cf_connexion">Se connecter</button></div>
-    </div>
-  </div>
 </main>
 </div>
+<div class="cf-barre" id="cf_save"><div class="cf-barre-in">
+  <div id="cf_saveForm">
+    <input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregNouveau" hidden>Enregistrer comme nouveau projet</button><button id="cf_enregBranche" hidden>Enregistrer comme nouvelle option</button>
+    <div id="cf_saveMsg" role="status"></div>
+  </div>
+  <div id="cf_saveInvite" hidden><span class="invite">Connecte-toi pour enregistrer ce projet dans « Mes projets ».</span><button class="cta" id="cf_connexion">Se connecter</button></div>
+  <button id="cf_suivant">Étape suivante</button>
+</div></div>
 <div class="tip cftip" id="cf_tip"></div>
 </section>
+
 <section id="invest" hidden><div class="invwrap" id="inv"></div></section>
 <section id="projets" hidden><div class="invwrap" id="pj"></div></section>
 
@@ -2626,7 +2798,7 @@ function mettreSaison(sz) {
 const estOption = pr => !!(pr && pr.groupe && typeof branchesDe === 'function' && branchesDe(pr).length > 1);
 function barreProjet(pr) {
   const r = pr.resume || {};
-  return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}<button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
+  return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}`;
 }
 function sync(est, mode) {
   if (mode) figee = undefined;   // « Travaux + location » et autres : demande explicite, on applique le projet
@@ -2647,7 +2819,7 @@ function sync(est, mode) {
     majSauvegarde(pr);
     return rendre();
   }
-  bar.innerHTML = `<b>${est.label}</b> · ${est.type === 'appart' ? 'appartement' : 'maison'} de ${est.surf} m²${est.meuble ? ' meublé' : ''} · prix estimé <b>${eur(est.prix)}</b> · loyer estimé <b>${eur(est.loyer)}</b> hors charges/mois${est.saison ? `, en saisonnier <b>${eur(est.saison.nuit)}</b> la nuit (${est.saison.occupation} % d'occupation)` : ''}. <a href="#estimation">Modifier l'estimation</a><button class="voir" onclick="document.getElementById('cf_tiles').scrollIntoView({behavior: 'smooth'})">Voir les résultats ↓</button>`;
+  bar.innerHTML = `<b>${est.label}</b> · ${est.type === 'appart' ? 'appartement' : 'maison'} de ${est.surf} m²${est.meuble ? ' meublé' : ''} · prix estimé <b>${eur(est.prix)}</b> · loyer estimé <b>${eur(est.loyer)}</b> hors charges/mois${est.saison ? `, en saisonnier <b>${eur(est.saison.nuit)}</b> la nuit (${est.saison.occupation} % d'occupation)` : ''}. <a href="#estimation">Modifier l'estimation</a>`;
   let last = null;
   try { last = localStorage.getItem('cashflow-bien'); } catch (e) {}
   if (cle !== last) {
@@ -2712,6 +2884,7 @@ function avecAncienFormat(v) {
   return {...v, prixB2: somme('prix'), loyerB2: somme('loyer'), tfB2: somme('tf'), coproB2: somme('copro'), ouverts: {...(v.ouverts || {}), bien2: l.length > 0}};
 }
 let flags = {tauxManuel: false, comptaManuel: false, differeAuto: false};
+let l2Ouvert = false;   // ligne « Logement à part » ajoutée, loyer pas encore tapé
 const ouvert = k => $(BOXES[k]).open;
 function etat() {
   const v = {};
@@ -2747,6 +2920,17 @@ function afficherChamps() {
   $('loyerLib').textContent = ouvert('projet') ? 'Loyer après travaux (€/mois)' : 'Loyer hors charges (€/mois)';
   CF.querySelectorAll('#cf_scen button').forEach(b => b.classList.toggle('on', b.dataset.v === get('scenario')));
   $('titreBiens').textContent = biensPlus.length ? 'Les biens' : 'Le bien';
+  // Étape 2 : le tableau des loyers a une colonne par période quand il y a des travaux, une seule sinon
+  const travauxOn = ouvert('projet'), avecL2 = get('loyer2') > 0 || l2Ouvert;
+  $('loyers').classList.toggle('sans-travaux', !travauxOn);
+  $('colApresT').firstChild.textContent = travauxOn ? 'Après travaux' : 'Chaque mois';
+  $('rangL2').hidden = !avecL2; $('ajoutL2').hidden = avecL2;
+  $('nomL1').textContent = get('nomBien') || (biensPlus.length ? '1er bien' : 'Le bien');
+  $('quoiL1').textContent = travauxOn ? 'les travaux sont sur ce bien' : '';
+  $('carteCal').hidden = !(travauxOn || get('differe') > 0);
+  CF.querySelectorAll('#cf_travauxSeg button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === travauxOn));
+  CF.querySelectorAll('#cf_differeSeg button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === (get('differe') > 0)));
+  $('differeChamps').hidden = !(get('differe') > 0);
   $('bien1Quoi').textContent = `${get('type') === 'maison' ? 'Maison' : 'Appartement'}${get('surf') ? ` · ${fmt(get('surf'))} m²` : ''}`;
 }
 // Cartes des autres biens : refaites seulement quand on en ajoute ou en retire un (pas à chaque frappe)
@@ -2754,9 +2938,13 @@ function rendreBiens() {
   const champ = (b, k, l, pas) => `<div><label>${l}</label><input type="number" min="0" step="${pas}" data-k="${k}" value="${+b[k] || ''}"></div>`;
   $('biensPlus').innerHTML = biensPlus.map((b, i) => `<article class="bien-carte" data-i="${i}">
     <div class="bien-tete"><input class="nom-bien" type="text" data-k="nom" value="${esc(b.nom || '')}" placeholder="${i + 2}e bien" aria-label="Nom du bien"><button class="bien-x" data-a="retirerBien" aria-label="Retirer ce bien" title="Retirer ce bien">${CROIX_X}</button></div>
-    <div class="grid">${champ(b, 'prix', 'Prix (€)', 1000)}${champ(b, 'loyer', 'Loyer hors charges (€/mois)', 10)}${champ(b, 'tf', 'Taxe foncière (€/an)', 50)}${champ(b, 'copro', 'Copro non récupérable (€/an)', 50)}</div>
+    <div class="grid">${champ(b, 'prix', 'Prix d\'achat (€)', 1000)}${champ(b, 'tf', 'Taxe foncière (€/an)', 50)}${champ(b, 'copro', 'Copro non récupérable (€/an)', 50)}</div>
     <details class="plus-bien"><summary>Plus de détails</summary><div class="grid">${champ(b, 'surf', 'Surface (m²)', 1)}${champ(b, 'pno', 'Assurance PNO (€/an)', 10)}<div data-meuble${get('meuble') === '1' ? '' : ' hidden'}><label>Mobilier (€)</label><input type="number" min="0" step="500" data-k="mobilier" value="${+b.mobilier || ''}"></div></div></details>
   </article>`).join('');
+  const nomB = (b, i) => esc(b.nom || `${i + 2}e bien`);
+  $('loyersPlus').innerHTML = biensPlus.map((b, i) => `<tr data-i="${i}"><th><b data-nom>${nomB(b, i)}</b><small>même crédit, pas de travaux</small></th>
+    <td data-col="avant"><div class="calc-l" data-calc></div></td><td data-col="pendant"><div class="calc-l" data-calc></div></td>
+    <td data-col="apres"><input type="number" min="0" step="10" data-k="loyer" value="${+b.loyer || ''}" placeholder="pas loué" aria-label="Loyer de ${nomB(b, i)} (€/mois)"></td></tr>`).join('');
 }
 
 // ---------- Crédit ----------
@@ -2976,13 +3164,94 @@ function simuler() {
   const valeur = base * Math.pow(1 + p.gPrix / 100, horizon);
   // Loyers encaissés à la fin du différé : 1er loyer, 2e loyer s'il a commencé, et ceux des autres biens du même crédit
   const loyerDiffere = p.loyer + (p.differe - 1 >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2;
-  return {p, st, regime, notes, pret, apportEff, base, loyerDiffere, totalDiffere, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
+  return {p, st, regime, notes, pret, apportEff, base, loyerDiffere, totalDiffere, mois, finCredit, fraisNotaire, fraisGarantie, coutTotal, ech, annees, horizon, valeur, meuble, saison: sz};
 }
 
 // ---------- Affichage ----------
 const fmt = n => Math.round(n).toLocaleString('fr-FR');
 const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
 const pct = n => (n < 0 ? '−' : '') + Math.abs(n).toFixed(1).replace('.', ',') + ' %';
+
+// ---------- Étapes : ce qui se calcule sous les champs (calendrier, loyers par période, mensualités, emprunt) ----------
+const signe = n => (n < 0 ? '−' : '+') + fmt(Math.abs(n)) + ' €';
+const plage = (a, b) => b - a <= 1 ? `mois ${a + 1}` : `mois ${a + 1} à ${b}`;
+// Loyers encaissés un mois donné (sans vacance ni hausse) : les cases et les totaux du tableau de l'étape 2
+function loyerDuMois(p, m) {
+  const l1 = m >= p.debutLoc ? p.loyer : m < p.finAvant ? p.loyerAvant : 0, l2 = m >= p.debutLoc2 ? p.loyer2 : 0;
+  return {l1, l2, tot: l1 + l2 + p.loyerB2};
+}
+function calendrier(p, travauxOn) {
+  if (!travauxOn && !p.differe) return '';
+  const H = Math.max(24, Math.ceil((Math.max(p.differe, travauxOn ? p.finT : 0, p.debutPlein) + 12) / 12) * 12), w = n => (n / H * 100).toFixed(2) + '%';
+  const seg = (cls, a, b, long, court) => b > a ? `<div class="${cls}" style="width:${w(b - a)}" title="${long}">${(b - a) / H > 0.24 ? long : court}</div>` : '';
+  const barre = travauxOn
+    ? seg('ph-avant', 0, p.debutT, `Avant travaux · ${plage(0, p.debutT)}`, plage(0, p.debutT).replace('mois ', '')) + seg('ph-travaux', p.debutT, p.finT, `Travaux · ${plage(p.debutT, p.finT)}`, plage(p.debutT, p.finT).replace('mois ', ''))
+      + seg('ph-apres', p.finT, H, `Après travaux · dès le mois ${p.finT + 1}`, `dès ${p.finT + 1}`)
+    : seg('ph-apres', 0, H, 'Loué dès l\'achat', '');
+  const loin = p.differe / H > 0.6;
+  const diff = p.differe ? `<div class="cal-diff"><div class="acc" style="width:${w(p.differe)}"></div><div class="txt" style="left:0">Différé du crédit : ${plage(0, p.differe)}</div><div class="txt apres" style="${loin ? 'right:0' : `left:calc(${w(p.differe)} + 10px)`}">Mensualité pleine dès le mois ${p.differe + 1}</div></div>` : '';
+  return `<div class="cal-barre">${barre}</div>${diff}`;
+}
+function etapes(s) {
+  const p = s.p, travauxOn = p.projet !== 'simple', mens = s.ech.pmt + s.ech.assM;
+  $('calendrier').innerHTML = calendrier(p, travauxOn);
+  // Étape 2 : en-têtes des périodes, cases calculées et totaux
+  const apres = Math.max(p.finT, p.debutPlein), aucun = 'aucun mois';
+  $('colAvant').textContent = p.debutT ? plage(0, p.debutT) : aucun;
+  $('colPendant').textContent = p.dureeTravaux ? plage(p.debutT, p.finT) : aucun;
+  $('colApres').textContent = travauxOn ? `dès le mois ${p.finT + 1}` : '';
+  const avant = loyerDuMois(p, 0), pendant = loyerDuMois(p, p.debutT), plein = loyerDuMois(p, apres);
+  const montant = v => v > 0 ? eur(v) : 'pas loué';
+  $('pendant1').textContent = p.dureeTravaux ? montant(pendant.l1) : '—';
+  $('l2Avant').textContent = p.debutT ? montant(avant.l2) : '—';
+  $('l2Pendant').textContent = p.dureeTravaux ? montant(pendant.l2) : '—';
+  $('nuitL1').textContent = p.saison ? `≈ ${eur(p.loyer)} par mois à la nuitée` : '';
+  CF.querySelectorAll('#cf_loyersPlus [data-i]').forEach(tr => {
+    const b = biensPlus[+tr.dataset.i] || {}, i = +tr.dataset.i;
+    tr.querySelector('[data-nom]').textContent = b.nom || `${i + 2}e bien`;
+    tr.querySelectorAll('[data-calc]').forEach(c => c.textContent = montant(+b.loyer || 0));
+  });
+  $('totAvant').textContent = p.debutT ? eur(avant.tot) : '—';
+  $('totPendant').textContent = p.dureeTravaux ? eur(pendant.tot) : '—';
+  $('totApres').textContent = eur(plein.tot);
+  // Étape 3 : ce que tu paies chaque mois, période par période
+  const cas = (cls, t, v, d) => `<div class="${cls}"><span>${t}</span><b>${eur(v)}</b><small>${d}</small></div>`;
+  let per = '';
+  if (p.differe > 0) {
+    const d0 = s.ech.mensAvant != null ? s.ech.debloc : 0;
+    if (s.ech.mensAvant != null) per += cas('ph-avant', `${plage(0, d0).replace(/^m/, 'M')}`, s.ech.mensAvant, 'l\'argent des travaux n\'est pas encore versé');
+    per += cas(s.ech.mensAvant != null ? 'ph-travaux' : 'ph-avant', plage(d0, p.differe).replace(/^m/, 'M'), s.ech.mensDiff, p.typeDiff === 'total' ? 'assurance seulement, les intérêts s\'ajoutent au prêt' : 'intérêts et assurance sur tout le prêt');
+    per += cas('plein', `Dès le mois ${p.differe + 1}`, mens, 'mensualité pleine, assurance comprise');
+  } else per = cas('plein', 'Chaque mois', mens, `pendant ${p.duree} ans, assurance comprise`);
+  $('mensPeriodes').innerHTML = `<label style="margin-top:16px">Ce que tu paies chaque mois</label><div class="mens-per">${per}</div>`;
+  const coutCredit = s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie;
+  const mob = p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0, l = (k, v, c = '') => `<div class="l ${c}"><span>${k}</span><b>${v}</b></div>`;
+  const ac = s.p.projet === 'revente' ? null : anneeCroisiere(s);
+  $('chargesChip').textContent = ac ? `≈ ${eur(ac.charges / 12)} par mois` : '';
+  $('empruntL').innerHTML = l(p.deuxBiens ? `Prix des ${p.autres.length + 1} biens` : 'Prix d\'achat', eur(p.prix)) + l('Frais de notaire', eur(s.fraisNotaire))
+    + (p.travaux > 0 && travauxOn ? l('Travaux', eur(p.travaux)) : '') + (mob ? l('Mobilier', eur(mob)) : '') + (p.dossier + s.fraisGarantie > 0 ? l('Frais de dossier et garantie', eur(p.dossier + s.fraisGarantie)) : '')
+    + (s.apportEff > 0 ? l('Apport', '− ' + eur(s.apportEff)) : '') + l('Prêt', eur(s.pret), 'tot') + l('Coût du crédit', eur(coutCredit));
+}
+// Étape 4 : le résultat mois par mois, en périodes (avant, pendant, après les travaux ; pendant et après le différé)
+function phases(s) {
+  const p = s.p, travauxOn = p.projet === 'location', N = Math.max(p.differe, travauxOn ? p.finT : 0, p.debutPlein), out = [];
+  for (let m = 0; m < N; m++) {
+    const t = !travauxOn ? '' : m < p.debutT ? 'avant' : m < p.finT ? 'travaux' : 'apres', diff = m < p.differe, k = t + diff;
+    const x = s.mois[m], r = s.ech.rows[m] || {i: 0, cap: 0, ass: 0};
+    const v = {loyers: x.loyers, credit: r.i + r.cap + r.ass, charges: x.charges, impots: p.avecImpots ? s.annees[Math.floor(m / 12)].impots / 12 : 0};
+    const der = out[out.length - 1];
+    if (der && der.k === k) { der.fin = m + 1; for (const c in v) der[c] += v[c]; }
+    else out.push({k, t, diff, debut: m, fin: m + 1, ...v});
+  }
+  out.forEach(g => { const n = g.fin - g.debut; for (const c of ['loyers', 'credit', 'charges', 'impots']) g[c] /= n; g.reste = g.loyers - g.credit - g.charges - g.impots; });
+  return {liste: out, fin: N};
+}
+const TITRES_PH = {avant: 'Avant travaux', travaux: 'Pendant les travaux', apres: 'Après travaux'};
+function cartePhase(g, avecImpots) {
+  const l = (k, v) => `<div class="l"><span>${k}</span><b>${signe(v)}</b></div>`;
+  return `<div class="phase ${g.cls}"><div class="t">${g.titre}</div><div class="s">${g.sous}</div>${l('Loyers', g.loyers)}${l('Crédit', -g.credit)}${l('Charges', -g.charges)}${avecImpots ? l('Impôts', -g.impots) : ''}
+    <div class="l tot"><span>${g.reste < 0 ? 'Il te manque' : 'Il te reste'}</span><b class="${g.reste < 0 ? 'down' : 'up'}">${signe(g.reste)}</b></div></div>`;
+}
 
 function rendre() {
   afficherChamps();
@@ -2994,6 +3263,7 @@ function rendre() {
   $('fiscNote').textContent = s.st === 'is' ? 'IS 15 % jusqu\'à 42 500 € de bénéfice, 25 % au-delà ; amortissement du bâti sur 30 ans.' : '';
   const tm = tauxDuree(TAUX_ACTUEL, p.duree * 12);
   $('tauxHint').innerHTML = `Marché (${TAUX_ACTUEL.mois}, ${p.duree} ans) : <b>${tm.toFixed(2).replace('.', ',')} %</b>${p.struct !== 'np' ? ` · en SCI, +${SURPRIME_SCI.toFixed(1).replace('.', ',')} pt : <b>${(tm + SURPRIME_SCI).toFixed(2).replace('.', ',')} %</b>` : ''}`;
+  etapes(s);
   if (revente) return rendreRevente(s);
 
   // Année de référence : la première année pleine de location (le chantier et ses mois sans loyer faussent l'année 1)
@@ -3015,9 +3285,21 @@ function rendre() {
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
   $('tilesPlus').textContent = `Coût du crédit ${eur(coutCredit)} (intérêts, assurance, frais) · cash-flow moyen ${eur(cfMoyen)} par mois sur la durée du crédit${s.totalDiffere != null ? ` · ${s.totalDiffere < 0 ? '' : '+'}${eur(s.totalDiffere)} en tout pendant les ${p.differe} mois de différé, soit ${eur(s.totalDiffere / p.differe)} par mois en moyenne` : ''}.`;
 
+  // En tête : ce qu'il reste chaque mois une fois tout en place, et ce que rapporte le différé ; puis les périodes une par une
+  const ph = phases(s), td = s.totalDiffere;
+  $('tete').innerHTML = `<div class="fonce"><span>${ph.fin ? `Une fois tout en place, dès le mois ${ph.fin + 1}` : 'Chaque mois'}</span><b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}<em> par mois</em></b><small>${resteMois < 0 ? 'ce que tu sors de ta poche' : 'ce qu\'il te reste'}, ${p.avecImpots ? 'après' : 'avant'} impôts</small></div>`
+    + (td != null ? `<div><span>Pendant les ${p.differe} mois du différé</span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}<em> en tout</em></b><small>soit ${eur(td / p.differe)} par mois en moyenne</small></div>`
+      : `<div><span>Mensualité du crédit</span><b>${eur(mens)}</b><small>assurance comprise, sur ${p.duree} ans</small></div>`);
   $('simple').classList.remove('seul-simple');
-  $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
+  if (ph.liste.length) {
+    const cartes = ph.liste.map(g => cartePhase({...g, cls: g.t ? 'c-' + g.t : g.diff ? 'c-diff' : 'c-avant', titre: TITRES_PH[g.t] || (g.diff ? 'Pendant le différé' : 'Au début'),
+      sous: plage(g.debut, g.fin) + (g.t && g.diff ? ' · différé' : '')}, p.avecImpots));
+    cartes.push(cartePhase({loyers: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : 0, reste: resteMois,
+      cls: 'croisiere', titre: 'Rythme de croisière', sous: `dès le mois ${ph.fin + 1}${p.differe ? ' · mensualité pleine' : ''}`}, p.avecImpots));
+    $('simple').innerHTML = `<div class="card"><h2 class="phases-t">Mois par mois, en ${cartes.length} périodes</h2><div class="phases">${cartes.join('')}</div></div>`;
+  } else $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
     {titre: 'Un mois type', libLoyer: p.deuxBiens || p.loyer2 > 0 ? 'Loyers encaissés' : 'Loyer encaissé', note: `Moyenne par mois de l'année ${ac.y}${ac.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
+  $('apercu').innerHTML = `<span>Résultat : <b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}</b> par mois${ph.fin ? ` dès le mois ${ph.fin + 1}` : ''}</span>${td != null ? `<span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}</b> en tout pendant le différé</span>` : ''}<button data-voir>Voir le résultat</button>`;
   // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0);
@@ -3106,6 +3388,9 @@ function rendreRevente(s) {
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
   const nb = Math.round(b.net), lS = (l, v) => `<div class="bs-l"><span>${l}</span><b>${eur(v)}</b></div>`;
   $('simple').classList.add('seul-simple'); $('tilesPlus').textContent = '';
+  $('tete').innerHTML = `<div class="fonce"><span>Revendu au bout de ${b.n} mois</span><b class="${nb < 0 ? 'down' : 'up'}">${signe(nb)}<em> ${nb < 0 ? 'de perte' : 'de bénéfice'}</em></b><small>${p.avecImpots ? 'après' : 'avant'} impôt</small></div>`
+    + `<div><span>Effort pendant l'opération</span><b>${eur(b.sorties / b.n)}<em> par mois</em></b><small>mensualités et charges${b.loyers ? ', moins les loyers' : ''}</small></div>`;
+  $('apercu').innerHTML = `<span>Revente : <b class="${nb < 0 ? 'down' : 'up'}">${signe(nb)}</b> ${nb < 0 ? 'de perte' : 'de bénéfice'} au bout de ${b.n} mois</span><button data-voir>Voir le résultat</button>`;
   $('simple').innerHTML = `<div class="bilan-simple">${lS('Prix de revente', b.prixVente)}${lS('Coût du projet (achat, notaire, travaux)', b.coutAchat)}${lS('Effort par mois pendant l\'opération', b.sorties / b.n)}
     <div class="bs-l bs-total"><span>${nb < 0 ? 'Perte' : 'Bénéfice'}</span><b class="${nb > 0 ? 'up' : nb < 0 ? 'down' : ''}">${eur(Math.abs(nb))}</b></div>
     <p class="bs-phrase">${nb >= 0 ? `Revendu au bout de ${b.n} mois, ce projet te rapporte <b>${eur(nb)}</b>${p.avecImpots ? ' après impôt' : ''}.` : `Revendu au bout de ${b.n} mois, ce projet te fait perdre <b>${eur(-nb)}</b>.`} En attendant, prévois environ <b>${eur(b.sorties / b.n)}</b> par mois de mensualités et de charges.</p></div>`;
@@ -3359,7 +3644,7 @@ function restaurer(v, cleBien) {
   fixerBiensPlus(v.biensPlus);
   flags = {tauxManuel: false, comptaManuel: false, differeAuto: false, ...(v.flags || {})};
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
-  projetOuvert = ouvert('projet');
+  projetOuvert = ouvert('projet'); l2Ouvert = false;
   sciVoulue = v.sciExist || '';
   figee = cleEst(typeof estimationCourante === 'function' ? estimationCourante() : null);
   nomTouche = false;
@@ -3411,7 +3696,7 @@ $('enregBranche').onclick = () => {
   if (n) { enregistrerProjet(false, n); deplier(pr.groupe); }
 };
 $('form').addEventListener('input', e => {
-  const carte = e.target.closest('#cf_biensPlus [data-i]');
+  const carte = e.target.closest('#cf_biensPlus [data-i], #cf_loyersPlus [data-i]');
   if (carte) {   // un autre bien du même crédit
     const k = e.target.dataset.k;
     biensPlus[+carte.dataset.i][k] = k === 'nom' ? e.target.value : +e.target.value || 0;
@@ -3474,10 +3759,39 @@ $('biensPlus').addEventListener('click', e => {
   biensPlus.splice(+t.closest('[data-i]').dataset.i, 1); rendreBiens(); sauver(); rendre();
 });
 $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
+// Les 4 étapes : toujours le même ordre ; la dernière ouverte est gardée
+function etape(n) {
+  n = Math.min(4, Math.max(1, Math.round(+n) || 1));
+  const avant = CF.dataset.etape;
+  CF.dataset.etape = n;
+  CF.querySelectorAll('#cf_etapes button').forEach(b => { if (+b.dataset.etape === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+  $('suivant').hidden = n === 4;
+  $('suivant').textContent = n === 3 ? 'Voir le résultat' : 'Étape suivante';
+  try { localStorage.setItem('financer-etape', n); } catch (e) {}
+  if (avant !== String(n) && !CF.hidden) window.scrollTo({top: 0});
+}
+CF.querySelectorAll('#cf_etapes button').forEach(b => b.onclick = () => etape(b.dataset.etape));
+$('suivant').onclick = () => etape(+CF.dataset.etape + 1);
+$('apercu').addEventListener('click', e => { if (e.target.closest('[data-voir]')) etape(4); });
+// Travaux : l'interrupteur ouvre ou ferme la section (comptée seulement ouverte, comme avant)
+CF.querySelectorAll('#cf_travauxSeg button').forEach(b => b.onclick = () => { $('boxProjet').open = b.dataset.v === '1'; });
+CF.querySelectorAll('#cf_differeSeg button').forEach(b => b.onclick = () => {
+  const avec = b.dataset.v === '1'; if (avec === get('differe') > 0) return;
+  set('differe', avec ? (ouvert('projet') ? Math.min(36, Math.max(12, finChantier())) : 12) : 0);
+  flags.differeAuto = false; sauver(); rendre();
+});
+// Logement loué à part (le « 2e loyer ») : une ligne du tableau, ajoutée ou retirée
+$('ajoutL2').onclick = () => {
+  l2Ouvert = true;
+  if (ouvert('projet')) { set('debutLoyer2', finChantier() + 1); flags.debutL2Auto = true; }
+  rendre(); $('loyer2').focus();
+};
+$('retirerL2').onclick = () => { l2Ouvert = false; for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]); flags.debutL2Auto = false; sauver(); rendre(); };
+etape((() => { try { return localStorage.getItem('financer-etape'); } catch (e) { return 1; } })());
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {rendre, sync, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
 <script src="investissements.js?v=2f6549d8"></script>
@@ -3936,6 +4250,7 @@ function ouvrirProjet(id, vers) {
   const pr = PROJETS.liste.find(x => x.id === id); if (!pr) return;
   fixerProjet(id);
   CF_APP.restaurer(pr.finance, pr.bien);
+  if (vers === 'cashflow') CF_APP.etape(4);   // un projet rouvert : d'abord son résultat
   showTab(vers);
   if (vers === 'estimation' && pr.recherche) { reprendre(pr.recherche); setTimeout(() => map.invalidateSize(), 60); }
 }
