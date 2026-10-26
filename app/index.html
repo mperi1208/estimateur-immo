@@ -1835,11 +1835,17 @@ function renderWorks() {
     </div>
     ${marge < 0 ? '<div class="warnbox">Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : à envisager plutôt pour louer longtemps que pour revendre.</div>' : ''}
     ${passoire ? '<div class="range">DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.</div>' : ''}
-    <div class="row"><button class="cta" onclick="financerBien('location')">Travaux + location →</button><button class="cta" onclick="financerBien('revente')">Travaux + revente →</button></div>
+    ${boutonsProjet('Travaux')}
     <ol class="srcs"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}${mobilier ? `<li><a href="${SOURCES.mobilier[1]}" target="_blank" rel="noopener">${SOURCES.mobilier[0]}</a></li>` : ''}</ol>`;
   bind(); renderSynth();
 }
 
+// Estimation revue depuis un projet de Mes projets : les travaux deviennent une option de ce projet (pas un nouveau projet)
+function boutonsProjet(mot) {
+  const rv = typeof revueEnCours === 'function' && revueEnCours();
+  return rv ? `<div class="row"><button class="cta" id="w_option" onclick="ajouterOptionTravaux()">Ajouter comme option de « ${esc(rv.pr.nom)} » →</button></div>`
+    : `<div class="row"><button class="cta" onclick="financerBien('location')">${mot} + location →</button><button class="cta" onclick="financerBien('revente')">${mot} + revente →</button></div>`;
+}
 // --- Projets « diviser » et « aménager une surface en plus » ---
 // La valeur et le loyer de chaque logement obtenu viennent du moteur d'estimation (à sa propre surface : les petites
 // surfaces se vendent et se louent plus cher au m²). Calcul lancé par un bouton, gardé tant que rien ne change.
@@ -1914,7 +1920,7 @@ function projetSurface(el, niveau, question, z, surf) {
         ${mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${fmtK(mobilier)}</b></div>` : ''}`}
         <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
       </div>
-      <div class="row"><button class="cta" onclick="financerBien('location')">Projet + location →</button><button class="cta" onclick="financerBien('revente')">Projet + revente →</button></div>`;
+      ${boutonsProjet('Projet')}`;
   } else state.projet = null;
   el.innerHTML = `${question}${champs}</div>
     <div class="hint">${NIVEAUX[niveau].d}</div>
@@ -3331,6 +3337,21 @@ function enregistrerAmenagement(a) {
   PROJETS.ajouter(pr);
   return pr.id;
 }
+// Projet de travaux d'Estimer appliqué au 1er bien d'un financement enregistré (nouvelle option d'un projet) : le reste
+// (autres biens, crédit, apport) ne change pas ; le bien reste loué au loyer d'avant tant que le chantier n'a pas commencé
+function avecTravaux(v, pj, loyerEstime) {
+  v = {...SANS_LOYER2, ...SANS_SAISON, ...SANS_DEBUT, nomBien: '', ...migrerFinance(v)};
+  const [l1, ...autres] = pj.loyers && pj.loyers.length > 1 ? pj.loyers : [pj.loyerApres], l2 = autres.reduce((t, x) => t + x, 0);
+  const lot = pj.niveau === 'amenager' && l2 > 0, agrandi = pj.niveau === 'amenager' && !l2, avant = +v.loyer || loyerEstime;
+  Object.assign(v, {scenario: 'louer', travaux: pj.travaux, valeurApres: pj.valeurApres, dureeTravaux: pj.duree, travauxCredit: true, loyer: l1,
+    loyerAvant: lot || !(agrandi || pj.niveau === 'diviser') ? '' : avant, loueChantier: agrandi,
+    ...(l2 ? {loyer2: l2, debutLoyer2: pj.duree + 1, debutLoyer1: lot ? 1 : ''} : {}),
+    ...(pj.meuble ? {meuble: '1', mobilier: (+v.mobilier || 0) + (pj.mobilier || 0)} : {})});
+  if ((+v.differe || 0) < pj.duree) { v.differe = Math.min(36, pj.duree); v.typeDiff = 'partiel'; }
+  v.ouverts = {...(v.ouverts || {}), projet: true};
+  v.flags = {...(v.flags || {}), differeAuto: false, debutL2Auto: !!l2 && !lot};
+  return avecAncienFormat(v);
+}
 // Rouvre un projet : champs, sections ouvertes et réglages comme à l'enregistrement
 function restaurer(v, cleBien) {
   v = {...SANS_LOYER2, ...SANS_SAISON, ...SANS_DEBUT, nomBien: '', ...migrerFinance(v)};
@@ -3456,7 +3477,7 @@ $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxCons
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {rendre, sync, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
 <script src="investissements.js?v=2f6549d8"></script>
@@ -3802,6 +3823,22 @@ function nouvelleBranche(id) {
   if (pr.regroupe) { copie.estimations = rechercheRegroupees(pr).map(x => x && x.recherche); delete copie.regroupe; delete copie.regroupeV; }
   deplier(copie.groupe);
   PROJETS.ajouter(copie);
+  ouvrirProjet(copie.id, 'cashflow');
+}
+// Depuis Estimer (estimation revue d'un projet) : copie de cette option avec le projet de travaux, ouverte dans Financer
+function ajouterOptionTravaux() {
+  const rv = revueEnCours(), pj = state.projet; if (!rv || !pj) return;
+  if (estRevue.n) { majSauveEst('Les travaux se règlent sur le 1er bien du projet : ouvre une option dans Financer pour les saisir.'); return; }
+  const bs = branchesDe(rv.pr), src = rv.pr;   // l'option dont on a revu l'estimation
+  const n = (prompt('Nom de la nouvelle option :', 'Option ' + (bs.length + 1)) || '').trim(); if (!n) return;
+  const copie = {...JSON.parse(JSON.stringify(src)), id: nouvelId(), groupe: assurerGroupe(src), branche: n, maj: Date.now(), quand: new Date().toISOString()};
+  delete copie.nomAvant;
+  if (src.regroupe) { copie.estimations = rechercheRegroupees(src).map(x => x && x.recherche); delete copie.regroupe; delete copie.regroupeV; }
+  copie.finance = CF_APP.avecTravaux(copie.finance, pj, Math.round(state.loyerHC || 0));
+  copie.resume = {...copie.resume, ...CF_APP.recalculer(copie.finance, copie)};
+  deplier(copie.groupe);
+  PROJETS.ajouter(copie);
+  estRevue = null;
   ouvrirProjet(copie.id, 'cashflow');
 }
 function sortirBranche(x) {

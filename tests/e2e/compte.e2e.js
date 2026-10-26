@@ -513,6 +513,34 @@ test('Estimer : « Enregistrer mon estimation » range l\'estimation dans Mes pr
   assert.equal(await onglet(), 'estimation');                        // on reste sur Estimer
 });
 
+test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option du même projet, pas comme nouveau projet', async () => {
+  const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
+  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(id => document.querySelector(`#pj [data-id="${id}"] [data-a="estimer"], #pj [data-a="estimer"][data-id="${id}"]`).click(), pr.id);
+  await page.waitForFunction(() => document.body.dataset.onglet === 'estimation' && state.loyerHC);
+  await page.selectOption('#w_niveau', 'diviser');
+  await page.click('#w_calc');
+  await page.waitForFunction(() => state.projet && state.projet.lots === 2, null, {timeout: 40000});
+  const pj = await page.evaluate(() => state.projet), nb = await page.evaluate(() => PROJETS.liste.length);
+  assert.match(await page.locator('#w_option').innerText(), /option de « Estimation 52 m² »/i);
+  await page.evaluate(() => { window.promptAvant = window.prompt; window.prompt = () => 'Division'; });
+  await page.click('#w_option');
+  await page.evaluate(() => { window.prompt = window.promptAvant; });
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  const opt = await page.evaluate(() => PROJETS.liste.find(x => x.branche === 'Division'));
+  assert.equal(await page.evaluate(() => PROJETS.liste.length), nb + 1);
+  assert.equal(opt.nom, 'Estimation 52 m²'); assert.equal(opt.groupe, (await page.evaluate(id => PROJETS.liste.find(x => x.id === id), pr.id)).groupe);
+  assert.equal(opt.finance.travaux, pj.travaux); assert.equal(+opt.finance.loyerAvant, +pr.finance.loyer);
+  assert.equal(opt.finance.loyer, pj.loyers[0]); assert.equal(opt.finance.loyer2, pj.loyers[1]);
+  assert.equal(+await page.inputValue('#cf_loyer2'), pj.loyers[1]);
+  await page.fill('#cf_debutTravaux', '25'); await page.dispatchEvent('#cf_debutTravaux', 'input');
+  assert.equal(+await page.inputValue('#cf_debutLoyer2'), 24 + pj.duree + 1);
+  // Rangement pour les tests suivants : option retirée, projet refermé
+  await page.evaluate(() => { const o = PROJETS.liste.find(x => x.branche === 'Division'); PROJETS.supprimer(o.id); deplier(o.groupe, false); fixerProjet(null); });
+  await page.click('.tabs [data-tab="estimation"]');
+  await page.selectOption('#w_niveau', 'non');
+});
+
 test('Mes projets : deux projets financés par un seul crédit', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#works button.cta');
