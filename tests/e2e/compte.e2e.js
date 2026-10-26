@@ -676,7 +676,7 @@ test('logement de la famille : à part du cash-flow locatif (tuiles, carte, mode
   assert.doesNotMatch(await page.locator('#inv .kpis.six').innerText(), /Logement famille/i);
 });
 
-test('Mes projets : branches d\'un même projet (regroupées, comparées, ajoutées, sorties, regroupement défait)', async () => {
+test('Mes projets : options d\'un même projet (regroupées, comparées, ajoutées, sorties, regroupement défait)', async () => {
   await page.evaluate(() => { window.promptAvant = window.prompt; window.prompt = (m, d) => d; });   // noms proposés acceptés
   await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#works button.cta');
@@ -695,7 +695,7 @@ test('Mes projets : branches d\'un même projet (regroupées, comparées, ajout�
   assert.equal(r.v, 7); assert.ok(r.patrimoine > 0 && r.coutCredit > 0 && r.horizon > 0, 'patrimoine et coût du crédit dans le résumé');
   const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
   const ids = [await id('Gaetano division'), await id('Gaetano garage')];
-  // « Regrouper en branches » : les deux sont proposés ensemble (même nom), cochés, puis regroupés sous un nom
+  // « Regrouper des projets » : les deux sont proposés ensemble (même nom), cochés, puis regroupés sous un nom
   await page.click('.tabs [data-tab="projets"]');
   await page.click('#pj .actions [data-a="branches"]');
   const coches = await page.evaluate(() => [...document.querySelectorAll('#pj_branches .pj-coches input:checked')].map(x => x.value));
@@ -705,14 +705,18 @@ test('Mes projets : branches d\'un même projet (regroupées, comparées, ajout�
   await page.click('#pj [data-a="brRegrouper"]');
   const carte = page.locator('#pj .pj-groupe', {hasText: 'San Gaetano'});
   await carte.waitFor();
-  const division = carte.locator('.pj-br', {has: page.locator('h4', {hasText: /^Division/i})}), garage = carte.locator('.pj-br', {has: page.locator('h4', {hasText: /^Garage/i})});
-  assert.deepEqual((await carte.locator('.pj-br h4').allTextContents()).map(x => x.trim()), ['Division', 'Garage la meilleure']);
-  c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'branches dans le compte');
-  // L'arbre : ce qui ne change pas une fois, puis dans chaque branche ce qui change et ce qu'il reste
+  // Une colonne par option : ses boutons (⋯ et Modifier) au pied du tableau
+  const col = async n => carte.locator('.pj-opt-act').nth((await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents()).indexOf(n));
+  assert.deepEqual(await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents(), ['Division', 'Garage']);
+  assert.match(await carte.locator('.pj-opts thead th.best').innerText(), /Garage\s*La meilleure/i);
+  c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'options dans le compte');
+  // Le petit arbre, ce qui ne change pas une fois, puis le tableau : il te reste en gros (écart avec la meilleure) et ce qui change
+  assert.match(await carte.locator('.pj-arbre').innerText(), /San Gaetano\s+Division\s+Garage/);
   assert.match(await carte.locator('.pj-fixe').innerText(), /crédit[\s\S]*apport 20\s000 €/i);
-  assert.match(await division.locator('.pj-change').innerText(), /prix 200\s000 €/i);
-  assert.match(await garage.locator('.pj-res').innerText(), /Il te reste 73 € par mois/i);
-  assert.match(await division.locator('.pj-res').innerText(), /−526 €\/mois par rapport à la meilleure/i);
+  const rangee = k => carte.locator('.pj-opts tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
+  assert.match(await rangee('Il te reste par mois').innerText(), /−453 €\s+526 € de moins\s+73 €/);
+  assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
+  assert.equal(await rangee('Mensualité du crédit').count(), 1);
   // Tableau détaillé : meilleur chiffre et écart
   await carte.locator('[data-a="comparerBranches"]').click();
   const cmp = carte.locator('.pj-compare');
@@ -727,35 +731,35 @@ test('Mes projets : branches d\'un même projet (regroupées, comparées, ajout�
   // Replié sur une ligne (nom, branches, meilleure), gardé sur l'appareil ; « Tout déplier » le rouvre
   await carte.locator('.pj-plier-zone').click();
   await page.locator('#pj .pj-groupe.replie', {hasText: 'San Gaetano'}).waitFor();
-  assert.equal(await carte.locator('.pj-br').count(), 0);
-  assert.match(await carte.innerText(), /2 branches[\s\S]*Meilleure : Garage, il te reste 73 € par mois/i);
+  assert.equal(await carte.locator('.pj-opt-act').count(), 0);
+  assert.match(await carte.innerText(), /2 options[\s\S]*La meilleure : Garage, il te reste 73 € par mois/i);
   assert.ok(!(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-deplies') || '[]'))).length, 'replié gardé');
   await page.click('#pj .actions [data-a="toutPlier"]');
-  await carte.locator('.pj-br').first().waitFor();
+  await carte.locator('.pj-opt-act').first().waitFor();
   assert.match(await page.locator('#pj .actions [data-a="toutPlier"]').innerText(), /Tout replier/i);
-  // Nouvelle branche à partir d'une autre : ouverte dans Financer, modifiée, enregistrée dans le projet
-  await division.locator('.pj-menu summary').click();
-  await division.locator('[data-a="brNouvelle"]').click();
+  // Nouvelle option à partir d'une autre : ouverte dans Financer, modifiée, enregistrée dans le projet
+  await (await col('Division')).locator('.pj-menu summary').click();
+  await (await col('Division')).locator('[data-a="brNouvelle"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
-  assert.match(await page.locator('#cf_bien').innerText(), /branche Branche 3/i);
+  assert.match(await page.locator('#cf_bien').innerText(), /option Option 3/i);
   await saisir(page, '#cf_loyer', 1900);
   await page.click('#cf_enreg');
-  c = await attendreCompte(c => (c.projets.find(x => x.branche === 'Branche 3') || {finance: {}}).finance.loyer === 1900, 'nouvelle branche enregistrée');
-  // Depuis Financer : « Enregistrer comme nouvelle branche »
+  c = await attendreCompte(c => (c.projets.find(x => x.branche === 'Option 3') || {finance: {}}).finance.loyer === 1900, 'nouvelle option enregistrée');
+  // Depuis Financer : « Enregistrer comme nouvelle option »
   await saisir(page, '#cf_loyer', 700);
   await page.click('#cf_enregBranche');
-  c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano').length === 4, 'branche ajoutée depuis Financer');
-  assert.equal(c.projets.find(x => x.branche === 'Branche 4').finance.loyer, 700);
-  assert.equal(c.projets.find(x => x.branche === 'Branche 3').finance.loyer, 1900);
+  c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano').length === 4, 'option ajoutée depuis Financer');
+  assert.equal(c.projets.find(x => x.branche === 'Option 4').finance.loyer, 700);
+  assert.equal(c.projets.find(x => x.branche === 'Option 3').finance.loyer, 1900);
   await page.click('.tabs [data-tab="projets"]');
-  assert.equal(await carte.locator('.pj-br').count(), 4);
+  assert.equal(await carte.locator('.pj-opt-act').count(), 4);
   assert.equal(await carte.locator('.pj-compare thead th').count(), 5);
-  assert.match(await carte.locator('.pj-compare').innerText(), /« Branche 3 » te laisse le plus par mois/i);
-  // Sortir une branche : elle redevient un projet à part avec son nom d'avant
-  await garage.locator('.pj-menu summary').click();
-  await garage.locator('[data-a="brSortir"]').click();
+  assert.match(await carte.locator('.pj-compare').innerText(), /« Option 3 » te laisse le plus par mois/i);
+  // Sortir une option : elle redevient un projet à part avec son nom d'avant
+  await (await col('Garage')).locator('.pj-menu summary').click();
+  await (await col('Garage')).locator('[data-a="brSortir"]').click();
   await page.locator('#pj article.pj', {hasText: 'Gaetano garage'}).waitFor();
-  assert.equal(await carte.locator('.pj-br').count(), 3);
+  assert.equal(await carte.locator('.pj-opt-act').count(), 3);
   // Défaire le regroupement : chacun redevient un projet
   await carte.locator('.pj-gr-actions .pj-menu summary').click();
   await carte.locator('[data-a="grDefaire"]').click();
