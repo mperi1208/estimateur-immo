@@ -740,13 +740,16 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.click('#pj [data-a="brRegrouper"]');
   const carte = page.locator('#pj .pj-groupe', {hasText: 'San Gaetano'});
   await carte.waitFor();
-  // Une colonne par option : ses boutons (⋯ et Modifier) au pied du tableau
+  // Une carte par option : ses boutons (⋯ et Ouvrir) en bas de la carte, dans le même ordre que les colonnes du tableau
   const col = async n => carte.locator('.pj-opt-act').nth((await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents()).indexOf(n));
+  assert.deepEqual(await carte.locator('.pj-carte h4.pj-opt-nom').allTextContents(), ['Division', 'Garage']);
+  assert.match(await carte.locator('.pj-carte.best').innerText(), /La meilleure[\s\S]*Garage[\s\S]*Chaque mois/i);
+  assert.match(await carte.locator('.pj-carte', {hasText: 'Division'}).innerText(), /de moins que la meilleure/i);
   assert.deepEqual(await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents(), ['Division', 'Garage']);
   assert.match(await carte.locator('.pj-opts thead th.best').innerText(), /Garage\s*La meilleure/i);
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'options dans le compte');
-  // Le petit arbre, ce qui ne change pas une fois, puis le tableau : il te reste en gros (écart avec la meilleure) et ce qui change
-  assert.match(await carte.locator('.pj-arbre').innerText(), /San Gaetano\s+Division\s+Garage/);
+  // Les tuiles (biens et crédit), puis le tableau : il te reste en gros (écart avec la meilleure) et ce qui change
+  assert.match(await carte.locator('.pj-tuiles').innerText(), /change selon l'option/i);
   assert.match(await carte.locator('.pj-fixe').innerText(), /crédit[\s\S]*apport 20\s000 €/i);
   const rangee = k => carte.locator('.pj-opts tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
   assert.match(await rangee('Il te reste par mois').innerText(), /−453 €\s+526 € de moins\s+73 €/);
