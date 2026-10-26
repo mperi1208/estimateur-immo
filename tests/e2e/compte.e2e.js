@@ -203,7 +203,7 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   const carte = page.locator('#pj .pj', {hasText: 'Sous-sol · Studio Test'});
   await carte.waitFor();
   const txt = await carte.innerText();                              // la carte dans Mes projets : travaux saisis, recettes à la nuitée
-  assert.match(txt, /saisonnier/i); assert.match(txt, /42\s000 €/); assert.match(txt, /80 € la nuit, 60 % d'occupation/);
+  assert.match(txt, /saisonnier/i); assert.match(txt, /42\s000 €/); assert.match(txt, /Il te (reste|manque) par mois/i); assert.doesNotMatch(txt, /la nuit, 60 % d'occupation/);   // carte simple : le détail est dans Financer
   await carte.locator('.pj-menu summary').click();                // actions rares derrière « ⋯ »
   await carte.locator('[data-a="fiche"]').click();                 // « Voir la fiche » ramène dans Mon patrimoine
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && /^Sous-sol/.test((document.getElementById('inv_titre') || {}).textContent));
@@ -798,11 +798,13 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {}).branche === 'Division', 'nom remis');
   await page.click('.tabs [data-tab="projets"]');
-  // Replié sur une ligne (nom, branches, meilleure), gardé sur l'appareil ; « Tout déplier » le rouvre
+  // Replié : nom, nombre d'options, les autres en petit et la meilleure en gros ; gardé sur l'appareil ; « Tout déplier » le rouvre
   await carte.locator('.pj-plier-zone').click();
   await page.locator('#pj .pj-groupe.replie', {hasText: 'San Gaetano'}).waitFor();
   assert.equal(await carte.locator('.pj-opt-act').count(), 0);
-  assert.match(await carte.innerText(), /2 options[\s\S]*La meilleure : Garage, il te reste 73 € par mois/i);
+  assert.match(await carte.locator('.pj-sous').innerText(), /^2 options/);
+  assert.match(await carte.locator('.pj-r-best').innerText(), /La meilleure option\s*Garage\s*\+73 €\s*il te reste, par mois/i);
+  assert.equal(await carte.locator('.pj-r-opt').count(), 1);
   assert.ok(!(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-deplies') || '[]'))).length, 'replié gardé');
   await page.click('#pj .actions [data-a="toutPlier"]');
   await carte.locator('.pj-opt-act').first().waitFor();
