@@ -131,6 +131,8 @@ summary{cursor:pointer;font-weight:600;padding:8px 0 2px}
 .synth{margin-top:16px}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .kpis.deux{grid-template-columns:repeat(2,1fr)}
+.kpis.trois{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:640px){.kpis.trois{grid-template-columns:1fr}}
 .kpi{background:var(--accent-soft);border-radius:12px;padding:10px 12px;min-width:0}
 .kpi .k{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .kpi .v{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -816,18 +818,38 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 .tabs .mode button{border:0;padding:5px 11px;font-size:12px;font-weight:600;color:#c9d2de;background:none;border-radius:8px;height:auto}
 .tabs .mode button[aria-pressed="true"]{background:#fff;color:var(--ink)}
 @media (max-width:520px){.tabs .mode button{padding:3px 7px}}
-.bilan-simple{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 14px}
-.bilan-simple .bs-l{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:15px;font-variant-numeric:tabular-nums}
-.bilan-simple .bs-l span{color:var(--muted)}
+.bilan-simple{background:var(--panel);border:2px solid var(--ink);border-radius:16px;padding:18px 20px;margin:0 0 14px}
+.bilan-simple .bs-titre{font-weight:700;color:var(--muted);font-size:14px}
+.bilan-simple .bs-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 10px;margin:2px 0}
+.bilan-simple .bs-total span{font-size:20px;font-weight:700}
+.bilan-simple .bs-total b{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.15;white-space:nowrap}
+.bilan-simple .bs-note{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.bilan-simple .bs-barres{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 12px;margin:14px 0 6px;font-size:12px;color:var(--muted)}
+.bilan-simple .bs-pile{display:flex;height:14px;border-radius:99px;overflow:hidden;background:#E8ECF2}
+.bilan-simple .bs-pile i{display:block;height:100%}
+.bilan-simple :is(.bs-pile, .bs-l) .bs-loyer{background:var(--accent)}
+.bilan-simple :is(.bs-pile, .bs-l) .bs-credit{background:var(--ink)}
+.bilan-simple :is(.bs-pile, .bs-l) .bs-charges{background:#7A8AA3}
+.bilan-simple :is(.bs-pile, .bs-l) .bs-impots{background:#C2620C}
+.bilan-simple .bs-lignes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 24px}
+.bilan-simple .bs-l{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:15px;font-variant-numeric:tabular-nums}
+.bilan-simple .bs-l > i{flex:0 0 11px;width:11px;height:11px;border-radius:3px}
+.bilan-simple .bs-l span{flex:1;color:#344054}
+.bilan-simple .bs-l small{display:block;font-size:12px;color:var(--muted)}
 .bilan-simple .bs-l b{white-space:nowrap}
-.bilan-simple .bs-total{border-top:2px solid var(--line);margin-top:4px;padding-top:9px;font-size:19px;font-weight:700}
-.bilan-simple .bs-total span{color:var(--ink)}
 .bilan-simple .up{color:var(--good)} .bilan-simple .down{color:var(--bad)}
-.bilan-simple .bs-phrase{margin:8px 0 0;font-size:14px}
-.bilan-simple .bs-note{margin:4px 0 0;font-size:12px;color:var(--muted)}
-.bilan-simple.compact{border:0;padding:0;margin:10px 0 0;background:none}
-.bilan-simple.compact .bs-l{font-size:14px;padding:3px 0}
-.bilan-simple.compact .bs-total{font-size:16px}
+.bilan-simple .bs-phrase{margin:8px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:14px}
+.bilan-simple .bs-l.bs-total{border-top:2px solid var(--line);margin-top:4px;padding-top:9px;flex-wrap:nowrap}
+.bilan-simple .bs-l.bs-total span{font-size:17px;color:var(--ink)}
+.bilan-simple .bs-l.bs-total b{font-size:20px}
+.bilan-simple.compact{border:0;padding:0;margin:10px 0 0;background:none;border-radius:0}
+.bilan-simple.compact .bs-total span{font-size:15px}
+.bilan-simple.compact .bs-total b{font-size:24px}
+.bilan-simple.compact .bs-barres{margin:8px 0 2px}
+.bilan-simple.compact .bs-pile{height:9px}
+.bilan-simple.compact .bs-lignes{grid-template-columns:1fr}
+.bilan-simple.compact .bs-l{font-size:14px;padding:2px 0}
+.bilan-simple.compact .bs-phrase{border:0;padding-top:0;margin-top:4px}
 .pj-simple-prix{font-size:14px;margin:10px 0 0}
 body.discret #pj .pj-simple-prix b{filter:blur(7px)}
 .aide-simple{font-size:13px;color:var(--muted);margin:0 0 12px}
@@ -835,6 +857,16 @@ body:not(.simple) .seul-simple{display:none}
 body.simple .seul-pro{display:none}
 body.simple #cf :is(.plus-bien, #cf_reset, #cf_alerts, #cf_bilan, #cf_tiles, #cf_tilesPlus, .card:has(#cf_chart), details.card, .card:has(.srcs), #cf_boxDetail, #cf_boxImpots, #cf_boxEvol, #cf_boxCharges){display:none}
 body.simple #estim details.plus{display:none}
+body.simple #cf_tete.revente{display:none}
+#inv details.fiche-detail > summary{display:none}
+body.simple #inv details.fiche-detail{margin-top:14px;border:0;padding:0;background:none}
+.invwrap .pj-c-gros b em{display:block;font-style:normal;font-size:14px;font-weight:700}
+.invwrap .pj-carte .pj-c-bilan{margin:0}
+.invwrap .pj-carte .pj-c-bilan .bs-l{font-size:13px}
+body.simple #inv details.fiche-detail > summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;font-weight:700}
+body.simple #inv details.fiche-detail > summary::before{content:'▸';color:var(--muted)}
+body.simple #inv details.fiche-detail[open] > summary{margin-bottom:14px}
+body.simple #inv details.fiche-detail[open] > summary::before{content:'▾'}
 body.simple #invest .pli[data-pli="orga"], body.simple #invest .bloc:has(#inv_renta){display:none}
 body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 </style>
@@ -1110,26 +1142,40 @@ try { MODE = localStorage.getItem('mode-affichage') === 'simple' ? 'simple' : 'p
 const modeSimple = () => MODE === 'simple';
 const eurS = n => (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
 // x : montants par mois {loyer, credit, charges, impots (facultatif), reste (facultatif : loyer − crédit − charges − impôts)}
+// En tête, en gros : ce qu'il reste (ou manque) ; puis deux barres (ce qui rentre, ce qui sort) et le détail ligne par ligne.
+// o : {titre, libLoyer, detailLoyer (ex. « 682 € moins ½ mois vide par an »), note, compact, plusieurs, sansPhrase, sansTete (le chiffre est déjà en gros au-dessus), cls}
 function bilanSimple(x, o = {}) {
   const loyer = x.loyer || 0, credit = x.credit || 0, charges = x.charges || 0, impots = x.impots || 0;
   const reste = x.reste != null ? x.reste : loyer - credit - charges - impots;
   const r = Math.round(reste), cls = r > 0 ? 'up' : r < 0 ? 'down' : '';
   // Montant signé : + ce qui rentre, − ce qui sort
-  const ligne = (l, v) => `<div class="bs-l"><span>${l}</span><b>${Math.round(v) > 0 ? '+ ' : Math.round(v) < 0 ? '− ' : ''}${eurS(Math.abs(v))}</b></div>`;
-  return `<div class="bilan-simple${o.compact ? ' compact' : ''}">${o.titre ? `<div class="bs-l bs-titre"><b>${o.titre}</b></div>` : ''}
-    ${ligne(o.libLoyer || 'Loyer', loyer)}${ligne('Mensualité du crédit', -credit)}${ligne('Charges (taxe foncière, copro…)', -charges)}
-    ${x.impots != null ? ligne(impots < 0 ? 'Impôts (économie)' : 'Impôts', -impots) : ''}
-    <div class="bs-l bs-total"><span>${r < 0 ? 'Il te manque' : 'Il te reste'}</span><b class="${cls}">${eurS(Math.abs(r))} par mois</b></div>
-    ${o.sansPhrase ? '' : `<p class="bs-phrase">${phraseSimple(loyer, credit, r, o.plusieurs)}</p>`}${o.note ? `<p class="bs-note">${o.note}</p>` : ''}</div>`;
+  const ligne = (c, l, v, d) => `<div class="bs-l"><i class="bs-${c}"></i><span>${l}${d ? `<small>${d}</small>` : ''}</span><b>${Math.round(v) > 0 ? '+ ' : Math.round(v) < 0 ? '− ' : ''}${eurS(Math.abs(v))}</b></div>`;
+  // Barres à la même échelle : la plus longue des deux fait toute la largeur
+  const entre = loyer + Math.max(0, -impots), sort = credit + charges + Math.max(0, impots), max = Math.max(entre, sort, 1);
+  const w = v => `${Math.max(0, v / max * 100).toFixed(1)}%`;
+  const barres = entre || sort ? `<div class="bs-barres" aria-hidden="true"><span>Ce qui rentre</span><div class="bs-pile"><i class="bs-loyer" style="width:${w(entre)}"></i></div>
+      <span>Ce qui sort</span><div class="bs-pile"><i class="bs-credit" style="width:${w(credit)}"></i><i class="bs-charges" style="width:${w(charges)}"></i>${impots > 0 ? `<i class="bs-impots" style="width:${w(impots)}"></i>` : ''}</div></div>` : '';
+  return `<div class="bilan-simple${o.compact ? ' compact' : ''}${o.cls ? ' ' + o.cls : ''}">
+    ${o.sansTete ? '' : `<div class="bs-tete">${o.titre ? `<div class="bs-titre">${o.titre}</div>` : ''}<div class="bs-total"><span>${r < 0 ? 'Il te manque' : 'Il te reste'}</span> <b class="${cls}">${eurS(Math.abs(r))} par mois</b></div>${o.note ? `<p class="bs-note">${o.note}</p>` : ''}</div>`}
+    ${barres}<div class="bs-lignes">${ligne('loyer', o.libLoyer || 'Loyer', loyer, o.detailLoyer)}${ligne('credit', 'Mensualité du crédit', -credit)}${ligne('charges', 'Charges (taxe foncière, copro…)', -charges)}
+    ${x.impots != null ? ligne('impots', impots < 0 ? 'Impôts (économie)' : 'Impôts', -impots) : ''}</div>
+    ${o.sansPhrase ? '' : `<p class="bs-phrase">${phraseSimple(loyer, credit, r, o.plusieurs)}</p>`}</div>`;
 }
+// Une phrase, sans redire le montant affiché en gros : quelle part du crédit le loyer paie
 function phraseSimple(loyer, credit, reste, plusieurs) {
-  const couvre = loyer > 0 && credit > 0 ? ` ${plusieurs ? 'Les loyers paient' : 'Le loyer paie'} <b>${Math.round(loyer / credit * 100)} %</b> ${plusieurs ? 'des mensualités' : 'de la mensualité'}.` : '';
-  const sujet = plusieurs ? 'tes biens te' : 'ce bien te', le = plusieurs ? 'Les loyers' : 'Le loyer';
+  const le = plusieurs ? 'Les loyers' : 'Le loyer', paie = plusieurs ? 'paient' : 'paie';
   if (!loyer && !credit && !reste) return 'Pas de loyer ni de crédit pour l\'instant.';
-  if (!loyer) return `Pas de loyer : ${sujet} ${plusieurs ? 'coûtent' : 'coûte'} <b>${eurS(-reste)}</b> par mois${credit ? ', crédit compris' : ''}.`;
-  if (Math.abs(reste) < 5) return `${le} ${plusieurs ? 'paient' : 'paie'} tout juste ${credit ? 'le crédit et ' : ''}les charges.` + couvre;
-  if (reste > 0) return `Une fois ${credit ? 'le crédit et les charges payés' : 'les charges payées'}, ${sujet} ${plusieurs ? 'rapportent' : 'rapporte'} <b>${eurS(reste)}</b> par mois.` + couvre;
-  return `${le} ne ${plusieurs ? 'suffisent' : 'suffit'} pas : il faut ajouter <b>${eurS(-reste)}</b> par mois de ta poche.` + couvre;
+  if (!loyer) return `Pas de loyer : tout sort de ta poche${credit ? ', crédit compris' : ''}.`;
+  if (!credit) return reste >= 0 ? `${le} ${paie} toutes les charges.` : `${le} ne ${plusieurs ? 'paient' : 'paie'} pas toutes les charges.`;
+  const part = `${le} ${paie} <b>${Math.round(loyer / credit * 100)} %</b> ${plusieurs ? 'des mensualités' : 'de la mensualité'}`;
+  if (Math.abs(reste) < 5) return `${part} : tout juste de quoi payer le crédit et les charges.`;
+  return reste > 0 ? `${part}, et aussi les charges.` : `${part}.`;
+}
+// Loyer encaissé : le loyer moins les mois sans locataire (« 682 € moins ½ mois vide par an »)
+function detailVacance(loyer, vacance) {
+  if (!(loyer > 0) || !(vacance > 0)) return '';
+  const m = vacance === 0.5 ? '½ mois' : `${String(vacance).replace('.', ',')} mois`;
+  return `${eurS(loyer)} moins ${m} vide par an`;
 }
 // ---------- fin du mode simple
 function majMode() {
@@ -2766,6 +2812,8 @@ function margeNego(prix, max, quoi, f) {
   const marge = Math.abs(d) < 100 ? 'pile au prix actuel'
     : d > 0 ? `<b class="up">${f(d)} de marge</b> (tu peux monter jusqu'à +${pct} %)`
     : `<b class="down">il faut négocier ${f(-d)}</b> (−${pct} %)`;
+  // Mode simple : une phrase, sans « cash-flow »
+  if (modeSimple()) return `<span>${quoi === 'bénéfice' ? 'Pour ne rien perdre à la revente' : 'Pour que le loyer paie tout'}, prix maximum <b>${f(max)}</b>${Math.abs(d) < 100 ? ' : c\'est le prix actuel' : d > 0 ? ` : <b class="up">${f(d)} de marge</b>` : ` : <b class="down">${f(-d)} à négocier</b>`}.</span>`;
   return `<span>Prix actuel : <b>${f(prix)}</b></span><span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
 }
 (() => {
@@ -3385,7 +3433,11 @@ function rendre() {
 
   // En tête : ce qu'il reste chaque mois une fois tout en place, et ce que rapporte le différé ; puis les périodes une par une
   const ph = phases(s), td = s.totalDiffere;
-  $('tete').innerHTML = `<div class="fonce"><span>${ph.fin ? `Une fois tout en place, dès le mois ${ph.fin + 1}` : 'Chaque mois'}</span><b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}<em> par mois</em></b><small>${resteMois < 0 ? 'ce que tu sors de ta poche' : 'ce qu\'il te reste'}, ${p.avecImpots ? 'après' : 'avant'} impôts</small></div>`
+  // Sans périodes, le bilan du mois (en dessous) donne déjà le chiffre en gros et la mensualité : l'en-tête ne garde que le différé
+  $('tete').hidden = !ph.liste.length && td == null;
+  $('tete').classList.remove('revente');
+  if (!ph.liste.length) $('tete').innerHTML = td != null ? `<div><span>Pendant les ${p.differe} mois du différé</span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}<em> en tout</em></b><small>soit ${eur(td / p.differe)} par mois en moyenne</small></div>` : '';
+  else $('tete').innerHTML = `<div class="fonce"><span>${ph.fin ? `Une fois tout en place, dès le mois ${ph.fin + 1}` : 'Chaque mois'}</span><b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}<em> par mois</em></b><small>${resteMois < 0 ? 'ce que tu sors de ta poche' : 'ce qu\'il te reste'}, ${p.avecImpots ? 'après' : 'avant'} impôts</small></div>`
     + (td != null ? `<div><span>Pendant les ${p.differe} mois du différé</span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}<em> en tout</em></b><small>soit ${eur(td / p.differe)} par mois en moyenne</small></div>`
       : `<div><span>Mensualité du crédit</span><b>${eur(mens)}</b><small>assurance comprise, sur ${p.duree} ans</small></div>`);
   $('simple').classList.remove('seul-simple');
@@ -3396,7 +3448,7 @@ function rendre() {
       cls: 'croisiere', titre: 'Rythme de croisière', sous: `dès le mois ${ph.fin + 1}${p.differe ? ' · mensualité pleine' : ''}`}, p.avecImpots));
     $('simple').innerHTML = `<div class="card"><h2 class="phases-t">Mois par mois, en ${cartes.length} périodes</h2><div class="phases">${cartes.join('')}</div></div>`;
   } else $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
-    {titre: 'Un mois type', libLoyer: p.deuxBiens || p.loyer2 > 0 ? 'Loyers encaissés' : 'Loyer encaissé', note: `Moyenne par mois de l'année ${ac.y}${ac.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
+    {titre: 'Chaque mois, un mois type', libLoyer: p.deuxBiens || p.loyer2 > 0 ? 'Loyers encaissés' : 'Loyer encaissé', detailLoyer: p.saison ? '' : detailVacance(p.loyerTotal || p.loyer, p.vacance), note: `Moyenne par mois de l'année ${ac.y}${ac.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
   $('apercu').innerHTML = `<span>Résultat : <b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}</b> par mois${ph.fin ? ` dès le mois ${ph.fin + 1}` : ''}</span>${td != null ? `<span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}</b> en tout pendant le différé</span>` : ''}<button data-voir>Voir le résultat</button>`;
   // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
@@ -3486,6 +3538,7 @@ function rendreRevente(s) {
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
   const nb = Math.round(b.net), lS = (l, v) => `<div class="bs-l"><span>${l}</span><b>${eur(v)}</b></div>`;
   $('simple').classList.add('seul-simple'); $('tilesPlus').textContent = '';
+  $('tete').hidden = false; $('tete').classList.add('revente');
   $('tete').innerHTML = `<div class="fonce"><span>Revendu au bout de ${b.n} mois</span><b class="${nb < 0 ? 'down' : 'up'}">${signe(nb)}<em> ${nb < 0 ? 'de perte' : 'de bénéfice'}</em></b><small>${p.avecImpots ? 'après' : 'avant'} impôt</small></div>`
     + `<div><span>Effort pendant l'opération</span><b>${eur(b.sorties / b.n)}<em> par mois</em></b><small>mensualités et charges${b.loyers ? ', moins les loyers' : ''}</small></div>`;
   $('apercu').innerHTML = `<span>Revente : <b class="${nb < 0 ? 'down' : 'up'}">${signe(nb)}</b> ${nb < 0 ? 'de perte' : 'de bénéfice'} au bout de ${b.n} mois</span><button data-voir>Voir le résultat</button>`;
@@ -3892,7 +3945,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=2f6549d8"></script>
+<script src="investissements.js?v=dae2c35d"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -3906,11 +3959,11 @@ function estimationCourante() {
 const eurP = n => n == null || isNaN(n) ? '—' : (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
 const dateP = t => new Date(t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'});
 // Mode simple : le bilan du mois (ou le bénéfice d'un achat-revente) à la place des chiffres détaillés
-function chiffresSimples(r, revente, prix) {
+function chiffresSimples(r, revente, prix, dansOption) {
   const tete = prix ? `<div class="pj-simple-prix">${prix}</div>` : '';
   if (revente) return tete + `<div class="bilan-simple compact"><div class="bs-l bs-total"><span>${(r.benefice || 0) < 0 ? 'Perte' : 'Bénéfice'} à la revente</span><b class="${(r.benefice || 0) > 0 ? 'up' : (r.benefice || 0) < 0 ? 'down' : ''}">${eurP(Math.abs(r.benefice || 0))}</b></div></div>`;
   const m = r.mois || {loyer: (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0), credit: r.mensualite || 0, charges: Math.max(0, (r.loyer || 0) + (r.loyer2 || 0) + (r.loyerB2 || 0) - (r.mensualite || 0) - (r.cfMois || 0))};
-  return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true}) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '');
+  return tete + bilanSimple({...m, reste: r.cfMois}, {compact: true, sansTete: dansOption, sansPhrase: dansOption}) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '');
 }
 // ---------- Comparer des branches
 // Les chiffres de plusieurs branches côte à côte, le meilleur mis en avant avec son avance sur le suivant ; en mode simple, seulement l'essentiel
@@ -4001,7 +4054,7 @@ function carteProjet(pr, br) {
   const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
   // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
   const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP) : `Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
-  const corps = (modeSimple() ? chiffresSimples(r, revente, `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`)
+  const corps = (modeSimple() ? chiffresSimples(r, revente, br ? '' : `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`, !!br)
     : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
     ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
@@ -4143,7 +4196,7 @@ function friseOption(x) {
     ${diff ? `<div class="pj-frise-d" style="width:${w(diff)}"></div>` : ''}<div class="pj-frise-l">${leg.filter(Boolean).map(l => `<span>${l}</span>`).join('')}</div></div>`;
 }
 function cartesOptions(bs, a, m) {
-  const revente = m && m.cle === 'benefice';
+  const revente = m && m.cle === 'benefice', simple = modeSimple();
   const n = bs.length;
   return `<div class="pj-cartes${n >= 4 ? ' serre' : ''}${n >= 7 ? ' mini' : ''}">${bs.map((x, i) => {
     const r = x.resume || {}, f = x.finance || {}, best = m && m.pr === x && bs.length > 1;
@@ -4155,9 +4208,10 @@ function cartesOptions(bs, a, m) {
     return `<article class="pj-carte${best ? ' best' : ''}"><div class="pj-c-tete"><span class="pj-etiq">Option ${i < 26 ? String.fromCharCode(65 + i) : i + 1}</span>${best ? '<span class="pj-top">La meilleure</span>' : ''}</div>
       <h4 class="pj-opt-nom">${esc(nomBranche(x))}</h4>${change ? `<div class="pj-c-change">${change}</div>` : ''}
       ${friseOption(x)}
-      <div class="pj-c-gros"><span>${revente ? 'Bénéfice à la revente' : fin ? `Chaque mois, dès le mois ${fin + 1}` : 'Chaque mois'}</span>${v == null ? '<b>—</b>' : `<b class="${signeP(v)}">${v < 0 ? '−' : v > 0 ? '+' : ''}${eurP(Math.abs(v))}</b>`}
+      <div class="pj-c-gros"><span>${revente ? 'Bénéfice à la revente' : fin ? `Chaque mois, dès le mois ${fin + 1}` : 'Chaque mois'}</span>${v == null ? '<b>—</b>' : simple && !revente ? `<b class="${signeP(v)}"><em>${v < 0 ? 'il te manque' : 'il te reste'}</em> ${eurP(Math.abs(v))}</b>` : `<b class="${signeP(v)}">${v < 0 ? '−' : v > 0 ? '+' : ''}${eurP(Math.abs(v))}</b>`}
         ${Math.round(ecart) > 0 ? `<small class="down">${eurP(ecart)} de moins que la meilleure</small>` : ''}</div>
-      ${revente ? '' : (r.totalDiffere != null ? l('Pendant le différé', `${r.totalDiffere < 0 ? '−' : '+'}${eurP(Math.abs(r.totalDiffere))} en tout`, signeP(r.totalDiffere)) : '') + l('Loyers par mois', eurP(loyers)) + (r.mensualite != null ? l('Mensualité', eurP(r.mensualite)) : '')}
+      ${simple && !revente && r.mois ? bilanSimple({...r.mois, reste: r.cfMois}, {compact: true, sansTete: true, sansPhrase: true, cls: 'pj-c-bilan'}) : ''}
+      ${revente ? '' : (r.totalDiffere != null ? l('Pendant le différé', `${r.totalDiffere < 0 ? '−' : '+'}${eurP(Math.abs(r.totalDiffere))} en tout`, signeP(r.totalDiffere)) : '') + (modeSimple() ? '' : l('Loyers par mois', eurP(loyers)) + (r.mensualite != null ? l('Mensualité', eurP(r.mensualite)) : ''))}
       ${carteProjet(x, {})}</article>`;
   }).join('')}</div>`;
 }
