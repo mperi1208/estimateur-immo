@@ -924,6 +924,40 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.evaluate(() => { window.prompt = window.promptAvant; });
 });
 
+test('« J\'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (prix, frais, crédit, loyer), liée dans les deux sens', async () => {
+  const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
+  await page.click('.tabs [data-tab="projets"]');
+  const carte = page.locator(`#pj article.pj[data-id="${pr.id}"]`);
+  await carte.locator('.pj-menu summary').click();
+  await page.evaluate(() => { window.confirmAvant = window.confirm; window.confirm = () => true; });
+  await carte.locator('[data-a="achete"]').click();
+  await page.evaluate(() => { window.confirm = window.confirmAvant; });
+  await page.waitForFunction(() => (document.getElementById('inv_titre') || {}).textContent === 'Estimation 52 m²', null, {timeout: 10000});
+  const c = await attendreCompte(c => (c.biens || []).some(b => b.projet === pr.id) && (c.projets.find(x => x.id === pr.id) || {}).achete, 'fiche et projet acheté dans le compte');
+  const b = c.biens.find(x => x.projet === pr.id), p = c.projets.find(x => x.id === pr.id);
+  assert.equal(p.achete.bien, b.id);
+  assert.equal(b.achat.prix, Math.round(pr.finance.prix)); assert.equal(b.valeur, Math.round(pr.finance.prix));
+  assert.ok(b.achat.notaire > 0 && b.achat.frais > 0, 'frais de notaire, de dossier et de garantie');
+  assert.equal(b.surface, 52); assert.equal(b.location.loyer, Math.round(pr.finance.loyer));
+  assert.equal(b.prets.length, 1);
+  const total = b.achat.prix + b.achat.notaire + b.achat.frais - (+pr.finance.apport || 0);   // le prêt finance le prix et les frais, moins l'apport
+  assert.ok(Math.abs(b.prets[0].montant - total) / total < 0.02, `prêt ${b.prets[0].montant} pour ${total}`);
+  assert.equal(b.prets[0].duree, pr.finance.duree * 12); assert.equal(b.prets[0].taux, pr.finance.taux);
+  assert.equal(+await page.inputValue('#inv [data-p="achat.prix"]'), Math.round(pr.finance.prix));
+  // La fiche ramène au projet (dans Financer)
+  await page.click('#inv [data-a="voirProjet"]');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow' && /Estimation 52 m²/.test(document.getElementById('cf_fil').innerText));
+  // Le projet reste dans Mes projets, marqué acheté, et mène à la fiche ; plus de « J'ai acheté »
+  await page.click('.tabs [data-tab="projets"]');
+  await carte.locator('.pj-achete').waitFor();
+  assert.equal(await carte.locator('[data-a="achete"]').count(), 0);
+  await page.fill('#pj_cherche', 'acheté');
+  await page.waitForFunction(() => [...document.querySelectorAll('#pj .pj-trouve')].filter(z => !z.hidden).length === 1);
+  await page.fill('#pj_cherche', '');
+  await carte.locator('.pj-achete').click();
+  await page.waitForFunction(() => (document.getElementById('inv_titre') || {}).textContent === 'Estimation 52 m²');
+});
+
 test('déconnexion : Mon patrimoine et Mes projets se ferment, rien ne reste sur l\'appareil', async () => {
   await page.evaluate(() => ouvrirCompte());
   await page.click('#cpt_out');
