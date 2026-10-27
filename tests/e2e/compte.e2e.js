@@ -588,6 +588,29 @@ test('projet en cours : en haut d\'Estimer et de Financer, gardé au rechargemen
   assert.match(await page.locator('#sauveEst').innerText(), /Enregistrer dans Mes projets/i);
 });
 
+test('options d\'un projet : même bien partout ; son estimation revue (même à côté sur la carte) se met à jour dans toutes', async () => {
+  const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
+  assert.ok(pr.recherche.bien, 'le bien a un identifiant');
+  await page.evaluate(id => { const p = window.prompt; window.prompt = () => 'Variante'; nouvelleBranche(id); window.prompt = p; }, pr.id);
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  const opt = await page.evaluate(() => PROJETS.liste.find(x => x.branche === 'Variante'));
+  assert.equal(opt.recherche.bien, pr.recherche.bien);
+  await page.evaluate(id => ouvrirProjet(id, 'estimation'), opt.id);
+  await page.waitForSelector('#est_maj', {timeout: 20000});
+  // 11 m plus loin sur la carte, et 55 m² : toujours le bien du projet
+  await page.evaluate(() => { const r = PROJETS.liste.find(x => x.branche === 'Variante').recherche; state.prix = null; reprendre({...r, lat: r.lat + 0.0001, surf: 55}); });
+  await page.waitForFunction(() => state.prix != null && state.loyerHC != null && state.base && state.base.surf === 55, null, {timeout: 20000});
+  await page.waitForSelector('#est_maj');
+  assert.doesNotMatch(await page.locator('#est_tete').innerText(), /pas celle du projet/);
+  await page.click('#est_maj');
+  await page.waitForFunction(() => /dans ses 2 options/.test(document.getElementById('sauveEst').innerText));
+  const c = await attendreCompte(c => c.projets.filter(x => x.nom === 'Estimation 52 m²' && x.recherche && x.recherche.surf === 55).length === 2, 'estimation mise à jour dans les 2 options');
+  const bs = c.projets.filter(x => x.nom === 'Estimation 52 m²');
+  assert.deepEqual([...new Set(bs.map(x => x.recherche.bien))], [pr.recherche.bien]);
+  // Rangement : option retirée, projet quitté
+  await page.evaluate(() => { const o = PROJETS.liste.find(x => x.branche === 'Variante'); PROJETS.supprimer(o.id); deplier(o.groupe, false); quitterProjet(); });
+});
+
 test('Mes projets : deux projets financés par un seul crédit', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#est_financer');
