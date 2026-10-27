@@ -161,6 +161,11 @@ async function estimer(page, {surf = 50, type, details = {}} = {}) {
   await page.waitForFunction(() => state.base && state.prix != null && state.loyerHC != null && document.querySelector('#works .crit'), null, {timeout: 20000});
   return page.evaluate(() => ({prix: state.prix, loyer: state.loyerHC, mob: state.mob, surf: state.base.surf}));
 }
+// Estimer, « Un projet de travaux ? » : une tuile par projet (pas de travaux, rénovation, diviser, aménager…)
+async function travaux(page, niveau) {
+  await page.click(`#works [data-niveau="${niveau}"]`);
+  await page.waitForFunction(n => (document.querySelector(`#works [data-niveau="${n}"]`) || {}).getAttribute?.('aria-pressed') === 'true', niveau);
+}
 // Financer est en 4 étapes : avant de toucher un élément de l'onglet, ouvrir l'étape qui le contient
 async function versEtape(page, sel) {
   await page.evaluate(sel => {
@@ -182,4 +187,4 @@ const lireNombre = async (page, sel) => nombre(await page.locator(sel).first().i
 // Valeurs lisibles : « 1 234 € » → 1234 (espaces insécables, signe moins typographique)
 const nombre = t => +String(t).replace(/[\s  €%]|k€|\/mois/g, '').replace('−', '-').replace(',', '.');
 
-module.exports = {ORIGINE, ADRESSE, ANNEE, lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, nombre, ventesDvf, estimer, saisir, lireNombre, cliquer, versEtape};
+module.exports = {ORIGINE, ADRESSE, ANNEE, lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, nombre, ventesDvf, estimer, saisir, lireNombre, cliquer, versEtape, travaux};

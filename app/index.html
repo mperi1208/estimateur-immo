@@ -23,9 +23,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-.wrap{display:grid;grid-template-columns:400px 1fr;height:calc(100vh - 56px)}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:20px}
-#map{height:100%;min-height:320px}
 h1{font-size:20px;margin:0 0 2px}
 .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
 .titre-ligne{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -47,12 +45,7 @@ h1{font-size:20px;margin:0 0 2px}
 .sauveEst .hint{margin-top:6px;color:#C9D2DE}
 .sauveEst .hint a{color:#7CD4AE}
 /* Estimer rouvert depuis un projet : même en-tête que Financer (projet › option, les 4 étapes) */
-#estim{grid-template-rows:auto minmax(0,1fr)}
-#est_tete{grid-column:1/-1;grid-row:1;min-width:0}
-#est_tete > *{max-width:none;padding-left:20px;padding-right:20px}
-#estim > aside,#estim > .droite{grid-row:2}
 #est_tete .cf-etapes button[aria-current="step"]{cursor:default}
-@media (max-width:800px){#estim{grid-template-rows:none;grid-template-columns:minmax(0,1fr)}#estim > *,#estim > aside,#estim > .droite{grid-row:auto}#est_tete > *{padding-left:16px;padding-right:16px}}
 .recentes .rec-ligne{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
 .recentes .rec-ligne button.rec{width:auto;flex:1;min-width:0;border-bottom:0;text-align:left}
 .recentes button.rec-x{flex:0 0 40px;display:flex;align-items:center;justify-content:center;border:0;border-left:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;padding:0}
@@ -569,13 +562,114 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 @keyframes tourne{to{transform:rotate(360deg)}}
 @media (max-width:420px){.invwrap .auto-chiffres b{font-size:17px}}
 @media (prefers-reduced-motion:reduce){.invwrap .rond{animation:none}}
-.wrap{grid-template-rows:minmax(0,1fr)}
-.droite{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,440px);grid-template-rows:auto 1fr;gap:16px;align-items:start;padding:16px;overflow-y:auto;min-width:0;min-height:0}
-.droite #out{grid-column:1;grid-row:1/span 2;min-width:0}
-.droite #map{grid-column:2;grid-row:1;height:300px;min-height:0;border:1px solid var(--line);border-radius:12px;position:sticky;top:0;z-index:0}
-@media (max-width:1100px){.droite{grid-template-columns:minmax(0,1fr)}.droite #map{grid-column:1;grid-row:1;order:-1;position:relative}.droite #out{grid-column:1;grid-row:2}}
-@media (max-width:800px){.wrap{grid-template-columns:1fr;grid-template-rows:none;height:auto}.droite{overflow:visible;padding:12px}.droite #out{grid-row:1}.droite #map{grid-row:2;order:0;height:260px}aside{border-right:0;padding:16px}}
 
+/* ---------- Estimer (même DA que Financer) : en-tête de recherche, « 1 Le bien » à gauche, estimation et travaux à droite ---------- */
+#estim .est-haut{background:var(--panel);border-bottom:1px solid var(--line)}
+#estim .est-in,#estim .est-corps{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
+#estim .est-in{padding-top:18px;padding-bottom:16px}
+#estim .est-haut h1{font-size:22px;font-weight:800}
+#estim .est-haut .sub{margin:2px 0 0}
+#estim .est-cherche{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:12px}
+#estim .est-adr{flex:1 1 320px;min-width:0}
+#estim .est-adr > .hint{display:none}
+#estim label .hint{display:inline;font-weight:500;margin:0}
+#estim .est-surf{width:120px}
+#estim label{text-transform:none;letter-spacing:0;font-size:12px;font-weight:700;color:#344054;margin:10px 0 6px}
+#estim input,#estim select{background:var(--panel);border:1px solid #cfd6df;border-radius:10px;padding:10px 12px}
+#estim .seg{display:inline-flex;flex-wrap:wrap;border:0;border-radius:10px;background:#E8ECF2;padding:3px;gap:2px;overflow:visible}
+#estim .seg button{flex:0 0 auto;min-height:38px;border:0;border-radius:8px;background:transparent;color:#344054;padding:0 12px;font-weight:600}
+#estim .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.14)}
+#estim .seg button:disabled{opacity:.45;cursor:not-allowed}
+#estim .cta{border:0;border-radius:10px;font:inherit;font-weight:700;padding:11px 20px;cursor:pointer;margin-top:0}
+#estim #go{margin:0;height:44px;padding:0 24px;font-size:15px;width:auto;flex:0 0 auto}
+#estim .est-gauche .seg{display:flex}
+#estim .est-gauche .seg button{flex:1 1 auto;padding:0 10px}
+#estim .est-corps{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;padding-top:22px;padding-bottom:120px}
+#estim .est-gauche{flex:1 1 320px;max-width:390px;display:flex;flex-direction:column;gap:16px;min-width:0}
+#estim .droite{flex:999 1 560px;min-width:0}
+#estim .est-carte{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+#estim .est-carte-map{padding:0;overflow:hidden}
+#estim #map{height:240px;position:relative;z-index:0}
+#estim .est-ct{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;margin:0 0 4px}
+#estim .est-ct > i{font-style:normal;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:800}
+#estim .est-ct .chip{margin-left:auto;font-size:11px;font-weight:700}
+#estim .crit{grid-template-columns:minmax(0,1fr)}
+#estim .crit .seg-src{display:none}
+#estim details.plus{margin-top:12px;border:0;border-top:1px solid var(--line);border-radius:0;padding:4px 0 0}
+#estim details.plus summary{font-size:14px;font-weight:700}
+#estim details.plus .crit{grid-template-columns:1fr 1fr;gap:0 10px}
+#estim #out .empty{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:22px;margin:0}
+#estim .est-s-t{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;margin:6px 0 12px}
+#estim .est-s-t > i{font-style:normal;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:800}
+#estim .est-duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+#estim .est-hero{background:var(--ink);color:#fff;border-radius:16px;padding:18px 20px;min-width:0}
+#estim .est-hero .k,#estim .est-box .k{font-size:14px;font-weight:700;color:#C9D2DE;text-transform:none;letter-spacing:0}
+#estim .est-box .k{color:var(--muted)}
+#estim .est-hero .v,#estim .est-box .v{font-size:36px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:4px 0;font-variant-numeric:tabular-nums}
+#estim .est-box .v small{font-size:15px;font-weight:600;color:var(--muted)}
+#estim .est-hero .d{font-size:13px;color:#C9D2DE}
+#estim .est-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+#estim .est-box .d{font-size:13px;color:var(--muted)}
+#estim .est-box .v.txt{font-size:26px}
+#estim .fourchette{position:relative;height:8px;border-radius:99px;background:#344054;margin:12px 0 6px}
+#estim .fourchette span{position:absolute;top:0;bottom:0;background:#7CD4AE;border-radius:99px}
+#estim .fourchette b{position:absolute;top:-4px;width:4px;height:16px;background:#fff;border-radius:2px;margin-left:-2px}
+#estim .fourchette-l{display:flex;justify-content:space-between;font-size:13px;color:#C9D2DE}
+#estim .est-hero .conf{margin-top:0;vertical-align:1px}
+#estim .louer-l{margin-top:12px}
+#estim .synthbar{margin-top:10px}
+#estim .synthbar .chambres{margin-left:0}
+#estim .works{margin-top:16px;padding:18px 20px;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
+#estim .works.saison,#estim .works.garage-est{background:var(--panel)}
+#estim .w-tuiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+#estim .w-tuile{display:block;text-align:left;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--panel);color:var(--ink);font:inherit;cursor:pointer;min-height:64px}
+#estim .w-tuile b{display:block;font-size:14px}
+#estim .w-tuile span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+#estim .w-tuile:hover{border-color:#98A2B3}
+#estim .w-tuile[aria-pressed="true"]{border:2px solid var(--ink);background:#F7F8FA;padding:10px 11px}
+#estim .w-reglages{margin-top:14px;padding-top:4px;border-top:1px solid var(--line);grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0 14px}
+#estim .w-reglages .w-surfaces{grid-column:1/-1}
+#estim .w-av{width:100%;border-collapse:separate;border-spacing:6px 0;margin:6px -6px 0;font-size:14px}
+#estim .w-av th{font-size:13px;padding:8px 10px;border-radius:10px 10px 0 0;border:0;color:#344054}
+#estim .w-av th.av{background:#E8ECF2}
+#estim .w-av th.ap{background:var(--accent-soft);color:var(--accent)}
+#estim .w-av thead tr + tr th{background:none;font-size:12px;color:var(--muted);text-align:right;padding-top:4px;padding-bottom:4px}
+#estim .w-av td{padding:8px 10px;border-bottom:1px solid #eef1f4;vertical-align:middle}
+#estim .w-av td.n{text-align:right;font-weight:700;white-space:nowrap}
+#estim .w-av tr.tot td{border-top:2px solid var(--ink);border-bottom:0;font-weight:800}
+#estim .w-av tr.tot td.ap{color:var(--accent)}
+#estim .w-scroll{overflow-x:auto}
+#estim .w-bas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+#estim .w-cout{border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+#estim .w-cout h3,#estim .w-av-t{margin:0 0 6px;font-size:15px;font-weight:800}
+#estim .w-cout .calc{margin-top:0;border-top:0;padding-top:0;font-size:14px}
+#estim .w-cout .calc div{padding:4px 0}
+#estim .w-cout .calc .tot{border-top:2px solid var(--ink);margin-top:4px;padding-top:8px;font-weight:800}
+#estim .w-cree{background:var(--accent);color:#fff;border-radius:14px;padding:16px 18px}
+#estim .w-cree.neg{background:#7A2E1F}
+#estim .w-cree .k{font-size:14px;font-weight:700;color:#D3EFE3}
+#estim .w-cree .v{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:4px 0}
+#estim .w-cree p{margin:0;font-size:14px;color:#D3EFE3}
+#estim .w-cree .w-legal{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.25);font-size:13px}
+#estim .w-simple{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px}
+#estim .w-simple > div{background:#F7F8FA;border-radius:12px;padding:12px 14px}
+#estim .w-simple > div.ap{background:var(--accent-soft)}
+#estim .w-simple span{display:block;font-size:13px;color:var(--muted)}
+#estim .w-simple b{display:block;font-size:22px;font-weight:800}
+#estim .detail{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px 18px 10px;margin-top:16px}
+#estim .detail > summary{font-size:15px;font-weight:800}
+#estim .est-achat{margin-top:16px}
+#estim .est-achat .bilan-simple{margin:0}
+#estim .est-achat-r{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:flex-end;margin:0 0 12px}
+#estim .est-achat-r label{margin:0 0 4px}
+#estim .est-achat-r input{width:130px}
+#estim .est-achat .bs-plus{margin:10px 0 0;font-size:14px}
+#estim .sauveEst{position:sticky;bottom:0;margin:16px 0 0;border-radius:14px}
+#estim .sauveEst .sauve-ligne .esp{flex:1}
+#estim .sauveEst button.blanc{background:#fff;color:var(--ink);border-color:#fff}
+body.simple #estim #crit > div:not(:has(#c_etat)){display:none}
+body.simple #estim .est-gauche .chip{display:none}
+@media (max-width:800px){#estim .est-in,#estim .est-corps{padding-left:16px;padding-right:16px}#estim .est-gauche{max-width:none}#estim .est-surf{width:100px}#estim #go{flex:1 1 100%}}
 [hidden]{display:none!important}
 /* Jamais de défilement de côté : un élément trop large ne décale plus toute la page (clip garde la barre d'onglets collante) */
 html,body{overflow-x:clip;max-width:100%}
@@ -853,8 +947,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 .pj-simple-prix{font-size:14px;margin:10px 0 0}
 body.discret #pj .pj-simple-prix b{filter:blur(7px)}
 .aide-simple{font-size:13px;color:var(--muted);margin:0 0 12px}
-body:not(.simple) .seul-simple{display:none}
-body.simple .seul-pro{display:none}
+body:not(.simple) .seul-simple{display:none!important}
+body.simple .seul-pro{display:none!important}
 body.simple #cf :is(.plus-bien, #cf_reset, #cf_alerts, #cf_bilan, #cf_tiles, #cf_tilesPlus, .card:has(#cf_chart), details.card, .card:has(.srcs), #cf_boxDetail, #cf_boxImpots, #cf_boxEvol, #cf_boxCharges){display:none}
 body.simple #estim details.plus{display:none}
 body.simple #cf_tete.revente{display:none}
@@ -885,51 +979,45 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <div id="compteBody"></div>
   <div class="version" id="versionSite"></div>
 </dialog>
-<div class="wrap" id="estim">
+<div class="est" id="estim">
 <div class="cf-tete" id="est_tete" hidden></div>
-<aside>
-  <div class="titre-ligne"><h1>Estimer un bien</h1><button id="recentesBtn" class="recentes-btn" hidden aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Récentes</button></div>
+<header class="est-haut"><div class="est-in">
+  <div class="titre-ligne"><div><h1>Estimer un bien</h1><div class="sub"><span class="seul-pro">Prix et loyer à partir des ventes réelles autour du bien (DVF), partout en France</span><span class="seul-simple">Combien il vaut, combien il se loue, et s'il se paie tout seul</span></div></div><button id="recentesBtn" class="recentes-btn" hidden aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Récentes</button></div>
   <div id="recentes" class="recentes" hidden></div>
-  <div class="sub">Prix et loyer à partir des ventes réelles (DVF), partout en France</div>
-
-  <label>Adresse</label>
-  <div class="sugg">
-    <div class="search">
-      <input id="addr" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off">
-    </div>
-    <ul id="sugg" hidden></ul>
-  </div>
-  <div class="hint">…ou clique directement sur la carte.</div>
-
-  <div class="row typesurf">
+  <div class="est-cherche">
+    <div class="est-adr"><label for="addr">Adresse <span class="hint">(ou clique sur la carte)</span></label>
+      <div class="sugg"><div class="search"><input id="addr" placeholder="ex. 12 rue Fesch, Ajaccio" autocomplete="off"></div><ul id="sugg" hidden></ul></div>
+      <div class="hint">…ou clique directement sur la carte.</div></div>
     <div><label>Type de bien</label>
-      <div class="seg" id="type"><button data-v="121" class="on">Appartement</button><button data-v="111">Maison</button><button data-v="13">Garage</button></div>
-    </div>
-    <div data-surf><label>Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
+      <div class="seg" id="type"><button data-v="121" class="on">Appartement</button><button data-v="111">Maison</button><button data-v="13">Garage</button></div></div>
+    <div data-surf class="est-surf"><label for="surf">Surface (m²)</label><input id="surf" type="number" min="9" value="50"></div>
     <div data-garage hidden><label>Type de place</label>
-      <div class="seg" id="place"><button data-v="box" class="on">Box / garage fermé</button><button data-v="couverte">Place couverte</button><button data-v="ext">Place extérieure</button></div>
-    </div>
+      <div class="seg" id="place"><button data-v="box" class="on">Box / garage fermé</button><button data-v="couverte">Place couverte</button><button data-v="ext">Place extérieure</button></div></div>
+    <button class="cta" id="go">Estimer</button>
   </div>
-
-  <details class="affiner" id="affiner" open>
-    <summary>Détails du bien <span class="chip" id="nbCrit"></span></summary>
-    <div class="crit" id="crit"></div>
-    <details class="plus"><summary>Plus de critères</summary>
-      <div class="crit" id="crit2"></div>
-      <div class="checks" id="checks"></div>
-      <div class="crit"><div><label>Période des ventes</label>
-        <select id="since"><option value="auto" selected>Automatique</option><option value="2">2 ans</option><option value="3">3 ans</option><option value="5">5 ans</option><option value="10">10 ans</option></select>
-      </div></div>
-    </details>
-    <div id="critCache" hidden></div>
-  </details>
-
-  <button class="cta" id="go">Rechercher</button>
-
-</aside>
-<div class="droite">
-  <div id="out"><div class="empty">Renseigne l'adresse et les détails du bien, puis clique sur « Rechercher ».</div></div>
-  <div id="map"></div>
+</div></header>
+<div class="est-corps">
+  <div class="est-gauche">
+    <section class="est-carte" data-surf>
+      <h2 class="est-ct"><i>1</i>Le bien <span class="chip" id="nbCrit"></span></h2>
+      <div class="affiner" id="affiner">
+        <div class="crit" id="crit"></div>
+        <details class="plus"><summary>Plus de critères <span class="hint">vue, luminosité, période des ventes…</span></summary>
+          <div class="crit" id="crit2"></div>
+          <div class="checks" id="checks"></div>
+          <div class="crit"><div><label for="since">Période des ventes</label>
+            <select id="since"><option value="auto" selected>Automatique</option><option value="2">2 ans</option><option value="3">3 ans</option><option value="5">5 ans</option><option value="10">10 ans</option></select>
+          </div></div>
+        </details>
+        <div id="critCache" hidden></div>
+        <p class="hint seul-simple">Étage, DPE, extérieur, stationnement : dans <b>Pro</b>. Ce que tu y as réglé reste compté.</p>
+      </div>
+    </section>
+    <section class="est-carte est-carte-map"><div id="map"></div></section>
+  </div>
+  <div class="droite">
+    <div id="out"><div class="empty">Renseigne l'adresse et la surface, puis clique sur « Estimer ».</div></div>
+  </div>
 </div>
 </div>
 <section id="cf" hidden data-etape="1">
@@ -1176,6 +1264,22 @@ function detailVacance(loyer, vacance) {
   if (!(loyer > 0) || !(vacance > 0)) return '';
   const m = vacance === 0.5 ? '½ mois' : `${String(vacance).replace('.', ',')} mois`;
   return `${eurS(loyer)} moins ${m} vide par an`;
+}
+// Achat à crédit en un coup d'œil (Estimer en mode simple), avec les réglages par défaut de Financer : notaire 8 %,
+// frais de dossier 1 000 €, garantie 1,5 % du prêt, assurance 0,30 %/an, ½ mois vide par an, taxe foncière ≈ un mois
+// de loyer, copro 8 €/m²/an (appartement), assurance PNO 150 €/an, entretien 3 % des loyers.
+// Rend aussi le prix maximum et l'apport pour que le loyer paie tout (ce qu'il reste = 0).
+function bilanAchat(x) {
+  const o = {apport: 0, duree: 20, assur: 0.3, notaire: 0.08, dossier: 1000, garantie: 1.5, vacance: 0.5, pno: 150, entretien: 3, travaux: 0, mobilier: 0, ...x};
+  const tf = o.tf != null ? o.tf : Math.round(o.loyer / 10) * 10, copro = o.copro != null ? o.copro : o.appart ? Math.round(o.surf * 8 / 10) * 10 : 0;
+  const n = o.duree * 12, t = o.taux / 1200, k = (t ? t / (1 - Math.pow(1 + t, -n)) : 1 / n) + o.assur / 1200;   // mensualité par euro emprunté
+  const g = 1 - o.garantie / 100, horsPrix = o.dossier + o.travaux + o.mobilier;
+  const pret = Math.max(0, (o.prix * (1 + o.notaire) + horsPrix - o.apport) / g);
+  const loyer = o.loyer * (1 - o.vacance / 12), charges = (tf + copro + o.pno) / 12 + loyer * o.entretien / 100;
+  const mensualite = pret * k, reste = loyer - mensualite - charges, net = loyer - charges;
+  const pretMax = net > 0 ? net / k : 0;   // prêt que le loyer rembourse tout seul
+  return {pret, mensualite, loyer, charges, reste, prixMax: Math.max(0, (pretMax * g + o.apport - horsPrix) / (1 + o.notaire)),
+    apportPlein: Math.max(0, o.prix * (1 + o.notaire) + horsPrix - pretMax * g)};
 }
 // ---------- fin du mode simple
 function majMode() {
@@ -1568,10 +1672,10 @@ function render(r) {
   if (r.zone !== state.zone) { state.zone = r.zone; fillOptions(); }
   out.innerHTML = `
     <div class="synth" id="synth"><div class="empty">Calcul…</div></div>
+    <div class="est-achat seul-simple" id="estAchat"></div>
     <div class="works saison" id="saison" hidden></div>
     <div class="works garage-est" id="garageEst" hidden></div>
-    <div class="works" id="works"></div>
-    <details class="detail"><summary>Détail du calcul, sources et ventes comparables</summary>
+    <details class="detail seul-pro"><summary>Pourquoi ce prix ? Le calcul, les sources et les ventes comparables</summary>
       <div class="result" id="res"></div>
       <div class="result rent" id="rent"></div>
       ${years.length > 1 ? `<h2>Prix médian au m² du secteur, par année</h2><div class="bars">${bars}</div>` : ''}
@@ -1579,6 +1683,7 @@ function render(r) {
       <table><thead><tr><th>Date</th><th class="n">Dist.</th><th class="n">m²</th><th class="n">Prix</th><th class="n">€/m² (vente)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema) — hors Alsace-Moselle et Mayotte.</div>
     </details>
+    <div class="works" id="works"></div>
     <div class="sauveEst" id="sauveEst"></div>`;
   out.querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => {
     const c = r.comps[+tr.dataset.k];
@@ -1641,7 +1746,7 @@ function buildForm() {
     field(c.id).addEventListener('input', () => {
       saved[c.id] = c.check ? field(c.id).checked : field(c.id).value;
       try { localStorage.setItem('criteres-v2', JSON.stringify(saved)); } catch (e) {}
-      majAffiner();
+      majAffiner(); majSegs();
       updateResult();
     });
   }
@@ -1656,6 +1761,21 @@ function fillOptions() {
     const opts = zoneOptions(c), want = String(saved[c.id] ?? field(c.id).value);
     const keep = opts.find(o => String(o.k) === want) || opts.find(o => o.d);
     field(c.id).innerHTML = opts.map(o => `<option value="${o.k}"${o === keep ? ' selected' : ''}>${o.l}</option>`).join('');
+  }
+  majSegs();
+}
+// Petits choix en boutons visibles plutôt qu'en liste (la liste reste, cachée : c'est elle qui garde la valeur)
+const SEGS = {etat: {renover: 'À rénover', travaux: 'Gros travaux', rafraichir: 'À rafraîchir', bon: 'Bon état', neuf: 'Refait à neuf', luxe: 'Haut de gamme'},
+  dpe: {'?': '?'}, ascenseur: {}, exterieur: {aucun: 'Aucun', petit: 'Petit balcon', balcon: 'Balcon, terrasse', grande: 'Grande terrasse', jardin: 'Jardin'}};
+function majSegs() {
+  for (const id in SEGS) {
+    const f = field(id); if (!f || f.tagName !== 'SELECT') continue;
+    f.classList.add('seg-src');
+    let seg = f.nextElementSibling;
+    if (!seg || !seg.classList.contains('seg')) { seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role', 'group'); f.after(seg);
+      seg.onclick = e => { const b = e.target.closest('button'); if (!b || f.value === b.dataset.v) return; f.value = b.dataset.v; f.dispatchEvent(new Event('input')); }; }
+    seg.innerHTML = [...f.options].map(o => `<button type="button" data-v="${esc(o.value)}"${o.value === f.value ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"'}>${esc(SEGS[id][o.value] || o.textContent)}</button>`).join('');
+    const lab = f.previousElementSibling; if (lab && lab.tagName === 'LABEL') lab.removeAttribute('for');
   }
 }
 // Nombre de critères réglés (différents du bien « moyen ») affiché sur « Détails du bien »
@@ -1679,11 +1799,6 @@ const PRIME_COLOC = n => n >= 4 ? 0.30 : n === 3 ? 0.20 : 0.10;
 const chambresDefaut = surf => Math.max(2, Math.min(6, Math.round((surf - 15) / 15)));
 const chambresVoulues = surf => Math.round(+saved.chambresColoc || chambresDefaut(surf));
 const nbChambres = surf => Math.max(2, Math.min(chambresMax(surf), chambresVoulues(surf)));
-{
-  const aff = document.getElementById('affiner');
-  try { if (localStorage.getItem('details-ouverts') === '0') aff.open = false; } catch (e) {}
-  aff.addEventListener('toggle', () => { try { localStorage.setItem('details-ouverts', aff.open ? '1' : '0'); } catch (e) {} });
-}
 function syncForm() {
   document.querySelectorAll('[data-pour]').forEach(el => el.hidden = !(el.dataset.pour === 'tous' || (el.dataset.pour === 'appart') === isAppart()));
 }
@@ -2053,6 +2168,46 @@ const coutEnergie = (de, vers, niveau) => {
 let choixTravaux = {};
 try { choixTravaux = JSON.parse(localStorage.getItem('travaux-choix') || '{}'); } catch (e) {}
 
+// --- « 3 Un projet de travaux ? » : une tuile par projet, ses réglages, puis aujourd'hui / après travaux, le coût et la valeur créée ---
+const TUILES = {non: ['Pas de travaux', 'acheté et loué tel quel'], aucun: ['Énergie seule', 'isolation, chauffage'], rafraichir: ['Rafraîchir', 'peinture, sols'],
+  travaux: ['Gros travaux', 'cuisine, bains, électricité'], renover: ['Rénovation complète', 'tous corps d\'état'], diviser: ['Diviser', '2 à 4 logements'],
+  amenager: ['Aménager une surface', 'garage, sous-sol, combles']};
+const TUILES_SIMPLES = ['non', 'renover', 'diviser', 'amenager'];
+function tuilesTravaux(niveau) {
+  const ks = Object.keys(TUILES).filter(k => !modeSimple() || TUILES_SIMPLES.includes(k) || k === niveau);
+  return `<h2 class="est-s-t"><i>3</i>Un projet de travaux ?</h2>
+    <div class="crit w-tuiles" role="group" aria-label="Travaux">${ks.map(k => `<button type="button" class="w-tuile" data-niveau="${k}" aria-pressed="${k === niveau}"><b>${TUILES[k][0]}</b><span>${TUILES[k][1]}${NIVEAUX[k].mois ? ` · ${NIVEAUX[k].mois} mois${k === 'diviser' ? ' et +' : ''}` : ''}</span></button>`).join('')}</div>`;
+}
+function lierTuiles(el, apres) {
+  el.querySelectorAll('[data-niveau]').forEach(b => b.onclick = () => {
+    if (choixTravaux.niveau === b.dataset.niveau) return;
+    choixTravaux.niveau = b.dataset.niveau; choixTravaux.totalTravaux = null;
+    try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {}
+    if (apres) apres();
+    renderWorks();
+  });
+}
+// Aujourd'hui / après travaux : une ligne par logement obtenu, valeur et loyer de chaque côté
+function tableAvantApres(lignes, duree) {
+  const n = lignes.length, tot = lignes.reduce((t, l) => ({prix: t.prix + l.prix, loyer: t.loyer + l.loyer}), {prix: 0, loyer: 0});
+  const av = i => i ? '' : `<td class="n"${n > 1 ? ` rowspan="${n}"` : ''}>${fmtK(state.prix)}</td><td class="n"${n > 1 ? ` rowspan="${n}"` : ''}>${state.loyerHC ? fmt(state.loyerHC) + ' €' : '—'}</td>`;
+  return `<h3 class="w-av-t" style="margin-top:16px">Aujourd'hui et après les travaux</h3><div class="w-scroll"><table class="w-av">
+    <thead><tr><th></th><th class="av" colspan="2">Aujourd'hui</th><th class="ap" colspan="2">Après travaux${duree ? ` · dans ${duree} mois environ` : ''}</th></tr>
+      <tr><th></th><th>Valeur</th><th>Loyer</th><th>Valeur</th><th>Loyer</th></tr></thead>
+    <tbody>${lignes.map((l, i) => `<tr><td>${l.nom}</td>${av(i)}<td class="n">${fmtK(l.prix)}</td><td class="n">${l.loyer ? fmt(l.loyer) + ' €' : '—'}</td></tr>`).join('')}
+      ${n > 1 ? `<tr class="tot"><td>Total</td><td class="n">${fmtK(state.prix)}</td><td class="n">${state.loyerHC ? fmt(state.loyerHC) + ' €' : '—'}</td><td class="n ap">${fmtK(tot.prix)}</td><td class="n ap">${fmt(tot.loyer)} €</td></tr>` : ''}</tbody></table></div>`;
+}
+// Coût de l'opération et valeur créée ; en mode simple, trois chiffres seulement
+function blocResultat({lignesCout, total, duree, valeur, loyer, marge, notes}) {
+  const dl = loyer - (state.loyerHC || 0);
+  return `<div class="w-simple seul-simple"><div><span>Les travaux coûtent</span><b>${fmt(Math.round(total.travaux / 500) * 500)} €</b><span>environ ${duree} mois</span></div>
+      <div class="ap"><span>Après, il vaut</span><b>${fmt(Math.round(valeur / 1000) * 1000)} €</b></div><div class="ap"><span>Après, il se loue</span><b>${fmt(loyer)} € par mois</b></div></div>
+    <div class="w-bas seul-pro"><div class="w-cout"><h3>Ce que coûte l'opération</h3><div class="calc">${lignesCout}
+        <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(total.tout)}</b></div></div></div>
+      <div class="w-cree${marge < 0 ? ' neg' : ''}"><div class="k">Valeur créée</div><div class="v">${marge >= 0 ? '+' : '−'}${fmtK(Math.abs(marge))}</div>
+        <p>${fmtK(valeur)} de valeur après travaux, moins ${fmtK(total.bien)} dépensés (achat, notaire, travaux).${dl ? ` Loyers : ${dl > 0 ? '+' : '−'}${fmt(Math.abs(dl))} € par mois.` : ''}</p>
+        ${notes ? `<p class="w-legal">${notes}</p>` : ''}</div></div>`;
+}
 function renderWorks() {
   const el = document.getElementById('works'), r = state.base;
   if (!el || !r || !state.lm) return;
@@ -2061,21 +2216,20 @@ function renderWorks() {
   const aRenover = ['renover', 'travaux', 'rafraichir'].includes(etat), passoire = 'EFG'.includes(dpe) && dpe !== '?';
   const niveau = choixTravaux.niveau && NIVEAUX[choixTravaux.niveau] ? choixTravaux.niveau : aRenover ? etat : passoire ? 'aucun' : 'non';
   const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${v}</option>`).join('');
-  const question = `<div class="crit"><div><label>Travaux prévus ?</label><select id="w_niveau">${opt(Object.fromEntries(Object.entries(NIVEAUX).map(([k, v]) => [k, v.l])), niveau)}</select></div>`;
   const bind = () => {
     const save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
-    document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; choixTravaux.totalTravaux = null; save(); renderWorks(); };
+    lierTuiles(el);
     const g = document.getElementById('w_gamme'), d = document.getElementById('w_dpe');
     if (g) g.onchange = e => { choixTravaux.gamme = e.target.value; save(); updateResult(); };
     if (d) d.onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
     const tt = document.getElementById('w_total');
     if (tt) tt.onchange = e => { choixTravaux.totalTravaux = +e.target.value || null; save(); renderWorks(); };
   };
-  if (niveau === 'diviser' || niveau === 'amenager') return projetSurface(el, niveau, question, z, surf);
+  if (niveau === 'diviser' || niveau === 'amenager') return projetSurface(el, niveau, tuilesTravaux(niveau), z, surf);
   if (niveau === 'non') {
     state.projet = null;
-    el.innerHTML = `${question}<div></div></div><button class="cta" onclick="financerBien()">Financer ce bien →</button>`;
-    bind(); renderSynth();
+    el.innerHTML = tuilesTravaux(niveau);
+    bind(); renderSynth(); majSauveEst();
     return;
   }
   const dpeVise = choixTravaux.dpe && (choixTravaux.dpe === '=' || ORDRE_DPE.includes(choixTravaux.dpe)) ? choixTravaux.dpe : passoire ? 'C' : '=';
@@ -2099,37 +2253,26 @@ function renderWorks() {
   const marge = valeurApres - coutBien;
   state.projet = {travaux: budget, valeurApres: Math.round(valeurApres), loyerApres: Math.round(loyerApres), duree, niveau, dpe: cible, gamme, meuble: meubleApres, mobilier};
   const dpeOpts = {'=': dpe === '?' ? 'Inchangé (DPE inconnu)' : `Inchangé (${dpe})`, ...Object.fromEntries([...ORDRE_DPE].map(c => [c, c]))};
-  el.innerHTML = `${question}
-      <div><label>Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
-      <div><label>DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
-      <div><label>Coût total des travaux (€)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? budget : ''}" placeholder="${fmt(suggere + mobSuggere)} (estimé)"><div class="hint">Ton devis ou ton budget, tout compris${meubleApres ? ' (mobilier aussi)' : ''}. Vide : estimé ci-dessous.</div></div>
-    </div>
-    <div class="hint">${NIVEAUX[niveau].d}</div>
-    <div class="kpis">
-      <div class="kpi"><div class="k">Valeur après travaux</div><div class="v">${fmtK(valeurApres)}</div><div class="d">${niveau === 'aucun' ? 'état inchangé' : GAMMES[gamme].d}${cible !== '?' ? ', DPE ' + cible : ''}</div></div>
-      <div class="kpi"><div class="k">Loyer après travaux</div><div class="v">${fmt(loyerApres)} €</div><div class="d">${meubleApres ? 'meublé' : 'vide'}, hors charges/mois · ${cible === 'G' ? 'toujours G : non louable' : dpe === 'G' || etat === 'renover' ? 'aujourd\'hui : non louable' : `${pct(loyerApres / state.loyerHC - 1)} vs en l'état (${fmt(state.loyerHC)} €)`}</div></div>
-      <div class="kpi"><div class="k">Valeur créée</div><div class="v ${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+' : '−'}${fmtK(Math.abs(marge))}</div><div class="d">après achat, notaire et travaux</div></div>
-    </div>
-    <div class="calc">
-      <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
+  const lignesCout = `<div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
       <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
       ${saisi ? `<div><span>Travaux : montant que tu as saisi (estimé : ${fmtK(suggere + mobSuggere)})</span><b>${fmtK(budget)}</b></div>` : `<div><span>Travaux : ${fmt(tM2)} €/m²${eM2 ? ` + énergie ${fmt(eM2)} €/m²` : ''} × ${fmt(surf)} m²<sup>${eM2 ? '1, 2' : '1'}</sup></span><b>${fmtK(budget)}</b></div>`}
-      ${mobilier ? `<div><span>Mobilier pour louer meublé<sup>${eM2 ? 3 : 2}</sup></span><b>${fmtK(mobilier)}</b></div>` : ''}
-      <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
+      ${mobilier ? `<div><span>Mobilier pour louer meublé<sup>${eM2 ? 3 : 2}</sup></span><b>${fmtK(mobilier)}</b></div>` : ''}`;
+  const notes = [marge < 0 ? 'Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : plutôt pour louer longtemps que pour revendre.' : '',
+    passoire ? 'DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.' : '',
+    cible === 'G' ? 'Toujours classé G après travaux : pas louable.' : ''].filter(Boolean).join(' ');
+  el.innerHTML = `${tuilesTravaux(niveau)}
+    <div class="crit w-reglages">
+      <div class="seul-pro"><label for="w_gamme">Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
+      <div class="seul-pro"><label for="w_dpe">DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
+      <div><label for="w_total">Ton devis (facultatif)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? budget : ''}" placeholder="${fmt(suggere + mobSuggere)} € estimé"><div class="hint">Tout compris${meubleApres ? ', mobilier aussi' : ''}. Vide : estimé.</div></div>
     </div>
-    ${marge < 0 ? '<div class="warnbox">Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : à envisager plutôt pour louer longtemps que pour revendre.</div>' : ''}
-    ${passoire ? '<div class="range">DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.</div>' : ''}
-    ${boutonsProjet('Travaux')}
-    <ol class="srcs"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}${mobilier ? `<li><a href="${SOURCES.mobilier[1]}" target="_blank" rel="noopener">${SOURCES.mobilier[0]}</a></li>` : ''}</ol>`;
-  bind(); renderSynth();
+    <div class="hint seul-pro">${NIVEAUX[niveau].d}</div>
+    <div class="seul-pro">${tableAvantApres([{nom: `Le logement · ${fmt(surf)} m²`, prix: valeurApres, loyer: cible === 'G' ? 0 : loyerApres}], duree)}</div>
+    ${blocResultat({lignesCout, total: {travaux: budget + mobilier, bien: coutBien, tout: coutBien + mobilier}, duree, valeur: valeurApres, loyer: Math.round(loyerApres), marge, notes})}
+    <ol class="srcs seul-pro"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}${mobilier ? `<li><a href="${SOURCES.mobilier[1]}" target="_blank" rel="noopener">${SOURCES.mobilier[0]}</a></li>` : ''}</ol>`;
+  bind(); renderSynth(); majSauveEst();
 }
 
-// Estimation revue depuis un projet de Mes projets : les travaux deviennent une option de ce projet (pas un nouveau projet)
-function boutonsProjet(mot) {
-  const rv = typeof revueEnCours === 'function' && revueEnCours();
-  return rv ? `<div class="row"><button class="cta" id="w_option" onclick="ajouterOptionTravaux()">Ajouter comme option de « ${esc(rv.pr.nom)} » →</button></div>`
-    : `<div class="row"><button class="cta" onclick="financerBien('location')">${mot} + location →</button><button class="cta" onclick="financerBien('revente')">${mot} + revente →</button></div>`;
-}
 // --- Projets « diviser » et « aménager une surface en plus » ---
 // La valeur et le loyer de chaque logement obtenu viennent du moteur d'estimation (à sa propre surface : les petites
 // surfaces se vendent et se louent plus cher au m²). Calcul lancé par un bouton, gardé tant que rien ne change.
@@ -2154,7 +2297,7 @@ function projetSurface(el, niveau, question, z, surf) {
       ['Géomètre, règlement de copropriété, déclaration en mairie', FRAIS_DIVISION]].filter(Boolean);
     duree = 6 + (n - 2) * 2 + (gM2 ? 2 : 0);
     champs = `<div><label>Nombre de logements</label><select id="w_nb">${opt({2: '2', 3: '3', 4: '4'}, n)}</select></div>
-      <div><label>Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
+      <div class="seul-pro"><label for="w_gamme">Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
       <div class="w-surfaces"><label>Surface de chaque logement (m²)</label><div class="w-lots">${lots.map((l, i) => `<input type="number" min="9" data-lot="${i}" value="${l.base}">`).join('')}</div>
         <div class="hint">Total ${fmt(lots.reduce((t, l) => t + l.base, 0))} m² pour ${fmt(surf)} m² aujourd'hui.</div></div>
       <div><label>Garage rattaché (m²)</label><input type="number" id="w_divM2" min="0" value="${gM2 || ''}" placeholder="0"><div class="hint">Aménagé en pièce (ex. une chambre) et relié à un des logements. Vide : aucun</div></div>
@@ -2173,14 +2316,14 @@ function projetSurface(el, niveau, question, z, surf) {
     champs = `<div><label>Surface à aménager (m²)</label><input type="number" id="w_m2" min="5" value="${m2}"></div>
       <div><label>Où</label><select id="w_type">${opt(Object.fromEntries(Object.entries(AMENAG).map(([k, v]) => [k, v.l])), t)}</select></div>
       <div><label>Pour</label><select id="w_usage">${opt({agrandir: 'Agrandir le logement (ex. une chambre en plus)', lot: 'Créer un logement à part'}, usage)}</select></div>
-      <div><label>Décote de cette surface (%)</label><input type="number" id="w_decote" min="0" max="80" value="${dec}"><div class="hint">Moins de lumière, plafond plus bas : cette surface vaut ${dec} % de moins au m² que le logement principal.</div></div>`;
+      <div class="seul-pro"><label for="w_decote">Décote de cette surface (%)</label><input type="number" id="w_decote" min="0" max="80" value="${dec}"><div class="hint">Moins de lumière, plafond plus bas : cette surface vaut ${dec} % de moins au m² que le logement principal.</div></div>`;
     avertissement = 'Une pièce habitable doit avoir 2,20 m sous plafond et une fenêtre sur l\'extérieur : caves, sous-sols et combles non aménagés ne peuvent pas être loués comme logement. Changement de destination : déclaration préalable ou permis ; en copropriété, accord si des parties communes sont touchées. Prévoir le traitement de l\'humidité en sous-sol.';
   }
   // Coût total saisi à la main (devis, budget, tout compris mobilier aussi) : il remplace l'estimation, qui reste en suggestion
   const suggere = Math.round(couts.reduce((t, x) => t + x[1], 0) / 500) * 500;
   const mobSuggere = meuble ? lots.filter(l => !l.actuel).reduce((t, l) => t + budgetMobilier(l.surf, gamme), 0) : 0;
   const saisi = +c.totalTravaux > 0, budget = saisi ? +c.totalTravaux : suggere, mobilier = saisi ? 0 : mobSuggere;
-  champs += `<div><label>Coût total des travaux (€)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? +c.totalTravaux : ''}" placeholder="${fmt(suggere + mobSuggere)} (estimé)"><div class="hint">Ton devis ou ton budget, tout compris${meuble ? ' (mobilier aussi)' : ''}. Vide : estimé ci-dessous.</div></div>`;
+  champs += `<div><label for="w_total">Ton devis (facultatif)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? +c.totalTravaux : ''}" placeholder="${fmt(suggere + mobSuggere)} € estimé"><div class="hint">Tout compris${meuble ? ', mobilier aussi' : ''}. Vide : estimé.</div></div>`;
   const criteresLot = l => ({...saved, ...(niveau === 'diviser' ? {etat: GAMMES[gamme].etat, dpe: cible} : {}), location: meuble ? 'meuble' : 'vide', chambre: false});
   const cle = JSON.stringify([state.lat, state.lon, state.type, niveau, lots.map(l => l.surfMoteur ? [l.surf, !!l.actuel, l.surfMoteur] : [l.surf, !!l.actuel]), gamme, cible, meuble, saved]);
   const calc = state.calcProjet && state.calcProjet.cle === cle ? state.calcProjet : null;
@@ -2190,30 +2333,22 @@ function projetSurface(el, niveau, question, z, surf) {
     const valeur = calc.lots.reduce((t, l) => t + l.prix, 0), loyer = calc.lots.reduce((t, l) => t + l.loyer, 0);
     const notaire = state.prix * 0.08, coutBien = state.prix + notaire + budget, marge = valeur - coutBien;
     state.projet = {travaux: budget, valeurApres: Math.round(valeur), loyerApres: Math.round(loyer), duree, niveau, dpe: cible, gamme, meuble, mobilier, lots: lots.length, loyers: calc.lots.map(l => Math.round(l.loyer))};
-    res = `<div class="kpis">
-        <div class="kpi"><div class="k">Valeur après projet</div><div class="v">${fmtK(valeur)}</div><div class="d">${lots.length > 1 ? calc.lots.map(l => fmtK(l.prix)).join(' + ') + ' · ' + lots.length + ' logements, vendables séparément' : 'logement agrandi'}</div></div>
-        <div class="kpi"><div class="k">Loyers après projet</div><div class="v">${fmt(loyer)} €</div><div class="d">${calc.lots.length > 1 ? calc.lots.map(l => fmt(l.loyer) + ' €').join(' + ') + ' · ' : ''}${meuble ? 'meublé' : 'vide'}, hors charges/mois · aujourd'hui ${fmt(state.loyerHC)} €</div></div>
-        <div class="kpi"><div class="k">Valeur créée</div><div class="v ${marge >= 0 ? 'up' : 'down'}">${marge >= 0 ? '+' : '−'}${fmtK(Math.abs(marge))}</div><div class="d">après achat, notaire et travaux</div></div>
-      </div>
-      ${calc.lots.length > 1 ? '<div class="hint">Prix de vente et loyer de chaque logement :</div>' : ''}<div class="calc">${calc.lots.map((l, i) => `<div><span>${calc.lots.length > 1 ? `Logement ${i + 1} : ` : ''}${l.nom} · ${fmt(l.surf)} m²${l.actuel ? ' (inchangé)' : ''}</span><b>${fmtK(l.prix)} · ${fmt(l.loyer)} €/mois</b></div>`).join('')}</div>
-      <div class="calc">
-        <div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
+    const lignesCout = `<div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
         <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
         ${saisi ? `<div><span>Travaux : montant que tu as saisi (estimé : ${fmtK(suggere + mobSuggere)})</span><b>${fmtK(budget)}</b></div>`
           : `${couts.map(([l, v]) => `<div><span>${l}</span><b>${fmtK(v)}</b></div>`).join('')}
-        ${mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${fmtK(mobilier)}</b></div>` : ''}`}
-        <div class="tot"><span><b>Coût total</b>, chantier d'environ ${duree} mois</span><b>${fmtK(coutBien + mobilier)}</b></div>
-      </div>
-      ${boutonsProjet('Projet')}`;
+        ${mobilier ? `<div><span>Mobilier pour louer meublé</span><b>${fmtK(mobilier)}</b></div>` : ''}`}`;
+    res = `<div class="seul-pro">${tableAvantApres(calc.lots.map((l, i) => ({nom: `${calc.lots.length > 1 && !/^Logement/.test(l.nom) ? `Logement ${i + 1} : ` : ''}${l.nom} · ${fmt(l.surf)} m²${l.actuel ? ' (inchangé)' : ''}`, prix: l.prix, loyer: Math.round(l.loyer)})), duree)}</div>
+      ${blocResultat({lignesCout, total: {travaux: budget + mobilier, bien: coutBien, tout: coutBien + mobilier}, duree, valeur, loyer: Math.round(loyer), marge, notes: avertissement})}`;
   } else state.projet = null;
-  el.innerHTML = `${question}${champs}</div>
-    <div class="hint">${NIVEAUX[niveau].d}</div>
+  el.innerHTML = `${question}<div class="crit w-reglages">${champs}</div>
+    <div class="hint seul-pro">${NIVEAUX[niveau].d}</div>
     <button class="cta" id="w_calc"${calc && calc.lots ? ' hidden' : ''}>Estimer ${lots.length > 1 ? 'les logements' : 'le logement agrandi'}</button>
     <div id="w_etat" class="hint"></div>${res}
-    <div class="range">${avertissement}</div>`;
+    ${calc && calc.lots ? '' : `<div class="range">${avertissement}</div>`}`;
   // Réglages
   const maj = () => { save(); state.calcProjet = null; renderWorks(); };
-  document.getElementById('w_niveau').onchange = e => { choixTravaux.niveau = e.target.value; choixTravaux.totalTravaux = null; maj(); };
+  lierTuiles(el, () => { state.calcProjet = null; });
   // Le montant saisi ne change pas les logements estimés : pas besoin de relancer l'estimation
   document.getElementById('w_total').onchange = e => { c.totalTravaux = +e.target.value || null; save(); renderWorks(); };
   const on = (id, f) => { const x = document.getElementById(id); if (x) x.onchange = e => { f(e.target.value); maj(); }; };
@@ -2241,7 +2376,7 @@ function projetSurface(el, niveau, question, z, surf) {
     } catch (err) { state.calcProjet = {cle, erreur: 'Estimation impossible : ' + (err.message || err)}; }
     renderWorks();
   };
-  renderSynth();
+  renderSynth(); majSauveEst();
 }
 
 // --- Location saisonnière : réglages (prix par nuit vide = calculé depuis le loyer meublé), recettes et comparaison ---
@@ -2265,7 +2400,7 @@ function renderSaison() {
     <div class="crit"><div><label for="s_periode">Période louée</label><select id="s_periode">${optionsPeriode(periodeSaison(ps.occupation))}</select>${(p => p && p.d ? `<div class="hint">${p.d}</div>` : '')(PERIODES_SAISON[periodeSaison(ps.occupation)])}</div>${CHAMPS_SAISON.map(([k, l, st]) => `<div><label for="s_${k}">${l}</label><input type="number" id="s_${k}" min="0" step="${st}" value="${k === 'nuit' && ps.auto ? '' : ps[k]}"${k === 'nuit' ? ` placeholder="${ps.nuit}"` : ''}></div>`).join('')}
       <div><label for="s_classe">Classement</label><select id="s_classe"><option value="0"${ps.classe ? '' : ' selected'}>Non classé</option><option value="1"${ps.classe ? ' selected' : ''}>Meublé de tourisme classé</option></select></div></div>
     <div id="saisonRes"></div>
-    <div class="row"><button class="cta" onclick="financerBien()">Financer en location saisonnière →</button></div>`;   // hors de #saisonRes : quitter un champ le recalcule, le clic ne doit pas tomber sur un bouton remplacé
+`;
   el.querySelector('#s_periode').onchange = e => {
     const p = PERIODES_SAISON[e.target.value]; if (!p) return;
     choixSaison.occupation = p.occ;
@@ -2280,7 +2415,7 @@ function renderSaison() {
     if (k === 'occupation') return renderSaison(), renderSynth();   // la période suit le taux saisi
     majSaisonRes(); renderSynth();
   });
-  majSaisonRes();
+  majSaisonRes(); majSauveEst();
 }
 function majSaisonRes() {
   const el = document.getElementById('saisonRes'); if (!el) return;
@@ -2321,22 +2456,25 @@ function renderSynth() {
   else if (colocActive(r.surf) && chambresVoulues(r.surf) > nbChambres(r.surf)) alertes.push(`<div class="warnbox">Pas plus de ${nbChambres(r.surf)} chambres dans ${fmt(r.surf)} m² (9 m² minimum par chambre, plus les pièces communes) : loyer calculé pour ${nbChambres(r.surf)}.</div>`);
   if (state.atypique) alertes.push('<div class="warnbox">Bien atypique pour le secteur : fourchette élargie, détail dans « Détail du calcul ».</div>');
   if (r.elargie) alertes.push(`<div class="range">Peu de ventes récentes autour : ventes de ${r.anMin} à ${r.anMax} prises en compte, actualisées au prix d'aujourd'hui.</div>`);
+  // Fourchette : où tombe le prix entre le bas et le haut (barre claire = fourchette, trait blanc = prix retenu)
+  const lo = state.prixLo, hi = state.prixHi, ech = [Math.min(lo, state.prix) * 0.9, Math.max(hi, state.prix) * 1.05], pos = v => ((v - ech[0]) / (ech[1] - ech[0]) * 100).toFixed(1) + '%';
+  const loc = colocActive(r.surf) ? 'coloc' : saisonActive() ? 'saison' : louerMeuble() ? 'meuble' : 'vide';
+  const louer = `<div class="seg louer-l" id="louer" role="group" aria-label="Louer">${['vide', 'meuble', 'coloc', 'saison'].filter(v => v !== 'coloc' || !modeSimple()).map(v => `<button data-v="${v}"${loc === v ? ' class="on"' : ''}${v === 'coloc' && !colocPossible(r.surf) ? ` disabled title="Trop petit : environ 34 m² minimum pour 2 chambres"` : ''}>${{vide: 'Vide', meuble: 'Meublé', coloc: 'Colocation', saison: 'À la nuitée'}[v]}</button>`).join('')}</div>`;
   el.innerHTML = `
-    <div class="kpis deux">
-      <div class="kpi"><div class="k">Prix estimé</div><div class="v">${fmtK(state.prix)}</div><div class="d">${fmt(state.prix / r.surf)} €/m² · ${fmtK(state.prixLo)} – ${fmtK(state.prixHi)}</div></div>
+    <h2 class="est-s-t"><i>2</i>L'estimation</h2>
+    <div class="est-duo">
+      <div class="est-hero"><div class="k">Il vaut environ</div><div class="v">${fmt(Math.round(state.prix / 1000) * 1000)} €</div>
+        <div class="fourchette" aria-hidden="true"><span style="left:${pos(lo)};right:calc(100% - ${pos(hi)})"></span><b style="left:${pos(state.prix)}"></b></div>
+        <div class="fourchette-l"><span>${fmtK(lo)}</span><span>${fmtK(hi)}</span></div>
+        <div class="d" style="margin-top:10px">${fmt(state.prix / r.surf)} €/m² · <span class="conf" style="background:${state.confAff[1]}">${state.confAff[0]}</span> <span class="seul-pro">· ${r.comps.length} ventes à moins de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}</span></div></div>
       ${loyerOk && nonLouable ? `
-      <div class="kpi"><div class="k">Loyer</div><div class="v down txt">Non louable</div><div class="d">en l'état (${dpe === 'G' ? 'DPE G' : 'à rénover entièrement'})${pj ? ` · <b>${fmt(pj.loyerApres)} €</b> HC après travaux` : ' · voir « Travaux prévus ? »'}</div></div>` : `
-      ${sz ? `<div class="kpi"><div class="k">Location saisonnière</div><div class="v">${fmt(sz.brutMois)} €</div><div class="d">recettes/mois en moyenne (${fmt(paramsSaison().nuit)} €/nuit, ${fmt(paramsSaison().occupation)} % d'occupation) · <b>${fmt(sz.netMois)} €</b> après frais · meublé classique ${fmt(state.loyerHC)} € HC</div></div>` : `<div class="kpi"><div class="k">Loyer${colocActive() ? ' en colocation' : ''}</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'}</div><div class="d">${!loyerOk ? 'calcul en cours' : colocActive() ? `hors charges/mois, ${nbChambres(r.surf)} chambres : <b>${fmt(state.loyerHC / nbChambres(r.surf))} €</b> chacune (${fmt(state.loyerCC / nbChambres(r.surf))} € CC)` : `hors charges/mois · ${fmt(state.loyerCC)} € CC`}</div></div>`}`}
-    </div>
-    <div class="synthbar">
-      <span class="conf" style="background:${state.confAff[1]}">${state.confAff[0]}</span>
-      <span class="hint">${r.comps.length} ventes à moins de ${r.radius < 1000 ? fmt(r.radius) + ' m' : (r.radius / 1000).toFixed(1) + ' km'}</span>
-      <span class="louer">Louer <span class="seg mini" id="louer">${(loc => ['vide', 'meuble', 'coloc', 'saison'].map(v => `<button data-v="${v}"${loc === v ? ' class="on"' : ''}${v === 'coloc' && !colocPossible(r.surf) ? ` disabled title="Trop petit : environ 34 m² minimum pour 2 chambres"` : ''}>${{vide: 'Vide', meuble: 'Meublé', coloc: 'Colocation', saison: 'À la nuitée'}[v]}</button>`).join(''))(
-          colocActive(r.surf) ? 'coloc' : saisonActive() ? 'saison' : louerMeuble() ? 'meuble' : 'vide')}</span>
-        ${colocActive(r.surf) ? `<label class="chambres">Chambres <input type="number" id="nbChambres" min="2" max="${chambresMax(r.surf)}" value="${nbChambres(r.surf)}"></label>` : ''}</span>
+      <div class="est-box"><div class="k">Il se loue</div><div class="v down txt">Non louable</div><div class="d">en l'état (${dpe === 'G' ? 'DPE G' : 'à rénover entièrement'})${pj ? ` · <b>${fmt(pj.loyerApres)} €</b> par mois après travaux` : ' · voir les travaux plus bas'}</div>${louer}</div>` : sz ? `
+      <div class="est-box"><div class="k">Location saisonnière, par mois en moyenne</div><div class="v">${fmt(sz.brutMois)} € <small>de recettes</small></div><div class="d">${fmt(paramsSaison().nuit)} € la nuit, ${fmt(paramsSaison().occupation)} % d'occupation · <b>${fmt(sz.netMois)} €</b> après frais · meublé classique ${fmt(state.loyerHC)} €</div>${louer}</div>` : `
+      <div class="est-box"><div class="k">Il se loue environ${colocActive() ? ', en colocation' : ''}</div><div class="v">${loyerOk ? fmt(state.loyerHC) + ' €' : '…'} <small>par mois</small></div><div class="d">${!loyerOk ? 'calcul en cours' : colocActive() ? `hors charges, ${nbChambres(r.surf)} chambres : <b>${fmt(state.loyerHC / nbChambres(r.surf))} €</b> chacune (${fmt(state.loyerCC / nbChambres(r.surf))} € charges comprises)` : `hors charges · ${fmt(state.loyerCC)} € charges comprises`}</div>${louer}
+        ${colocActive(r.surf) ? `<div class="synthbar"><label class="chambres">Chambres <input type="number" id="nbChambres" min="2" max="${chambresMax(r.surf)}" value="${nbChambres(r.surf)}"></label></div>` : ''}</div>`}
     </div>
     ${alertes.join('')}`;
-  memoriser();
+  memoriser(); majAchat();
   el.querySelectorAll('#louer button').forEach(b => b.onclick = () => {
     field('location').value = b.dataset.v;
     field('location').dispatchEvent(new Event('input'));
@@ -2347,6 +2485,33 @@ function renderSynth() {
     if (!MOTEUR) try { localStorage.setItem('criteres-v2', JSON.stringify(saved)); } catch (e) {}
     updateResult();
   };
+}
+
+// --- Mode simple : « acheté à crédit, chaque mois il te reste / il te manque X € », apport et durée réglables sur place ---
+let choixAchat = {apport: 0, duree: 20};
+try { choixAchat = {...choixAchat, ...JSON.parse(localStorage.getItem('achat-simple') || '{}')}; } catch (e) {}
+function majAchat() {
+  const el = document.getElementById('estAchat'), r = state.base;
+  if (!el || !r || state.prix == null || state.loyerHC == null || !window.CF_APP) return;
+  const pj = state.projet && state.projet.dpe !== 'G' ? state.projet : null, dpe = selected(crit('dpe')).k, etat = selected(crit('etat')).k;
+  const nonLouable = !pj && (dpe === 'G' || etat === 'renover'), sz = saisonActive() ? saisonnier(paramsSaison()) : null;
+  const loyer = nonLouable ? 0 : pj ? (pj.loyers ? pj.loyers.reduce((t, l) => t + l, 0) : pj.loyerApres) : sz ? sz.netMois : state.loyerHC;
+  const taux = CF_APP.taux.tauxDuree(CF_APP.taux.TAUX_ACTUEL, choixAchat.duree * 12);
+  const b = bilanAchat({prix: state.prix, loyer, surf: r.surf, appart: isAppart(), apport: +choixAchat.apport || 0, duree: choixAchat.duree, taux,
+    travaux: pj ? pj.travaux : 0, mobilier: pj ? pj.mobilier || 0 : louerMeuble() ? state.mob || 0 : 0, vacance: sz ? 0 : 0.5, tf: Math.round((pj ? pj.loyerApres : state.loyerHC) / 10) * 10});
+  const prixR = v => fmt(Math.round(v / 1000) * 1000) + ' €';
+  const plus = loyer <= 0 ? (nonLouable ? 'Pas louable en l\'état : regarde les travaux juste en dessous.' : '')
+    : b.reste >= 0 ? `Tu pourrais l'acheter jusqu'à <b>${prixR(b.prixMax)}</b> et le loyer paierait encore tout.`
+    : `Pour que le loyer paie tout, il faudrait l'acheter autour de <b>${prixR(b.prixMax)}</b>${b.apportPlein > 0 ? `, ou mettre <b>${prixR(b.apportPlein)}</b> d'apport` : ''}.`;
+  el.innerHTML = `<div class="est-achat-r"><div><label for="ea_apport">Apport (€)</label><input id="ea_apport" type="number" min="0" step="1000" value="${+choixAchat.apport || 0}"></div>
+      <div><label>Durée du crédit</label><div class="seg" id="ea_duree">${[15, 20, 25].map(d => `<button type="button" data-v="${d}"${d === choixAchat.duree ? ' class="on"' : ''}>${d} ans</button>`).join('')}</div></div></div>
+    ${bilanSimple({loyer: b.loyer, credit: b.mensualite, charges: b.charges}, {titre: `Acheté ${prixR(state.prix)} à crédit${pj ? `, avec ${prixR(pj.travaux)} de travaux, une fois les travaux finis` : ''}, chaque mois`,
+      libLoyer: sz ? 'Recettes après frais' : pj && pj.loyers && pj.loyers.length > 1 ? 'Loyers encaissés' : 'Loyer encaissé', detailLoyer: sz ? '' : detailVacance(loyer, 0.5),
+      note: `Crédit sur ${choixAchat.duree} ans${+choixAchat.apport ? `, ${fmt(+choixAchat.apport)} € d'apport` : ', sans apport'}, au taux du marché (${taux.toFixed(2).replace('.', ',')} %). Avant impôts.`})}
+    ${plus ? `<p class="bs-plus">${plus}</p>` : ''}`;
+  const sauve = () => { try { localStorage.setItem('achat-simple', JSON.stringify(choixAchat)); } catch (e) {} majAchat(); };
+  el.querySelector('#ea_apport').onchange = e => { choixAchat.apport = Math.max(0, +e.target.value || 0); sauve(); };
+  el.querySelectorAll('#ea_duree button').forEach(x => x.onclick = () => { choixAchat.duree = +x.dataset.v; sauve(); });
 }
 
 // --- Carte ---
@@ -2497,19 +2662,23 @@ function majTeteEst() {
     <nav class="cf-etapes" aria-label="Étapes du projet">${ETAPES.map((t, i) => `<button data-etape="${i + 1}"${i ? '' : ' aria-current="step"'}><i>${i + 1}</i>${t}</button>`).join('')}</nav>`;
   el.querySelectorAll('button[data-etape]').forEach(b => b.onclick = () => { const k = +b.dataset.etape; if (k > 1) { ouvrirProjet(pr.id, 'cashflow'); CF_APP.etape(k); } });
 }
+// Barre du bas, toujours la même : enregistrer (ou mettre à jour le projet rouvert), puis financer ce qui est à l'écran
 function majSauveEst(msg) {
-  majTeteEst();
+  majTeteEst(); majAchat();   // le bilan « acheté à crédit » suit le projet de travaux choisi
   const el = document.getElementById('sauveEst'); if (!el) return;
-  const co = !!COMPTE.user || !COMPTE.actif(), rv = co && revueEnCours();
+  const co = !!COMPTE.user || !COMPTE.actif(), rv = co && revueEnCours(), pj = state.projet;
   const nomBien = rv && estRevue.n != null ? ((rechercheRegroupees(rv.pr)[estRevue.n] || {}).nom || `bien ${estRevue.n + 1}`) : '';
+  const nomTape = (document.getElementById('est_nom') || {}).value || '';
+  const financer = rv && pj ? `<button class="cta" id="w_option" onclick="ajouterOptionTravaux()">Ajouter comme option de « ${esc(rv.pr.nom)} » →</button>`
+    : pj ? `<button id="est_rev" onclick="financerBien('revente')" title="Financer : travaux puis revente">Travaux + revente</button><button class="cta blanc" id="est_loc" onclick="financerBien('location')" title="Financer : travaux puis location">Travaux + location →</button>`
+    : `<button class="cta blanc" id="est_financer" onclick="financerBien()">${saisonActive() ? 'Financer en location saisonnière →' : 'Financer ce bien →'}</button>`;
   el.innerHTML = rv
-    ? `<div class="sauve-ligne"><button class="cta" id="est_maj">Mettre à jour l'estimation du projet</button><button id="est_nouveau">Enregistrer comme nouveau projet</button></div>
+    ? `<div class="sauve-ligne"><button class="cta" id="est_maj">Mettre à jour l'estimation du projet</button><button id="est_nouveau">Enregistrer comme nouveau projet</button><span class="esp"></span>${financer}</div>
        <div class="hint" id="est_msg">${msg || `Remplace l'estimation de${nomBien ? ` « ${esc(nomBien)} » dans` : ''} « ${esc(rv.pr.nom)} » par celle-ci. Ton financement (prix, loyers) ne change pas.`}</div>`
     : co
-    ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet"><button class="cta" id="est_enreg">Enregistrer mon estimation</button></div>
-       <div class="hint" id="est_msg">${msg || 'Garde cette estimation, avec le projet de travaux choisi ci-dessus, dans « Mes projets ».'}</div>`
-    : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button></div>
-       <div class="hint">Pour la retrouver dans « Mes projets », sur tous tes appareils.</div>`;
+    ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="cta" id="est_enreg">Enregistrer dans Mes projets</button><span class="esp"></span>${financer}</div>
+       ${msg ? `<div class="hint" id="est_msg">${msg}</div>` : '<div class="hint" id="est_msg" hidden></div>'}`
+    : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button><span class="esp"></span>${financer}</div>`;
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
   const m = document.getElementById('est_maj'); if (m) m.onclick = majEstimationProjet;
   const nv = document.getElementById('est_nouveau'); if (nv) nv.onclick = () => { estRevue = null; fixerProjet(null); majSauveEst(); };
@@ -4582,6 +4751,7 @@ document.querySelectorAll('.tabs .mode [data-mode]').forEach(b => b.onclick = ()
   if (t === 'investissements' && window.INV) INV.afficher();
   else if (t === 'projets') afficherProjets();
   else if (t === 'cashflow' && window.CF_APP) CF_APP.rendre();
+  else if (t === 'estimation' && state.base) updateResult();
 });
 const ONGLETS = ['estimation', 'cashflow', 'investissements', 'projets'];
 function lireHash() {

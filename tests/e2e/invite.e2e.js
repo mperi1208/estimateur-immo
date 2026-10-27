@@ -1,7 +1,7 @@
 // Parcours sans compte : Estimer (prix, loyer, location, travaux), passage vers Financer, réglages gardés, recherches récentes
 const test = require('node:test');
 const assert = require('node:assert');
-const {lancerNavigateur, appareil, ouvrir, nouvelleBase, estimer, saisir, nombre, cliquer, versEtape} = require('./banc');
+const {lancerNavigateur, appareil, ouvrir, nouvelleBase, estimer, saisir, nombre, cliquer, versEtape, travaux} = require('./banc');
 
 let nav, page, journal;
 test.before(async () => { nav = await lancerNavigateur(); ({page, journal} = await appareil(nav, nouvelleBase())); await ouvrir(page); });
@@ -23,7 +23,7 @@ test('Estimer : prix et loyer cohérents, plus de rendement affiché', async () 
   assert.ok(e.prix > 100000 && e.prix < 300000, `prix ${e.prix}`);
   assert.ok(e.loyer > 300 && e.loyer < 1200, `loyer ${e.loyer}`);
   const synth = await page.locator('#synth').innerText();
-  assert.match(synth, /Prix estimé/i); assert.match(synth, /Fiabilité/i);
+  assert.match(synth, /Il vaut environ/i); assert.match(synth, /Fiabilité/i);
   assert.doesNotMatch(synth, /Rendement/i);
   assert.doesNotMatch(await page.locator('main').innerText(), /Rendement/i);
 });
@@ -54,7 +54,7 @@ test('Estimer : colocation impossible sous 34 m², loyer par chambre au-dessus',
 
 test('Estimer → Financer : le bien estimé est repris (prix, loyer, surface), un achat simple', async () => {
   const e = await estimer(page, {surf: 45});
-  await page.click('#works button.cta');                // « Financer ce bien »
+  await page.click('#est_financer');                // « Financer ce bien »
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(+await valeur('prix'), Math.round(e.prix)); assert.equal(+await valeur('loyer'), Math.round(e.loyer));
   assert.equal(+await valeur('surf'), 45);
@@ -80,7 +80,7 @@ test('Financer : un réglage fait à la main n\'est pas écrasé en revenant sur
 
 test('Estimer « rénovation complète » → « Travaux + location » : travaux, valeur et loyer après travaux, différé', async () => {
   await estimer(page, {surf: 50, details: {etat: 'renover'}});
-  await page.selectOption('#w_niveau', 'renover');
+  await travaux(page, 'renover');
   await page.waitForFunction(() => state.projet && state.projet.niveau === 'renover');
   assert.ok(await page.evaluate(() => state.projet.travaux) > 0);
   // Coût total des travaux saisi à la main : il remplace le calcul au m²
@@ -88,7 +88,7 @@ test('Estimer « rénovation complète » → « Travaux + location » : travaux
   await page.waitForFunction(() => state.projet && state.projet.travaux === 60000);
   assert.match(await page.locator('#works').innerText(), /montant que tu as saisi/i);
   const pj = await page.evaluate(() => state.projet);
-  await page.click('#works button.cta >> nth=0');
+  await page.click('#est_loc');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(await page.evaluate(() => document.getElementById('cf_boxProjet').open), true);
   assert.equal(+await valeur('travaux'), pj.travaux); assert.equal(+await valeur('valeurApres'), pj.valeurApres);
@@ -100,8 +100,8 @@ test('Estimer « rénovation complète » → « Travaux + location » : travaux
 
 test('Travaux + revente : scénario « Revendre », bilan de l\'opération', async () => {
   await page.click('.tabs [data-tab="estimation"]');
-  await page.waitForFunction(() => document.querySelector('#works .row'));
-  await page.click('#works .row button.cta >> nth=1');
+  await page.waitForSelector('#est_rev');
+  await page.click('#est_rev');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(await valeur('scenario'), 'revendre');
   await versEtape(page, '#cf_bilan'); assert.equal(await page.locator('#cf_bilan').isVisible(), true);
@@ -216,7 +216,7 @@ test('location saisonnière dans Estimer : recettes à la nuitée, frais, compar
 });
 
 test('saisonnier → Financer : à la nuitée, meublé forcé, recettes et fiscalité des meublés de tourisme', async () => {
-  await page.click('#saison .row button.cta');
+  await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(await valeur('locMode'), 'nuit'); assert.equal(+await valeur('nuit'), 90); assert.equal(+await valeur('occupation'), 50);
   assert.equal(await page.locator('#cf_periode').inputValue(), '');                // 50 % : taux saisi, pas une période
@@ -238,7 +238,7 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
   await page.click('.tabs [data-tab="estimation"]');
   await page.click('#louer button[data-v="vide"]');
   await estimer(page, {surf: 60});
-  await page.selectOption('#w_niveau', 'amenager');
+  await travaux(page, 'amenager');
   await page.selectOption('#w_usage', 'lot');
   await page.fill('#w_m2', '30'); await page.dispatchEvent('#w_m2', 'change');
   await page.click('#w_calc');
@@ -251,7 +251,7 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
   await page.waitForFunction(() => state.projet && state.projet.travaux === 50000);
   assert.deepEqual(await page.evaluate(() => state.projet.loyers), pj.loyers);
   assert.match(await page.locator('#works').innerText(), /montant que tu as saisi/i);
-  await page.click('#works .row button.cta >> nth=0');
+  await page.click('#est_loc');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(+await valeur('travaux'), 50000);
   assert.equal(+await valeur('loyer'), pj.loyers[0]); assert.equal(+await valeur('loyer2'), pj.loyers[1]);
@@ -261,7 +261,7 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
 
 test('garage aménagé en chambre : loyer après travaux estimé, loué en l\'état avant, travaux lancés au mois 25', async () => {
   await page.click('.tabs [data-tab="estimation"]');
-  await page.selectOption('#w_niveau', 'amenager');
+  await travaux(page, 'amenager');
   await page.selectOption('#w_usage', 'agrandir');
   await page.selectOption('#w_type', 'autre');
   await page.fill('#w_total', ''); await page.dispatchEvent('#w_total', 'change');
@@ -270,7 +270,7 @@ test('garage aménagé en chambre : loyer après travaux estimé, loué en l\'é
   await page.waitForFunction(() => state.projet && state.projet.lots === 1 && state.projet.niveau === 'amenager', null, {timeout: 30000});
   const pj = await page.evaluate(() => state.projet), avant = await page.evaluate(() => Math.round(state.loyerHC));
   assert.ok(pj.loyerApres > avant);                                // une chambre en plus : le loyer monte
-  await page.click('#works .row button.cta >> nth=0');
+  await page.click('#est_loc');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(+await valeur('loyer'), pj.loyerApres);
   assert.ok(+await valeur('loyerAvant') > 0);
@@ -281,27 +281,27 @@ test('garage aménagé en chambre : loyer après travaux estimé, loué en l\'é
   assert.equal(+await valeur('differe'), 36);                      // le différé choisi ne bouge pas
   assert.match(await page.locator('#cf_alerts').innerText(), new RegExp(`Travaux du mois 25 au mois ${24 + pj.duree}`));
   await page.click('.tabs [data-tab="estimation"]');
-  await page.selectOption('#w_niveau', 'non');
+  await travaux(page, 'non');
 });
 
 test('diviser en 3 logements : surfaces modifiables, coûts par logement, 3 loyers (dont 2 en 2e loyer)', async () => {
   await page.click('.tabs [data-tab="estimation"]');
-  await page.selectOption('#w_niveau', 'diviser');
+  await travaux(page, 'diviser');
   await page.selectOption('#w_nb', '3');
   assert.equal(await page.locator('[data-lot]').count(), 3);
   await page.click('#w_calc');
   await page.waitForFunction(() => state.projet && state.projet.lots === 3, null, {timeout: 40000});
   const pj = await page.evaluate(() => state.projet);
-  await page.click('#works .row button.cta >> nth=0');
+  await page.click('#est_loc');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(+await valeur('loyer2'), pj.loyers[1] + pj.loyers[2]);
   await page.click('.tabs [data-tab="estimation"]');
-  await page.selectOption('#w_niveau', 'non');
+  await travaux(page, 'non');
 });
 
 test('diviser en 2 et rattacher le garage à un logement, travaux au mois 25 : loué en l\'état avant, 2 loyers après', async () => {
   await page.click('.tabs [data-tab="estimation"]');
-  await page.selectOption('#w_niveau', 'diviser');
+  await travaux(page, 'diviser');
   await page.selectOption('#w_nb', '2');
   await page.fill('[data-lot="0"]', '40'); await page.dispatchEvent('[data-lot="0"]', 'change');
   await page.fill('[data-lot="1"]', '30'); await page.dispatchEvent('[data-lot="1"]', 'change');
@@ -313,7 +313,7 @@ test('diviser en 2 et rattacher le garage à un logement, travaux au mois 25 : l
   const pj = await page.evaluate(() => state.projet), lots = await page.evaluate(() => state.calcProjet.lots);
   assert.equal(lots[0].surf, 55); assert.equal(pj.duree, 8);
   assert.ok(pj.loyers[0] > pj.loyers[1]);                           // le logement avec le garage se loue plus cher
-  await page.click('#works .row button.cta >> nth=0');
+  await page.click('#est_loc');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.ok(+await valeur('loyerAvant') > 0);
   await saisir(page, '#cf_debutTravaux', 25);
@@ -321,7 +321,7 @@ test('diviser en 2 et rattacher le garage à un logement, travaux au mois 25 : l
   assert.match(await page.locator('#cf_alerts').innerText(), /Travaux du mois 25 au mois 32 : loué .* en l'état jusqu'au mois 24/);
   await page.click('.tabs [data-tab="estimation"]');
   await page.fill('#w_divM2', ''); await page.dispatchEvent('#w_divM2', 'change');
-  await page.selectOption('#w_niveau', 'non');
+  await travaux(page, 'non');
 });
 
 test('Financer en 4 étapes : loyers par période (avant, pendant, après travaux), différé, résultat en périodes', async () => {
@@ -361,6 +361,38 @@ test('Financer en 4 étapes : loyers par période (avant, pendant, après travau
   await cliquer(page, '#cf_travauxSeg button[data-v="0"]');
   await cliquer(page, '#cf_differeSeg button[data-v="0"]');
   assert.equal(+await valeur('differe'), 0);
+});
+
+test('Estimer en mode simple : il vaut, il se loue, et chaque mois avec un crédit ; apport et durée changent le bilan', async () => {
+  await page.click('.tabs .mode [data-mode="simple"]');
+  try {
+    await estimer(page, {surf: 60});
+    await page.waitForSelector('#estAchat .bilan-simple');
+    const a = page.locator('#estAchat');
+    let t = await a.innerText();
+    assert.match(t, /Acheté [\d\s]+ € à crédit/); assert.match(t, /Il te (reste|manque)/);
+    assert.match(t, /Crédit sur 20 ans, sans apport/); assert.match(t, /moins ½ mois vide par an/);
+    assert.equal(await page.locator('#estim details.detail').isVisible(), false, 'le calcul détaillé reste dans Pro');
+    assert.equal(await page.locator('#works [data-niveau]:visible').count(), 4, 'quatre tuiles seulement');
+    const montant = async () => (await a.locator('.bs-tete').innerText()).replace(/\D/g, '');
+    const avant = await montant();
+    await page.fill('#ea_apport', '50000'); await page.dispatchEvent('#ea_apport', 'change');
+    await page.waitForFunction(v => document.querySelector('#estAchat .bs-tete').innerText.replace(/\D/g, '') !== v, avant);
+    assert.match(await a.innerText(), /50\s000 € d'apport/);
+    const apport = await montant();
+    await page.click('#ea_duree button[data-v="25"]');
+    await page.waitForFunction(v => document.querySelector('#estAchat .bs-tete').innerText.replace(/\D/g, '') !== v, apport);
+    assert.match(await a.innerText(), /Crédit sur 25 ans/);
+    // les travaux comptent dans le crédit
+    await travaux(page, 'diviser');
+    await page.click('#w_calc'); await page.waitForSelector('#works .w-simple');
+    await page.waitForFunction(() => /avec [\d\s]+ € de travaux/.test(document.querySelector('#estAchat').innerText));
+    assert.ok(await page.locator('#estim .w-simple').isVisible()); assert.equal(await page.locator('#estim .w-bas').isVisible(), false);
+    await travaux(page, 'non');
+  } finally {
+    await page.click('.tabs .mode [data-mode="pro"]');
+    await page.evaluate(() => localStorage.removeItem('achat-simple'));
+  }
 });
 
 test('nouvelle version en ligne : la page se recharge toute seule, une fois par version', async () => {

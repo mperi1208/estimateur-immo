@@ -2,7 +2,7 @@
 // Mes projets (depuis Financer et Estimer), deux appareils sur le même compte, déconnexion
 const test = require('node:test');
 const assert = require('node:assert');
-const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, nombre, cliquer, versEtape} = require('./banc');
+const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, nombre, cliquer, versEtape, travaux} = require('./banc');
 
 const EMAIL = 'marc@exemple.fr', MDP = 'secret123';
 let nav, base, page, journal;
@@ -473,7 +473,7 @@ test('rachat de crédit : simulation modifiable (taux, durée, frais, renégocia
 
 test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de doublon), supprimé', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
-  await page.click('#works button.cta');
+  await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.fill('#cf_nomProjet', 'Projet Lyon 45');
   await cliquer(page, '#cf_enreg');
@@ -527,7 +527,7 @@ test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option
   assert.match(await page.locator('#est_tete .bienbar').innerText(), /Mes projets › Estimation 52 m²/);
   assert.equal(await page.locator('#est_tete [aria-current="step"]').innerText(), '1\nLe bien');
   assert.match(await page.locator('#sauveEst').innerText(), /Mettre à jour l'estimation du projet/);
-  await page.selectOption('#w_niveau', 'diviser');
+  await travaux(page, 'diviser');
   await page.click('#w_calc');
   await page.waitForFunction(() => state.projet && state.projet.lots === 2, null, {timeout: 40000});
   const pj = await page.evaluate(() => state.projet), nb = await page.evaluate(() => PROJETS.liste.length);
@@ -547,12 +547,12 @@ test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option
   // Rangement pour les tests suivants : option retirée, projet refermé
   await page.evaluate(() => { const o = PROJETS.liste.find(x => x.branche === 'Division'); PROJETS.supprimer(o.id); deplier(o.groupe, false); fixerProjet(null); });
   await page.click('.tabs [data-tab="estimation"]');
-  await page.selectOption('#w_niveau', 'non');
+  await travaux(page, 'non');
 });
 
 test('Mes projets : deux projets financés par un seul crédit', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
-  await page.click('#works button.cta');
+  await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.fill('#cf_nomProjet', 'Lot A');
   await cliquer(page, '#cf_enreg');
@@ -723,7 +723,7 @@ test('logement de la famille : à part du cash-flow locatif (tuiles, carte, mode
 test('Mes projets : options d\'un même projet (regroupées, comparées, ajoutées, sorties, regroupement défait)', async () => {
   await page.evaluate(() => { window.promptAvant = window.prompt; window.prompt = (m, d) => d; });   // noms proposés acceptés
   await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
-  await page.click('#works button.cta');
+  await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await saisir(page, '#cf_prix', 200000);
   await saisir(page, '#cf_loyer', 900);
