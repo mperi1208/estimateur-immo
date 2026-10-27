@@ -1214,7 +1214,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 </div>
 <div class="cf-barre" id="cf_save"><div class="cf-barre-in">
   <div id="cf_saveForm">
-    <input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregNouveau" hidden>Enregistrer comme nouveau projet</button><button id="cf_enregBranche" hidden>Enregistrer comme nouvelle option</button>
+    <input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregBranche" hidden>Nouvelle option</button><button id="cf_enregNouveau" hidden>Nouveau projet</button>
     <div id="cf_saveMsg" role="status"></div>
   </div>
   <div id="cf_saveInvite" hidden><span class="invite">Connecte-toi pour enregistrer ce projet dans « Mes projets ».</span><button class="cta" id="cf_connexion">Se connecter</button></div>
@@ -2694,10 +2694,10 @@ function majSauveEst(msg) {
     : pj ? `<button id="est_rev" onclick="financerBien('revente')" title="Financer : travaux puis revente">Travaux + revente</button><button class="cta blanc" id="est_loc" onclick="financerBien('location')" title="Financer : travaux puis location">Travaux + location →</button>`
     : `<button class="cta blanc" id="est_financer" onclick="financerBien()">${saisonActive() ? 'Financer en location saisonnière →' : 'Financer ce bien →'}</button>`;
   el.innerHTML = rv
-    ? `<div class="sauve-ligne"><button class="cta" id="est_maj">Mettre à jour l'estimation du projet</button><button id="est_nouveau">Enregistrer comme nouveau projet</button><span class="esp"></span>${financer}</div>
+    ? `<div class="sauve-ligne"><button class="cta" id="est_maj">Mettre à jour l'estimation dans « ${esc(rv.pr.nom)} »</button><button id="est_nouveau">Nouveau projet</button><span class="esp"></span>${financer}</div>
        <div class="hint" id="est_msg">${msg || `Remplace l'estimation de${nomBien ? ` « ${esc(nomBien)} » dans` : ''} « ${esc(rv.pr.nom)} » par celle-ci. Ton financement (prix, loyers) ne change pas.`}</div>`
     : co
-    ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="cta" id="est_enreg">Enregistrer dans Mes projets</button><span class="esp"></span>${financer}</div>
+    ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="cta" id="est_enreg">${contexteProjet() ? 'Enregistrer comme nouveau projet' : 'Enregistrer dans Mes projets'}</button><span class="esp"></span>${financer}</div>
        ${msg ? `<div class="hint" id="est_msg">${msg}</div>` : '<div class="hint" id="est_msg" hidden></div>'}`
     : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button><span class="esp"></span>${financer}</div>`;
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
@@ -3865,7 +3865,8 @@ function majSauvegarde(pr) {
   const opt = estOption(pr);
   if (!nomTouche) $('nomProjet').value = pr ? (opt ? nomBranche(pr) : pr.nom) : bienUtile ? bienUtile.label : '';
   $('nomProjet').placeholder = opt ? 'Nom de l\'option' : 'Nom du projet'; $('nomProjet').setAttribute('aria-label', $('nomProjet').placeholder);
-  $('enreg').textContent = pr ? 'Enregistrer les modifications' : 'Enregistrer dans mes projets';
+  // Le bouton dit ce qu'il fait : il met à jour ce qui est ouvert (le projet, ou son option), sinon il crée un projet
+  $('enreg').textContent = pr ? (opt ? `Mettre à jour l'option « ${nomBranche(pr)} »` : `Mettre à jour « ${pr.nom} »`) : autreBien ? 'Enregistrer comme nouveau projet' : 'Enregistrer dans mes projets';
   $('enregNouveau').hidden = !pr;
   $('enregBranche').hidden = !pr || !!pr.amenag;
   $('saveMsg').textContent = '';
@@ -3941,7 +3942,7 @@ function enregistrerEstimation(est, mode, nom) {
   figee = undefined;
   sync(est, mode);
   nomTouche = !!nom; if (nom) $('nomProjet').value = nom;
-  enregistrerProjet(false);
+  enregistrerProjet(true);   // toujours un nouveau projet : celui en revue se met à jour par « Mettre à jour l'estimation »
 }
 // Depuis Mon patrimoine : aménager un espace d'un bien déjà à toi (sous-sol, combles…). Rien à acheter : le projet ne
 // compte que les travaux (financés par le crédit), avec le loyer et la valeur une fois aménagé. Financer n'est pas touché.

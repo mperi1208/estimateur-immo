@@ -526,7 +526,7 @@ test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option
   await page.waitForFunction(() => !document.getElementById('est_tete').hidden);
   assert.match(await page.locator('#est_tete .bienbar').innerText(), /Mes projets › Estimation 52 m²/);
   assert.equal(await page.locator('#est_tete [aria-current="step"]').innerText(), '1\nLe bien');
-  assert.match(await page.locator('#sauveEst').innerText(), /Mettre à jour l'estimation du projet/);
+  assert.match(await page.locator('#sauveEst').innerText(), /Mettre à jour l'estimation dans « Estimation 52 m² »/);
   await travaux(page, 'diviser');
   await page.click('#w_calc');
   await page.waitForFunction(() => state.projet && state.projet.lots === 2, null, {timeout: 40000});
@@ -565,19 +565,19 @@ test('projet en cours : en haut d\'Estimer et de Financer, gardé au rechargemen
   await page.waitForFunction(() => /Estimation 52 m²/.test(document.getElementById('est_tete').innerText));
   await page.evaluate(() => { const r = PROJETS.liste.find(x => x.nom === 'Estimation 52 m²').recherche; state.prix = null; reprendre({...r, lat: r.lat + 0.003, lon: r.lon + 0.003, label: 'Autre adresse'}); });
   await page.waitForFunction(() => state.prix != null && state.loyerHC != null && /n'est pas celle du projet/.test(document.getElementById('est_tete').innerText), null, {timeout: 20000});
-  assert.match(await page.locator('#sauveEst').innerText(), /Enregistrer dans Mes projets/i);
+  assert.match(await page.locator('#sauveEst').innerText(), /Enregistrer comme nouveau projet/i);
   await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.match(await page.locator('#cf_fil').innerText(), /Estimation 52 m²[\s\S]*pas celui du projet/);
   assert.equal(await page.evaluate(() => projetCourantId), pr.id);
-  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer dans mes projets');
+  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer comme nouveau projet');
   // retour au bien du projet : son estimation se met de nouveau à jour
   await page.click('.tabs [data-tab="estimation"]');
   await page.click('#est_revoir');
   await page.waitForSelector('#est_maj', {timeout: 20000});
   await page.click('.tabs [data-tab="cashflow"]');
   assert.doesNotMatch(await page.locator('#cf_fil').innerText(), /pas celui du projet/);
-  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer les modifications');
+  assert.equal(await page.locator('#cf_enreg').innerText(), 'Mettre à jour « Estimation 52 m² »');
   // quitter le projet : plus de fil d'Ariane, Enregistrer créera un nouveau projet
   await page.click('#cf_quitter');
   assert.equal(await page.locator('#cf_fil').isHidden(), true);
@@ -856,6 +856,8 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await (await col('Division')).locator('[data-a="brNouvelle"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.match(await page.locator('#cf_bien').innerText(), /option Option 3/i);
+  assert.equal(await page.locator('#cf_enreg').innerText(), 'Mettre à jour l\'option « Option 3 »');
+  assert.equal(await page.locator('#cf_enregBranche').innerText(), 'Nouvelle option');
   await saisir(page, '#cf_loyer', 1900);
   await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.branche === 'Option 3') || {finance: {}}).finance.loyer === 1900, 'nouvelle option enregistrée');
