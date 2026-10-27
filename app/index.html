@@ -271,6 +271,8 @@ details.plus{margin-top:12px;border-style:dashed}
 @media (max-width:600px){.invwrap .pj-chiffres{gap:8px}.invwrap .pj-chiffres b{font-size:15px}.invwrap .pj-chiffres span{font-size:10px}.invwrap .pj-menu-l{left:0;right:auto}}
 .invwrap .pj-date{font-size:12px;color:var(--muted)}
 .pj-trouve{display:contents}
+.invwrap .pj-achete{display:inline-block;margin-top:6px;padding:3px 10px;border:0;border-radius:99px;background:#E3F1EB;color:var(--accent);font:inherit;font-size:12px;font-weight:800;cursor:pointer;width:auto}
+.invwrap .pj-achete:hover{background:#cfe8dc}
 .invwrap .pj-cherche{margin:0 0 14px}
 .invwrap .pj-cherche input{width:100%;max-width:520px}
 .invwrap .pj .pj-panneau{margin:14px 0 0}
@@ -3959,7 +3961,9 @@ function enregistrerProjet(nouveau, branche) {
   $('saveMsg').innerHTML = branche ? `Option « ${esc(branche)} » ajoutée au projet dans <a href="#projets">Mes projets</a>.` : `Enregistré dans <a href="#projets">Mes projets</a>.`;
 }
 // Recalcule le résumé d'un projet enregistré avec ses réglages, sans toucher à ce que montre Financer
-function recalculer(v, ex) {
+function recalculer(v, ex) { return avecReglages(v, () => instantane(ex, true).resume); }
+// Calcule avec les réglages d'un projet enregistré, puis remet ceux de Financer comme ils étaient
+function avecReglages(v, f) {
   v = {...SANS_LOYER2, ...SANS_SAISON, ...SANS_DEBUT, nomBien: '', ...migrerFinance(v)};
   const avant = etat(), ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
   try {
@@ -3967,13 +3971,37 @@ function recalculer(v, ex) {
     for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
     for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
     biensPlus = v.biensPlus.map(b => ({...BIEN_VIDE, ...b}));
-    return instantane(ex, true).resume;
+    return f();
   } finally {
     for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]);
     for (const k in BOXES) $(BOXES[k]).open = ouverts[k];
     biensPlus = avant.biensPlus;
     majScis();
   }
+}
+// « J'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (prix, frais, travaux, crédit, loyer, charges),
+// avec le lien vers le projet. Le crédit commence le mois prochain ; la valeur est le prix payé.
+function versBien(pr) {
+  const rc = pr.recherche, r = pr.resume || {}, mois = new Date(); mois.setMonth(mois.getMonth() + 1);
+  const ym = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), auj = ym(new Date());
+  return avecReglages(pr.finance, () => {
+    const s = simuler(), p = s.p, sci = (p.struct === 'ir' || p.struct === 'is') && p.sciExist;
+    const notes = [p.loyer2 > 0 ? `Un 2e loyer de ${eur(p.loyer2)} par mois est prévu dans le projet${p.debutLoyer2 > 1 ? ` à partir du mois ${p.debutLoyer2}` : ''} : passe la location en « Plusieurs loyers » pour le compter.` : '',
+      p.travaux > 0 ? `Travaux prévus : ${eur(p.travaux)} sur ${p.dureeTravaux} mois, valeur après travaux ${eur(p.valeurApres)}.` : ''].filter(Boolean);
+    return {nom: estOption(pr) ? `${pr.nom} · ${nomBranche(pr)}` : pr.nom, adresse: rc ? rc.label : r.label || '', type: p.type === 'maison' ? 'maison' : 'appart', surface: p.surf || null,
+      criteres: rc ? Object.fromEntries(Object.entries(rc.criteres || {}).filter(([k]) => k !== 'location')) : {}, geo: rc && rc.lat != null ? {lat: rc.lat, lon: rc.lon, label: rc.label, pour: rc.label} : null,
+      structure: sci ? 'sci' : p.struct === 'np' ? 'np' : p.struct, sciId: sci || null, ...(p.struct !== 'np' && !sci ? {sci: r.sciNom || 'Ma SCI'} : {}),
+      valeur: Math.round(p.prix), valeurLe: auj, valeurManuelle: true,
+      achat: {date: auj, prix: Math.round(p.prix), notaire: Math.round(s.fraisNotaire) || null, travaux: p.travaux > 0 ? Math.round(p.travaux) : null, mobilier: p.mobilier > 0 ? Math.round(p.mobilier) : null,
+        frais: Math.round((p.dossier || 0) + (s.fraisGarantie || 0)) || null},
+      location: p.saison ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(365 * p.occupation / 100), fraisSaison: null}
+        : {statut: p.travaux > 0 && !p.loyerAvant ? 'travaux' : p.meuble === '1' ? 'meuble' : 'vide', loyer: Math.round(p.loyerAvant > 0 ? p.loyerAvant : p.loyer), charges: null, locataire: '', debutBail: '', vacance: 0},
+      chargesAn: {tf: p.tf, copro: p.copro, pno: p.pno, gestion: p.gestion || null, entretien: p.entretien || null, compta: null, cfe: null, autres: null},
+      prets: s.pret > 0 ? [{id: 'pr' + Date.now().toString(36), banque: '', montant: Math.round(s.pret), taux: p.taux, duree: Math.round(p.duree * 12), debut: ym(mois), offre: auj,
+        assurance: Math.round(s.ech.assM * 100) / 100 || null, mensualite: null, progressif: '', hausse: null, mensuLe: '',
+        typeDiff: p.differe > 0 ? p.typeDiff : '', differe: p.differe > 0 ? p.differe : null, crd: null, mois: null, crdLe: ''}] : [],
+      notes: notes.join('\n'), projet: pr.id};
+  });
 }
 // Depuis Estimer : Financer s'aligne sur l'estimation (et son projet de travaux), comme « Financer ce bien », puis on enregistre
 function enregistrerEstimation(est, mode, nom) {
@@ -4183,10 +4211,10 @@ etape((() => { try { return localStorage.getItem('financer-etape'); } catch (e) 
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {rendre, sync, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {rendre, sync, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=dae2c35d"></script>
+<script src="investissements.js?v=8a4fb09c"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -4275,10 +4303,13 @@ const quiP = r => r.struct === 'np' || !r.struct ? '' : `SCI à l'${r.struct ===
 const usageP = (r, revente) => revente ? 'achat-revente' : r.saison ? 'saisonnier' : r.meuble ? 'meublé' : 'location vide';
 // Actions rares rangées derrière « ⋯ » : un seul bouton visible à côté de « Modifier le financement »
 const menuP = boutons => boutons.length ? `<details class="pj-menu"><summary aria-label="Autres actions" title="Autres actions">⋯</summary><div class="pj-menu-l">${boutons.join('')}</div></details>` : '';
+// Projet acheté : sa fiche dans Mon patrimoine (tant qu'elle existe)
+const ficheAchat = pr => pr.achete && window.INV && INV.bien && INV.bien(pr.achete.bien) ? pr.achete : null;
+const chipAchete = pr => ficheAchat(pr) ? `<button class="pj-achete" data-a="voirFiche" title="Voir la fiche dans Mon patrimoine">Acheté · voir la fiche →</button>` : '';
 function cartePj(pr, sous, corps, boutons, br) {
   boutons = [...boutons, ...boutonsBranche(pr, br)];
-  if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
-  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div></div>
+  if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
+  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
     <div class="pj-bas"><span></span>
@@ -4301,7 +4332,8 @@ function carteProjet(pr, br) {
     ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
     deux && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : '',
     pr.regroupe ? '<button data-a="separer">Séparer en deux projets</button>' : '',
-    br ? '' : '<button data-a="pjAjouterBien">Ajouter un bien (un seul crédit)…</button>', br ? '' : '<button data-a="pjDeplacer">Déplacer dans un projet…</button>'].filter(Boolean);
+    br ? '' : '<button data-a="pjAjouterBien">Ajouter un bien (un seul crédit)…</button>', br ? '' : '<button data-a="pjDeplacer">Déplacer dans un projet…</button>',
+    !ficheAchat(pr) && !deux && !pr.regroupe && !(r.nbBiens > 1) ? '<button data-a="achete">J\'ai acheté ce bien → Mon patrimoine</button>' : ''].filter(Boolean);
   return cartePj(pr, sous, corps, boutons, br);
 }
 // Projet à un seul crédit : l'estimation de chacun des deux biens (choisie à la main, sinon celle des projets d'origine)
@@ -4637,7 +4669,7 @@ function panneauAjouterBien(pr) {
 // Recherche dans Mes projets : nom, options, adresses (sans accents ni majuscules)
 let chercheP = '';
 const sansAccent = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const texteProjet = bs => sansAccent(bs.flatMap(x => [x.nom, x.branche, x.nomAvant, (x.resume || {}).label, ...[x.recherche, ...(x.estimations || []), ...(x.regroupe || []).map(o => o && o.recherche)].map(r => r && r.label)]).filter(Boolean).join(' '));
+const texteProjet = bs => sansAccent(bs.flatMap(x => [x.nom, x.branche, x.nomAvant, (x.resume || {}).label, x.achete ? 'achete' : '', ...[x.recherche, ...(x.estimations || []), ...(x.regroupe || []).map(o => o && o.recherche)].map(r => r && r.label)]).filter(Boolean).join(' '));
 function filtrerProjets() {
   const q = sansAccent(chercheP).trim(), zs = [...document.querySelectorAll('#pj .pj-trouve')];
   zs.forEach(z => { z.hidden = !!q && !q.split(/\s+/).every(m => z.dataset.cherche.includes(m)); });
@@ -4728,6 +4760,14 @@ document.getElementById('pj').addEventListener('click', e => {
     if (t.dataset.a === 'pjAjouterBien') devinerAncien();
   }
   else if (t.dataset.a === 'panFermer') t.closest('.pj-panneau').remove();
+  else if (t.dataset.a === 'achete') {
+    const pr = PROJETS.liste.find(x => x.id === id); if (!pr || !window.INV || !INV.ajouterBien) return;
+    if (!confirm(`Ajouter « ${nomComplet(pr)} » à Mon patrimoine, avec le prix, le crédit, le loyer et les charges de ce projet ? Le projet reste ici, marqué « Acheté ».`)) return;
+    const bien = INV.ajouterBien(CF_APP.versBien(pr));   // ouvre la fiche
+    Object.assign(pr, {achete: {bien, le: new Date().toISOString().slice(0, 7)}, maj: Date.now()});
+    PROJETS.enregistrer();
+  }
+  else if (t.dataset.a === 'voirFiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.achete) location.hash = '#investissements/' + encodeURIComponent(pr.achete.bien); }
   else if (t.dataset.a === 'deplacerGarder') {
     const g = document.getElementById('pj_dest').value;
     regrouperEnBranches([id, ...PROJETS.liste.filter(x => groupeDe(x) === g).map(x => x.id)], document.getElementById('pj_brNom').value);

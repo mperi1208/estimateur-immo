@@ -1481,8 +1481,9 @@ function amenagVersProjet(b) {
 }
 // Bandeaux en haut de la fiche : bien associé à un autre, et vente enregistrée
 function lienHTML(b) {
-  const pr = principalDe(b);
-  return pr ? `<div class="lie-a">Associé à <a href="#investissements/${encodeURIComponent(pr.id)}">${esc(pr.nom)} →</a> <button class="lien" data-a="dissocier">Dissocier</button></div>` : '';
+  const pr = principalDe(b), pj = b.projet && typeof PROJETS !== 'undefined' && PROJETS.liste.find(x => x.id === b.projet);
+  return (pr ? `<div class="lie-a">Associé à <a href="#investissements/${encodeURIComponent(pr.id)}">${esc(pr.nom)} →</a> <button class="lien" data-a="dissocier">Dissocier</button></div>` : '')
+    + (pj ? `<div class="lie-a">Vient du projet <a href="#projets" data-a="voirProjet">${esc(pj.nom)}${pj.branche && PROJETS.liste.some(x => x !== pj && x.groupe && x.groupe === pj.groupe) ? ' · ' + esc(pj.branche) : ''} →</a></div>` : '');
 }
 function venduHTML(b) {
   const v = b.vendu;
@@ -1974,6 +1975,7 @@ racine.addEventListener('click', async e => {
         ...(est.saison ? (z => ({nuit: est.saison.nuit, nuitsAn: Math.round(z.nuits), fraisSaison: Math.round(z.pctFrais)}))(saisonnier(est.saison)) : {})}});
   }
   if (!b) return;
+  if (a === 'voirProjet') { e.preventDefault(); if (typeof ouvrirProjet === 'function') ouvrirProjet(b.projet, 'cashflow'); return; }
   if (a === 'estimerAuto') estimerBien(b);
   if (a === 'valeurAuto' && b.estimation && b.estimation.prix) { b.valeurManuelle = false; b.valeur = b.estimation.prix; b.valeurLe = moisCourant(); sauver(b); vueDetail(b); }
   if (a === 'estimer' && estimable(b)) {
@@ -2197,6 +2199,8 @@ racine.addEventListener('change', async e => {
 biens = biensLocaux(); scis = scisLocales(); normaliser();
 // Biens repris des anciens crédits : enregistrés tout de suite, pour garder les mêmes identifiants d'un chargement à l'autre
 try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
-window.INV = {estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon, place) => estimerDependance(lat, lon, place), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
+// « J'ai acheté » dans Mes projets : la fiche faite depuis le projet, ouverte (son identifiant est gardé dans le projet)
+function ajouterBien(o) { const b = nouveauBien({...o, id: uid()}); biens.push(b); normaliser(); sauver(b); location.hash = '#investissements/' + b.id; return b.id; }
+window.INV = {ajouterBien, bien: id => { const b = biens.find(x => x.id === id); return b ? {id: b.id, nom: b.nom} : null; }, estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon, place) => estimerDependance(lat, lon, place), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
 COMPTE.init();
 })();
