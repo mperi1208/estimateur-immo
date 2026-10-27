@@ -2667,7 +2667,7 @@ function contexteProjet() {
   return {pr, n, nomBien: n != null ? (bien && bien.nom) || `bien ${n + 1}` : '', cible: n != null ? bien && bien.recherche : pr.recherche};   // cible : l'estimation du bien du projet
 }
 // L'estimation à l'écran est celle du bien du projet : « Mettre à jour » la remplace dans le projet
-const revueEnCours = () => { const c = contexteProjet(), rc = c && c.cible && rechercheCourante(); return rc && rc.cle === c.cible.cle ? {...c, rc} : null; };
+const revueEnCours = () => { const c = contexteProjet(), rc = c && c.cible && rechercheCourante(); return rc && memeBien(rc, c.cible) ? {...c, rc: {...rc, bien: c.cible.bien || nouvelIdBien()}} : null; };
 const filProjet = (pr, bien) => `<a href="#projets">Mes projets</a> › <b>${esc(pr.nom)}</b>${typeof estOption === 'function' && estOption(pr) ? ` › option <b>${esc(nomBranche(pr))}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''}`;
 function quitterProjet() { fixerProjet(null); fixerRevue(null); if (window.CF_APP) CF_APP.quitter(); majSauveEst(); }
 const ETAPES = ['Le bien', 'Travaux et loyers', 'Le crédit', 'Le résultat'];
@@ -2709,20 +2709,23 @@ function majSauveEst(msg) {
 function majEstimationProjet() {
   const rv = revueEnCours(); if (!rv) return majSauveEst();
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
-  const membres = PROJETS.liste.filter(x => rv.pr.groupe ? x.groupe === rv.pr.groupe : x.id === rv.pr.id);
+  const membres = PROJETS.liste.filter(x => rv.pr.groupe ? x.groupe === rv.pr.groupe : x.id === rv.pr.id), cible = rv.cible;
+  let n = 0;   // options mises à jour : toutes celles qui ont ce bien
   for (const x of membres) {
     if (rv.n != null) {
       const l = rechercheRegroupees(x); if (!l.length) continue;
-      x.estimations = l.map((y, i) => i === rv.n ? rv.rc : y && y.recherche);
+      const ici = (y, i) => cible.bien && y && y.recherche.bien ? y.recherche.bien === cible.bien : i === rv.n;
+      if (!l.some(ici)) continue;
+      x.estimations = l.map((y, i) => ici(y, i) ? rv.rc : y && y.recherche);
     } else {
-      if (x.recherche && x.recherche.cle !== rv.rc.cle) continue;
+      if (x.recherche && !memeBien(x.recherche, cible)) continue;
       x.recherche = rv.rc;
       if (est && x.resume) Object.assign(x.resume, {prixEstime: est.prix, loyerEstime: est.loyer});
     }
-    x.maj = Date.now();
+    x.maj = Date.now(); n++;
   }
   PROJETS.enregistrer();
-  majSauveEst(`Estimation mise à jour dans <a href="#projets">« ${esc(rv.pr.nom)} »</a>.`);
+  majSauveEst(`Estimation mise à jour dans <a href="#projets">« ${esc(rv.pr.nom)} »</a>${n > 1 ? `, dans ses ${n} options` : ''}.`);
 }
 function enregistrerEstimation() {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
@@ -2776,6 +2779,41 @@ setTimeout(majRecentes);
 
 // --- Mes projets : estimations financées et enregistrées à la main (sur l'appareil, puis dans le compte) ---
 const nouvelId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+// ---------- Biens
+// Chaque estimation gardée dans un projet porte l'identifiant de son bien (`bien`), le même dans toutes les options du projet :
+// mettre à jour l'estimation d'un bien la met à jour partout. Sans identifiant, deux estimations sont du même bien à la même
+// position, ou à moins de 50 m avec le même type (adresse corrigée, clic à côté sur la carte).
+const nouvelIdBien = () => 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const metres = (a, b) => { const r = Math.PI / 180, x = (b.lon - a.lon) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r; return Math.hypot(x, y) * 6371e3; };
+const memeLieu = (a, b) => !!(a && b) && (a.cle === b.cle || (a.type === b.type && a.lat != null && b.lat != null && metres(a, b) <= 50));
+const memeBien = (a, b) => !!(a && b) && (a.bien && b.bien ? a.bien === b.bien : memeLieu(a, b));
+// Numérote les biens des projets qui n'en ont pas encore (une fois) : par projet, un même lieu = un même bien, sauf deux biens
+// d'un même projet à deux biens (deux appartements du même immeuble restent deux biens)
+function numeroterBiens(liste) {
+  let change = false;
+  const groupes = new Map(); liste.forEach(x => { const g = x.groupe || x.id; if (!groupes.has(g)) groupes.set(g, []); groupes.get(g).push(x); });
+  for (const l of groupes.values()) {
+    const vus = [];
+    const numeroter = (r, pris) => {
+      if (!r || !r.cle) return;
+      if (!r.bien) { const v = vus.find(v => !(pris && pris.has(v.bien)) && memeLieu(v, r)); r.bien = v ? v.bien : nouvelIdBien(); change = true; }
+      if (pris) pris.add(r.bien);
+      if (!vus.some(v => v.bien === r.bien)) vus.push(r);
+    };
+    for (const x of l) {
+      const pris = new Set();   // les biens d'un projet à plusieurs biens sont tous différents
+      [...(x.estimations || []), ...(x.regroupe || []).map(o => o && o.recherche)].forEach(r => numeroter(r, pris));
+      numeroter(x.recherche);
+    }
+  }
+  return change;
+}
+// Projets mis ensemble (options d'un même projet) : un même lieu devient un même bien
+function unirBiens(l) {
+  const vus = [];
+  for (const x of l) { const r = x.recherche; if (!r || !r.cle) continue; const v = vus.find(v => memeLieu(v, r)); if (v) r.bien = v.bien; else { r.bien ||= nouvelIdBien(); vus.push(r); } }
+}
+// ---------- fin des biens
 let projetCourantId = null;   // projet ouvert ou enregistré en dernier : « Enregistrer » le met à jour au lieu d'en créer un autre
 try { projetCourantId = localStorage.getItem('projet-courant') || null; } catch (e) {}
 function fixerProjet(id) { projetCourantId = id; if (estRevue && estRevue.id !== id) fixerRevue(null); try { if (id) localStorage.setItem('projet-courant', id); else localStorage.removeItem('projet-courant'); } catch (e) {} }
@@ -2788,6 +2826,7 @@ const PROJETS = {
   supprimer(id) { this.liste = this.liste.filter(x => x.id !== id); if (window.INV) INV.marquerSupprime(id); this.enregistrer(); },
 };
 PROJETS.charger();
+if (numeroterBiens(PROJETS.liste)) PROJETS.garder();
 
 // --- Moteur sans écran : même estimation que l'onglet, pour un bien donné (appelé par Mon patrimoine) ---
 async function estimerPour(p) {
@@ -3147,7 +3186,7 @@ function sync(est, mode) {
   autreBien = false;
   if (est && pr && pr.recherche) {   // nouvelle recherche ailleurs : ce n'est plus le même bien, on reste dans le projet mais on le dit
     const rc = typeof rechercheCourante === 'function' ? rechercheCourante() : null;
-    if (rc && rc.cle !== pr.recherche.cle) { autreBien = true; pr = null; }
+    if (rc && !memeBien(rc, pr.recherche)) { autreBien = true; pr = null; }
   }
   majFil();
   if (!est) {
@@ -3900,7 +3939,8 @@ function instantane(ex, recalcul) {
 function enregistrerProjet(nouveau, branche) {
   const r = bienUtile && typeof rechercheCourante === 'function' ? rechercheCourante() : null;
   let ex = !nouveau && projetCourantId ? PROJETS.liste.find(x => x.id === projetCourantId) : null;
-  if (ex && r && ex.recherche && ex.recherche.cle !== r.cle) ex = null;   // autre bien que le projet ouvert : nouveau projet
+  if (ex && r && ex.recherche && !memeBien(r, ex.recherche)) ex = null;   // autre bien que le projet ouvert : nouveau projet
+  if (r) r.bien = ex && ex.recherche && ex.recherche.bien || nouvelIdBien();   // le bien garde son identifiant d'une version à l'autre
   const saisi = $('nomProjet').value.trim(), opt = estOption(ex);
   const nom = opt ? ex.nom : saisi || (r ? r.label : 'Mon projet');   // option : le champ porte son nom, le projet garde le sien
   const inst = instantane(ex);
@@ -4313,6 +4353,7 @@ function carteAmenagement(pr, br) {
 // Les projets enregistrés avant le nouveau calcul (cash-flow pendant le différé) sont recalculés une fois
 function rafraichirResumes() {
   let change = false, compte = false;
+  if (numeroterBiens(PROJETS.liste)) change = compte = true;   // projets venus du compte ou d'un autre appareil
   for (const pr of PROJETS.liste) {
     // Projet regroupé avant que les réglages détaillés comptent les deux biens : refait une fois depuis ses deux projets
     if (pr.regroupe && pr.regroupe.length === 2 && !pr.regroupeV) {
@@ -4593,6 +4634,7 @@ function regrouperEnBranches(ids, nom) {
   const nomP = (nom || '').trim() || nomPropose(l);
   for (const x of l) if (x.groupe !== g) { x.nomAvant ||= x.nom; x.branche = x.branche && x.groupe ? x.branche : brancheAuto(x, nomP); }
   for (const x of PROJETS.liste) if (x.groupe === g || l.includes(x)) Object.assign(x, {groupe: g, nom: nomP, maj});
+  unirBiens(PROJETS.liste.filter(x => x.groupe === g));
   deplier(g);
   PROJETS.enregistrer();
 }
