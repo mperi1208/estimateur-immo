@@ -270,6 +270,10 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-menu-l button:hover{background:var(--accent-soft)}
 @media (max-width:600px){.invwrap .pj-chiffres{gap:8px}.invwrap .pj-chiffres b{font-size:15px}.invwrap .pj-chiffres span{font-size:10px}.invwrap .pj-menu-l{left:0;right:auto}}
 .invwrap .pj-date{font-size:12px;color:var(--muted)}
+.pj-trouve{display:contents}
+.invwrap .pj-cherche{margin:0 0 14px}
+.invwrap .pj-cherche input{width:100%;max-width:520px}
+.invwrap .pj .pj-panneau{margin:14px 0 0}
 .invwrap .pj-regroupe{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .invwrap .pj-regroupe h2{margin:0 0 4px;font-size:16px}
 .invwrap .pj-verdict{margin:4px 0 10px;font-size:14px}
@@ -389,13 +393,7 @@ body.discret #pj :is(.pj-c-gros b, .pj-c-l b, .pj-tuile-d){filter:blur(7px);user
 .invwrap .pj-sans-tableau{margin:4px 0 2px;font-size:14px}
 .invwrap .pj-gr-bas{display:flex;justify-content:flex-end;margin:10px 0 2px}
 @media (max-width:600px){.invwrap .pj-opts th,.invwrap .pj-opts td{padding:8px 6px}.invwrap .pj-gros{font-size:20px}.invwrap .pj-opts thead th:first-child{width:auto}}
-.invwrap .pj-props{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}
-.invwrap .pj-props button{font-size:13px;padding:6px 10px}
-.invwrap .pj-coches{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px 12px;margin:8px 0;max-height:320px;overflow:auto}
-.invwrap .pj-coches label{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;margin:0;padding:4px 0}
-.invwrap .pj-coches input{width:auto;flex:0 0 auto;margin:0}
 .invwrap .pj-cmp td b{white-space:nowrap}
-.invwrap .pj-coches small{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
 .invwrap table.pj-cmp{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
 .invwrap .pj-cmp th,.invwrap .pj-cmp td{padding:7px 8px;border-top:1px solid var(--line);text-align:right;vertical-align:top}
 .invwrap .pj-cmp thead th{border-top:0;font-size:13px;overflow-wrap:anywhere}
@@ -2668,7 +2666,7 @@ function contexteProjet() {
 }
 // L'estimation à l'écran est celle du bien du projet : « Mettre à jour » la remplace dans le projet
 const revueEnCours = () => { const c = contexteProjet(), rc = c && c.cible && rechercheCourante(); return rc && memeBien(rc, c.cible) ? {...c, rc: {...rc, bien: c.cible.bien || nouvelIdBien()}} : null; };
-const filProjet = (pr, bien) => `<a href="#projets">Mes projets</a> › <b>${esc(pr.nom)}</b>${typeof estOption === 'function' && estOption(pr) ? ` › option <b>${esc(nomBranche(pr))}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''}`;
+const filProjet = (pr, bien) => `<a href="#projets">Mes projets</a> › <b>${esc(pr.nom)}</b>${pr.groupe && typeof branchesDe === 'function' && branchesDe(pr).length > 1 ? ` › option <b>${esc(nomBranche(pr))}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''}`;
 function quitterProjet() { fixerProjet(null); fixerRevue(null); if (window.CF_APP) CF_APP.quitter(); majSauveEst(); }
 const ETAPES = ['Le bien', 'Travaux et loyers', 'Le crédit', 'Le résultat'];
 function majTeteEst() {
@@ -4302,7 +4300,8 @@ function carteProjet(pr, br) {
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
     ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
     deux && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : '',
-    pr.regroupe ? '<button data-a="separer">Séparer en deux projets</button>' : ''].filter(Boolean);
+    pr.regroupe ? '<button data-a="separer">Séparer en deux projets</button>' : '',
+    br ? '' : '<button data-a="pjAjouterBien">Ajouter un bien (un seul crédit)…</button>', br ? '' : '<button data-a="pjDeplacer">Déplacer dans un projet…</button>'].filter(Boolean);
   return cartePj(pr, sous, corps, boutons, br);
 }
 // Projet à un seul crédit : l'estimation de chacun des deux biens (choisie à la main, sinon celle des projets d'origine)
@@ -4602,77 +4601,64 @@ function brancheAuto(x, nomP) {
   const r = x.resume || {};
   return [x.amenag ? 'Aménagement' : usageP(r, r.scenario === 'revendre'), r.travaux > 0 ? `travaux ${fmtK(r.travaux)}` : '', r.prix ? fmtK(r.prix) : ''].filter(Boolean).join(' · ').replace(/^./, c => c.toUpperCase());
 }
-// Propositions : projets à la même adresse, sur la même estimation, ou dont les noms partagent un mot (« San Gaetano », « sans Gaetan 2 »)
-const MOTS_COMMUNS = new Set('proje maiso appar immeu studi garag local locat achat reven divis trava versi bien avec sans meubl coloc saiso branc route chemi avenu credi seul deux trois autre nouve copie test lyon paris'.split(' '));
-const racinesNom = nom => new Set(motsP(nom).filter(m => m.length >= 4 && /[a-z]/.test(m)).map(racineP).filter(m => !MOTS_COMMUNS.has(m)));
-function propositionsBranches(l) {
-  const parent = l.map((_, i) => i), chef = i => parent[i] === i ? i : (parent[i] = chef(parent[i]));
-  const vus = new Map(), lier = (k, i) => { if (!k) return; if (vus.has(k)) parent[chef(i)] = chef(vus.get(k)); else vus.set(k, i); };
-  l.forEach((x, i) => {
-    if (x.groupe) lier('g:' + x.groupe, i);
-    if (x.recherche && x.recherche.cle) lier('r:' + x.recherche.cle, i);
-    if ((x.resume || {}).label) lier('a:' + x.resume.label, i);
-    racinesNom(x.nom).forEach(m => lier('m:' + m, i));
-  });
-  const paquets = new Map();
-  l.forEach((x, i) => { const c = chef(i); if (!paquets.has(c)) paquets.set(c, []); paquets.get(c).push(x); });
-  return [...paquets.values()].filter(p => p.length > 1 && !p.every(x => x.groupe && x.groupe === p[0].groupe)).sort((a, b) => b.length - a.length)
-    .map(p => ({ids: p.map(x => x.id), nom: nomPropose(p)}));
-}
-// Nom proposé : celui d'un projet déjà à branches, sinon le plus court qui contient le mot le plus partagé
-function nomPropose(p) {
-  const g = p.find(x => x.groupe && branchesDe(x).length > 1); if (g) return g.nom;
-  const n = new Map(); p.forEach(x => racinesNom(x.nom).forEach(m => n.set(m, (n.get(m) || 0) + 1)));
-  const top = [...n.entries()].sort((a, b) => b[1] - a[1])[0], avec = p.filter(x => !top || racinesNom(x.nom).has(top[0]));
-  return (avec.length ? avec : p).map(x => x.nomAvant || x.nom).sort((a, b) => a.length - b.length)[0];
-}
-// Les projets cochés deviennent les branches d'un seul projet (rejoignent celui à branches s'il y en a un parmi eux)
+// Les projets choisis deviennent les options d'un seul projet (rejoignent celui à options s'il y en a un parmi eux)
 function regrouperEnBranches(ids, nom) {
   const l = ids.map(id => PROJETS.liste.find(x => x.id === id)).filter(Boolean), msg = document.getElementById('pj_brMsg');
-  if (l.length < 2) { msg.textContent = 'Coche au moins deux projets.'; return; }
+  if (l.length < 2) { msg.textContent = 'Choisis le projet où le déplacer.'; return; }
   const ex = l.find(x => x.groupe && branchesDe(x).length > 1), g = ex ? ex.groupe : 'g' + nouvelId(), maj = Date.now();
-  const nomP = (nom || '').trim() || nomPropose(l);
+  const nomP = (nom || '').trim() || (ex || l[l.length - 1]).nom;
   for (const x of l) if (x.groupe !== g) { x.nomAvant ||= x.nom; x.branche = x.branche && x.groupe ? x.branche : brancheAuto(x, nomP); }
   for (const x of PROJETS.liste) if (x.groupe === g || l.includes(x)) Object.assign(x, {groupe: g, nom: nomP, maj});
   unirBiens(PROJETS.liste.filter(x => x.groupe === g));
   deplier(g);
   PROJETS.enregistrer();
 }
-function panneauBranches(l) {
-  const props = propositionsBranches(l);
-  return `<div class="pj-regroupe" id="pj_branches" hidden><h2>Regrouper des projets</h2>
-    <p class="aide">Coche les projets qui sont des façons différentes de faire la même chose : ils deviennent les options d'un seul projet, que tu peux comparer.</p>
-    ${props.length ? `<div class="pj-props"><span>Proposé :</span>${props.map((x, i) => `<button data-a="brProp" data-i="${i}">${esc(x.nom)} · ${x.ids.length} projets</button>`).join('')}</div>` : ''}
-    <div class="pj-coches">${l.map(x => `<label><input type="checkbox" value="${esc(x.id)}"> <span>${esc(nomComplet(x))}</span><small>${(x.resume || {}).prix ? eurP(x.resume.prix) : ''}</small></label>`).join('')}</div>
-    <div class="pj-choix"><label>Nom du projet<input id="pj_brNom" placeholder="Ex. Maison San Gaetano"></label></div>
-    <div class="boutons"><button class="primaire" data-a="brRegrouper">Regrouper</button><button data-a="branches">Annuler</button></div><div class="aide" id="pj_brMsg"></div></div>`;
+// « Déplacer dans un projet » : ce projet devient une option de celui choisi (ceux à la même adresse en tête de liste)
+const memeAdresse = (a, b) => a.recherche && b.recherche && memeLieu(a.recherche, b.recherche);
+function panneauDeplacer(pr) {
+  const gs = new Map(); PROJETS.liste.filter(x => groupeDe(x) !== groupeDe(pr) && !x.amenag).forEach(x => { const g = groupeDe(x); if (!gs.has(g)) gs.set(g, []); gs.get(g).push(x); });
+  const l = [...gs.values()].map(bs => ({bs, ici: bs.some(x => memeAdresse(x, pr))})).sort((a, b) => b.ici - a.ici || Math.max(...b.bs.map(x => x.maj || 0)) - Math.max(...a.bs.map(x => x.maj || 0)));
+  if (!l.length) return `<div class="pj-regroupe pj-panneau"><p class="aide">Aucun autre projet où le déplacer.</p><div class="boutons"><button data-a="panFermer">Fermer</button></div></div>`;
+  return `<div class="pj-regroupe pj-panneau"><p class="aide">Ce projet devient une option du projet choisi, pour comparer les deux façons de faire. « Sortir de ce projet » le fait revenir.</p>
+    <div class="pj-choix"><label>Dans quel projet ?<select id="pj_dest">${l.map(({bs, ici}) => `<option value="${esc(groupeDe(bs[0]))}" data-nom="${esc(bs[0].nom)}">${esc(bs[0].nom)}${bs.length > 1 ? ` · ${bs.length} options` : ''}${ici ? ' · même adresse' : ''}</option>`).join('')}</select></label>
+      <label>Nom du projet<input id="pj_brNom" value="${esc(l[0].bs[0].nom)}"></label></div>
+    <div class="boutons"><button class="primaire" data-a="deplacerGarder">Déplacer</button><button data-a="panFermer">Annuler</button></div><div class="aide" id="pj_brMsg"></div></div>`;
 }
-function appliquerProposition(i) {
-  const z = document.getElementById('pj_branches'), x = propositionsBranches(PROJETS.liste)[i]; if (!z || !x) return;
-  z.querySelectorAll('.pj-coches input').forEach(c => { c.checked = x.ids.includes(c.value); });
-  document.getElementById('pj_brNom').value = x.nom;
+// « Ajouter un bien » : le bien d'un autre projet rejoint celui-ci, avec un seul crédit (les réglages de crédit de ce projet)
+function panneauAjouterBien(pr) {
+  const autres = PROJETS.liste.filter(x => x !== pr && !x.amenag && x.finance && !(x.groupe && branchesDe(x).length > 1)).sort((a, b) => (b.maj || 0) - (a.maj || 0));
+  const anciens = anciensRegroupes(PROJETS.liste).filter(x => x !== pr);
+  if (!autres.length) return `<div class="pj-regroupe pj-panneau"><p class="aide">Aucun autre projet dont prendre le bien : estime-le et enregistre-le d'abord.</p><div class="boutons"><button data-a="panFermer">Fermer</button></div></div>`;
+  return `<div class="pj-regroupe pj-panneau"><p class="aide">Le bien de l'autre projet passe dans celui-ci, avec un seul crédit pour les deux (par exemple deux appartements achetés au même vendeur). « Séparer » les fait revenir.</p>
+    <input type="hidden" id="pj_a" value="${esc(pr.id)}">
+    <div class="pj-choix"><label>Le bien de quel projet ?<select id="pj_b">${autres.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}${(x.resume || {}).prix ? ' · ' + eurP(x.resume.prix) : ''}</option>`).join('')}</select></label>${anciens.length ? `<label>Remplace aussi<select id="pj_c"><option value="">Aucun autre projet</option>${anciens.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>` : ''}</div>
+    <div class="boutons"><button class="primaire" data-a="bienGarder">Ajouter au crédit</button><button data-a="panFermer">Annuler</button></div><div class="aide" id="pj_regrMsg"></div></div>`;
+}
+// Recherche dans Mes projets : nom, options, adresses (sans accents ni majuscules)
+let chercheP = '';
+const sansAccent = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const texteProjet = bs => sansAccent(bs.flatMap(x => [x.nom, x.branche, x.nomAvant, (x.resume || {}).label, ...[x.recherche, ...(x.estimations || []), ...(x.regroupe || []).map(o => o && o.recherche)].map(r => r && r.label)]).filter(Boolean).join(' '));
+function filtrerProjets() {
+  const q = sansAccent(chercheP).trim(), zs = [...document.querySelectorAll('#pj .pj-trouve')];
+  zs.forEach(z => { z.hidden = !!q && !q.split(/\s+/).every(m => z.dataset.cherche.includes(m)); });
+  const rien = document.getElementById('pj_rien'); if (rien) { rien.hidden = !q || zs.some(z => !z.hidden); rien.textContent = `Aucun projet ne correspond à « ${chercheP.trim()} ».`; }
 }
 // ---------- fin des branches
 function afficherProjets() {
   rafraichirResumes();
   const l = [...PROJETS.liste].sort((a, b) => (b.maj || 0) - (a.maj || 0));
-  const achats = l.filter(x => !x.amenag && x.finance), opt = sel => achats.map(x => `<option value="${esc(x.id)}"${x === sel ? ' selected' : ''}>${esc(nomComplet(x))}</option>`).join('');
   const groupes = new Map(); l.forEach(x => { const g = groupeDe(x); if (!groupes.has(g)) groupes.set(g, []); groupes.get(g).push(x); });
   const aBranches = [...groupes.entries()].filter(([, bs]) => bs.length > 1).map(([g]) => g);
-  const cartes = [...groupes.values()].map(bs => bs.length > 1 ? carteGroupe(bs.sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')))) : carteProjet(bs[0]));
-  const anciens = anciensRegroupes(l);
+  const cartes = [...groupes.values()].map(bs => `<div class="pj-trouve" data-cherche="${esc(texteProjet(bs))}">${bs.length > 1 ? carteGroupe(bs.sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')))) : carteProjet(bs[0])}</div>`);
   const menuOuvert = (document.querySelector('#pj details.pj-menu[open]') || {closest: () => null}).closest('[data-id]');   // gardé ouvert si la liste se redessine (synchro du compte)
   const idMenu = menuOuvert && menuOuvert.dataset.id;
-  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${aBranches.length ? `<button data-a="toutPlier">${aBranches.every(g => DEPLIES.has(g)) ? 'Tout replier' : 'Tout déplier'}</button>` : ''}${l.length > 1 ? '<button data-a="branches">Regrouper des projets</button>' : ''}${achats.length > 1 ? '<button data-a="regroupe">Fusionner deux projets</button>' : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
-    + (achats.length > 1 ? `<div class="pj-regroupe" id="pj_regroupe" hidden><h2>Fusionner deux projets</h2>
-      <p class="aide">Les deux biens passent dans un seul projet, avec un seul crédit (par exemple deux appartements achetés au même vendeur). Les réglages de crédit sont ceux du 1er projet. « Séparer » les fait revenir.</p>
-      <div class="pj-choix"><label>1er projet<select id="pj_a">${opt(achats[0])}</select></label><label>2e projet<select id="pj_b">${opt(achats[1])}</select></label>${anciens.length ? `<label>Remplace aussi<select id="pj_c"><option value="">Aucun autre projet</option>${anciens.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('')}</select></label>` : ''}</div>
-      <div class="boutons"><button class="primaire" data-a="regrouper">Fusionner</button><button data-a="regroupe">Annuler</button></div><div class="aide" id="pj_regrMsg"></div></div>` : '')
-    + (l.length > 1 ? panneauBranches(l) : '')
-    + (l.length ? `<div class="pj-liste">${cartes.join('')}</div>`
+  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${aBranches.length ? `<button data-a="toutPlier">${aBranches.every(g => DEPLIES.has(g)) ? 'Tout replier' : 'Tout déplier'}</button>` : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
+    + (l.length > 2 ? `<div class="pj-cherche"><input id="pj_cherche" type="search" placeholder="Chercher un projet : nom, option, adresse, ville" aria-label="Chercher un projet" value="${esc(chercheP)}"></div>` : '')
+    + (l.length ? `<div class="pj-liste">${cartes.join('')}</div><p class="aide" id="pj_rien" hidden></p>`
       : `<div class="vide"><h2>Aucun projet pour l'instant</h2><p>Estime un bien dans l'onglet « Estimer », simule son financement dans « Financer », puis clique sur « Enregistrer dans mes projets » en bas de la page. Il apparaît ici, et tu peux le rouvrir pour en modifier l'estimation ou le financement.</p>
         <div class="boutons centre"><button class="primaire" data-a="nouveau">Estimer un bien</button></div></div>`);
   if (idMenu) { const m = document.querySelector(`#pj [data-id="${CSS.escape(idMenu)}"] details.pj-menu`); if (m) m.open = true; }
+  filtrerProjets();
 }
 // Un seul menu « ⋯ » ouvert à la fois, refermé par un clic ailleurs
 document.addEventListener('click', e => document.querySelectorAll('#pj details.pj-menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
@@ -4735,11 +4721,18 @@ document.getElementById('pj').addEventListener('click', e => {
     const l = membres();
     if (confirm(`Supprimer « ${l[0].nom} » et ses ${l.length} options ?`)) { retirerProjets(l.map(x => x.id)); PROJETS.enregistrer(); }
   }
-  else if (t.dataset.a === 'branches') { const z = document.getElementById('pj_branches'); z.hidden = !z.hidden; if (!z.hidden && !z.querySelector('.pj-coches input:checked')) appliquerProposition(0); }
-  else if (t.dataset.a === 'brProp') appliquerProposition(+t.dataset.i);
-  else if (t.dataset.a === 'brRegrouper') regrouperEnBranches([...document.querySelectorAll('#pj_branches .pj-coches input:checked')].map(x => x.value), document.getElementById('pj_brNom').value);
-  else if (t.dataset.a === 'regroupe') { const z = document.getElementById('pj_regroupe'); z.hidden = !z.hidden; devinerAncien(); }
-  else if (t.dataset.a === 'regrouper') regrouperProjets(document.getElementById('pj_a').value, document.getElementById('pj_b').value, (document.getElementById('pj_c') || {}).value);
+  else if (t.dataset.a === 'pjAjouterBien' || t.dataset.a === 'pjDeplacer') {   // un seul panneau ouvert à la fois, sous la carte
+    const art = t.closest('[data-id]'), pr = PROJETS.liste.find(x => x.id === id); if (!pr) return;
+    document.querySelectorAll('#pj .pj-panneau').forEach(z => z.remove());
+    art.insertAdjacentHTML('beforeend', t.dataset.a === 'pjDeplacer' ? panneauDeplacer(pr) : panneauAjouterBien(pr));
+    if (t.dataset.a === 'pjAjouterBien') devinerAncien();
+  }
+  else if (t.dataset.a === 'panFermer') t.closest('.pj-panneau').remove();
+  else if (t.dataset.a === 'deplacerGarder') {
+    const g = document.getElementById('pj_dest').value;
+    regrouperEnBranches([id, ...PROJETS.liste.filter(x => groupeDe(x) === g).map(x => x.id)], document.getElementById('pj_brNom').value);
+  }
+  else if (t.dataset.a === 'bienGarder') regrouperProjets(id, document.getElementById('pj_b').value, (document.getElementById('pj_c') || {}).value);
   else if (t.dataset.a === 'suppr' && confirm('Supprimer ce projet ?')) { PROJETS.supprimer(id); if (projetCourantId === id) fixerProjet(null); }
 });
 // Projets à deux biens faits avant que le regroupement garde ses deux projets (ou enregistrés à la main) : en refaisant
@@ -4758,8 +4751,10 @@ function devinerAncien() {
   const x = a && b && ancienProbable(anciensRegroupes(PROJETS.liste), a, b);
   c.value = x ? x.id : '';
 }
+document.getElementById('pj').addEventListener('input', e => { if (e.target.id === 'pj_cherche') { chercheP = e.target.value; filtrerProjets(); } });
 document.getElementById('pj').addEventListener('change', e => {
   if (e.target.id === 'pj_a' || e.target.id === 'pj_b') devinerAncien();
+  if (e.target.id === 'pj_dest') document.getElementById('pj_brNom').value = e.target.selectedOptions[0].dataset.nom;
 });
 // Deux projets financés par un seul crédit : nouveau projet, ouvert dans Financer (section « Deux biens, un seul crédit »)
 function regrouperProjets(idA, idB, idAncien) {

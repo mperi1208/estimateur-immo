@@ -594,9 +594,11 @@ test('options d\'un projet : même bien partout ; son estimation revue (même à
   await page.evaluate(id => { const p = window.prompt; window.prompt = () => 'Variante'; nouvelleBranche(id); window.prompt = p; }, pr.id);
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   const opt = await page.evaluate(() => PROJETS.liste.find(x => x.branche === 'Variante'));
+  assert.match(await page.locator('#cf_fil').innerText(), /Estimation 52 m² › option Variante/);
   assert.equal(opt.recherche.bien, pr.recherche.bien);
   await page.evaluate(id => ouvrirProjet(id, 'estimation'), opt.id);
   await page.waitForSelector('#est_maj', {timeout: 20000});
+  assert.match(await page.locator('#est_tete').innerText(), /Estimation 52 m² › option Variante/);
   // 11 m plus loin sur la carte, et 55 m² : toujours le bien du projet
   await page.evaluate(() => { const r = PROJETS.liste.find(x => x.branche === 'Variante').recherche; state.prix = null; reprendre({...r, lat: r.lat + 0.0001, surf: 55}); });
   await page.waitForFunction(() => state.prix != null && state.loyerHC != null && state.base && state.base.surf === 55, null, {timeout: 20000});
@@ -624,11 +626,16 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await cliquer(page, '#cf_enregNouveau');
   await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Lot B'));
   await page.click('.tabs [data-tab="projets"]');
-  await page.click('#pj .actions [data-a="regroupe"]');
   const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
-  await page.selectOption('#pj_a', await id('Lot A'));
-  await page.selectOption('#pj_b', await id('Lot B'));
-  await page.click('#pj [data-a="regrouper"]');
+  // « Ajouter un bien (un seul crédit) » dans le menu du 1er projet : le bien du 2e le rejoint
+  const ajouterBien = async (a, b) => {
+    const carte = page.locator(`#pj article.pj[data-id="${await id(a)}"]`);
+    await carte.locator('.pj-menu summary').click();
+    await carte.locator('[data-a="pjAjouterBien"]').click();
+    await page.selectOption('#pj_b', await id(b));
+  };
+  await ajouterBien('Lot A', 'Lot B');
+  await page.click('#pj [data-a="bienGarder"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   // Le 2e projet devient la carte d'un 2e bien, à son nom, avec son prix, son loyer et sa surface
   const carte2 = page.locator('#cf_biensPlus [data-i="0"]');
@@ -669,10 +676,8 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   assert.equal(c.projets.find(x => x.nom === 'Lot B').finance.prix, 120000);
   // Projet regroupé qui a perdu ses deux projets d'origine : on choisit ses deux estimations, gardées dans le compte
   await page.click('.tabs [data-tab="projets"]');
-  await page.click('#pj .actions [data-a="regroupe"]');
-  await page.selectOption('#pj_a', await id('Lot A'));
-  await page.selectOption('#pj_b', await id('Lot B'));
-  await page.click('#pj [data-a="regrouper"]');
+  await ajouterBien('Lot A', 'Lot B');
+  await page.click('#pj [data-a="bienGarder"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.evaluate(() => { const p = PROJETS.liste.find(x => x.nom === 'Lot A + Lot B'); delete p.regroupe; PROJETS.enregistrer(); });
   await page.click('.tabs [data-tab="projets"]');
@@ -700,11 +705,9 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
     const copie = (nom, prix) => ({id: nouvelId(), nom, maj: Date.now(), quand: new Date().toISOString(), recherche: null, bien: '', finance: {...g.finance, ouverts: {}, biensPlus: [], prix}, resume: {...g.resume, prixB2: null}});
     PROJETS.liste.push(copie('Alpha 1', 150000), copie('Alpha 2', 120000)); PROJETS.enregistrer(); afficherProjets();
   });
-  await page.click('#pj .actions [data-a="regroupe"]');
-  await page.selectOption('#pj_a', await id('Alpha 1'));
-  await page.selectOption('#pj_b', await id('Alpha 2'));
+  await ajouterBien('Alpha 1', 'Alpha 2');
   assert.equal(await page.inputValue('#pj_c'), await id('Alpha'));     // deviné d'après les noms
-  await page.click('#pj [data-a="regrouper"]');
+  await page.click('#pj [data-a="bienGarder"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   c = await attendreCompte(c => !c.projets.some(x => /^Alpha [12]/.test(x.nom)) && c.projets.filter(x => x.nom === 'Alpha').length === 1 && c.projets.find(x => x.nom === 'Alpha').regroupe, 'ancien regroupement remplacé');
   assert.equal(c.projets.find(x => x.nom === 'Alpha').resume.prixB2, 120000);
@@ -800,14 +803,16 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.equal(r.v, 7); assert.ok(r.patrimoine > 0 && r.coutCredit > 0 && r.horizon > 0, 'patrimoine et coût du crédit dans le résumé');
   const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
   const ids = [await id('Gaetano division'), await id('Gaetano garage')];
-  // « Regrouper des projets » : les deux sont proposés ensemble (même nom), cochés, puis regroupés sous un nom
+  // « Déplacer dans un projet » (menu de « Gaetano garage ») : le projet à la même adresse est proposé en tête, puis renommé
   await page.click('.tabs [data-tab="projets"]');
-  await page.click('#pj .actions [data-a="branches"]');
-  const coches = await page.evaluate(() => [...document.querySelectorAll('#pj_branches .pj-coches input:checked')].map(x => x.value));
-  assert.ok(ids.every(x => coches.includes(x)), 'proposés ensemble');
-  await page.evaluate(ids => document.querySelectorAll('#pj_branches .pj-coches input').forEach(x => { x.checked = ids.includes(x.value); }), ids);
+  const garage = page.locator(`#pj article.pj[data-id="${ids[1]}"]`);
+  await garage.locator('.pj-menu summary').click();
+  await garage.locator('[data-a="pjDeplacer"]').click();
+  assert.equal(await page.inputValue('#pj_dest'), ids[0]);
+  assert.match(await page.locator('#pj_dest option').first().innerText(), /Gaetano division · même adresse/);
+  assert.equal(await page.inputValue('#pj_brNom'), 'Gaetano division');
   await page.fill('#pj_brNom', 'San Gaetano');
-  await page.click('#pj [data-a="brRegrouper"]');
+  await page.click('#pj [data-a="deplacerGarder"]');
   const carte = page.locator('#pj .pj-groupe', {hasText: 'San Gaetano'});
   await carte.waitFor();
   // Une carte par option : ses boutons (⋯ et Ouvrir) en bas de la carte, dans le même ordre que les colonnes du tableau
@@ -825,6 +830,15 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await rangee('Il te reste par mois').innerText(), /−453 €\s+526 € de moins\s+73 €/);
   assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
+  // Chercher un projet : par nom ou option, sans majuscules ; rien trouvé : c'est dit
+  await page.fill('#pj_cherche', 'gaetano GARAGE');
+  await page.waitForFunction(() => [...document.querySelectorAll('#pj .pj-trouve')].filter(z => !z.hidden).length === 1);
+  assert.ok(await carte.isVisible());
+  await page.fill('#pj_cherche', 'zzz');
+  await page.waitForSelector('#pj_rien:not([hidden])');
+  assert.match(await page.locator('#pj_rien').innerText(), /Aucun projet ne correspond à « zzz »/);
+  await page.fill('#pj_cherche', '');
+  await page.waitForSelector('#pj_rien', {state: 'hidden'});
   // Tableau masqué puis réaffiché (gardé sur l'appareil)
   await carte.locator('[data-a="tableau"]').click();
   await carte.locator('.pj-sans-tableau').waitFor();

@@ -1,4 +1,4 @@
-// Mes projets : branches d'un même projet (regroupement proposé, noms) et leur comparaison côte à côte
+// Mes projets : branches d'un même projet (noms) et leur comparaison côte à côte
 const test = require('node:test');
 const assert = require('node:assert');
 const vm = require('vm');
@@ -9,8 +9,8 @@ const ctx = vm.createContext({esc: v => String(v ?? '').replace(/[&<>"']/g, c =>
 const ligneMots = ['motsP', 'eurP', 'signeP', 'quiP'].map(n => new RegExp('^const ' + n + ' = .*$', 'm').exec(idx)[0]).join('\n');
 vm.runInContext(ligneMots + '\n' + bloc(idx, '// ---------- Comparer des branches', '// ---------- fin de la comparaison')
   + bloc(idx, '// ---------- Branches', '// ---------- fin des branches')
-  + 'this.X = {lignesComparaison, verdictComparaison, tableComparaison, propositionsBranches, brancheAuto, nomPropose, analyseBranches, adresseProjet};', ctx);
-const {lignesComparaison, verdictComparaison, tableComparaison, propositionsBranches, brancheAuto, analyseBranches} = ctx.X;
+  + 'this.X = {lignesComparaison, verdictComparaison, tableComparaison, brancheAuto, analyseBranches, adresseProjet};', ctx);
+const {lignesComparaison, verdictComparaison, tableComparaison, brancheAuto, analyseBranches} = ctx.X;
 const texte = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 const ligne = (l, k) => l.find(x => x.k === k);
 
@@ -66,19 +66,6 @@ test('tableau : verdict, noms, écart dans la case du meilleur', () => {
   assert.match(t, /Il te reste par mois −250 € −20 € 230 € de mieux/);
   assert.match(t, /Rendement brut 5,4 % 6,7 % 1,3 pt de mieux/);
   assert.match(t, /Patrimoine dans 25 ans 150\s000 € 160\s000 € 10\s000 € de mieux/);
-});
-
-test('regroupement proposé : même adresse ou mot du nom en commun (San Gaetano / sans Gaetan), pas les mots courants', () => {
-  const pr = (id, nom, o = {}) => ({id, nom, quand: id, resume: {prix: 100000, ...(o.resume || {})}, ...o});
-  const l = [pr('1', 'Route de San Gaetano'), pr('2', 'sans Gaetan 2'), pr('3', 'San Gaetano division'), pr('4', 'Maison Lyon'), pr('5', 'Appartement Lyon'),
-    pr('6', 'Studio', {resume: {prix: 90000, label: '3 rue Neuve'}}), pr('7', 'T2 bis', {resume: {prix: 80000, label: '3 rue Neuve'}}), pr('8', 'Seul')];
-  ctx.PROJETS.liste = l;
-  const p = propositionsBranches(l);
-  assert.deepEqual(p.map(x => [...x.ids].sort()), [['1', '2', '3'], ['6', '7']]);
-  assert.equal(p[0].nom, 'sans Gaetan 2');                                // le plus court qui contient le mot le plus partagé
-  // Déjà regroupés ensemble : plus proposés
-  l.slice(0, 3).forEach(x => { x.groupe = 'g1'; });
-  assert.deepEqual(propositionsBranches(l).map(x => x.ids.length), [2]);
 });
 
 test('nom de chaque branche : ce qui reste du nom sans les mots du projet, sinon usage, travaux et prix', () => {
