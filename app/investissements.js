@@ -1089,6 +1089,7 @@ function vueDetail(b) {
     ${b.vendu ? venduHTML(b) : ''}${lienHTML(b)}
     <div id="inv_kpis"></div>
     ${venteOuverte.has(b.id) && !b.vendu ? venteHTML(b) : ''}
+    <details class="fiche-detail"${simple() ? '' : ' open'}><summary>Tout le détail du bien : location, achat, crédit, charges, documents</summary>
     <div class="blocs">
     ${enProjet(b) ? amenagHTML(b) : ''}
     ${section('Cash-flow', '<div id="inv_renta"></div>')}
@@ -1143,6 +1144,7 @@ function vueDetail(b) {
       <button data-a="fichier">+ Ajouter un plan, une photo ou un document</button> <span class="aide" id="inv_docEtat"></span>
       <div class="aide">${COMPTE.user ? 'Enregistrés dans ton compte (privés).' : 'Mode invité : fichiers gardés sur cet appareil seulement.'} Images et PDF, 10 Mo maximum (photos réduites automatiquement).</div>`, true)}
     </div>
+    </details>
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
   majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b); majDetache(b); majAmenag(b);
@@ -1795,8 +1797,9 @@ function rachatResHTML(b, p) {
 // Chiffres recalculés sans reconstruire le formulaire (pour ne pas perdre le champ en cours de saisie)
 function majCalculs(b) {
   const c = calculs(b), q = s => racine.querySelector(s);
-  if (simple()) q('#inv_kpis').innerHTML = (k => bilanSimple(moisDe(c, k), {titre: k < 1 ? `Chaque mois (ta part : ${Math.round(k * 100)} %)` : 'Chaque mois', note: 'Moyenne par mois sur les 12 prochains mois, avant impôts.'})
-    + `<div class="kpis deux">${kpi('Valeur', b.valeur ? kEur(b.valeur * k) : '—', b.valeur ? '' : 'à renseigner')}${kpi('Ce qui est à toi', c.patrimoine != null ? kEur(c.patrimoine * k) : '—', 'valeur − ce qu\'il reste à rembourser', c.patrimoine != null ? signe(c.patrimoine) : '')}</div>`)(partDe(b));
+  if (simple()) q('#inv_kpis').innerHTML = (k => bilanSimple(moisDe(c, k), {titre: k < 1 ? `Chaque mois (ta part : ${Math.round(k * 100)} %)` : 'Chaque mois', note: 'Moyenne par mois sur les 12 prochains mois, avant impôts.',
+      detailLoyer: b.type === 'terrain' || nuitee(b) ? '' : detailVacance(c.loyerMois * k, b.location.vacance)})
+    + `<div class="kpis trois">${kpi('Valeur', b.valeur ? kEur(b.valeur * k) : '—', b.valeur ? '' : 'à renseigner')}${kpi('À rembourser', c.crd ? kEur(c.crd * k) : '—', c.mensuCredit ? eur(c.mensuCredit * k) + ' par mois' : 'pas de crédit')}${kpi('Ce qui est à toi', c.patrimoine != null ? kEur(c.patrimoine * k) : '—', 'valeur − ce qu\'il reste à rembourser', c.patrimoine != null ? signe(c.patrimoine) : '')}</div>`)(partDe(b));
   else q('#inv_kpis').innerHTML = `<div class="kpis six">
     ${kpi('Valeur', b.valeur ? kEur(b.valeur) : '—', !b.valeur ? 'à renseigner' : !b.valeurManuelle && b.estimation && !b.estimation.erreur ? 'estimée automatiquement' : 'saisie à la main' + (b.valeurLe ? ' (' + libMois(b.valeurLe) + ')' : ''))}
     ${kpi('Restant dû', c.crd ? kEur(c.crd) : '—', c.mensuCredit ? eur(c.mensuCredit) + '/mois assurance comprise' : '')}

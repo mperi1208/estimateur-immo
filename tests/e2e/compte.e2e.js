@@ -97,6 +97,10 @@ test('mode simple : loyer, crédit, charges et ce qu\'il reste (liste, fiche, Fi
   await ouvrirFiche('Studio Test');
   assert.match(await page.locator('#inv_kpis .bilan-simple').innerText(), /Il te (reste|manque)/i);
   assert.equal(await page.locator('#inv_renta').isVisible(), false);                  // le détail du cash-flow reste en Pro
+  assert.match(await page.locator('#inv_kpis').innerText(), /À rembourser/i);           // valeur, à rembourser, à toi : sous le bilan
+  assert.equal(await page.locator('#inv [data-p="achat.prix"]').isVisible(), false);   // le formulaire complet est replié…
+  await page.click('#inv details.fiche-detail > summary');                             // … et s'ouvre d'un clic
+  assert.equal(await page.locator('#inv [data-p="achat.prix"]').isVisible(), true);
   await page.click('.tabs [data-tab="cashflow"]');
   await page.waitForFunction(() => /Il te (reste|manque)/i.test(document.getElementById('cf_simple').innerText));
   assert.equal(await page.locator('#cf_boxDetail').isVisible(), false);
@@ -490,7 +494,7 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   assert.ok(c.projets.find(x => x.id === pr.id).resume.mois, 'détail du mois enregistré pour le mode simple');
   await page.click('.tabs [data-mode="simple"]');                                   // mode simple : le bilan du mois remplace les chiffres
   await carte.locator('.bilan-simple').waitFor();
-  assert.match(await carte.innerText(), /Mensualité du crédit[\s\S]*Il te (reste|manque)/i);
+  assert.match(await carte.innerText(), /Il te (reste|manque)[\s\S]*Mensualité du crédit/i);
   assert.equal(await carte.locator('.pj-chiffres').count(), 0);
   await page.click('.tabs [data-mode="pro"]');
   await carte.locator('.pj-chiffres').waitFor();
