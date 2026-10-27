@@ -550,6 +550,44 @@ test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option
   await travaux(page, 'non');
 });
 
+test('projet en cours : en haut d\'Estimer et de Financer, gardé au rechargement, pas quitté en changeant d\'adresse, quitté d\'un clic', async () => {
+  const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
+  await page.click('.tabs [data-tab="projets"]');
+  await page.locator('#pj .pj', {hasText: 'Estimation 52 m²'}).locator('[data-a="financer"]').click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  await page.waitForSelector('#cf_fil:not([hidden])');
+  assert.match(await page.locator('#cf_fil').innerText(), /Mes projets › Estimation 52 m²/);
+  // rechargement : toujours dans le projet
+  await page.goto(`${require('./banc').ORIGINE}/app/index.html#cashflow`);
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow' && /Estimation 52 m²/.test(document.getElementById('cf_fil').innerText), null, {timeout: 10000});
+  // Estimer : le projet est en haut ; une autre adresse ne fait pas sortir du projet, mais c'est dit
+  await page.click('.tabs [data-tab="estimation"]');
+  await page.waitForFunction(() => /Estimation 52 m²/.test(document.getElementById('est_tete').innerText));
+  await page.evaluate(() => { const r = PROJETS.liste.find(x => x.nom === 'Estimation 52 m²').recherche; state.prix = null; reprendre({...r, lat: r.lat + 0.003, lon: r.lon + 0.003, label: 'Autre adresse'}); });
+  await page.waitForFunction(() => state.prix != null && state.loyerHC != null && /n'est pas celle du projet/.test(document.getElementById('est_tete').innerText), null, {timeout: 20000});
+  assert.match(await page.locator('#sauveEst').innerText(), /Enregistrer dans Mes projets/i);
+  await page.click('#est_financer');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.match(await page.locator('#cf_fil').innerText(), /Estimation 52 m²[\s\S]*pas celui du projet/);
+  assert.equal(await page.evaluate(() => projetCourantId), pr.id);
+  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer dans mes projets');
+  // retour au bien du projet : son estimation se met de nouveau à jour
+  await page.click('.tabs [data-tab="estimation"]');
+  await page.click('#est_revoir');
+  await page.waitForSelector('#est_maj', {timeout: 20000});
+  await page.click('.tabs [data-tab="cashflow"]');
+  assert.doesNotMatch(await page.locator('#cf_fil').innerText(), /pas celui du projet/);
+  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer les modifications');
+  // quitter le projet : plus de fil d'Ariane, Enregistrer créera un nouveau projet
+  await page.click('#cf_quitter');
+  assert.equal(await page.locator('#cf_fil').isHidden(), true);
+  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer dans mes projets');
+  assert.equal(await page.evaluate(() => projetCourantId), null);
+  await page.click('.tabs [data-tab="estimation"]');
+  assert.equal(await page.locator('#est_tete').isHidden(), true);
+  assert.match(await page.locator('#sauveEst').innerText(), /Enregistrer dans Mes projets/i);
+});
+
 test('Mes projets : deux projets financés par un seul crédit', async () => {
   const e = await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#est_financer');

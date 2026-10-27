@@ -713,6 +713,11 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 :is(#cf, #est_tete) .bienbar{padding-top:14px;font-size:14px;color:var(--muted)}
 :is(#cf, #est_tete) .bienbar b{color:var(--ink)}
 :is(#cf, #est_tete) .bienbar a{color:var(--accent);font-weight:600}
+:is(#cf, #est_tete) .fil{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+:is(#cf, #est_tete) .fil .fil-note{color:#B54708;font-weight:600}
+:is(#cf, #est_tete) .fil .fil-x{width:auto;min-height:0;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 12px;font:inherit;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer}
+:is(#cf, #est_tete) .fil .fil-x:first-of-type{margin-left:auto}
+:is(#cf, #est_tete) .fil .fil-x:hover{background:var(--bg)}
 :is(#cf, #est_tete) .cf-etapes{display:flex;gap:4px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
 :is(#cf, #est_tete) .cf-etapes button{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:12px 16px;border:0;border-radius:12px 12px 0 0;background:none;color:#344054;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
 :is(#cf, #est_tete) .cf-etapes button i{font-style:normal;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:13px;background:#E8ECF2;color:#344054}
@@ -1022,6 +1027,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 </div>
 <section id="cf" hidden data-etape="1">
 <div class="cf-tete">
+  <div id="cf_fil" class="bienbar fil" hidden></div>
   <div id="cf_bien" class="bienbar"></div>
   <nav class="cf-etapes" id="cf_etapes" aria-label="Étapes du projet">
     <button data-etape="1"><i>1</i>Le bien</button>
@@ -2650,24 +2656,39 @@ const CROIX_X = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke=
 // dans Mes projets sans passer par Financer. Sans compte : invitation à se connecter.
 // « Revoir l'estimation » depuis Mes projets : {id, n, cle} (n = n-ième bien d'un projet à plusieurs biens, sinon absent).
 // Tant que l'adresse ne change pas, le bouton met à jour l'estimation de ce projet au lieu d'en créer un autre
+// Le projet où l'on est : celui ouvert depuis Mes projets ou enregistré en dernier (projetCourantId), ou le bien d'un
+// projet dont on revoit l'estimation (estRevue). Affiché en haut d'Estimer et de Financer, gardé sur l'appareil, quitté d'un clic.
 let estRevue = null;
-const revueEnCours = () => { const rc = estRevue && rechercheCourante(), pr = rc && rc.cle === estRevue.cle && PROJETS.liste.find(x => x.id === estRevue.id); return pr ? {pr, rc} : null; };
+try { estRevue = JSON.parse(localStorage.getItem('estimation-revue') || 'null'); } catch (e) {}
+function fixerRevue(x) { estRevue = x; try { if (x) localStorage.setItem('estimation-revue', JSON.stringify(x)); else localStorage.removeItem('estimation-revue'); } catch (e) {} }
+function contexteProjet() {
+  const id = estRevue ? estRevue.id : projetCourantId, pr = id && PROJETS.liste.find(x => x.id === id); if (!pr) return null;
+  const n = estRevue && estRevue.n != null ? estRevue.n : null, bien = n != null && typeof rechercheRegroupees === 'function' ? rechercheRegroupees(pr)[n] : null;
+  return {pr, n, nomBien: n != null ? (bien && bien.nom) || `bien ${n + 1}` : '', cible: n != null ? bien && bien.recherche : pr.recherche};   // cible : l'estimation du bien du projet
+}
+// L'estimation à l'écran est celle du bien du projet : « Mettre à jour » la remplace dans le projet
+const revueEnCours = () => { const c = contexteProjet(), rc = c && c.cible && rechercheCourante(); return rc && rc.cle === c.cible.cle ? {...c, rc} : null; };
+const filProjet = (pr, bien) => `<a href="#projets">Mes projets</a> › <b>${esc(pr.nom)}</b>${typeof estOption === 'function' && estOption(pr) ? ` › option <b>${esc(nomBranche(pr))}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''}`;
+function quitterProjet() { fixerProjet(null); fixerRevue(null); if (window.CF_APP) CF_APP.quitter(); majSauveEst(); }
 const ETAPES = ['Le bien', 'Travaux et loyers', 'Le crédit', 'Le résultat'];
 function majTeteEst() {
   const el = document.getElementById('est_tete'); if (!el) return;
-  const rv = estRevue && revueEnCours(); el.hidden = !rv;
-  if (!rv) { el.innerHTML = ''; return; }
-  const pr = rv.pr, n = estRevue.n, bien = n != null ? ((rechercheRegroupees(pr)[n] || {}).nom || `bien ${n + 1}`) : '';
-  el.innerHTML = `<div class="bienbar"><a href="#projets">Mes projets</a> › <b>${esc(pr.nom)}</b>${pr.groupe && PROJETS.liste.filter(x => x.groupe === pr.groupe).length > 1 ? ` › option <b>${esc(pr.branche || 'Version de départ')}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''} · l'estimation du bien</div>
+  const c = contexteProjet(); el.hidden = !c;
+  if (!c) { el.innerHTML = ''; return; }
+  const pr = c.pr, rv = revueEnCours(), rc = rechercheCourante();
+  // Une autre adresse que celle du projet : on reste dans le projet, mais on le dit (l'enregistrer en fera un nouveau)
+  el.innerHTML = `<div class="bienbar fil"><span>${filProjet(pr, c.nomBien)}${rv ? ' · l\'estimation du bien' : ''}</span>${!rv && rc ? '<span class="fil-note">Cette adresse n\'est pas celle du projet : l\'enregistrer en fera un nouveau projet.</span>' : ''}${!rv && c.cible ? '<button type="button" class="fil-x" id="est_revoir">Revoir le bien du projet</button>' : ''}<button type="button" class="fil-x" id="est_quitter">Quitter le projet</button></div>
     <nav class="cf-etapes" aria-label="Étapes du projet">${ETAPES.map((t, i) => `<button data-etape="${i + 1}"${i ? '' : ' aria-current="step"'}><i>${i + 1}</i>${t}</button>`).join('')}</nav>`;
   el.querySelectorAll('button[data-etape]').forEach(b => b.onclick = () => { const k = +b.dataset.etape; if (k > 1) { ouvrirProjet(pr.id, 'cashflow'); CF_APP.etape(k); } });
+  el.querySelector('#est_quitter').onclick = quitterProjet;
+  const rev = el.querySelector('#est_revoir'); if (rev) rev.onclick = () => { reprendre(c.cible); setTimeout(() => map.invalidateSize(), 60); };
 }
 // Barre du bas, toujours la même : enregistrer (ou mettre à jour le projet rouvert), puis financer ce qui est à l'écran
 function majSauveEst(msg) {
   majTeteEst(); majAchat();   // le bilan « acheté à crédit » suit le projet de travaux choisi
   const el = document.getElementById('sauveEst'); if (!el) return;
   const co = !!COMPTE.user || !COMPTE.actif(), rv = co && revueEnCours(), pj = state.projet;
-  const nomBien = rv && estRevue.n != null ? ((rechercheRegroupees(rv.pr)[estRevue.n] || {}).nom || `bien ${estRevue.n + 1}`) : '';
+  const nomBien = rv ? rv.nomBien : '';
   const nomTape = (document.getElementById('est_nom') || {}).value || '';
   const financer = rv && pj ? `<button class="cta" id="w_option" onclick="ajouterOptionTravaux()">Ajouter comme option de « ${esc(rv.pr.nom)} » →</button>`
     : pj ? `<button id="est_rev" onclick="financerBien('revente')" title="Financer : travaux puis revente">Travaux + revente</button><button class="cta blanc" id="est_loc" onclick="financerBien('location')" title="Financer : travaux puis location">Travaux + location →</button>`
@@ -2681,7 +2702,7 @@ function majSauveEst(msg) {
     : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button><span class="esp"></span>${financer}</div>`;
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
   const m = document.getElementById('est_maj'); if (m) m.onclick = majEstimationProjet;
-  const nv = document.getElementById('est_nouveau'); if (nv) nv.onclick = () => { estRevue = null; fixerProjet(null); majSauveEst(); };
+  const nv = document.getElementById('est_nouveau'); if (nv) nv.onclick = quitterProjet;
   const c = document.getElementById('est_connexion'); if (c) c.onclick = () => ouvrirCompte();
 }
 // Met à jour l'estimation gardée dans le projet (et ses autres options), sans toucher au financement
@@ -2690,9 +2711,9 @@ function majEstimationProjet() {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   const membres = PROJETS.liste.filter(x => rv.pr.groupe ? x.groupe === rv.pr.groupe : x.id === rv.pr.id);
   for (const x of membres) {
-    if (estRevue.n != null) {
+    if (rv.n != null) {
       const l = rechercheRegroupees(x); if (!l.length) continue;
-      x.estimations = l.map((y, i) => i === estRevue.n ? rv.rc : y && y.recherche);
+      x.estimations = l.map((y, i) => i === rv.n ? rv.rc : y && y.recherche);
     } else {
       if (x.recherche && x.recherche.cle !== rv.rc.cle) continue;
       x.recherche = rv.rc;
@@ -2757,7 +2778,7 @@ setTimeout(majRecentes);
 const nouvelId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 let projetCourantId = null;   // projet ouvert ou enregistré en dernier : « Enregistrer » le met à jour au lieu d'en créer un autre
 try { projetCourantId = localStorage.getItem('projet-courant') || null; } catch (e) {}
-function fixerProjet(id) { projetCourantId = id; try { if (id) localStorage.setItem('projet-courant', id); else localStorage.removeItem('projet-courant'); } catch (e) {} }
+function fixerProjet(id) { projetCourantId = id; if (estRevue && estRevue.id !== id) fixerRevue(null); try { if (id) localStorage.setItem('projet-courant', id); else localStorage.removeItem('projet-courant'); } catch (e) {} }
 const PROJETS = {
   liste: [],
   charger() { try { const v = JSON.parse(localStorage.getItem('projets-v1') || '[]'); this.liste = Array.isArray(v) ? v : []; } catch (e) { this.liste = []; } },
@@ -3103,6 +3124,16 @@ function barreProjet(pr) {
   const r = pr.resume || {};
   return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}`;
 }
+// Fil d'Ariane du projet ouvert, au-dessus du bien : là tant qu'on est dans un projet, avec « Quitter le projet »
+let autreBien = false;   // l'estimation en cours n'est pas le bien du projet : l'enregistrer fera un nouveau projet
+const SANS_BIEN = 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Estimer</a>, ou remplis les champs à la main.';
+function majFil() {
+  const el = $('fil'), pr = projetCourantId && PROJETS.liste.find(x => x.id === projetCourantId);
+  el.hidden = !pr;
+  el.innerHTML = pr ? `<span>${filProjet(pr)}</span>${autreBien ? '<span class="fil-note">Ce bien n\'est pas celui du projet : l\'enregistrer en fera un nouveau projet.</span>' : ''}<button type="button" class="fil-x" id="cf_quitter">Quitter le projet</button>` : '';
+  if (pr) $('quitter').onclick = quitterProjet;
+}
+function quitter() { autreBien = false; majFil(); majSauvegarde(null); if (!bienUtile) $('bien').innerHTML = SANS_BIEN; }
 function sync(est, mode) {
   if (mode) figee = undefined;   // « Travaux + location » et autres : demande explicite, on applique le projet
   const bar = $('bien'), cle = cleEst(est);
@@ -3113,12 +3144,14 @@ function sync(est, mode) {
   // (une seule fois : ensuite les réglages faits dans Financer sont gardés)
   const clePj = est && est.projet ? JSON.stringify([cle, est.projet]) : null;
   if (!mode && clePj) { let vu = null; try { vu = localStorage.getItem('cashflow-projet'); } catch (e) {} if (clePj !== vu) mode = 'location'; }
-  if (est && pr && pr.recherche) {   // nouvelle recherche ailleurs : ce n'est plus le même projet
+  autreBien = false;
+  if (est && pr && pr.recherche) {   // nouvelle recherche ailleurs : ce n'est plus le même bien, on reste dans le projet mais on le dit
     const rc = typeof rechercheCourante === 'function' ? rechercheCourante() : null;
-    if (rc && rc.cle !== pr.recherche.cle) { fixerProjet(null); pr = null; }
+    if (rc && rc.cle !== pr.recherche.cle) { autreBien = true; pr = null; }
   }
+  majFil();
   if (!est) {
-    bar.innerHTML = pr ? barreProjet(pr) : 'Aucun bien estimé pour l\'instant : estime un bien dans l\'onglet <a href="#estimation">Estimer</a>, ou remplis les champs à la main.';
+    bar.innerHTML = pr ? barreProjet(pr) : SANS_BIEN;
     majSauvegarde(pr);
     return rendre();
   }
@@ -3882,8 +3915,8 @@ function enregistrerProjet(nouveau, branche) {
   if (pr.groupe) PROJETS.liste.forEach(x => { if (x.groupe === pr.groupe && x.id !== pr.id && x.nom !== nom) Object.assign(x, {nom, maj: Date.now()}); });
   PROJETS.ajouter(pr);
   fixerProjet(pr.id);
-  nomTouche = false;
-  majSauvegarde(pr);
+  nomTouche = false; autreBien = false;
+  majSauvegarde(pr); majFil();
   $('saveMsg').innerHTML = branche ? `Option « ${esc(branche)} » ajoutée au projet dans <a href="#projets">Mes projets</a>.` : `Enregistré dans <a href="#projets">Mes projets</a>.`;
 }
 // Recalcule le résumé d'un projet enregistré avec ses réglages, sans toucher à ce que montre Financer
@@ -4111,7 +4144,7 @@ etape((() => { try { return localStorage.getItem('financer-etape'); } catch (e) 
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
 $('sciExist').addEventListener('focus', majScis);
-window.CF_APP = {rendre, sync, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
+window.CF_APP = {rendre, sync, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
 <script src="investissements.js?v=dae2c35d"></script>
@@ -4499,7 +4532,7 @@ function nouvelleBranche(id) {
 // Depuis Estimer (estimation revue d'un projet) : copie de cette option avec le projet de travaux, ouverte dans Financer
 function ajouterOptionTravaux() {
   const rv = revueEnCours(), pj = state.projet; if (!rv || !pj) return;
-  if (estRevue.n) { majSauveEst('Les travaux se règlent sur le 1er bien du projet : ouvre une option dans Financer pour les saisir.'); return; }
+  if (rv.n) { majSauveEst('Les travaux se règlent sur le 1er bien du projet : ouvre une option dans Financer pour les saisir.'); return; }
   const bs = branchesDe(rv.pr), src = rv.pr;   // l'option dont on a revu l'estimation
   const n = (prompt('Nom de la nouvelle option :', 'Option ' + (bs.length + 1)) || '').trim(); if (!n) return;
   const copie = {...JSON.parse(JSON.stringify(src)), id: nouvelId(), groupe: assurerGroupe(src), branche: n, maj: Date.now(), quand: new Date().toISOString()};
@@ -4509,7 +4542,6 @@ function ajouterOptionTravaux() {
   copie.resume = {...copie.resume, ...CF_APP.recalculer(copie.finance, copie)};
   deplier(copie.groupe);
   PROJETS.ajouter(copie);
-  estRevue = null;
   ouvrirProjet(copie.id, 'cashflow');
 }
 function sortirBranche(x) {
@@ -4609,8 +4641,9 @@ function ouvrirProjet(id, vers) {
   CF_APP.restaurer(pr.finance, pr.bien);
   if (vers === 'cashflow') CF_APP.etape(4);   // un projet rouvert : d'abord son résultat
   showTab(vers);
-  if (vers === 'estimation' && pr.recherche) { estRevue = {id, cle: pr.recherche.cle}; reprendre(pr.recherche); setTimeout(() => map.invalidateSize(), 60); }
-  else if (vers === 'estimation') { estRevue = null; majSauveEst(); }
+  fixerRevue(vers === 'estimation' && pr.recherche ? {id} : null);
+  if (vers === 'estimation' && pr.recherche) { reprendre(pr.recherche); setTimeout(() => map.invalidateSize(), 60); }
+  else if (vers === 'estimation') majSauveEst();
 }
 document.getElementById('pj').addEventListener('click', e => {
   const t = e.target.closest('[data-a]'); if (!t) return;
@@ -4632,8 +4665,7 @@ document.getElementById('pj').addEventListener('click', e => {
   }
   else if (t.dataset.a === 'estimerN') {   // un des deux biens d'un projet à un seul crédit : son estimation seule, le projet regroupé n'est pas touché
     const pr = PROJETS.liste.find(x => x.id === id), x = pr && rechercheRegroupees(pr)[+t.dataset.n]; if (!x) return;
-    estRevue = {id, n: +t.dataset.n, cle: x.recherche.cle};
-    fixerProjet(null); CF_APP.liberer(); showTab('estimation'); reprendre(x.recherche); setTimeout(() => map.invalidateSize(), 60);
+    fixerProjet(null); fixerRevue({id, n: +t.dataset.n}); CF_APP.liberer(); showTab('estimation'); reprendre(x.recherche); setTimeout(() => map.invalidateSize(), 60);
   }
   else if (t.dataset.a === 'fiche') { const pr = PROJETS.liste.find(x => x.id === id); if (pr && pr.amenag) location.hash = '#investissements/' + encodeURIComponent(pr.amenag.bien); }
   else if (t.dataset.a === 'nouveau') { fixerProjet(null); showTab('estimation'); }
@@ -4738,7 +4770,7 @@ function showTab(t, maj = true, mode = null, sous = null) {
   if (cash) window.CF_APP && CF_APP.sync(estimationCourante(), mode);
   if (t === 'investissements' && window.INV) INV.afficher(sous);
   else if (t === 'projets') afficherProjets();
-  else if (t === 'estimation') setTimeout(() => map.invalidateSize(), 0);
+  else if (t === 'estimation') { majTeteEst(); setTimeout(() => map.invalidateSize(), 0); }
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => { aNavigue = true; showTab(b.dataset.tab); });
