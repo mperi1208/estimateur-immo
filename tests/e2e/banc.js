@@ -109,6 +109,8 @@ async function appareil(nav, base, {reseau = {}} = {}) {
       const nom = path.basename(url.pathname).replace('.min', ''), f = [path.join(LEAFLET, nom), path.join(LEAFLET, 'images', nom)].find(x => fs.existsSync(x));
       return f ? ok(fs.readFileSync(f), TYPES_MIME[path.extname(f)]) : route.fulfill({status: 404, body: ''});
     }
+    // Récap banque en PDF : la bibliothèque du CDN, prise dans node_modules
+    if (url.host === 'cdnjs.cloudflare.com' && /html2pdf/.test(url.pathname)) return ok(fs.readFileSync(require.resolve('html2pdf.js/dist/html2pdf.bundle.min.js')), 'text/javascript');
     if (/tile\.openstreetmap\.org$/.test(url.host)) return ok(PNG_VIDE, 'image/png');
     if (url.host === 'cdn.jsdelivr.net' && /supabase/.test(url.pathname)) return ok(FAUX_SUPABASE, 'text/javascript');
     if (url.host === 'apidf-preprod.cerema.fr') {
