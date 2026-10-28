@@ -937,19 +937,19 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.evaluate(() => { window.prompt = window.promptAvant; });
 });
 
-test('récap pour la banque : PDF de deux pages (le bien, le plan de financement, le prêt, le compte d\'exploitation), depuis Mes projets et Financer', async () => {
+test('récap pour la banque : PDF de deux pages (frise, coût et financement, le prêt, le mois type, la résistance), depuis Mes projets et Financer', async () => {
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
   await page.click('.tabs [data-tab="projets"]');
   assert.equal(await telecharger(page.locator(`#pj article.pj[data-id="${pr.id}"] .pj-actions [data-a="recap"]`)), 'Recap banque - Estimation 52 m2.pdf');
   const rc = await page.evaluate(() => document.getElementById('recap').textContent);
   assert.equal(await page.locator('#recap .rc-page').count(), 2);
   const n = re => +(rc.match(re) || [, ''])[1].replace(/\s/g, '');
-  // Emplois = ressources ; échéance comme dans le projet
-  const emplois = n(/Coût total de l'opération\s*([\d\s]+)\s€\s*100,0/), ressources = n(/Ressources.*?Total\s*([\d\s]+)\s€/);
-  assert.ok(emplois > 0 && Math.abs(emplois - ressources) <= 1, `emplois ${emplois}, ressources ${ressources}`);
-  assert.match(rc, new RegExp('Échéance mensuelle\\s*' + pr.resume.mensualite.toLocaleString('fr-FR').replace(/\s/g, '\\s')));
-  assert.match(rc, /Compte d'exploitation prévisionnel[\s\S]*Loyers encaissés[\s\S]*Échéances du prêt/);
-  assert.match(rc, /Sensibilité[\s\S]*Taux 1 point plus haut/);
+  // Coût = financement ; échéance comme dans le projet
+  const cout = n(/Coût total de l'opération\s*([\d\s]+)\s€/), finance = n(/Financement\s*([\d\s]+)\s€/);
+  assert.ok(cout > 0 && Math.abs(cout - finance) <= 1, `coût ${cout}, financement ${finance}`);
+  assert.match(rc, new RegExp('Échéance\\s*' + pr.resume.mensualite.toLocaleString('fr-FR').replace(/\s/g, '\\s')));
+  assert.match(rc, /Un mois type[\s\S]*Loyers encaissés[\s\S]*Échéance du prêt/);
+  assert.match(rc, /Résistance du projet[\s\S]*Taux 1 point plus haut/);
   // Depuis Financer, étape 4 : les réglages en cours
   await page.locator(`#pj article.pj[data-id="${pr.id}"] [data-a="financer"]`).click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');

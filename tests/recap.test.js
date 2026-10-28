@@ -22,35 +22,41 @@ const LOUER = {revente: false, saison: false, meuble: true, avecImpots: false, r
   annee: {y: 2, loyers: 15000, charges: 2400, interets: 8000, capital: 6500, assurance: 600, credit: 15100, impots: null, cf: -2500, chargesDetail: [['Taxe foncière', 1200], ['Gestion 7 %', 1200]]},
   sensibilite: [['Loyers 10 % plus bas', -330], ['Un mois de vacance de plus par an', -310], ['Taux 1 point plus haut', -350]]};
 
-test('page 1 : objet de la demande, chiffres clés, le bien, le prêt sollicité, plan de financement équilibré', () => {
-  const t = texte(ctx.recapHtml(LOUER, {titre: 'San Gaetano', adresse: '1 rue X 69002 Lyon', date: '28 octobre 2026', estime: {prix: 210000, loyer: 1250}}));
+test('page 1 : objet, chiffres clés, frise (travaux, location, différé, jalons), coût et financement en barres, le bien, le prêt', () => {
+  const h = ctx.recapHtml(LOUER, {titre: 'San Gaetano', adresse: '1 rue X 69002 Lyon', date: '28 octobre 2026', estime: {prix: 210000, loyer: 1250}}), t = texte(h);
   assert.match(t, /Dossier de financement · investissement locatif 28 octobre 2026 · 1\/2 San Gaetano 1 rue X 69002 Lyon/);
   assert.match(t, /Financement de l'acquisition d'une maison de 90 m² à Lyon, avec 40 000 € de travaux, destinée à la location meublée\./);
-  assert.match(t, /Coût total de l'opération 264 000 € Apport personnel 20 000 € 7,6 % du coût total Prêt sollicité 244 000 € 25 ans à 3,4 % Échéance mensuelle 1 260 € 750 € pendant le différé/);
-  assert.match(t, /Prix d'acquisition 200 000 € soit 2 222 €\/m² Estimation de marché 210 000 €/);
-  assert.match(t, /Loyer de marché estimé 1 250 €/);
-  assert.match(t, /Différé 12 mois, partiel \(intérêts et assurance\), couvrant la phase de travaux/);
-  assert.match(t, /Coût total de l'opération 264 000 € 100,0 %/);
-  assert.match(t, /Ressources Apport personnel 20 000 € 7,6 % Prêt sollicité 244 000 € 92,4 % Total 264 000 € 100,0 %/);
+  assert.match(t, /Coût total 264 000 € Apport 20 000 € 7,6 % du coût Prêt sollicité 244 000 € 25 ans à 3,4 % Échéance 1 260 €/);
+  // Frise sur 2 ans : travaux mois 1 à 6, location ensuite, différé 12 mois ; fin des travaux et échéance pleine en jalons
+  assert.match(h, /class="f-trav" style="left:0\.00%;width:25\.00%">Travaux/);
+  assert.match(h, /class="f-loc" style="left:25\.00%;width:75\.00%">Location/);
+  assert.match(t, /Différé · 750 €\/mois Échéance 1 260 €\/mois Acquisition Fin des travaux · mois 6 Échéance pleine · mois 13/);
+  assert.match(t, /Coût total de l'opération 264 000 € Prix d'acquisition 200 000 € 75,8 % Notaire 16 000 € .* Financement 264 000 € Apport personnel 20 000 € 7,6 % Prêt sollicité 244 000 € 92,4 %/);
+  assert.match(t, /Maison · 90 m² · 2 222 €\/m² Prix d'acquisition 200 000 € Estimation de marché 210 000 € Valeur après travaux 290 000 €/);
+  assert.match(t, /Valeur après travaux : \+31 000 €/);
+  assert.match(t, /Loyer prévu 1 300 €\/mois marché 1 250 €/);
+  assert.match(t, /Montant 244 000 € Durée 25 ans dont 12 mois de différé partiel Taux nominal 3,4 % assurance 0,3 %\/an Échéance 1 260 € 750 € pendant le différé/);
   assert.doesNotMatch(t, /banques|Patrimoine dans|il te/i);   // on parle à un banquier, pas de lui
 });
 
-test('page 2 : compte d\'exploitation annuel et mensuel, ratios, démarrage, sensibilité', () => {
+test('page 2 : mois type en barres, périodes, indicateurs en jauges, résistance autour de zéro', () => {
   const h = ctx.recapHtml(LOUER, {titre: 'P'}), t = texte(h);
   assert.equal((h.match(/class="rc-page"/g) || []).length, 2);
-  assert.match(t, /Rendement brut 5,9 % .* Rendement net de charges 4,8 % .* Couverture de l'échéance 99,3 % .* Trésorerie mensuelle −208 €/);
-  assert.match(t, /Loyers bruts \+15 600 € \+1 300 € Vacance locative −600 € −50 € Loyers encaissés \+15 000 € \+1 250 €/);
-  assert.match(t, /Échéances du prêt −15 100 € −1 258 € Trésorerie avant impôts −2 500 € −208 €/);
-  assert.match(t, /Phase de démarrage .* Solde mensuel −870 € \+300 € −210 €/);
-  assert.match(t, /Sur les 12 mois de différé : −3 420 € au total/);
-  assert.match(t, /Scénario retenu −208 € Loyers 10 % plus bas −330 € −122 €/);
+  assert.match(t, /Trésorerie mensuelle, une fois le projet en place −208 € année 2, avant impôts Loyers encaissés 1 250 € Sorties 1 458 € Échéance du prêt 1 258 € Charges 200 €/);
+  assert.match(t, /Pendant les travaux mois 1 à 6 · différé −870 € \/mois .* Pendant le différé mois 7 à 12 \+300 € \/mois .* Ensuite dès le mois 13 −210 € \/mois/);
+  assert.match(h, /class="rc-neg">−870/);
+  assert.match(t, /solde cumulé de −3 420 € ?, couvert par l'épargne personnelle/);
+  assert.match(t, /Rendement brut 5,9 % .* Rendement net de charges 4,8 % .* Couverture de l'échéance 99,3 %/);
+  assert.match(h, /<i class="rouge" style="width:62\.09%"><\/i><u/);   // couverture sous 100 % : en rouge, repère à 100 %
+  assert.match(t, /Scénario retenu −208 € Loyers 10 % plus bas −330 € Un mois de vacance de plus par an −310 € Taux 1 point plus haut −350 €/);
   assert.match(t, /Hypothèses : vacance locative de 0,5 mois par an ; loyers et charges constants ; montants avant impôts/);
 });
 
 test('revente : bilan prévisionnel de l\'opération en page 2', () => {
   const d = {...LOUER, revente: true, vente: {mois: 18, prixVente: 320000, fraisVente: 10000, crd: 240000, ira: 3000, sorties: 27000, impot: 0, net: 20000, coutAchat: 264000}};
   const t = texte(ctx.recapHtml(d, {titre: 'P'}));
-  assert.match(t, /Bilan prévisionnel de l'opération Marge nette \+20 000 € avant impôt Prix de revente 320 000 € au mois 18 Portage mensuel 1 500 €/);
+  assert.match(t, /Le bilan prévisionnel de l'opération Marge nette \+20 000 € avant impôt, au mois 18 Prix de revente 320 000 € Coût total de l'opération 264 000 €/);
   assert.match(t, /en vue de sa revente/);
-  assert.doesNotMatch(t, /Compte d'exploitation/);
+  assert.match(t, /Revente · mois 18/);
+  assert.doesNotMatch(t, /Un mois type/);
 });
