@@ -60,3 +60,14 @@ test('revente : bilan prévisionnel de l\'opération en page 2', () => {
   assert.match(t, /Revente · mois 18/);
   assert.doesNotMatch(t, /Un mois type/);
 });
+
+test('frise : jalons proches (début et fin des travaux, échéance pleine) chacun sur sa ligne, sans se chevaucher', () => {
+  const d = {...LOUER, credit: {...LOUER.credit, differe: 36}, travaux: {...LOUER.travaux, debut: 24, fin: 28, debutLoc: 28, finAvant: 24, loyerAvant: 900}};
+  const h = ctx.recapHtml(d, {titre: 'P'});
+  const j = [...h.matchAll(/<span style="left:([\d.]+)%;top:(\d+)px"( class="droite")?>([^<]+)<\/span>/g)].map(m => ({x: +m[1], top: +m[2], droite: !!m[3], l: m[4]}));
+  assert.deepEqual(j.map(x => x.l), ['Acquisition', 'Début des travaux · mois 25', 'Fin des travaux · mois 28', 'Échéance pleine · mois 37']);
+  // Deux jalons sur la même ligne ont des textes qui ne se touchent pas
+  const zone = x => { const long = x.l.length * 0.8 + 2; return x.droite ? [x.x - long, x.x] : [x.x, x.x + long]; };
+  for (const a of j) for (const b of j) if (a !== b && a.top === b.top) { const [p, q] = zone(a), [r, s] = zone(b); assert.ok(q <= r || s <= p, `${a.l} / ${b.l}`); }
+  assert.ok(new Set(j.map(x => x.top)).size >= 2, 'les jalons proches passent sur une autre ligne');
+});

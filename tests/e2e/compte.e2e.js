@@ -839,9 +839,9 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
   // Récap banque du projet : la meilleure option (Garage), téléchargée en PDF ; ou celle choisie dans son menu
-  assert.equal(await telecharger(carte.locator('.pj-gr-actions [data-a="recap"]')), 'Recap banque - San Gaetano - Garage.pdf');
+  assert.equal(await telecharger(carte.locator('.pj-gr-actions [data-a="recap"]')), 'Dossier de financement - San Gaetano - Garage.pdf');
   await (await col('Division')).locator('.pj-menu summary').click();
-  assert.equal(await telecharger((await col('Division')).locator('[data-a="recap"]')), 'Recap banque - San Gaetano - Division.pdf');
+  assert.equal(await telecharger((await col('Division')).locator('[data-a="recap"]')), 'Dossier de financement - San Gaetano - Division.pdf');
   assert.match(await page.evaluate(() => document.getElementById('recap').textContent), /Prix d'acquisition\s*200\s000/);
   // Chercher un projet : par nom ou option, sans majuscules ; rien trouvé : c'est dit
   await page.fill('#pj_cherche', 'gaetano GARAGE');
@@ -940,7 +940,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
 test('récap pour la banque : PDF de deux pages (frise, coût et financement, le prêt, le mois type, la résistance), depuis Mes projets et Financer', async () => {
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
   await page.click('.tabs [data-tab="projets"]');
-  assert.equal(await telecharger(page.locator(`#pj article.pj[data-id="${pr.id}"] .pj-actions [data-a="recap"]`)), 'Recap banque - Estimation 52 m2.pdf');
+  assert.equal(await telecharger(page.locator(`#pj article.pj[data-id="${pr.id}"] .pj-actions [data-a="recap"]`)), 'Dossier de financement - Estimation 52 m2.pdf');
   const rc = await page.evaluate(() => document.getElementById('recap').textContent);
   assert.equal(await page.locator('#recap .rc-page').count(), 2);
   const n = re => +(rc.match(re) || [, ''])[1].replace(/\s/g, '');
@@ -954,7 +954,7 @@ test('récap pour la banque : PDF de deux pages (frise, coût et financement, le
   await page.locator(`#pj article.pj[data-id="${pr.id}"] [data-a="financer"]`).click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await versEtape(page, '#cf_recap');
-  assert.equal(await telecharger(page.locator('#cf_recap')), 'Recap banque - Estimation 52 m2.pdf');
+  assert.equal(await telecharger(page.locator('#cf_recap')), 'Dossier de financement - Estimation 52 m2.pdf');
 });
 
 test('« J\'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (prix, frais, crédit, loyer), liée dans les deux sens', async () => {

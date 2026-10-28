@@ -1007,9 +1007,8 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 .recap .rc-fr-d{position:relative;height:18px;margin-top:4px}
 .recap .rc-fr-d i{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding-left:6px;font-style:normal;font-size:7.5pt;color:#344054;background:repeating-linear-gradient(135deg,#eaecf0 0 4px,#f9fafb 4px 8px);border:1px solid #d0d5dd;border-radius:4px;white-space:nowrap;box-sizing:border-box}
 .recap .rc-fr-d span{position:absolute;top:2px;padding-left:8px;font-size:7.5pt;font-weight:700;color:#101828;white-space:nowrap}
-.recap .rc-fr-j{position:relative;height:30px;margin-top:6px}
+.recap .rc-fr-j{position:relative;margin-top:6px}
 .recap .rc-fr-j span{position:absolute;top:0;padding-left:6px;border-left:1.5px solid #101828;font-size:7.5pt;color:#344054;white-space:nowrap;line-height:1.2}
-.recap .rc-fr-j span.bas{top:14px}
 .recap .rc-fr-j span.droite{transform:translateX(-100%);padding:0 6px 0 0;border-left:0;border-right:1.5px solid #101828}
 .recap .rc-fr-ech{display:flex;justify-content:space-between;font-size:7pt;color:#98a2b3}
 .recap .rc-bloc{margin-bottom:10px}
@@ -1325,7 +1324,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <div class="tiles" id="cf_tiles"></div>
   <div class="hint tiles-plus" id="cf_tilesPlus"></div>
   <div id="cf_alerts"></div>
-  <div class="recap-l"><button type="button" id="cf_recap">Récap pour la banque (PDF)</button><span>Deux pages avec les chiffres du projet, téléchargées en PDF.</span></div>
+  <div class="recap-l"><button type="button" id="cf_recap">Dossier de financement (PDF)</button><span>Deux pages pour présenter le projet à la banque.</span></div>
   <div class="card" id="cf_bilan" hidden></div>
   <div class="card">
     <h2 id="cf_chartTitle">Cash-flow annuel après impôts</h2>
@@ -4504,10 +4503,21 @@ function recapHtml(d, o = {}) {
     !d.revente && debLoc > 0 && debLoc !== fin && [debLoc, `Premier loyer · mois ${debLoc + 1}`], c.differe > 0 && [c.differe, `Échéance pleine · mois ${c.differe + 1}`],
     d.revente && [d.vente.mois, `Revente · mois ${d.vente.mois}`]].filter(Boolean)
     .reduce((l, [m, x]) => { const p = l.find(y => Math.abs(y[0] - m) <= 1); if (p) p[1] = p[1].replace(/ · mois \d+$/, '') + ' · ' + x[0].toLowerCase() + x.slice(1); else l.push([m, x]); return l; }, []);
+  // Jalons : chacun sur la première ligne où son texte ne touche pas un autre (largeur estimée, ≈ 0,8 % de la frise par caractère) ;
+  // à droite de la frise, le texte part vers la gauche de son repère
+  const lignes = [];
+  jalons.forEach((j, i) => {
+    const x = +g(j[0]).replace('%', ''), long = j[1].length * 0.8 + 2, droite = x + long > 100 && x > 50;
+    const de = droite ? x - long : x, a = droite ? x : x + long;
+    let n = 0; while ((lignes[n] || []).some(([p, q]) => de < q + 1 && a > p - 1)) n++;
+    (lignes[n] = lignes[n] || []).push([de, a]);
+    jalons[i] = {m: j[0], l: j[1], ligne: n, droite};
+  });
+  const lignesJ = Math.max(1, lignes.length);
   const frise = `<div class="rc-frise"><div class="rc-fr-b">${t && t.debut ? seg('f-avant', 0, t.debut, t.finAvant ? 'Loué en l\'état' : 'Avant travaux') : ''}${t ? seg('f-trav', t.debut, fin, 'Travaux') : ''}
       ${d.revente ? seg('f-avant', fin, d.vente.mois, 'Mise en vente') : seg('f-loc', Math.max(fin, debLoc), H, d.saison ? 'Exploitation' : 'Location')}</div>
     ${c.differe > 0 ? `<div class="rc-fr-d"><i style="width:${w(0, c.differe)}">Différé · ${eurR(c.mensDiff)}/mois</i><span style="left:${g(c.differe)}">Échéance ${eurR(c.mens)}/mois</span></div>` : `<div class="rc-fr-d"><span style="left:0">Échéance ${eurR(c.mens)}/mois dès le premier mois</span></div>`}
-    <div class="rc-fr-j">${jalons.map(([m, l], i) => `<span style="left:${g(m)}" class="${i % 2 ? 'bas' : ''}${m / H > 0.6 ? ' droite' : ''}">${l}</span>`).join('')}</div>
+    <div class="rc-fr-j" style="height:${lignesJ * 15}px">${jalons.map(j => `<span style="left:${g(j.m)};top:${j.ligne * 15}px"${j.droite ? ' class="droite"' : ''}>${j.l}</span>`).join('')}</div>
     <div class="rc-fr-ech"><span>Mois 1</span><span>${H / 12} ans</span></div></div>`;
 
   // Coût et financement : deux barres à la même échelle
@@ -4596,7 +4606,7 @@ async function telechargerRecap(pr, depuisFinancer, bouton) {
   const o = {titre: nom, option: bs.length > 1 ? nomBranche(pr) : '', adresse: pr ? adresseProjet(bs.length ? bs : [pr]) : '',
     date: new Date().toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}),
     estime: pr && pr.resume ? {prix: pr.resume.prixEstime, loyer: pr.resume.loyerEstime} : {}};
-  const fichier = `Récap banque - ${nom}${o.option ? ' - ' + o.option : ''}`;
+  const fichier = `Dossier de financement - ${nom}${o.option ? ' - ' + o.option : ''}`;
   let el = document.getElementById('recap');
   if (!el) { el = document.createElement('div'); el.id = 'recap'; document.body.appendChild(el); }
   el.innerHTML = `<div class="recap" style="width:184mm;background:#fff">${recapHtml(d, o)}</div>`;
@@ -4638,13 +4648,13 @@ const ficheAchat = pr => pr.achete && window.INV && INV.bien && INV.bien(pr.ache
 const chipAchete = pr => ficheAchat(pr) ? `<button class="pj-achete" data-a="voirFiche" title="Voir la fiche dans Mon patrimoine">Acheté · voir la fiche →</button>` : '';
 function cartePj(pr, sous, corps, boutons, br) {
   boutons = [...boutons, ...boutonsBranche(pr, br)];
-  if (br) boutons.unshift('<button data-a="recap">Récap pour la banque (PDF)</button>');
+  if (br) boutons.unshift('<button data-a="recap">Dossier de financement (PDF)</button>');
   if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
     <div class="pj-bas"><span></span>
-      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger deux pages en PDF">Récap banque</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
 function carteProjet(pr, br) {
   if (pr.amenag) return carteAmenagement(pr, br);
@@ -4861,7 +4871,7 @@ function carteGroupe(bs) {
   const depart = bs.find(x => !x.amenag);
   return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
-    <div class="pj-gr-actions"><button data-a="recap" title="La meilleure option détaillée, les autres comparées : deux pages en PDF">Récap banque</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
+    <div class="pj-gr-actions"><button data-a="recap" title="Le dossier de financement de la meilleure option, en PDF">Dossier de financement</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${tuilesProjet(bs, a)}
     <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><span><i class="f-avant"></i>Avant travaux</span> <span><i class="f-travaux"></i>Travaux</span> <span><i class="f-apres"></i>Après</span> <span><i class="f-diff"></i>Différé</span></span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
     ${cartesOptions(bs, a, m)}
