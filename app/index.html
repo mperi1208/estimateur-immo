@@ -245,7 +245,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap button.discret-btn svg{width:18px;height:18px}
 .invwrap button.discret-btn[aria-pressed="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
 /* Mes projets */
-.invwrap .pj-liste{display:grid;gap:12px}
+.invwrap .pj-liste{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .invwrap article.pj{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .invwrap .pj-tete{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .invwrap .pj h3{margin:0;font-size:16px}
@@ -320,10 +320,11 @@ body.discret #pj :is(.pj-r-val, .pj-r-opt b){filter:blur(7px);user-select:none}
 .invwrap .pj-tuile .pj-lien{all:unset;cursor:pointer;color:var(--accent);font-size:13px;font-weight:700;margin-top:4px}
 .invwrap .pj-tuile .pj-lien:hover{text-decoration:underline}
 .invwrap .pj-legende{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:#344054;margin-right:6px}
+.invwrap .pj-legende > span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-right:6px}.invwrap .pj-legende > span i{margin-left:0}
 .invwrap .pj-legende i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-left:6px}
 .invwrap .f-avant{background:#7a8aa3}.invwrap .f-travaux{background:#c2620c}.invwrap .f-apres{background:var(--accent)}.invwrap i.f-diff{background:none;border:2px solid #3e4c9b;border-top:0;height:6px}
 .invwrap .pj-cartes{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
-.invwrap .pj-liste > *{min-width:0}
+.invwrap .pj-liste > *,.invwrap .pj-trouve > *{min-width:0}
 .invwrap .pj-carte{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);flex:1 1 0;min-width:150px}
 .invwrap .pj-carte.best{border:2px solid var(--accent)}
 .invwrap .pj-c-tete{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -1016,6 +1017,42 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 .recap .rc-objet{margin:-4px 0 10px;font-size:10pt;color:#344054}
 .recap .rc-note{margin:5px 0 0;font-size:8pt;color:#475467}
 .recap .rc-hyp{margin:16px 0 0;padding-top:6px;border-top:1px solid #eaecf0;font-size:7pt;color:#667085}
+/* Téléphone : rien de coupé ni caché sous les barres collées en bas */
+@media (max-width:600px){
+  /* Mes projets : les cartes des options l'une sous l'autre (le tableau en dessous les compare côte à côte) */
+  .invwrap .pj-cartes{flex-direction:column;overflow:visible}
+  .invwrap .pj-cartes .pj-carte{flex:none;min-width:0}
+  .invwrap .pj-carte .pj-opt-act{flex-wrap:nowrap}
+  .invwrap .pj-groupe:not(.replie){padding:16px 14px}
+  .invwrap .pj-groupe h3{font-size:21px}
+  /* Menus ⋯ : un panneau en bas de l'écran, au-dessus d'un voile (un toucher sur le voile le ferme) */
+  .invwrap details.pj-menu[open]{order:0;flex-basis:auto;display:block}
+  .invwrap details.pj-menu[open] > summary::before{content:"";position:fixed;inset:0;z-index:1150;background:rgba(16,24,40,.4);cursor:default}
+  .invwrap details.pj-menu .pj-menu-l{position:fixed;z-index:1200;left:8px;right:8px;top:auto;bottom:calc(8px + env(safe-area-inset-bottom));width:auto;min-width:0;max-height:70vh;overflow-y:auto;margin:0;padding:8px;border-radius:16px;box-shadow:0 -8px 32px rgba(0,0,0,.25);text-align:left}
+  .invwrap details.pj-menu .pj-menu-l button{padding:13px 12px;font-size:16px}
+  /* Fiche d'un bien : pas de cadre autour des cadres, plus de place pour les champs */
+  #inv details.fiche-detail{border:0;padding:0;background:none}
+  .invwrap .bloc{padding:14px 12px}
+  .invwrap .pret,.invwrap .rachat{padding:10px}
+  /* Estimer : la barre du bas tient sur deux lignes basses */
+  #estim .sauveEst{padding:10px 12px;margin-top:12px}
+  #estim .sauveEst .sauve-ligne{gap:8px}
+  #estim .sauveEst .sauve-ligne .esp{display:none}
+  #estim .sauveEst input{flex:1 1 100%;min-width:0;padding:9px 12px}
+  #estim .sauveEst .sauve-ligne > button{flex:1 1 0;min-width:0;padding:9px 10px;font-size:14px;line-height:1.2}
+  #estim .sauveEst .hint{font-size:12.5px}
+  /* Étapes : seul le nom de l'étape en cours est écrit, les autres gardent leur numéro */
+  :is(#cf, #est_tete) .cf-etapes button:not([aria-current]){font-size:0;gap:0;padding:12px 10px}
+  :is(#cf, #est_tete) .cf-etapes button:not([aria-current]) i{font-size:13px}
+}
+@media (max-width:700px){
+  /* Financer : nom du projet sur une ligne, puis « Enregistrer » et « Étape suivante » côte à côte */
+  #cf .cf-barre-in{padding:8px 12px calc(8px + env(safe-area-inset-bottom));gap:8px}
+  #cf .cf-barre #cf_saveForm,#cf .cf-barre #cf_saveInvite{display:contents}
+  #cf .cf-barre input{flex:1 1 100%;min-height:40px;min-width:0}
+  #cf .cf-barre button{flex:1 1 0;min-height:42px;min-width:0;padding:0 10px;font-size:14px;line-height:1.2}
+  #cf .cf-barre #cf_suivant{margin-left:0}
+}
 </style>
 </head>
 <body>
@@ -4763,7 +4800,7 @@ function carteGroupe(bs) {
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
     <div class="pj-gr-actions"><button data-a="recap" title="La meilleure option détaillée, les autres comparées : deux pages en PDF">Récap banque</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${tuilesProjet(bs, a)}
-    <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><i class="f-avant"></i>Avant travaux <i class="f-travaux"></i>Travaux <i class="f-apres"></i>Après <i class="f-diff"></i>Différé</span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
+    <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><span><i class="f-avant"></i>Avant travaux</span> <span><i class="f-travaux"></i>Travaux</span> <span><i class="f-apres"></i>Après</span> <span><i class="f-diff"></i>Différé</span></span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
     ${cartesOptions(bs, a, m)}
     <div class="pj-opts-tete"><h4>${titre}</h4><div class="pj-opts-btns"><button data-a="tableau" aria-expanded="${!cache}">${cache ? 'Comparer les chiffres' : 'Masquer le tableau'}</button></div></div>
     ${cache ? `<div class="pj-meilleure pj-sans-tableau">${bs.length} options · ${ligneMeilleure(bs)}</div>` : `${tableOptions(bs, a, m, modeSimple())}
