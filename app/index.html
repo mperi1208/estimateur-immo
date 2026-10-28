@@ -968,7 +968,7 @@ body.simple #inv details.fiche-detail[open] > summary{margin-bottom:14px}
 body.simple #inv details.fiche-detail[open] > summary::before{content:'▾'}
 body.simple #invest .pli[data-pli="orga"], body.simple #invest .bloc:has(#inv_renta){display:none}
 body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
-/* Récap pour la banque : le bouton dans Financer, et les deux pages, visibles seulement à l'impression */
+/* Récap pour la banque : le bouton dans Financer, et les deux pages, mises en PDF (impression si la bibliothèque ne charge pas) */
 #cf .recap-l{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
 #cf .recap-l button{padding:9px 14px;border:1px solid var(--accent);border-radius:10px;background:var(--panel);color:var(--accent);font:inherit;font-weight:700;cursor:pointer}
 #cf .recap-l span{font-size:13px;color:var(--muted)}
@@ -978,40 +978,44 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   body.recap-imprime{background:#fff}
   body.recap-imprime > :not(#recap){display:none!important}
   body.recap-imprime #recap{display:block}
+  body.recap-imprime #recap .recap{width:auto!important}
 }
-#recap{color:#101828;font:9.5pt/1.35 Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recap .rc-page{break-after:page;page-break-after:always}
-#recap .rc-page:last-child{break-after:auto;page-break-after:auto}
-#recap .rc-tete{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 14px;background:#101828;color:#fff;border-radius:8px}
-#recap .rc-sur{font-size:8pt;opacity:.75;text-transform:uppercase;letter-spacing:.06em}
-#recap h1{margin:2px 0 0;font-size:16pt;line-height:1.2}
-#recap h1 em{font-style:normal;font-weight:600;opacity:.85}
-#recap .rc-adr{font-size:9pt;opacity:.85}
-#recap .rc-num{font-size:8pt;opacity:.75;white-space:nowrap}
-#recap .rc-h{margin:12px 0 8px;font-size:13pt;color:#0b6e4f}
-#recap h3{margin:12px 0 5px;font-size:10.5pt;break-after:avoid}
-#recap .rc-chiffres{display:flex;gap:8px}
-#recap .rc-chiffre{flex:1 1 0;padding:8px 10px;border:1px solid #dce1e7;border-radius:8px}
-#recap .rc-chiffre > span{display:block;font-size:8pt;color:#556070}
-#recap .rc-chiffre b{display:block;font-size:14pt;margin-top:1px}
-#recap .rc-chiffre small{display:block;font-size:7.5pt;color:#556070}
-#recap .rc-t{width:100%;border-collapse:collapse;break-inside:avoid}
-#recap .rc-t th,#recap .rc-t td{padding:3.5px 6px;border-bottom:1px solid #e6e9ee;text-align:right;vertical-align:top;font-variant-numeric:tabular-nums}
-#recap .rc-t th:first-child{text-align:left;font-weight:500}
-#recap .rc-t thead th{font-size:8pt;font-weight:700;color:#556070;border-bottom:1.5px solid #101828}
-#recap .rc-t thead th small,#recap .rc-t td small{display:block;font-weight:400;font-size:7.5pt;color:#556070}
-#recap .rc-kv td{white-space:nowrap}
-#recap .rc-kv td small{display:inline}
-#recap .rc-t .rc-tot th,#recap .rc-t .rc-tot td{font-weight:800;border-top:1.5px solid #101828;border-bottom:0}
-#recap .rc-plan,#recap .rc-deux{display:flex;gap:14px;align-items:flex-start}
-#recap .rc-plan > *,#recap .rc-deux > *{flex:1 1 0}
-#recap .rc-pos{color:#0b6e4f}
-#recap .rc-neg{color:#b42318}
-#recap .rc-cour{background:#e3f1eb}
-#recap .rc-note{margin:5px 0 0;font-size:8.5pt;color:#556070}
-#recap .rc-cal{margin:0;padding-left:16px}
-#recap .rc-cal li{margin:1px 0}
-#recap .rc-hyp{margin:12px 0 0;padding-top:6px;border-top:1px solid #dce1e7;font-size:7.5pt;color:#556070}
+.recap{color:#1d2939;font:9.5pt/1.4 Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.recap .rc-page{break-after:page;page-break-after:always}
+.recap .rc-page:last-child{break-after:auto;page-break-after:auto}
+.recap .rc-tete{padding-bottom:10px;border-bottom:2px solid #0b6e4f}
+.recap .rc-sur{display:flex;justify-content:space-between;gap:12px;font-size:7.5pt;font-weight:600;color:#667085;text-transform:uppercase;letter-spacing:.08em}
+.recap h1{margin:8px 0 0;font-size:19pt;line-height:1.15;color:#101828;letter-spacing:-.01em}
+.recap .rc-adr{margin-top:2px;font-size:9.5pt;color:#475467}
+.recap h2{margin:14px 0 10px;font-size:12pt;color:#0b6e4f;font-weight:800}
+.recap h3{margin:14px 0 6px;font-size:8pt;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.08em;break-after:avoid}
+.recap .rc-figs{display:flex;background:#f4f7f6;border-radius:6px;padding:10px 4px}
+.recap .rc-fig{flex:1 1 0;padding:0 10px;border-left:1px solid #d7e3de}
+.recap .rc-fig:first-child{border-left:0}
+.recap .rc-fig > span{display:block;font-size:7.5pt;color:#667085}
+.recap .rc-fig b{display:block;margin-top:2px;font-size:14pt;color:#101828;font-variant-numeric:tabular-nums}
+.recap .rc-fig small{display:block;font-size:7pt;color:#667085}
+.recap table{width:100%;border-collapse:collapse;break-inside:avoid}
+.recap th,.recap td{padding:4px 6px;text-align:right;vertical-align:baseline;font-variant-numeric:tabular-nums}
+.recap th:first-child{text-align:left;font-weight:500}
+.recap .rc-kv th{width:42%;color:#475467;font-weight:500;border-bottom:1px solid #eaecf0}
+.recap .rc-kv td{text-align:left;border-bottom:1px solid #eaecf0}
+.recap .rc-kv small,.recap .rc-t td small{color:#667085;font-size:7.5pt}
+.recap .rc-t thead th{font-size:7.5pt;font-weight:700;color:#667085;border-bottom:1px solid #98a2b3;padding-top:0}
+.recap .rc-t thead th small{display:block;font-weight:400}
+.recap .rc-t tbody th,.recap .rc-t tbody td{border-bottom:1px solid #eaecf0}
+.recap .rc-plan td:nth-child(3),.recap .rc-sens td:nth-child(3){color:#667085}
+.recap .rc-sous th{padding-left:16px;color:#475467}
+.recap .rc-sous th,.recap .rc-sous td{font-size:8.5pt;border-bottom-color:#f2f4f7}
+.recap .rc-st th,.recap .rc-st td{font-weight:700}
+.recap .rc-tot th,.recap .rc-tot td{font-weight:800;color:#101828;background:#f4f7f6;border-bottom:0}
+.recap .rc-2{display:flex;gap:16px;align-items:flex-start}
+.recap .rc-2 > *{flex:1 1 0}
+.recap .rc-pos{color:#0b6e4f}
+.recap .rc-neg{color:#b42318}
+.recap .rc-objet{margin:-4px 0 10px;font-size:10pt;color:#344054}
+.recap .rc-note{margin:5px 0 0;font-size:8pt;color:#475467}
+.recap .rc-hyp{margin:16px 0 0;padding-top:6px;border-top:1px solid #eaecf0;font-size:7pt;color:#667085}
 </style>
 </head>
 <body>
@@ -1235,7 +1239,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <div class="tiles" id="cf_tiles"></div>
   <div class="hint tiles-plus" id="cf_tilesPlus"></div>
   <div id="cf_alerts"></div>
-  <div class="recap-l"><button type="button" id="cf_recap">Récap pour la banque (PDF)</button><span>Deux pages avec les chiffres du projet, à imprimer ou enregistrer en PDF.</span></div>
+  <div class="recap-l"><button type="button" id="cf_recap">Récap pour la banque (PDF)</button><span>Deux pages avec les chiffres du projet, téléchargées en PDF.</span></div>
   <div class="card" id="cf_bilan" hidden></div>
   <div class="card">
     <h2 id="cf_chartTitle">Cash-flow annuel après impôts</h2>
@@ -3710,6 +3714,20 @@ function donneesRecap() {
     loyers: g.loyers, credit: g.credit, charges: g.charges, impots: g.impots, reste: g.reste}));
   d.croisiere = {des: ph.fin + 1, loyers: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : 0, reste: ac.cf / 12};
   d.charges = partsCharges(s, ac);
+  // Année stabilisée (travaux et différé finis) : le compte d'exploitation de l'année, et sa rentabilité sur le coût total
+  d.annee = {y: ac.y, loyers: ac.loyers, charges: ac.charges, interets: ac.interets, capital: ac.capital, assurance: ac.assurance, credit: ac.credit, impots: p.avecImpots ? ac.impots : null, cf: ac.cf,
+    chargesDetail: partsCharges(s, ac).map(([k, v]) => [k, v * 12])};
+  // Sensibilité : le même projet avec des loyers 10 % plus bas, un mois de plus sans locataire, un taux 1 point plus haut
+  const variante = f => {
+    const avant = etat();
+    try { f(); const s2 = simuler(); return anneeCroisiere(s2).cf / 12; }
+    finally { for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]); biensPlus = avant.biensPlus; }
+  };
+  const fois = (k, x) => set(k, (+get(k) || 0) * x);
+  d.sensibilite = [
+    ['Loyers 10\u00a0% plus bas', variante(() => { ['loyer', 'loyer2', 'loyerAvant', 'nuit'].forEach(k => fois(k, 0.9)); biensPlus = biensPlus.map(b => ({...b, loyer: (+b.loyer || 0) * 0.9})); })],
+    p.saison ? ['Occupation 10 points plus basse', variante(() => set('occupation', Math.max(0, get('occupation') - 10)))] : ['Un mois de vacance de plus par an', variante(() => set('vacance', get('vacance') + 1))],
+    ['Taux 1 point plus haut', variante(() => set('taux', get('taux') + 1))]];
   d.loyersPleins = p.saison ? s.saison.brutMois + p.loyerB2 : p.loyerTotal;   // loyers du bail, sans vacance : ce que la banque retient en partie
   d.totalDiffere = s.totalDiffere;
   d.valeur = {depart: s.base, coutBien: s.coutTotal - mob};
@@ -4374,112 +4392,139 @@ function tableComparaison(prs, o = {}) {
 }
 // ---------- fin de la comparaison
 // ---------- Récap pour la banque
-// Deux pages A4 à imprimer ou enregistrer en PDF : 1. le projet, son plan de financement et le crédit ; 2. ce qu'il rapporte
-// chaque mois, période par période, ce que la banque regarde, la valeur créée et les options comparées.
-// d : CF_APP.recap() ; o : {titre, option, adresse, date, options: [{nom, r (résumé), courante}]}
-const eurR = n => n == null || isNaN(n) ? '—' : (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR') + ' €';
+// Dossier de deux pages A4 remis au banquier, ton neutre : 1. le bien, le plan de financement et le prêt sollicité ;
+// 2. le compte d'exploitation prévisionnel d'une année stabilisée, la phase de démarrage et la sensibilité.
+// d : CF_APP.recap() ; o : {titre, adresse, date, estime: {prix, loyer} (estimations de marché)}
+const eurR = n => n == null || isNaN(n) ? '—' : (n < 0 ? '−' : '') + Math.round(Math.abs(n)).toLocaleString('fr-FR').replace(/\s/g, '\u00a0') + '\u00a0€';
 const sgnR = n => Math.round(n) === 0 ? '0 €' : (n < 0 ? '−' : '+') + eurR(Math.abs(n));
-const tauxR = v => (+v || 0).toFixed(2).replace('.', ',').replace(/,?0+$/, '') + ' %';
+const tauxR = v => (+v || 0).toFixed(2).replace('.', ',').replace(/,?0+$/, '') + '\u00a0%';
+const pctR = (a, b) => b > 0 ? (a / b * 100).toFixed(1).replace('.', ',') + '\u00a0%' : '—';
 const moisR = (a, b) => b - a <= 1 ? `mois ${a + 1}` : `mois ${a + 1} à ${b}`;
-const BANQUE_LOYERS = 0.7;   // part des loyers que les banques retiennent souvent comme revenu
 function recapHtml(d, o = {}) {
-  const l = (k, v, cls = '') => `<tr class="${cls}"><th>${k}</th><td>${v}</td></tr>`, c = d.credit, a = d.achat, t = d.travaux;
-  const chiffre = (k, v, s = '') => `<div class="rc-chiffre"><span>${k}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`;
-  const tete = (n, titre) => `<header class="rc-tete"><div><span class="rc-sur">Dossier de financement · ${esc(o.date || '')}</span><h1>${esc(o.titre || 'Mon projet')}${o.option ? ` <em>· ${esc(o.option)}</em>` : ''}</h1>
-    ${o.adresse ? `<div class="rc-adr">${esc(o.adresse)}</div>` : ''}</div><span class="rc-num">${n} / 2</span></header><h2 class="rc-h">${titre}</h2>`;
-  const plusieurs = d.biens.length > 1;
-  // Page 1 : le projet
-  const biens = `<table class="rc-t rc-biens"><thead><tr><th>${plusieurs ? 'Les biens' : 'Le bien'}</th><th>Surface</th><th>Prix</th><th>${d.saison ? 'Recettes' : 'Loyer'} par mois</th></tr></thead><tbody>
-    ${d.biens.map((b, i) => `<tr><th>${esc(b.nom || (i ? `${i + 1}e bien` : b.type === 'maison' ? 'Maison' : 'Appartement'))}</th><td>${b.surf ? b.surf + ' m²' : '—'}</td><td>${eurR(b.prix)}</td><td>${b.loyer ? (i === 0 && d.saison ? '≈ ' : '') + eurR(b.loyer) : '—'}</td></tr>`).join('')}</tbody></table>`
-    + `<p class="rc-note">${[d.revente ? 'Achat pour revendre' : d.saison ? 'Location meublée à la nuitée' : d.meuble ? 'Location meublée' : 'Location vide', d.struct].join(' · ')}${t ? `. Travaux de ${eurR(t.montant)}, ${moisR(t.debut, t.fin)} après l'achat${t.valeurApres > 0 ? `, valeur estimée après travaux ${eurR(t.valeurApres)}` : ''}` : ''}.</p>`;
-  const besoins = [['Prix d\'achat', a.prix], ['Frais de notaire', a.notaire], ['Travaux', a.travaux], ['Mobilier', a.mobilier], ['Frais de dossier et garantie', a.frais]].filter(x => x[1] > 0);
-  const plan = `<div class="rc-plan"><table class="rc-t"><thead><tr><th>Besoins</th><th></th></tr></thead><tbody>${besoins.map(([k, v]) => l(k, eurR(v))).join('')}${l('Total', eurR(a.cout), 'rc-tot')}</tbody></table>
-    <table class="rc-t"><thead><tr><th>Ressources</th><th></th></tr></thead><tbody>${l('Apport personnel', eurR(a.apport))}${l('Prêt bancaire', eurR(a.pret))}${l('Total', eurR(a.apport + a.pret), 'rc-tot')}</tbody></table></div>`;
-  const diff = c.differe > 0 ? `${c.differe} mois de différé ${c.typeDiff === 'total' ? 'total' : 'partiel'}` : '';
-  const credit = `<table class="rc-t rc-kv"><tbody>${l('Montant emprunté', `<b>${eurR(c.pret)}</b>`)}${l('Durée', `${c.duree} ans${diff ? `, dont ${diff}` : ''}`)}
-    ${l('Taux du prêt', `${tauxR(c.taux)} par an, hors assurance`)}${c.assur > 0 ? l('Assurance emprunteur', `${tauxR(c.assur)} par an du montant emprunté`) : ''}
-    ${c.mensAvant != null ? l(`Mensualité, mois 1 à ${c.debloc}`, `${eurR(c.mensAvant)} <small>avant le versement des travaux</small>`) : ''}
-    ${c.mensDiff != null ? l(`Mensualité pendant le différé${c.mensAvant != null ? `, mois ${c.debloc + 1} à ${c.differe}` : ''}`, `${eurR(c.mensDiff)} <small>${c.typeDiff === 'total' ? 'assurance seule' : 'intérêts et assurance'}</small>`) : ''}
-    ${l(c.differe > 0 ? `Mensualité dès le mois ${c.differe + 1}` : 'Mensualité', `<b>${eurR(c.mens)}</b> <small>assurance comprise</small>`)}${l('Coût total du crédit', `${eurR(c.cout)} <small>intérêts, assurance et frais</small>`)}</tbody></table>`;
-  // Calendrier en une ligne par étape
-  const cal = [`Mois 1 : achat${t && !t.debut ? ' et début des travaux' : ''}${t && t.finAvant > 0 ? `, loué ${eurR(t.loyerAvant)} par mois en l'état` : ''}`];
-  if (t && t.debut) cal.push(`Mois ${t.debut + 1} : début des travaux`);
-  if (t) cal.push(`Mois ${t.fin} : fin des travaux${!d.revente && t.debutLoc ? `, loyers à partir du mois ${t.debutLoc + 1}` : ''}`);
-  if (c.differe > 0) cal.push(`Mois ${c.differe + 1} : fin du différé, mensualité pleine de ${eurR(c.mens)}`);
-  if (d.revente) cal.push(`Mois ${d.vente.mois} : revente`);
-  const page1 = `<section class="rc-page">${tete(1, 'Le projet et son financement')}
-    <div class="rc-chiffres">${chiffre('Coût total du projet', eurR(a.cout))}${chiffre('Apport', eurR(a.apport))}${chiffre('Montant emprunté', eurR(c.pret), `sur ${c.duree} ans à ${tauxR(c.taux)}`)}${chiffre('Mensualité', eurR(c.mens), c.mensDiff != null ? `${eurR(c.mensDiff)} pendant le différé` : 'assurance comprise')}</div>
-    <h3>${plusieurs ? 'Les biens' : 'Le bien'}</h3>${biens}<h3>Plan de financement</h3>${plan}<h3>Le crédit demandé</h3>${credit}
-    ${cal.length > 1 || t ? `<h3>Calendrier</h3><ul class="rc-cal">${cal.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}</section>`;
-  return page1 + `<section class="rc-page">${d.revente ? pageRevente(d, o) : pageLoyers(d, o)}</section>`;
+  const c = d.credit, a = d.achat, t = d.travaux, b0 = d.biens[0], plusieurs = d.biens.length > 1;
+  const kv = lignes => `<table class="rc-kv">${lignes.filter(Boolean).map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
+  const fig = (k, v, s = '') => `<div class="rc-fig"><span>${k}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`;
+  const usage = d.revente ? 'Achat-revente' : d.saison ? 'Location meublée de courte durée' : d.meuble ? 'Location meublée' : 'Location nue';
+  const typeB = b => b.type === 'maison' ? 'Maison' : 'Appartement';
+  const tete = (n, titre) => `<header class="rc-tete"><div class="rc-sur"><span>Dossier de financement · ${d.revente ? 'opération d\'achat-revente' : 'investissement locatif'}</span><span>${esc(o.date || '')} · ${n}/2</span></div>
+    <h1>${esc(o.titre || 'Projet')}</h1>${o.adresse ? `<div class="rc-adr">${esc(o.adresse)}</div>` : ''}</header><h2>${titre}</h2>`;
+  // Page 1 : le bien, le financement, le prêt
+  const est = o.estime || {};
+  const bien = plusieurs
+    ? `<table class="rc-t"><thead><tr><th>Bien</th><th>Surface</th><th>Prix</th><th>Loyer mensuel</th></tr></thead><tbody>${d.biens.map((b, i) => `<tr><th>${esc(b.nom || (i ? `Bien ${i + 1}` : typeB(b)))}</th><td>${b.surf ? b.surf + ' m²' : '—'}</td><td>${eurR(b.prix)}</td><td>${b.loyer ? eurR(b.loyer) : '—'}</td></tr>`).join('')}</tbody></table>`
+      + kv([['Exploitation', usage], ['Détention', d.struct], t && ['Travaux sur le bien 1', `${eurR(t.montant)} · ${moisR(t.debut, t.fin)}`]])
+    : kv([['Type et surface', `${esc(b0.nom || typeB(b0))}${b0.surf ? ` · ${b0.surf} m²` : ''}`],
+      ['Prix d\'acquisition', `${eurR(b0.prix)}${b0.surf ? ` <small>soit ${eurR(b0.prix / b0.surf)}/m²</small>` : ''}`],
+      est.prix && ['Estimation de marché', `${eurR(est.prix)} <small>ventes comparables (DVF)</small>`],
+      t && ['Travaux', `${eurR(t.montant)} <small>${moisR(t.debut, t.fin)} après l'acquisition</small>`],
+      t && t.valeurApres > 0 && ['Valeur estimée après travaux', eurR(t.valeurApres)],
+      !d.revente && [d.saison ? 'Recettes mensuelles prévues' : 'Loyer mensuel prévu', `${eurR(b0.loyer)}${d.saison ? ' <small>en moyenne</small>' : ' <small>hors charges</small>'}`],
+      !d.revente && est.loyer && !d.saison && ['Loyer de marché estimé', `${eurR(est.loyer)} <small>observatoire des loyers</small>`],
+      ['Exploitation', usage], ['Détention', d.struct]]);
+  const emplois = [['Prix d\'acquisition', a.prix], ['Frais de notaire', a.notaire], ['Travaux', a.travaux], ['Mobilier', a.mobilier], ['Frais de dossier et de garantie', a.frais]].filter(x => x[1] > 0);
+  const ligne = (k, v, tot) => `<tr${tot ? ' class="rc-tot"' : ''}><th>${k}</th><td>${eurR(v)}</td><td>${pctR(v, a.cout)}</td></tr>`;
+  const plan = `<div class="rc-2"><table class="rc-t rc-plan"><thead><tr><th>Emplois</th><th></th><th></th></tr></thead><tbody>${emplois.map(([k, v]) => ligne(k, v)).join('')}${ligne('Coût total de l\'opération', a.cout, true)}</tbody></table>
+    <table class="rc-t rc-plan"><thead><tr><th>Ressources</th><th></th><th></th></tr></thead><tbody>${ligne('Apport personnel', a.apport)}${ligne('Prêt sollicité', a.pret)}${ligne('Total', a.apport + a.pret, true)}</tbody></table></div>`;
+  const pret = kv([['Montant', `<b>${eurR(c.pret)}</b>`], ['Durée', `${c.duree} ans (${c.duree * 12} mois)`],
+    c.differe > 0 && ['Différé', `${c.differe} mois, ${c.typeDiff === 'total' ? 'total' : 'partiel (intérêts et assurance)'}${t ? ', couvrant la phase de travaux' : ''}`],
+    ['Taux nominal', `${tauxR(c.taux)} <small>hors assurance</small>`], c.assur > 0 && ['Assurance emprunteur', `${tauxR(c.assur)} <small>du capital emprunté, par an</small>`],
+    c.mensAvant != null && [`Échéance mois 1 à ${c.debloc}`, `${eurR(c.mensAvant)} <small>avant déblocage des fonds travaux</small>`],
+    c.mensDiff != null && [`Échéance pendant le différé`, eurR(c.mensDiff)],
+    [c.differe > 0 ? `Échéance à partir du mois ${c.differe + 1}` : 'Échéance mensuelle', `<b>${eurR(c.mens)}</b> <small>assurance comprise</small>`],
+    ['Coût total du crédit', `${eurR(c.cout)} <small>intérêts, assurance et frais</small>`]]);
+  const ville = (/\d{5}\s+(.+)$/.exec(o.adresse || '') || [])[1];
+  const objet = `Financement de l'acquisition ${plusieurs ? `de ${d.biens.length} biens` : `d'${b0.type === 'maison' ? 'une maison' : 'un appartement'}${b0.surf ? ` de ${b0.surf} m²` : ''}`}${ville ? ` à ${esc(ville)}` : ''}${t ? `, avec ${eurR(t.montant)} de travaux` : ''}, ${d.revente ? 'en vue de sa revente' : `destiné${plusieurs ? 's' : b0.type === 'maison' ? 'e' : ''} à la ${usage.replace(/^Location/, 'location')}`}.`;
+  const page1 = `<section class="rc-page">${tete(1, 'Le projet et son financement')}<p class="rc-objet">${objet}</p>
+    <div class="rc-figs">${fig('Coût total de l\'opération', eurR(a.cout))}${fig('Apport personnel', eurR(a.apport), `${pctR(a.apport, a.cout)} du coût total`)}${fig('Prêt sollicité', eurR(c.pret), `${c.duree} ans à ${tauxR(c.taux)}`)}${fig('Échéance mensuelle', eurR(c.mens), c.mensDiff != null ? `${eurR(c.mensDiff)} pendant le différé` : 'assurance comprise')}</div>
+    ${plusieurs ? `<h3>Les biens</h3>${bien}<h3>Prêt sollicité</h3>${pret}` : `<div class="rc-2"><div><h3>Le bien</h3>${bien}</div><div><h3>Prêt sollicité</h3>${pret}</div></div>`}<h3>Plan de financement</h3>${plan}</section>`;
+  return page1 + `<section class="rc-page">${d.revente ? pageRevente() : pageExploitation()}${hypotheses()}</section>`;
 
-  function pageRevente(d, o) {
+  function pageExploitation() {
+    const n = d.annee, z = d.croisiere, imp = n.impots != null;
+    const bruts = d.loyersPleins * 12, vac = bruts - n.loyers;
+    const l = (k, v, cls = '') => `<tr class="${cls}"><th>${k}</th><td>${v == null ? '' : sgnR(v)}</td><td>${v == null ? '' : sgnR(v / 12)}</td></tr>`;
+    const compte = `<table class="rc-t rc-cpt"><thead><tr><th>Année ${n.y}, première année pleine</th><th>Par an</th><th>Par mois</th></tr></thead><tbody>
+      ${l(d.saison ? 'Recettes prévues' : 'Loyers bruts', bruts)}${Math.round(vac) > 0 ? l(d.saison ? 'Nuits non louées' : 'Vacance locative', -vac, 'rc-sous') : ''}${l(d.saison ? 'Recettes encaissées' : 'Loyers encaissés', n.loyers, 'rc-st')}
+      ${n.chargesDetail.map(([k, v]) => l(k, -v, 'rc-sous')).join('')}${l('Charges d\'exploitation', -n.charges, 'rc-st')}
+      ${l('Intérêts', -n.interets, 'rc-sous')}${l('Capital remboursé', -n.capital, 'rc-sous')}${n.assurance > 0 ? l('Assurance emprunteur', -n.assurance, 'rc-sous') : ''}${l('Échéances du prêt', -n.credit, 'rc-st')}
+      ${imp ? l('Impôts', -n.impots, 'rc-st') : ''}${l(imp ? 'Trésorerie après impôts' : 'Trésorerie avant impôts', n.cf, 'rc-tot')}</tbody></table>`;
+    const figs = `<div class="rc-figs">${fig('Rendement brut', pctR(bruts, a.cout), 'loyers bruts / coût total')}${fig('Rendement net de charges', pctR(n.loyers - n.charges, a.cout), 'loyers encaissés − charges / coût total')}
+      ${fig('Couverture de l\'échéance', pctR(n.loyers, n.credit), 'loyers encaissés / échéances')}${fig('Trésorerie mensuelle', `<span class="${z.reste < 0 ? 'rc-neg' : 'rc-pos'}">${sgnR(n.cf / 12)}</span>`, imp ? 'après impôts' : 'avant impôts')}</div>`;
+    const per = d.periodes.length ? `<h3>Phase de démarrage</h3><table class="rc-t rc-per"><thead><tr><th>Par mois</th>${d.periodes.map(g => `<th>${g.titre}<small>${g.sous}</small></th>`).join('')}<th>Ensuite<small>dès le mois ${z.des}</small></th></tr></thead><tbody>
+      ${['loyers', 'credit', 'charges'].concat(imp ? ['impots'] : []).map(k => `<tr><th>${{loyers: d.saison ? 'Recettes' : 'Loyers', credit: 'Échéance du prêt', charges: 'Charges', impots: 'Impôts'}[k]}</th>${[...d.periodes, z].map(g => `<td>${k === 'loyers' ? eurR(g[k]) : sgnR(-g[k])}</td>`).join('')}</tr>`).join('')}
+      <tr class="rc-tot"><th>Solde mensuel</th>${[...d.periodes, z].map(g => `<td class="${g.reste < 0 ? 'rc-neg' : 'rc-pos'}">${sgnR(g.reste)}</td>`).join('')}</tr></tbody></table>
+      ${d.totalDiffere != null ? `<p class="rc-note">Sur les ${c.differe} mois de différé : ${sgnR(d.totalDiffere)} au total, couverts par l'épargne personnelle${d.totalDiffere < 0 ? '' : ' (solde positif)'}.</p>` : ''}` : '';
+    const base = n.cf / 12;
+    const sens = `<h3>Sensibilité</h3><table class="rc-t rc-sens"><thead><tr><th>Hypothèse</th><th>Trésorerie mensuelle</th><th>Écart</th></tr></thead><tbody>
+      <tr><th>Scénario retenu</th><td>${sgnR(base)}</td><td></td></tr>${d.sensibilite.map(([k, v]) => `<tr><th>${k}</th><td>${sgnR(v)}</td><td>${sgnR(v - base)}</td></tr>`).join('')}</tbody></table>`;
+    return `${tete(2, 'Exploitation prévisionnelle')}${figs}<h3>Compte d'exploitation prévisionnel</h3>${compte}${per}${sens}`;
+  }
+  function pageRevente() {
     const v = d.vente, n = Math.round(v.net);
-    return `${tete(2, 'Le bilan de l\'opération')}<div class="rc-chiffres">${chiffre(n < 0 ? 'Perte nette' : 'Bénéfice net', sgnR(v.net), d.avecImpots ? 'après impôt' : 'avant impôt')}${chiffre('Prix de revente', eurR(v.prixVente), `au bout de ${v.mois} mois`)}${chiffre('Effort par mois', eurR(v.sorties / v.mois), 'mensualités et charges')}</div>
-      <table class="rc-t rc-kv"><tbody>${l('Prix de revente', eurR(v.prixVente))}${l('Frais de revente', '− ' + eurR(v.fraisVente))}${l('Prêt remboursé à la vente', '− ' + eurR(v.crd))}${v.ira > 0 ? l('Indemnités de remboursement anticipé', '− ' + eurR(v.ira)) : ''}
-      ${l('Apport', '− ' + eurR(d.achat.apport))}${l(`Mensualités et charges pendant ${v.mois} mois`, '− ' + eurR(v.sorties))}${d.avecImpots ? l('Impôt', '− ' + eurR(v.impot)) : ''}${l(n < 0 ? 'Perte nette' : 'Bénéfice net', `<b>${sgnR(v.net)}</b>`, 'rc-tot')}</tbody></table>
-      ${options(o)}${hypotheses(d)}`;
+    return `${tete(2, 'Bilan prévisionnel de l\'opération')}<div class="rc-figs">${fig(n < 0 ? 'Perte nette' : 'Marge nette', sgnR(v.net), d.avecImpots ? 'après impôt' : 'avant impôt')}${fig('Prix de revente', eurR(v.prixVente), `au mois ${v.mois}`)}${fig('Portage mensuel', eurR(v.sorties / v.mois), 'échéances et charges')}</div>
+      <table class="rc-t"><tbody>${[['Prix de revente', v.prixVente], ['Frais de revente', -v.fraisVente], ['Remboursement du capital restant dû', -v.crd], v.ira > 0 && ['Indemnités de remboursement anticipé', -v.ira],
+        ['Apport personnel', -a.apport], [`Échéances et charges sur ${v.mois} mois`, -v.sorties], d.avecImpots && ['Impôt', -v.impot]].filter(Boolean).map(([k, x]) => `<tr><th>${k}</th><td>${sgnR(x)}</td></tr>`).join('')}
+        <tr class="rc-tot"><th>${n < 0 ? 'Perte nette' : 'Marge nette'}</th><td>${sgnR(v.net)}</td></tr></tbody></table>`;
   }
-  function pageLoyers(d, o) {
-    const z = d.croisiere, imp = d.avecImpots, pers = [...d.periodes, {titre: 'Ensuite', sous: d.periodes.length ? `dès le mois ${z.des}` : 'chaque mois', ...z}];
-    const ligne = (k, f, cls = '') => `<tr class="${cls}"><th>${k}</th>${pers.map(g => `<td>${f(g)}</td>`).join('')}</tr>`;
-    const per = `<table class="rc-t rc-per"><thead><tr><th>Par mois</th>${pers.map(g => `<th>${g.titre}<small>${g.sous}</small></th>`).join('')}</tr></thead><tbody>
-      ${ligne(d.saison ? 'Recettes' : 'Loyers', g => eurR(g.loyers))}${ligne('Crédit', g => '− ' + eurR(g.credit))}${ligne('Charges', g => '− ' + eurR(g.charges))}${imp ? ligne('Impôts', g => (g.impots < 0 ? '+ ' : '− ') + eurR(Math.abs(g.impots))) : ''}
-      ${ligne('Reste', g => `<b class="${g.reste < 0 ? 'rc-neg' : 'rc-pos'}">${sgnR(g.reste)}</b>`, 'rc-tot')}</tbody></table>`;
-    // Ce que la banque regarde : la mensualité, et la part des loyers qu'elle compte comme revenu
-    const retenus = d.loyersPleins * BANQUE_LOYERS, manque = c.mens - retenus, couvre = z.credit > 0 ? z.loyers / z.credit * 100 : null;
-    const banque = `<table class="rc-t rc-kv"><tbody>${l(`${d.saison ? 'Recettes prévues' : 'Loyers prévus'} par mois`, eurR(d.loyersPleins))}${l(`Dont ${Math.round(BANQUE_LOYERS * 100)} % (part souvent retenue par les banques)`, eurR(retenus))}
-      ${l('Mensualité pleine du crédit', eurR(c.mens))}${l(manque > 0 ? 'Reste à couvrir par les revenus' : 'Les loyers retenus couvrent la mensualité', manque > 0 ? `<b>${eurR(manque)} par mois</b>` : `<b>${eurR(-manque)} de marge</b>`, 'rc-tot')}</tbody></table>`;
-    const plus = d.valeur.depart - d.valeur.coutBien;
-    return `${tete(2, 'Ce que le projet rapporte chaque mois')}
-      <div class="rc-chiffres">${chiffre(d.periodes.length ? `Reste par mois, dès le mois ${z.des}` : 'Reste par mois', `<span class="${z.reste < 0 ? 'rc-neg' : 'rc-pos'}">${sgnR(z.reste)}</span>`, `loyers − crédit − charges${imp ? ' − impôts' : ''}`)}
-        ${couvre != null ? chiffre('Les loyers paient', `${Math.round(couvre)} %`, 'de la mensualité') : ''}${d.totalDiffere != null ? chiffre(`Pendant les ${c.differe} mois de différé`, `<span class="${d.totalDiffere < 0 ? 'rc-neg' : 'rc-pos'}">${sgnR(d.totalDiffere)}</span>`, `en tout, soit ${sgnR(d.totalDiffere / c.differe)} par mois`) : ''}</div>
-      <h3>Mois par mois</h3>${per}
-      ${d.charges.length ? `<p class="rc-note">Charges par mois : ${d.charges.map(([k, v]) => `${k} ${eurR(v)}`).join(', ')}.</p>` : ''}
-      <div class="rc-deux"><div><h3>Ce que regarde la banque</h3>${banque}</div>
-      <div><h3>La valeur créée</h3><table class="rc-t rc-kv"><tbody>${l('Coût du bien (achat, frais, travaux)', eurR(d.valeur.coutBien))}${l(t && t.valeurApres > 0 ? 'Valeur après travaux' : 'Valeur du bien', eurR(d.valeur.depart))}
-        ${l(plus >= 0 ? 'Plus-value dès le départ' : 'Écart avec le prix payé', sgnR(plus))}${l(`Patrimoine dans ${d.patrimoine.ans} ans`, `<b>${eurR(d.patrimoine.net)}</b> <small>apport déduit</small>`, 'rc-tot')}</tbody></table></div></div>
-      ${options(o)}${hypotheses(d)}`;
-  }
-  function options(o) {
-    const os = o.options || [];
-    if (os.length < 2) return '';
-    const v = x => x.r.scenario === 'revendre' ? x.r.benefice : x.r.cfMois;
-    const ligne = (k, f) => `<tr><th>${k}</th>${os.map(x => `<td${x.courante ? ' class="rc-cour"' : ''}>${f(x.r)}</td>`).join('')}</tr>`;
-    return `<h3>Les ${os.length} options étudiées</h3><table class="rc-t rc-opts"><thead><tr><th></th>${os.map(x => `<th${x.courante ? ' class="rc-cour"' : ''}>${esc(x.nom)}${x.courante ? '<small>détaillée ici</small>' : ''}</th>`).join('')}</tr></thead><tbody>
-      ${ligne('Prix', r => eurR(r.prix))}${os.some(x => x.r.travaux > 0) ? ligne('Travaux', r => r.travaux > 0 ? eurR(r.travaux) : '—') : ''}${ligne('Apport', r => eurR(r.apport))}${ligne('Mensualité', r => eurR(r.mensualite))}
-      ${os.some(x => x.r.totalDiffere != null) ? ligne('Pendant le différé, en tout', r => r.totalDiffere != null ? sgnR(r.totalDiffere) : '—') : ''}
-      ${ligne(os.every(x => x.r.scenario === 'revendre') ? 'Bénéfice' : 'Reste par mois', r => { const n = r.scenario === 'revendre' ? r.benefice : r.cfMois; return n == null ? '—' : `<b class="${n < 0 ? 'rc-neg' : 'rc-pos'}">${sgnR(n)}</b>`; })}</tbody></table>`;
-  }
-  function hypotheses(d) {
-    const h = d.hyp, x = [h.vacance != null ? `${String(h.vacance).replace('.', ',')} mois sans locataire par an` : `${h.occupation} % d'occupation`,
-      h.gLoyer || h.gPrix ? `loyers +${tauxR(h.gLoyer)} et prix +${tauxR(h.gPrix)} par an` : 'loyers et prix sans hausse', d.avecImpots ? `impôts comptés (${d.regime})` : 'avant impôts'];
-    return `<p class="rc-hyp">Hypothèses : ${x.join(', ')}. Simulation indicative faite avec Patrimoniu, à confirmer par l'offre de prêt.</p>`;
+  function hypotheses() {
+    const h = d.hyp, x = [h.vacance != null ? `vacance locative de ${String(h.vacance).replace('.', ',')} mois par an` : `taux d'occupation de ${h.occupation} %`,
+      h.gLoyer || h.gPrix || h.gCharges ? `évolution annuelle : loyers ${tauxR(h.gLoyer)}, charges ${tauxR(h.gCharges)}, prix ${tauxR(h.gPrix)}` : 'loyers et charges constants',
+      d.avecImpots ? `fiscalité : ${d.regime}` : 'montants avant impôts'];
+    return `<p class="rc-hyp">Hypothèses : ${x.join(' ; ')}. Projections établies à titre prévisionnel.</p>`;
   }
 }
 // ---------- fin du récap
-// Prépare les deux pages et ouvre l'impression (« Enregistrer en PDF ») : pr = le projet ou l'option à détailler ;
-// depuisFinancer : les réglages en cours dans Financer, pas encore enregistrés
-function imprimerRecap(pr, depuisFinancer) {
+// Bibliothèque qui met une page HTML en PDF : chargée au premier récap seulement
+let html2pdfPret = null;
+function chargerHtml2pdf() {
+  if (window.html2pdf) return Promise.resolve(window.html2pdf);
+  return html2pdfPret = html2pdfPret || new Promise((ok, ko) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    sc.onload = () => window.html2pdf ? ok(window.html2pdf) : ko(new Error('html2pdf absent'));
+    sc.onerror = () => { html2pdfPret = null; ko(new Error('html2pdf non chargé')); };
+    document.head.appendChild(sc);
+  });
+}
+// Prépare les deux pages et télécharge le PDF : pr = le projet ou l'option à détailler ;
+// depuisFinancer : les réglages en cours dans Financer, pas encore enregistrés. Sans la bibliothèque (hors ligne) : impression
+async function telechargerRecap(pr, depuisFinancer, bouton) {
   let d;
   try { d = CF_APP.recap(depuisFinancer || !pr ? null : pr.finance); } catch (e) { console.warn('Récap impossible :', e); alert('Le récap n\'a pas pu être préparé.'); return; }
   const bs = pr ? branchesDe(pr).filter(x => !x.amenag) : [];
   const nom = pr ? pr.nom : (document.getElementById('cf_nomProjet').value.trim() || 'Mon projet');
   const o = {titre: nom, option: bs.length > 1 ? nomBranche(pr) : '', adresse: pr ? adresseProjet(bs.length ? bs : [pr]) : '',
     date: new Date().toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}),
-    options: bs.length > 1 ? bs.map(x => ({nom: nomBranche(x), r: x.resume || {}, courante: x.id === pr.id})) : []};
+    estime: pr && pr.resume ? {prix: pr.resume.prixEstime, loyer: pr.resume.loyerEstime} : {}};
+  const fichier = `Récap banque - ${nom}${o.option ? ' - ' + o.option : ''}`;
   let el = document.getElementById('recap');
   if (!el) { el = document.createElement('div'); el.id = 'recap'; document.body.appendChild(el); }
-  el.innerHTML = recapHtml(d, o);
-  // Le titre de la page devient le nom du fichier PDF proposé
-  const titre = document.title;
-  document.title = `Récap banque - ${nom}${o.option ? ' - ' + o.option : ''}`;
-  document.body.classList.add('recap-imprime');
-  const fin = () => { document.body.classList.remove('recap-imprime'); document.title = titre; window.removeEventListener('afterprint', fin); };
-  window.addEventListener('afterprint', fin);
-  window.print();
+  el.innerHTML = `<div class="recap" style="width:184mm;background:#fff">${recapHtml(d, o)}</div>`;
+  const texte = bouton && bouton.textContent;
+  if (bouton) { bouton.disabled = true; bouton.textContent = 'PDF en cours…'; }
+  try {
+    const h2p = await chargerHtml2pdf();
+    // Une page du PDF par page du récap (chacune mise en image à part, sans décalage dû au défilement de l'appli)
+    const pages = [...el.querySelectorAll('.rc-page')].map(p => { const x = document.createElement('div'); x.className = 'recap'; x.style.cssText = 'width:184mm;background:#fff'; x.appendChild(p.cloneNode(true)); return x; });
+    const opts = {margin: [12, 13], filename: fichier.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w .,'()-]+/g, '-') + '.pdf',   // sans accents : sinon certains navigateurs nomment le fichier « download » image: {type: 'jpeg', quality: 0.95},
+      html2canvas: {scale: 2, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0}, jsPDF: {unit: 'mm', format: 'a4', orientation: 'portrait'}};
+    let w = h2p().set(opts).from(pages[0]).toPdf();
+    for (const p of pages.slice(1)) w = w.get('pdf').then(pdf => { pdf.addPage(); }).from(p).toContainer().toCanvas().toPdf();
+    const blob = await w.outputPdf('blob'), lien = document.createElement('a');
+    lien.href = URL.createObjectURL(blob); lien.download = opts.filename;
+    document.body.appendChild(lien); lien.click(); lien.remove();
+    setTimeout(() => URL.revokeObjectURL(lien.href), 60000);
+  } catch (e) {
+    console.warn('PDF impossible, impression à la place :', e);
+    const titre = document.title;
+    document.title = fichier;
+    document.body.classList.add('recap-imprime');
+    const fin = () => { document.body.classList.remove('recap-imprime'); document.title = titre; window.removeEventListener('afterprint', fin); };
+    window.addEventListener('afterprint', fin);
+    window.print();
+  } finally { if (bouton) { bouton.disabled = false; bouton.textContent = texte; } }
 }
-document.getElementById('cf_recap').onclick = () => imprimerRecap(projetCourantId && PROJETS.liste.find(x => x.id === projetCourantId), true);
+document.getElementById('cf_recap').onclick = e => telechargerRecap(projetCourantId && PROJETS.liste.find(x => x.id === projetCourantId), true, e.currentTarget);
 // Trois chiffres, les mêmes que les tuiles de Financer ; l'estimation et le prix d'équilibre sur des lignes discrètes
 const signeP = n => n > 0 ? 'up' : n < 0 ? 'down' : '';
 const chiffresPro = cases => `<div class="pj-chiffres">${cases.map(([k, v]) => `<div><span>${k}</span>${v.startsWith('<b') ? v : `<b>${v}</b>`}</div>`).join('')}</div>`;
@@ -4499,7 +4544,7 @@ function cartePj(pr, sous, corps, boutons, br) {
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
     <div class="pj-bas"><span></span>
-      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Deux pages à imprimer ou enregistrer en PDF">Récap banque</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger deux pages en PDF">Récap banque</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
 function carteProjet(pr, br) {
   if (pr.amenag) return carteAmenagement(pr, br);
@@ -4716,7 +4761,7 @@ function carteGroupe(bs) {
   const depart = bs.find(x => !x.amenag);
   return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
-    <div class="pj-gr-actions"><button data-a="recap" title="La meilleure option détaillée, les autres comparées : deux pages à imprimer ou enregistrer en PDF">Récap banque</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
+    <div class="pj-gr-actions"><button data-a="recap" title="La meilleure option détaillée, les autres comparées : deux pages en PDF">Récap banque</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${tuilesProjet(bs, a)}
     <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><i class="f-avant"></i>Avant travaux <i class="f-travaux"></i>Travaux <i class="f-apres"></i>Après <i class="f-diff"></i>Différé</span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
     ${cartesOptions(bs, a, m)}
@@ -4900,7 +4945,7 @@ document.getElementById('pj').addEventListener('click', e => {
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
   else if (t.dataset.a === 'recap') {   // le projet, l'option choisie, ou pour un projet à plusieurs options la meilleure
     const pr = PROJETS.liste.find(x => x.id === id) || (groupe ? (meilleureBranche(membres().filter(x => !x.amenag)) || {}).pr : null);
-    if (pr) imprimerRecap(pr);
+    if (pr) telechargerRecap(pr, false, t);
   }
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'estChoisir') {

@@ -6,6 +6,7 @@
     "test": "node --test --test-concurrency=1 *.e2e.js"
   },
   "devDependencies": {
+    "html2pdf.js": "0.10.1",
     "leaflet": "1.9.4",
     "playwright": "1.63.0"
   }
