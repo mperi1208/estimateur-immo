@@ -982,14 +982,28 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   body.recap-imprime #recap .recap{width:auto!important}
 }
 .recap{color:#1d2939;font:10pt/1.45 Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.recap .rc-page{break-after:page;page-break-after:always}
+.recap .rc-page{break-after:page;page-break-after:always;display:flex;flex-direction:column;min-height:271mm}
+.recap .rc-p1 .rc-figs{padding:16px 4px}
+.recap .rc-p1 .rc-fig b{font-size:18pt}
+.recap .rc-p1 .rc-bien-t{font-size:12pt;margin-bottom:10px}
+.recap .rc-p1 .rc-hb{margin:10px 0;font-size:9.5pt;grid-template-columns:38% 1fr auto}
+.recap .rc-p1 .rc-mt .rc-hb{grid-template-columns:30% 1fr auto}
+.recap .rc-p1 .rc-hb > div{height:18px}
+.recap .rc-p1 .rc-mini{padding:10px 0;font-size:9.5pt}
+.recap .rc-p1 .rc-fr-b{height:44px}
+.recap .rc-p1 .rc-fr-b i{font-size:9.5pt}
+.recap .rc-p1 .rc-fr-d{height:22px}
+.recap .rc-p1 .rc-hero{padding:24px 22px}
+.recap .rc-p1 .rc-hero > div:first-child b{font-size:32pt}
+.recap .rc-p1 .rc-mt .rc-hb > div{height:22px}
+.recap .rc-corps{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding-top:4px}
 .recap .rc-page:last-child{break-after:auto;page-break-after:auto}
 .recap .rc-tete{padding-bottom:10px;border-bottom:2px solid #101828}
 .recap .rc-sur{display:flex;justify-content:space-between;gap:12px;font-size:7.5pt;font-weight:600;color:#667085;text-transform:uppercase;letter-spacing:.08em}
 .recap h1{margin:8px 0 0;font-size:20pt;line-height:1.15;color:#101828;letter-spacing:-.01em}
 .recap .rc-adr{margin-top:2px;font-size:9.5pt;color:#475467}
 .recap h2{margin:14px 0 6px;font-size:13pt;color:#101828;font-weight:800}
-.recap h3{margin:22px 0 10px;font-size:8pt;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.08em}
+.recap h3{margin:14px 0 10px;font-size:8pt;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.08em}
 .recap .rc-objet{margin:0 0 12px;font-size:10pt;color:#344054}
 .recap .rc-figs{display:flex;border:1px solid #eaecf0;border-radius:8px;padding:10px 4px}
 .recap .rc-fig{flex:1 1 0;padding:0 12px;border-left:1px solid #eaecf0}
@@ -4489,6 +4503,7 @@ function recapHtml(d, o = {}) {
   const c = d.credit, a = d.achat, t = d.travaux, b0 = d.biens[0], plusieurs = d.biens.length > 1, est = o.estime || {};
   const usage = d.revente ? 'achat-revente' : d.saison ? 'location meublée de courte durée' : d.meuble ? 'location meublée' : 'location nue';
   const cls = n => n < 0 ? 'rc-neg' : 'rc-pos';
+  const sec = (titre, html) => `<div class="rc-sec"><h3>${titre}</h3>${html}</div>`;
   const fig = (k, v, s = '') => `<div class="rc-fig"><span>${k}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`;
   const tete = (n, titre) => `<header class="rc-tete"><div class="rc-sur"><span>Dossier de financement · ${d.revente ? 'achat-revente' : 'investissement locatif'}</span><span>${esc(o.date || '')} · ${n}/2</span></div>
     <h1>${esc(o.titre || 'Projet')}</h1>${o.adresse ? `<div class="rc-adr">${esc(o.adresse)}</div>` : ''}</header><h2>${titre}</h2>`;
@@ -4529,21 +4544,29 @@ function recapHtml(d, o = {}) {
   // Le bien : prix payé, estimation de marché, valeur après travaux, en barres comparées
   const valeurs = [['Prix d\'acquisition', b0.prix, 'c1'], !plusieurs && est.prix && ['Estimation de marché', est.prix, 'c2'], !plusieurs && t && t.valeurApres > 0 && ['Valeur après travaux', t.valeurApres, 'vert']].filter(Boolean);
   const vmax = Math.max(...valeurs.map(x => x[1]));
+  const bienInfos = `${!d.revente ? `<div class="rc-mini"><span>${d.saison ? 'Recettes prévues' : 'Loyer prévu'}</span><b>${eurR(plusieurs ? d.loyersPleins : b0.loyer)}/mois</b>${est.loyer && !d.saison && !plusieurs ? `<small>marché ${eurR(est.loyer)}</small>` : ''}</div>` : ''}
+      <div class="rc-mini"><span>Exploitation</span><b>${usage[0].toUpperCase() + usage.slice(1)}</b><small>${esc(d.struct)}</small></div>
+      ${t ? `<div class="rc-mini"><span>Travaux</span><b>${eurR(t.montant)}</b><small>mois ${t.debut + 1} à ${t.fin}</small></div>` : ''}`;
   const bien = plusieurs
-    ? `<ul class="rc-liste">${d.biens.map((b, i) => `<li><span>${esc(b.nom || (i ? `Bien ${i + 1}` : b.type === 'maison' ? 'Maison' : 'Appartement'))}${b.surf ? ` · ${b.surf} m²` : ''}</span><b>${eurR(b.prix)}</b>${b.loyer ? `<small>${eurR(b.loyer)}/mois</small>` : ''}</li>`).join('')}</ul>`
-    : `<div class="rc-bien-t">${b0.type === 'maison' ? 'Maison' : 'Appartement'}${b0.surf ? ` · ${b0.surf} m² · ${eurR(b0.prix / b0.surf)}/m²` : ''}</div>
+    ? `<div class="rc-2"><ul class="rc-liste">${d.biens.map((b, i) => `<li><span>${esc(b.nom || (i ? `Bien ${i + 1}` : b.type === 'maison' ? 'Maison' : 'Appartement'))}${b.surf ? ` · ${b.surf} m²` : ''}</span><b>${eurR(b.prix)}</b>${b.loyer ? `<small>${eurR(b.loyer)}/mois</small>` : ''}</li>`).join('')}</ul><div>${bienInfos}</div></div>`
+    : `<div class="rc-2"><div><div class="rc-bien-t">${b0.type === 'maison' ? 'Maison' : 'Appartement'}${b0.surf ? ` · ${b0.surf} m² · ${eurR(b0.prix / b0.surf)}/m²` : ''}</div>
       ${valeurs.map(([k, v, cl]) => `<div class="rc-hb"><span>${k}</span><div><i class="${cl}" style="width:${larg(v, vmax)}"></i></div><b>${eurR(v)}</b></div>`).join('')}
-      ${t && t.valeurApres > 0 ? `<p class="rc-note">Valeur après travaux : <b class="${cls(t.valeurApres - d.valeur.coutBien)}">${sgnR(t.valeurApres - d.valeur.coutBien)}</b> par rapport au coût total hors mobilier.</p>` : ''}
-      ${!d.revente ? `<div class="rc-mini"><span>${d.saison ? 'Recettes prévues' : 'Loyer prévu'}</span><b>${eurR(b0.loyer)}/mois</b>${est.loyer && !d.saison ? `<small>marché ${eurR(est.loyer)}</small>` : ''}</div>` : ''}
-      <div class="rc-mini"><span>Exploitation</span><b>${usage[0].toUpperCase() + usage.slice(1)}</b><small>${esc(d.struct)}</small></div>`;
-  const pret = `<div class="rc-grille">${fig('Montant', eurR(c.pret))}${fig('Durée', `${c.duree} ans`, c.differe > 0 ? `dont ${c.differe} mois de différé ${c.typeDiff === 'total' ? 'total' : 'partiel'}` : '')}
-    ${fig('Taux nominal', tauxR(c.taux), c.assur > 0 ? `assurance ${tauxR(c.assur)}/an` : 'hors assurance')}${fig('Échéance', eurR(c.mens), c.mensDiff != null ? `${eurR(c.mensDiff)} pendant le différé` : 'assurance comprise')}</div>
+      ${t && t.valeurApres > 0 ? `<p class="rc-note">Valeur après travaux : <b class="${cls(t.valeurApres - d.valeur.coutBien)}">${sgnR(t.valeurApres - d.valeur.coutBien)}</b> par rapport au coût total hors mobilier.</p>` : ''}</div>
+      <div>${bienInfos}</div></div>`;
+  const pret = `<div class="rc-figs">${fig('Montant', eurR(c.pret))}${fig('Durée', `${c.duree} ans`, c.differe > 0 ? `dont ${c.differe} mois de différé ${c.typeDiff === 'total' ? 'total' : 'partiel'}` : '')}
+    ${fig('Taux nominal', tauxR(c.taux), c.assur > 0 ? `assurance ${tauxR(c.assur)}/an` : 'hors assurance')}${fig('Échéance', eurR(c.mens), c.mensDiff != null ? `${eurR(c.mensDiff)} pendant le différé` : 'par mois, assurance comprise')}</div>
     <p class="rc-note">Coût total du crédit : <b>${eurR(c.cout)}</b> (intérêts, assurance et frais).${c.mensAvant != null ? ` Avant le déblocage des fonds travaux (mois ${c.debloc + 1}) : ${eurR(c.mensAvant)}/mois.` : ''}</p>`;
-  const page1 = `<section class="rc-page">${tete(1, 'Le projet et son financement')}<p class="rc-objet">${objet}</p>
-    <div class="rc-figs">${fig('Coût total', eurR(a.cout))}${fig('Apport', eurR(a.apport), `${pctR(a.apport, a.cout)} du coût`)}${fig('Prêt sollicité', eurR(c.pret), `${c.duree} ans à ${tauxR(c.taux)}`)}${fig('Échéance', eurR(c.mens), 'par mois, assurance comprise')}</div>
-    <h3>Le calendrier</h3>${frise}<h3>Le coût et son financement</h3>${cout}
-    <div class="rc-2"><div><h3>${plusieurs ? 'Les biens' : 'Le bien'}</h3>${bien}</div><div><h3>Le prêt sollicité</h3>${pret}</div></div></section>`;
-  return page1 + `<section class="rc-page">${d.revente ? pageRevente() : pageExploitation()}${hypotheses()}</section>`;
+  // D'abord le projet et ce qu'il rapporte ; à la fin, ce qui est demandé à la banque
+  const x = d.revente ? pageRevente() : pageExploitation(), n = d.annee;
+  const figs1 = d.revente
+    ? [fig('Prix d\'acquisition', eurR(a.prix)), t && fig('Travaux', eurR(t.montant)), fig('Prix de revente', eurR(d.vente.prixVente), `au mois ${d.vente.mois}`), fig(d.vente.net < 0 ? 'Perte nette' : 'Marge nette', `<span class="${cls(d.vente.net)}">${sgnR(d.vente.net)}</span>`)]
+    : [fig('Prix d\'acquisition', eurR(a.prix)), t ? fig('Travaux', eurR(t.montant), t.valeurApres > 0 ? `valeur après travaux ${eurR(t.valeurApres)}` : '') : est.prix && !plusieurs ? fig('Estimation de marché', eurR(est.prix)) : fig('Coût total', eurR(a.cout)),
+      fig(d.saison ? 'Recettes par mois' : 'Loyers par mois', eurR(d.loyersPleins), d.saison ? 'en moyenne' : 'hors charges'), fig('Trésorerie mensuelle', `<span class="${cls(n.cf)}">${sgnR(n.cf / 12)}</span>`, 'une fois le projet en place')];
+  const page1 = `<section class="rc-page rc-p1">${tete(1, d.revente ? 'Le projet et son résultat' : 'Le projet et ce qu\'il rapporte')}<p class="rc-objet">${objet}</p>
+    <div class="rc-corps"><div class="rc-figs">${figs1.filter(Boolean).join('')}</div>
+    ${sec(plusieurs ? 'Les biens' : 'Le bien', bien)}${sec('Le calendrier', frise)}${x.haut}</div></section>`;
+  return page1 + `<section class="rc-page">${tete(2, d.revente ? 'Le financement demandé' : 'Les résultats et le financement demandé')}<div class="rc-corps">${x.bas}
+    ${sec('Le coût et son financement', cout)}${sec('Le prêt sollicité', pret)}</div>${hypotheses()}</section>`;
 
   function pageExploitation() {
     const n = d.annee, z = d.croisiere, imp = n.impots != null, m = v => v / 12;
@@ -4556,9 +4579,9 @@ function recapHtml(d, o = {}) {
         <div class="rc-leg">${sorties.map(([k, v, cl]) => `<span><em class="${cl}"></em>${k} <b>${eurR(v)}</b></span>`).join('')}</div></div></div>`;
     // Les périodes, sous la même frise de couleurs : ce qui reste chaque mois
     const pers = [...d.periodes.map(p => ({...p, k: /travaux/i.test(p.titre) ? 'f-trav' : /Avant/.test(p.titre) ? 'f-avant' : 'f-diff'})), {titre: 'Ensuite', sous: `dès le mois ${z.des}`, k: 'f-loc', ...z}];
-    const per = d.periodes.length ? `<h3>Mois par mois, jusqu'au régime de croisière</h3><div class="rc-pers">${pers.map(p => `<div class="rc-per"><i class="${p.k}"></i><span>${p.titre}</span><small>${p.sous}</small>
+    const per = d.periodes.length ? `<div class="rc-sec"><h3>Mois par mois, jusqu'au régime de croisière</h3><div class="rc-pers">${pers.map(p => `<div class="rc-per"><i class="${p.k}"></i><span>${p.titre}</span><small>${p.sous}</small>
       <b class="${cls(p.reste)}">${sgnR(p.reste)}<em>/mois</em></b><small>loyers ${eurR(p.loyers)} · échéance ${eurR(p.credit)}</small></div>`).join('')}</div>
-      ${d.totalDiffere != null ? `<p class="rc-note">Sur les ${c.differe} mois de différé, solde cumulé de <b class="${cls(d.totalDiffere)}">${sgnR(d.totalDiffere)}</b>${d.totalDiffere < 0 ? ', couvert par l\'épargne personnelle' : ''}.</p>` : ''}` : '';
+      ${d.totalDiffere != null ? `<p class="rc-note">Sur les ${c.differe} mois de différé, solde cumulé de <b class="${cls(d.totalDiffere)}">${sgnR(d.totalDiffere)}</b>${d.totalDiffere < 0 ? ', couvert par l\'épargne personnelle' : ''}.</p>` : ''}</div>` : '';
     // Ratios en jauges ; la couverture a un repère à 100 %
     const jauge = (k, v, max, s, repere) => `<div class="rc-jauge"><span>${k}</span><b>${(v * 100).toFixed(1).replace('.', ',')} %</b><div><i class="${repere && v < 1 ? 'rouge' : 'vert'}" style="width:${larg(v, max)}"></i>${repere ? `<u style="left:${larg(1, max)}"></u>` : ''}</div><small>${s}</small></div>`;
     const bruts = d.loyersPleins * 12;
@@ -4567,14 +4590,14 @@ function recapHtml(d, o = {}) {
     // Résistance : la trésorerie mensuelle si un paramètre se dégrade, en barres autour de zéro
     const lignes = [['Scénario retenu', m(n.cf)], ...d.sensibilite], amp = Math.max(...lignes.map(x => Math.abs(x[1])), 1);
     const resist = `<div class="rc-res">${lignes.map(([k, v], i) => `<div class="rc-res-l${i ? '' : ' base'}"><span>${k}</span><div class="rc-axe"><i class="${v < 0 ? 'rouge neg' : 'vert'}" style="width:${larg(Math.abs(v), amp * 2)}"></i></div><b class="${cls(v)}">${sgnR(v)}</b></div>`).join('')}</div>`;
-    return `${tete(2, 'L\'exploitation prévisionnelle')}<h3>Un mois type</h3>${mois}${per}<h3>Indicateurs</h3>${ratios}<h3>Résistance du projet</h3>${resist}`;
+    return {haut: sec('Ce qu\'il rapporte chaque mois', mois), bas: `${per}${sec('Indicateurs', ratios)}${sec('Résistance du projet', resist)}`};
   }
   function pageRevente() {
     const v = d.vente, n = Math.round(v.net), max = Math.max(v.prixVente, a.cout);
     const hb = (k, x, cl) => `<div class="rc-hb"><span>${k}</span><div><i class="${cl}" style="width:${larg(x, max)}"></i></div><b>${eurR(x)}</b></div>`;
-    return `${tete(2, 'Le bilan prévisionnel de l\'opération')}<div class="rc-hero"><div><span>${n < 0 ? 'Perte nette' : 'Marge nette'}</span><b class="${cls(n)}">${sgnR(v.net)}</b><small>${d.avecImpots ? 'après' : 'avant'} impôt, au mois ${v.mois}</small></div>
+    return {bas: '', haut: `<div class="rc-sec"><h3>Le bilan prévisionnel de l'opération</h3><div class="rc-hero"><div><span>${n < 0 ? 'Perte nette' : 'Marge nette'}</span><b class="${cls(n)}">${sgnR(v.net)}</b><small>${d.avecImpots ? 'après' : 'avant'} impôt, au mois ${v.mois}</small></div>
       <div class="rc-mt">${hb('Prix de revente', v.prixVente, 'vert')}${hb('Coût total de l\'opération', a.cout, 'c1')}${hb('Portage (échéances et charges)', v.sorties, 'rouge')}</div></div>
-      <p class="rc-note">Frais de revente ${eurR(v.fraisVente)}, capital restant dû remboursé ${eurR(v.crd)}${v.ira > 0 ? `, indemnités ${eurR(v.ira)}` : ''}${d.avecImpots ? `, impôt ${eurR(v.impot)}` : ''}.</p>`;
+      <p class="rc-note">Frais de revente ${eurR(v.fraisVente)}, capital restant dû remboursé ${eurR(v.crd)}${v.ira > 0 ? `, indemnités ${eurR(v.ira)}` : ''}${d.avecImpots ? `, impôt ${eurR(v.impot)}` : ''}.</p></div>`};
   }
   function hypotheses() {
     const h = d.hyp, x = [h.vacance != null ? `vacance locative de ${String(h.vacance).replace('.', ',')} mois par an` : `taux d'occupation de ${h.occupation} %`,

@@ -937,7 +937,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.evaluate(() => { window.prompt = window.promptAvant; });
 });
 
-test('récap pour la banque : PDF de deux pages (frise, coût et financement, le prêt, le mois type, la résistance), depuis Mes projets et Financer', async () => {
+test('dossier de financement : PDF de deux pages (le projet, ce qu\'il rapporte, puis le coût et le prêt), depuis Mes projets et Financer', async () => {
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
   await page.click('.tabs [data-tab="projets"]');
   assert.equal(await telecharger(page.locator(`#pj article.pj[data-id="${pr.id}"] .pj-actions [data-a="recap"]`)), 'Dossier de financement - Estimation 52 m2.pdf');
@@ -948,7 +948,7 @@ test('récap pour la banque : PDF de deux pages (frise, coût et financement, le
   const cout = n(/Coût total de l'opération\s*([\d\s]+)\s€/), finance = n(/Financement\s*([\d\s]+)\s€/);
   assert.ok(cout > 0 && Math.abs(cout - finance) <= 1, `coût ${cout}, financement ${finance}`);
   assert.match(rc, new RegExp('Échéance\\s*' + pr.resume.mensualite.toLocaleString('fr-FR').replace(/\s/g, '\\s')));
-  assert.match(rc, /Un mois type[\s\S]*Loyers encaissés[\s\S]*Échéance du prêt/);
+  assert.match(rc, /Ce qu'il rapporte chaque mois[\s\S]*Loyers encaissés[\s\S]*Échéance du prêt/);
   assert.match(rc, /Résistance du projet[\s\S]*Taux 1 point plus haut/);
   // Depuis Financer, étape 4 : les réglages en cours
   await page.locator(`#pj article.pj[data-id="${pr.id}"] [data-a="financer"]`).click();
