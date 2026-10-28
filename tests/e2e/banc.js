@@ -92,8 +92,10 @@ const PUBLIE = new Date(Date.now() - 3600e3).toUTCString();   // date de mise en
 const lancerNavigateur = () => chromium.launch(process.env.PW_CANAL ? {channel: process.env.PW_CANAL} : {});   // en CI : le Chrome déjà installé sur la machine
 
 // Un « appareil » : un contexte de navigateur avec son propre stockage, branché sur la base simulée
-async function appareil(nav, base, {reseau = {}} = {}) {
-  const ctx = await nav.newContext({viewport: {width: 1280, height: 900}, locale: 'fr-FR', timezoneId: 'Europe/Paris'});
+// mobile : écran de téléphone (390 × 844, tactile), comme un iPhone récent
+async function appareil(nav, base, {reseau = {}, mobile = false} = {}) {
+  const ecran = mobile ? {viewport: {width: +process.env.LARGEUR || 390, height: 844}, isMobile: true, hasTouch: true, deviceScaleFactor: +process.env.ECHELLE || 2} : {viewport: {width: 1280, height: 900}};
+  const ctx = await nav.newContext({...ecran, locale: 'fr-FR', timezoneId: 'Europe/Paris'});
   const journal = {erreurs: [], requetes: {dvf: 0, loyers: 0, geo: 0}};
   await ctx.route('**/*', async route => {
     const req = route.request(), url = new URL(req.url());
