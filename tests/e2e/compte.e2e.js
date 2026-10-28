@@ -2,6 +2,7 @@
 // Mes projets (depuis Financer et Estimer), deux appareils sur le même compte, déconnexion
 const test = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, nombre, cliquer, versEtape, travaux} = require('./banc');
 
 const EMAIL = 'marc@exemple.fr', MDP = 'secret123';
@@ -33,6 +34,13 @@ const ouvrirFiche = async nom => {
   await carteBien(nom).first().click();
   await page.waitForFunction(n => (document.getElementById('inv_titre') || {}).textContent === n, nom);
 };
+// Récap banque : le PDF téléchargé (nom du fichier, et c'est bien un PDF)
+async function telecharger(bouton) {
+  const [dl] = await Promise.all([page.waitForEvent('download', {timeout: 30000}), bouton.click()]);
+  const debut = fs.readFileSync(await dl.path()).subarray(0, 5).toString();
+  assert.equal(debut, '%PDF-');
+  return dl.suggestedFilename();
+}
 const pmt = (C, t, n) => C * (t / 1200) / (1 - Math.pow(1 + t / 1200, -n));
 
 test('connexion : Mon patrimoine et Mes projets apparaissent, arrivée sur Mon patrimoine', async () => {
@@ -830,6 +838,11 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await rangee('Il te reste par mois').innerText(), /−453 €\s+526 € de moins\s+73 €/);
   assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
+  // Récap banque du projet : la meilleure option (Garage), téléchargée en PDF ; ou celle choisie dans son menu
+  assert.equal(await telecharger(carte.locator('.pj-gr-actions [data-a="recap"]')), 'Recap banque - San Gaetano - Garage.pdf');
+  await (await col('Division')).locator('.pj-menu summary').click();
+  assert.equal(await telecharger((await col('Division')).locator('[data-a="recap"]')), 'Recap banque - San Gaetano - Division.pdf');
+  assert.match(await page.evaluate(() => document.getElementById('recap').textContent), /Prix d'acquisition\s*200\s000/);
   // Chercher un projet : par nom ou option, sans majuscules ; rien trouvé : c'est dit
   await page.fill('#pj_cherche', 'gaetano GARAGE');
   await page.waitForFunction(() => [...document.querySelectorAll('#pj .pj-trouve')].filter(z => !z.hidden).length === 1);
@@ -922,6 +935,26 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   for (const x of c.projets.filter(x => /Gaetano/.test(x.nom))) await page.locator(`#pj article.pj[data-id="${x.id}"] [data-a="suppr"]`).click();
   await attendreCompte(c => !c.projets.some(x => /Gaetano/.test(x.nom)), 'projets du test supprimés');
   await page.evaluate(() => { window.prompt = window.promptAvant; });
+});
+
+test('récap pour la banque : PDF de deux pages (le bien, le plan de financement, le prêt, le compte d\'exploitation), depuis Mes projets et Financer', async () => {
+  const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
+  await page.click('.tabs [data-tab="projets"]');
+  assert.equal(await telecharger(page.locator(`#pj article.pj[data-id="${pr.id}"] .pj-actions [data-a="recap"]`)), 'Recap banque - Estimation 52 m2.pdf');
+  const rc = await page.evaluate(() => document.getElementById('recap').textContent);
+  assert.equal(await page.locator('#recap .rc-page').count(), 2);
+  const n = re => +(rc.match(re) || [, ''])[1].replace(/\s/g, '');
+  // Emplois = ressources ; échéance comme dans le projet
+  const emplois = n(/Coût total de l'opération\s*([\d\s]+)\s€\s*100,0/), ressources = n(/Ressources.*?Total\s*([\d\s]+)\s€/);
+  assert.ok(emplois > 0 && Math.abs(emplois - ressources) <= 1, `emplois ${emplois}, ressources ${ressources}`);
+  assert.match(rc, new RegExp('Échéance mensuelle\\s*' + pr.resume.mensualite.toLocaleString('fr-FR').replace(/\s/g, '\\s')));
+  assert.match(rc, /Compte d'exploitation prévisionnel[\s\S]*Loyers encaissés[\s\S]*Échéances du prêt/);
+  assert.match(rc, /Sensibilité[\s\S]*Taux 1 point plus haut/);
+  // Depuis Financer, étape 4 : les réglages en cours
+  await page.locator(`#pj article.pj[data-id="${pr.id}"] [data-a="financer"]`).click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  await versEtape(page, '#cf_recap');
+  assert.equal(await telecharger(page.locator('#cf_recap')), 'Recap banque - Estimation 52 m2.pdf');
 });
 
 test('« J\'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (prix, frais, crédit, loyer), liée dans les deux sens', async () => {
