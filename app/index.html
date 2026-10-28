@@ -982,14 +982,28 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   body.recap-imprime #recap .recap{width:auto!important}
 }
 .recap{color:#1d2939;font:10pt/1.45 Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.recap .rc-page{break-after:page;page-break-after:always}
+.recap .rc-page{break-after:page;page-break-after:always;display:flex;flex-direction:column;min-height:271mm}
+.recap .rc-p1 .rc-figs{padding:16px 4px}
+.recap .rc-p1 .rc-fig b{font-size:18pt}
+.recap .rc-p1 .rc-bien-t{font-size:12pt;margin-bottom:10px}
+.recap .rc-p1 .rc-hb{margin:10px 0;font-size:9.5pt;grid-template-columns:38% 1fr auto}
+.recap .rc-p1 .rc-mt .rc-hb{grid-template-columns:30% 1fr auto}
+.recap .rc-p1 .rc-hb > div{height:18px}
+.recap .rc-p1 .rc-mini{padding:10px 0;font-size:9.5pt}
+.recap .rc-p1 .rc-fr-b{height:44px}
+.recap .rc-p1 .rc-fr-b i{font-size:9.5pt}
+.recap .rc-p1 .rc-fr-d{height:22px}
+.recap .rc-p1 .rc-hero{padding:24px 22px}
+.recap .rc-p1 .rc-hero > div:first-child b{font-size:32pt}
+.recap .rc-p1 .rc-mt .rc-hb > div{height:22px}
+.recap .rc-corps{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding-top:4px}
 .recap .rc-page:last-child{break-after:auto;page-break-after:auto}
 .recap .rc-tete{padding-bottom:10px;border-bottom:2px solid #101828}
 .recap .rc-sur{display:flex;justify-content:space-between;gap:12px;font-size:7.5pt;font-weight:600;color:#667085;text-transform:uppercase;letter-spacing:.08em}
 .recap h1{margin:8px 0 0;font-size:20pt;line-height:1.15;color:#101828;letter-spacing:-.01em}
 .recap .rc-adr{margin-top:2px;font-size:9.5pt;color:#475467}
 .recap h2{margin:14px 0 6px;font-size:13pt;color:#101828;font-weight:800}
-.recap h3{margin:22px 0 10px;font-size:8pt;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.08em}
+.recap h3{margin:14px 0 10px;font-size:8pt;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.08em}
 .recap .rc-objet{margin:0 0 12px;font-size:10pt;color:#344054}
 .recap .rc-figs{display:flex;border:1px solid #eaecf0;border-radius:8px;padding:10px 4px}
 .recap .rc-fig{flex:1 1 0;padding:0 12px;border-left:1px solid #eaecf0}
@@ -1007,9 +1021,8 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 .recap .rc-fr-d{position:relative;height:18px;margin-top:4px}
 .recap .rc-fr-d i{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding-left:6px;font-style:normal;font-size:7.5pt;color:#344054;background:repeating-linear-gradient(135deg,#eaecf0 0 4px,#f9fafb 4px 8px);border:1px solid #d0d5dd;border-radius:4px;white-space:nowrap;box-sizing:border-box}
 .recap .rc-fr-d span{position:absolute;top:2px;padding-left:8px;font-size:7.5pt;font-weight:700;color:#101828;white-space:nowrap}
-.recap .rc-fr-j{position:relative;height:30px;margin-top:6px}
+.recap .rc-fr-j{position:relative;margin-top:6px}
 .recap .rc-fr-j span{position:absolute;top:0;padding-left:6px;border-left:1.5px solid #101828;font-size:7.5pt;color:#344054;white-space:nowrap;line-height:1.2}
-.recap .rc-fr-j span.bas{top:14px}
 .recap .rc-fr-j span.droite{transform:translateX(-100%);padding:0 6px 0 0;border-left:0;border-right:1.5px solid #101828}
 .recap .rc-fr-ech{display:flex;justify-content:space-between;font-size:7pt;color:#98a2b3}
 .recap .rc-bloc{margin-bottom:10px}
@@ -1325,7 +1338,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <div class="tiles" id="cf_tiles"></div>
   <div class="hint tiles-plus" id="cf_tilesPlus"></div>
   <div id="cf_alerts"></div>
-  <div class="recap-l"><button type="button" id="cf_recap">Récap pour la banque (PDF)</button><span>Deux pages avec les chiffres du projet, téléchargées en PDF.</span></div>
+  <div class="recap-l"><button type="button" id="cf_recap">Dossier de financement (PDF)</button><span>Deux pages pour présenter le projet à la banque.</span></div>
   <div class="card" id="cf_bilan" hidden></div>
   <div class="card">
     <h2 id="cf_chartTitle">Cash-flow annuel après impôts</h2>
@@ -4490,6 +4503,7 @@ function recapHtml(d, o = {}) {
   const c = d.credit, a = d.achat, t = d.travaux, b0 = d.biens[0], plusieurs = d.biens.length > 1, est = o.estime || {};
   const usage = d.revente ? 'achat-revente' : d.saison ? 'location meublée de courte durée' : d.meuble ? 'location meublée' : 'location nue';
   const cls = n => n < 0 ? 'rc-neg' : 'rc-pos';
+  const sec = (titre, html) => `<div class="rc-sec"><h3>${titre}</h3>${html}</div>`;
   const fig = (k, v, s = '') => `<div class="rc-fig"><span>${k}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`;
   const tete = (n, titre) => `<header class="rc-tete"><div class="rc-sur"><span>Dossier de financement · ${d.revente ? 'achat-revente' : 'investissement locatif'}</span><span>${esc(o.date || '')} · ${n}/2</span></div>
     <h1>${esc(o.titre || 'Projet')}</h1>${o.adresse ? `<div class="rc-adr">${esc(o.adresse)}</div>` : ''}</header><h2>${titre}</h2>`;
@@ -4504,10 +4518,21 @@ function recapHtml(d, o = {}) {
     !d.revente && debLoc > 0 && debLoc !== fin && [debLoc, `Premier loyer · mois ${debLoc + 1}`], c.differe > 0 && [c.differe, `Échéance pleine · mois ${c.differe + 1}`],
     d.revente && [d.vente.mois, `Revente · mois ${d.vente.mois}`]].filter(Boolean)
     .reduce((l, [m, x]) => { const p = l.find(y => Math.abs(y[0] - m) <= 1); if (p) p[1] = p[1].replace(/ · mois \d+$/, '') + ' · ' + x[0].toLowerCase() + x.slice(1); else l.push([m, x]); return l; }, []);
+  // Jalons : chacun sur la première ligne où son texte ne touche pas un autre (largeur estimée, ≈ 0,8 % de la frise par caractère) ;
+  // à droite de la frise, le texte part vers la gauche de son repère
+  const lignes = [];
+  jalons.forEach((j, i) => {
+    const x = +g(j[0]).replace('%', ''), long = j[1].length * 0.8 + 2, droite = x + long > 100 && x > 50;
+    const de = droite ? x - long : x, a = droite ? x : x + long;
+    let n = 0; while ((lignes[n] || []).some(([p, q]) => de < q + 1 && a > p - 1)) n++;
+    (lignes[n] = lignes[n] || []).push([de, a]);
+    jalons[i] = {m: j[0], l: j[1], ligne: n, droite};
+  });
+  const lignesJ = Math.max(1, lignes.length);
   const frise = `<div class="rc-frise"><div class="rc-fr-b">${t && t.debut ? seg('f-avant', 0, t.debut, t.finAvant ? 'Loué en l\'état' : 'Avant travaux') : ''}${t ? seg('f-trav', t.debut, fin, 'Travaux') : ''}
       ${d.revente ? seg('f-avant', fin, d.vente.mois, 'Mise en vente') : seg('f-loc', Math.max(fin, debLoc), H, d.saison ? 'Exploitation' : 'Location')}</div>
     ${c.differe > 0 ? `<div class="rc-fr-d"><i style="width:${w(0, c.differe)}">Différé · ${eurR(c.mensDiff)}/mois</i><span style="left:${g(c.differe)}">Échéance ${eurR(c.mens)}/mois</span></div>` : `<div class="rc-fr-d"><span style="left:0">Échéance ${eurR(c.mens)}/mois dès le premier mois</span></div>`}
-    <div class="rc-fr-j">${jalons.map(([m, l], i) => `<span style="left:${g(m)}" class="${i % 2 ? 'bas' : ''}${m / H > 0.6 ? ' droite' : ''}">${l}</span>`).join('')}</div>
+    <div class="rc-fr-j" style="height:${lignesJ * 15}px">${jalons.map(j => `<span style="left:${g(j.m)};top:${j.ligne * 15}px"${j.droite ? ' class="droite"' : ''}>${j.l}</span>`).join('')}</div>
     <div class="rc-fr-ech"><span>Mois 1</span><span>${H / 12} ans</span></div></div>`;
 
   // Coût et financement : deux barres à la même échelle
@@ -4519,21 +4544,29 @@ function recapHtml(d, o = {}) {
   // Le bien : prix payé, estimation de marché, valeur après travaux, en barres comparées
   const valeurs = [['Prix d\'acquisition', b0.prix, 'c1'], !plusieurs && est.prix && ['Estimation de marché', est.prix, 'c2'], !plusieurs && t && t.valeurApres > 0 && ['Valeur après travaux', t.valeurApres, 'vert']].filter(Boolean);
   const vmax = Math.max(...valeurs.map(x => x[1]));
+  const bienInfos = `${!d.revente ? `<div class="rc-mini"><span>${d.saison ? 'Recettes prévues' : 'Loyer prévu'}</span><b>${eurR(plusieurs ? d.loyersPleins : b0.loyer)}/mois</b>${est.loyer && !d.saison && !plusieurs ? `<small>marché ${eurR(est.loyer)}</small>` : ''}</div>` : ''}
+      <div class="rc-mini"><span>Exploitation</span><b>${usage[0].toUpperCase() + usage.slice(1)}</b><small>${esc(d.struct)}</small></div>
+      ${t ? `<div class="rc-mini"><span>Travaux</span><b>${eurR(t.montant)}</b><small>mois ${t.debut + 1} à ${t.fin}</small></div>` : ''}`;
   const bien = plusieurs
-    ? `<ul class="rc-liste">${d.biens.map((b, i) => `<li><span>${esc(b.nom || (i ? `Bien ${i + 1}` : b.type === 'maison' ? 'Maison' : 'Appartement'))}${b.surf ? ` · ${b.surf} m²` : ''}</span><b>${eurR(b.prix)}</b>${b.loyer ? `<small>${eurR(b.loyer)}/mois</small>` : ''}</li>`).join('')}</ul>`
-    : `<div class="rc-bien-t">${b0.type === 'maison' ? 'Maison' : 'Appartement'}${b0.surf ? ` · ${b0.surf} m² · ${eurR(b0.prix / b0.surf)}/m²` : ''}</div>
+    ? `<div class="rc-2"><ul class="rc-liste">${d.biens.map((b, i) => `<li><span>${esc(b.nom || (i ? `Bien ${i + 1}` : b.type === 'maison' ? 'Maison' : 'Appartement'))}${b.surf ? ` · ${b.surf} m²` : ''}</span><b>${eurR(b.prix)}</b>${b.loyer ? `<small>${eurR(b.loyer)}/mois</small>` : ''}</li>`).join('')}</ul><div>${bienInfos}</div></div>`
+    : `<div class="rc-2"><div><div class="rc-bien-t">${b0.type === 'maison' ? 'Maison' : 'Appartement'}${b0.surf ? ` · ${b0.surf} m² · ${eurR(b0.prix / b0.surf)}/m²` : ''}</div>
       ${valeurs.map(([k, v, cl]) => `<div class="rc-hb"><span>${k}</span><div><i class="${cl}" style="width:${larg(v, vmax)}"></i></div><b>${eurR(v)}</b></div>`).join('')}
-      ${t && t.valeurApres > 0 ? `<p class="rc-note">Valeur après travaux : <b class="${cls(t.valeurApres - d.valeur.coutBien)}">${sgnR(t.valeurApres - d.valeur.coutBien)}</b> par rapport au coût total hors mobilier.</p>` : ''}
-      ${!d.revente ? `<div class="rc-mini"><span>${d.saison ? 'Recettes prévues' : 'Loyer prévu'}</span><b>${eurR(b0.loyer)}/mois</b>${est.loyer && !d.saison ? `<small>marché ${eurR(est.loyer)}</small>` : ''}</div>` : ''}
-      <div class="rc-mini"><span>Exploitation</span><b>${usage[0].toUpperCase() + usage.slice(1)}</b><small>${esc(d.struct)}</small></div>`;
-  const pret = `<div class="rc-grille">${fig('Montant', eurR(c.pret))}${fig('Durée', `${c.duree} ans`, c.differe > 0 ? `dont ${c.differe} mois de différé ${c.typeDiff === 'total' ? 'total' : 'partiel'}` : '')}
-    ${fig('Taux nominal', tauxR(c.taux), c.assur > 0 ? `assurance ${tauxR(c.assur)}/an` : 'hors assurance')}${fig('Échéance', eurR(c.mens), c.mensDiff != null ? `${eurR(c.mensDiff)} pendant le différé` : 'assurance comprise')}</div>
+      ${t && t.valeurApres > 0 ? `<p class="rc-note">Valeur après travaux : <b class="${cls(t.valeurApres - d.valeur.coutBien)}">${sgnR(t.valeurApres - d.valeur.coutBien)}</b> par rapport au coût total hors mobilier.</p>` : ''}</div>
+      <div>${bienInfos}</div></div>`;
+  const pret = `<div class="rc-figs">${fig('Montant', eurR(c.pret))}${fig('Durée', `${c.duree} ans`, c.differe > 0 ? `dont ${c.differe} mois de différé ${c.typeDiff === 'total' ? 'total' : 'partiel'}` : '')}
+    ${fig('Taux nominal', tauxR(c.taux), c.assur > 0 ? `assurance ${tauxR(c.assur)}/an` : 'hors assurance')}${fig('Échéance', eurR(c.mens), c.mensDiff != null ? `${eurR(c.mensDiff)} pendant le différé` : 'par mois, assurance comprise')}</div>
     <p class="rc-note">Coût total du crédit : <b>${eurR(c.cout)}</b> (intérêts, assurance et frais).${c.mensAvant != null ? ` Avant le déblocage des fonds travaux (mois ${c.debloc + 1}) : ${eurR(c.mensAvant)}/mois.` : ''}</p>`;
-  const page1 = `<section class="rc-page">${tete(1, 'Le projet et son financement')}<p class="rc-objet">${objet}</p>
-    <div class="rc-figs">${fig('Coût total', eurR(a.cout))}${fig('Apport', eurR(a.apport), `${pctR(a.apport, a.cout)} du coût`)}${fig('Prêt sollicité', eurR(c.pret), `${c.duree} ans à ${tauxR(c.taux)}`)}${fig('Échéance', eurR(c.mens), 'par mois, assurance comprise')}</div>
-    <h3>Le calendrier</h3>${frise}<h3>Le coût et son financement</h3>${cout}
-    <div class="rc-2"><div><h3>${plusieurs ? 'Les biens' : 'Le bien'}</h3>${bien}</div><div><h3>Le prêt sollicité</h3>${pret}</div></div></section>`;
-  return page1 + `<section class="rc-page">${d.revente ? pageRevente() : pageExploitation()}${hypotheses()}</section>`;
+  // D'abord le projet et ce qu'il rapporte ; à la fin, ce qui est demandé à la banque
+  const x = d.revente ? pageRevente() : pageExploitation(), n = d.annee;
+  const figs1 = d.revente
+    ? [fig('Prix d\'acquisition', eurR(a.prix)), t && fig('Travaux', eurR(t.montant)), fig('Prix de revente', eurR(d.vente.prixVente), `au mois ${d.vente.mois}`), fig(d.vente.net < 0 ? 'Perte nette' : 'Marge nette', `<span class="${cls(d.vente.net)}">${sgnR(d.vente.net)}</span>`)]
+    : [fig('Prix d\'acquisition', eurR(a.prix)), t ? fig('Travaux', eurR(t.montant), t.valeurApres > 0 ? `valeur après travaux ${eurR(t.valeurApres)}` : '') : est.prix && !plusieurs ? fig('Estimation de marché', eurR(est.prix)) : fig('Coût total', eurR(a.cout)),
+      fig(d.saison ? 'Recettes par mois' : 'Loyers par mois', eurR(d.loyersPleins), d.saison ? 'en moyenne' : 'hors charges'), fig('Trésorerie mensuelle', `<span class="${cls(n.cf)}">${sgnR(n.cf / 12)}</span>`, 'une fois le projet en place')];
+  const page1 = `<section class="rc-page rc-p1">${tete(1, d.revente ? 'Le projet et son résultat' : 'Le projet et ce qu\'il rapporte')}<p class="rc-objet">${objet}</p>
+    <div class="rc-corps"><div class="rc-figs">${figs1.filter(Boolean).join('')}</div>
+    ${sec(plusieurs ? 'Les biens' : 'Le bien', bien)}${sec('Le calendrier', frise)}${x.haut}</div></section>`;
+  return page1 + `<section class="rc-page">${tete(2, d.revente ? 'Le financement demandé' : 'Les résultats et le financement demandé')}<div class="rc-corps">${x.bas}
+    ${sec('Le coût et son financement', cout)}${sec('Le prêt sollicité', pret)}</div>${hypotheses()}</section>`;
 
   function pageExploitation() {
     const n = d.annee, z = d.croisiere, imp = n.impots != null, m = v => v / 12;
@@ -4546,9 +4579,9 @@ function recapHtml(d, o = {}) {
         <div class="rc-leg">${sorties.map(([k, v, cl]) => `<span><em class="${cl}"></em>${k} <b>${eurR(v)}</b></span>`).join('')}</div></div></div>`;
     // Les périodes, sous la même frise de couleurs : ce qui reste chaque mois
     const pers = [...d.periodes.map(p => ({...p, k: /travaux/i.test(p.titre) ? 'f-trav' : /Avant/.test(p.titre) ? 'f-avant' : 'f-diff'})), {titre: 'Ensuite', sous: `dès le mois ${z.des}`, k: 'f-loc', ...z}];
-    const per = d.periodes.length ? `<h3>Mois par mois, jusqu'au régime de croisière</h3><div class="rc-pers">${pers.map(p => `<div class="rc-per"><i class="${p.k}"></i><span>${p.titre}</span><small>${p.sous}</small>
+    const per = d.periodes.length ? `<div class="rc-sec"><h3>Mois par mois, jusqu'au régime de croisière</h3><div class="rc-pers">${pers.map(p => `<div class="rc-per"><i class="${p.k}"></i><span>${p.titre}</span><small>${p.sous}</small>
       <b class="${cls(p.reste)}">${sgnR(p.reste)}<em>/mois</em></b><small>loyers ${eurR(p.loyers)} · échéance ${eurR(p.credit)}</small></div>`).join('')}</div>
-      ${d.totalDiffere != null ? `<p class="rc-note">Sur les ${c.differe} mois de différé, solde cumulé de <b class="${cls(d.totalDiffere)}">${sgnR(d.totalDiffere)}</b>${d.totalDiffere < 0 ? ', couvert par l\'épargne personnelle' : ''}.</p>` : ''}` : '';
+      ${d.totalDiffere != null ? `<p class="rc-note">Sur les ${c.differe} mois de différé, solde cumulé de <b class="${cls(d.totalDiffere)}">${sgnR(d.totalDiffere)}</b>${d.totalDiffere < 0 ? ', couvert par l\'épargne personnelle' : ''}.</p>` : ''}</div>` : '';
     // Ratios en jauges ; la couverture a un repère à 100 %
     const jauge = (k, v, max, s, repere) => `<div class="rc-jauge"><span>${k}</span><b>${(v * 100).toFixed(1).replace('.', ',')} %</b><div><i class="${repere && v < 1 ? 'rouge' : 'vert'}" style="width:${larg(v, max)}"></i>${repere ? `<u style="left:${larg(1, max)}"></u>` : ''}</div><small>${s}</small></div>`;
     const bruts = d.loyersPleins * 12;
@@ -4557,14 +4590,14 @@ function recapHtml(d, o = {}) {
     // Résistance : la trésorerie mensuelle si un paramètre se dégrade, en barres autour de zéro
     const lignes = [['Scénario retenu', m(n.cf)], ...d.sensibilite], amp = Math.max(...lignes.map(x => Math.abs(x[1])), 1);
     const resist = `<div class="rc-res">${lignes.map(([k, v], i) => `<div class="rc-res-l${i ? '' : ' base'}"><span>${k}</span><div class="rc-axe"><i class="${v < 0 ? 'rouge neg' : 'vert'}" style="width:${larg(Math.abs(v), amp * 2)}"></i></div><b class="${cls(v)}">${sgnR(v)}</b></div>`).join('')}</div>`;
-    return `${tete(2, 'L\'exploitation prévisionnelle')}<h3>Un mois type</h3>${mois}${per}<h3>Indicateurs</h3>${ratios}<h3>Résistance du projet</h3>${resist}`;
+    return {haut: sec('Ce qu\'il rapporte chaque mois', mois), bas: `${per}${sec('Indicateurs', ratios)}${sec('Résistance du projet', resist)}`};
   }
   function pageRevente() {
     const v = d.vente, n = Math.round(v.net), max = Math.max(v.prixVente, a.cout);
     const hb = (k, x, cl) => `<div class="rc-hb"><span>${k}</span><div><i class="${cl}" style="width:${larg(x, max)}"></i></div><b>${eurR(x)}</b></div>`;
-    return `${tete(2, 'Le bilan prévisionnel de l\'opération')}<div class="rc-hero"><div><span>${n < 0 ? 'Perte nette' : 'Marge nette'}</span><b class="${cls(n)}">${sgnR(v.net)}</b><small>${d.avecImpots ? 'après' : 'avant'} impôt, au mois ${v.mois}</small></div>
+    return {bas: '', haut: `<div class="rc-sec"><h3>Le bilan prévisionnel de l'opération</h3><div class="rc-hero"><div><span>${n < 0 ? 'Perte nette' : 'Marge nette'}</span><b class="${cls(n)}">${sgnR(v.net)}</b><small>${d.avecImpots ? 'après' : 'avant'} impôt, au mois ${v.mois}</small></div>
       <div class="rc-mt">${hb('Prix de revente', v.prixVente, 'vert')}${hb('Coût total de l\'opération', a.cout, 'c1')}${hb('Portage (échéances et charges)', v.sorties, 'rouge')}</div></div>
-      <p class="rc-note">Frais de revente ${eurR(v.fraisVente)}, capital restant dû remboursé ${eurR(v.crd)}${v.ira > 0 ? `, indemnités ${eurR(v.ira)}` : ''}${d.avecImpots ? `, impôt ${eurR(v.impot)}` : ''}.</p>`;
+      <p class="rc-note">Frais de revente ${eurR(v.fraisVente)}, capital restant dû remboursé ${eurR(v.crd)}${v.ira > 0 ? `, indemnités ${eurR(v.ira)}` : ''}${d.avecImpots ? `, impôt ${eurR(v.impot)}` : ''}.</p></div>`};
   }
   function hypotheses() {
     const h = d.hyp, x = [h.vacance != null ? `vacance locative de ${String(h.vacance).replace('.', ',')} mois par an` : `taux d'occupation de ${h.occupation} %`,
@@ -4596,7 +4629,7 @@ async function telechargerRecap(pr, depuisFinancer, bouton) {
   const o = {titre: nom, option: bs.length > 1 ? nomBranche(pr) : '', adresse: pr ? adresseProjet(bs.length ? bs : [pr]) : '',
     date: new Date().toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}),
     estime: pr && pr.resume ? {prix: pr.resume.prixEstime, loyer: pr.resume.loyerEstime} : {}};
-  const fichier = `Récap banque - ${nom}${o.option ? ' - ' + o.option : ''}`;
+  const fichier = `Dossier de financement - ${nom}${o.option ? ' - ' + o.option : ''}`;
   let el = document.getElementById('recap');
   if (!el) { el = document.createElement('div'); el.id = 'recap'; document.body.appendChild(el); }
   el.innerHTML = `<div class="recap" style="width:184mm;background:#fff">${recapHtml(d, o)}</div>`;
@@ -4638,13 +4671,13 @@ const ficheAchat = pr => pr.achete && window.INV && INV.bien && INV.bien(pr.ache
 const chipAchete = pr => ficheAchat(pr) ? `<button class="pj-achete" data-a="voirFiche" title="Voir la fiche dans Mon patrimoine">Acheté · voir la fiche →</button>` : '';
 function cartePj(pr, sous, corps, boutons, br) {
   boutons = [...boutons, ...boutonsBranche(pr, br)];
-  if (br) boutons.unshift('<button data-a="recap">Récap pour la banque (PDF)</button>');
+  if (br) boutons.unshift('<button data-a="recap">Dossier de financement (PDF)</button>');
   if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
     ${corps}
     <div class="pj-bas"><span></span>
-      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger deux pages en PDF">Récap banque</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
 function carteProjet(pr, br) {
   if (pr.amenag) return carteAmenagement(pr, br);
@@ -4861,7 +4894,7 @@ function carteGroupe(bs) {
   const depart = bs.find(x => !x.amenag);
   return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
-    <div class="pj-gr-actions"><button data-a="recap" title="La meilleure option détaillée, les autres comparées : deux pages en PDF">Récap banque</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
+    <div class="pj-gr-actions"><button data-a="recap" title="Le dossier de financement de la meilleure option, en PDF">Dossier de financement</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${tuilesProjet(bs, a)}
     <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><span><i class="f-avant"></i>Avant travaux</span> <span><i class="f-travaux"></i>Travaux</span> <span><i class="f-apres"></i>Après</span> <span><i class="f-diff"></i>Différé</span></span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
     ${cartesOptions(bs, a, m)}
