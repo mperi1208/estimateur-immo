@@ -335,10 +335,20 @@ test('Financer en 4 étapes : loyers par période (avant, pendant, après travau
   await page.waitForFunction(() => !document.getElementById('cf_loyers').classList.contains('sans-travaux'));
   await saisir(page, '#cf_travaux', 30000); await saisir(page, '#cf_debutTravaux', 25); await saisir(page, '#cf_dureeTravaux', 3);
   await saisir(page, '#cf_loyerAvant', 750); await saisir(page, '#cf_loyer', 1000);
-  await page.check('#cf_loueChantier'); await page.dispatchEvent('#cf_loueChantier', 'input');
   await saisir(page, '#cf_differe', 36);
   assert.match(await page.locator('#cf_colPendant').innerText(), /mois 25 à 27/);
-  assert.match(await page.locator('#cf_pendant1').innerText(), /750 €/);              // reste loué pendant le chantier
+  // Chaque case se modifie : pendant le chantier, pas loué par défaut ; un loyer tapé remplace la règle, « comme avant » y revient
+  const p1 = '#cf_loyers [data-per="l1:pendant"]', tot = async c => page.locator('#cf_tot' + c).innerText();
+  assert.equal(await page.inputValue(p1), ''); assert.equal(await page.locator(p1).getAttribute('placeholder'), 'pas loué');
+  assert.equal(await page.locator('#cf_loyers [data-herit="l1:pendant"]').isVisible(), false);
+  await saisir(page, p1, 600);
+  assert.match(await tot('Pendant'), /600 €/);
+  await cliquer(page, '#cf_loyers [data-herit="l1:pendant"]');
+  assert.equal(await page.inputValue(p1), ''); assert.doesNotMatch(await tot('Pendant'), /600/);
+  // Projet où le bien reste loué pendant le chantier (fait depuis Estimer) : la case montre le loyer d'avant, en gris
+  await page.evaluate(() => { const c = document.getElementById('cf_loueChantier'); c.checked = true; c.dispatchEvent(new Event('input', {bubbles: true})); });
+  assert.equal(await page.inputValue(p1), '750'); assert.equal(await page.locator(p1).evaluate(e => e.classList.contains('herite')), true);
+  assert.match(await tot('Pendant'), /750 €/);
   assert.match(await page.locator('#cf_totApres').innerText(), /1\s000 €/);
   assert.match(await page.locator('#cf_calendrier').innerText(), /Différé du crédit : mois 1 à 36/);
   // Un logement loué à part : une ligne de plus, loué à la fin du chantier
@@ -346,7 +356,24 @@ test('Financer en 4 étapes : loyers par période (avant, pendant, après travau
   await saisir(page, '#cf_loyer2', 400);
   assert.equal(+await valeur('debutLoyer2'), 28);
   assert.match(await page.locator('#cf_totApres').innerText(), /1\s400 €/);
-  assert.match(await page.locator('#cf_l2Avant').innerText(), /pas loué/);
+  // Le logement à part avant les travaux : pas loué par défaut, loué 300 € si on le tape, de nouveau pas loué si on vide la case
+  const l2a = '#cf_loyers [data-per="l2:avant"]';
+  assert.equal(await page.inputValue(l2a), '');
+  await saisir(page, l2a, 300);
+  assert.match(await tot('Avant'), /1\s050 €/);
+  await saisir(page, l2a, '');
+  assert.match(await tot('Avant'), /^750 €/);
+  assert.equal(await page.locator('#cf_loyers [data-herit="l2:avant"]').isVisible(), true);    // vidée à la main : « comme avant » reste proposé
+  await cliquer(page, '#cf_loyers [data-herit="l2:avant"]');
+  // À la nuitée pour le logement à part seulement : le bien garde son loyer au mois
+  await cliquer(page, '#cf_locSeg button[data-v="nuit"]');
+  assert.equal(await page.locator('#cf_nuitSur').isVisible(), true);
+  await saisir(page, '#cf_nuitSur', '2');
+  assert.equal(await page.locator('#cf_loyer').isVisible(), true); assert.equal(await page.locator('#cf_loyer2').isVisible(), false);
+  assert.match(await page.locator('#cf_nuitL2').innerText(), /par mois à la nuitée/);
+  await saisir(page, '#cf_nuitSur', '1');
+  assert.equal(await page.locator('#cf_loyer').isVisible(), false); assert.match(await page.locator('#cf_nuitL1').innerText(), /par mois à la nuitée/);
+  await cliquer(page, '#cf_locSeg button[data-v="mois"]');
   // Étape 3 : ce qu'on paie, période par période
   await cliquer(page, '#cf_etapes button[data-etape="3"]');
   assert.match(await page.locator('#cf_mensPeriodes').innerText(), /Mois 1 à 24[\s\S]*Mois 25 à 36[\s\S]*Dès le mois 37/);
