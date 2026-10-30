@@ -775,13 +775,23 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf #cf_boxProjet > summary{display:none}
 #cf .cal{margin-top:16px}
 #cf .cal-barre{display:flex;height:44px;border-radius:10px;overflow:hidden;font-size:13px;font-weight:700}
-#cf .cal-barre > div{display:flex;align-items:center;padding:0 10px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:6px solid}
+#cf .cal-barre > div{display:flex;align-items:center;padding:0 10px;min-width:0;white-space:nowrap;overflow:hidden;border-left:6px solid}
+#cf .cal-barre > div.etroit{padding:0}
+#cf .cal-barre > div.etroit span{visibility:hidden}
+/* Les libellés des segments trop étroits, sous la frise */
+#cf .cal-leg{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:13px;font-weight:700}
+#cf .cal-leg:empty{display:none}
+#cf .cal-leg span{display:flex;align-items:center;gap:6px;background:none!important}
+#cf .cal-leg i{width:12px;height:12px;border-radius:3px;border-left:4px solid;border-color:inherit}
+#cf .cal-leg .ph-avant i{background:#E8ECF2}#cf .cal-leg .ph-travaux i{background:#FBEBD9}#cf .cal-leg .ph-apres i{background:var(--accent-soft)}
 #cf .ph-avant{background:#E8ECF2;color:#344054;border-color:#7A8AA3!important}
 #cf .ph-travaux{background:#FBEBD9;color:#7A3E06;border-color:#C2620C!important}
 #cf .ph-apres{background:var(--accent-soft);color:#08513A;border-color:var(--accent)!important}
 /* L'accolade du différé, puis ses deux libellés sur une ligne s'il y a la place, sinon l'un sous l'autre (jamais l'un sur l'autre) */
 #cf .cal-diff{margin-top:8px;font-size:13px;font-weight:700}
-#cf .cal-diff .acc{margin-top:4px;height:10px;border:2px solid #3E4C9B;border-top:0;border-radius:0 0 6px 6px}
+#cf .cal-diff .traits{display:flex;align-items:flex-end;margin-top:4px}
+#cf .cal-diff .acc{flex:none;height:10px;border:2px solid #3E4C9B;border-top:0;border-radius:0 0 6px 6px}
+#cf .cal-diff .plein{flex:1;height:6px;margin-left:3px;border:2px solid #344054;border-top:0;border-right:0;border-radius:0 0 0 4px}
 #cf .cal-diff .txts{display:flex;flex-wrap:wrap;gap:2px 16px;margin-top:4px}
 #cf .cal-diff .txt{color:#3E4C9B;white-space:nowrap;max-width:100%}
 #cf .cal-diff .apres{color:#344054}
@@ -1023,6 +1033,8 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 .recap .rc-fr-d{position:relative;height:18px;margin-top:4px}
 .recap .rc-fr-d i{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding-left:6px;font-style:normal;font-size:7.5pt;color:#344054;background:repeating-linear-gradient(135deg,#eaecf0 0 4px,#f9fafb 4px 8px);border:1px solid #d0d5dd;border-radius:4px;white-space:nowrap;box-sizing:border-box}
 .recap .rc-fr-d span{position:absolute;top:2px;padding-left:8px;font-size:7.5pt;font-weight:700;color:#101828;white-space:nowrap}
+.recap .rc-fr-d2{display:flex;justify-content:space-between;gap:12px;margin-top:2px;font-size:7.5pt;font-weight:700;color:#101828;white-space:nowrap}
+.recap .rc-fr-d2 span:first-child{color:#344054}.recap .rc-fr-d2 .droite{margin-left:auto}
 .recap .rc-fr-j{position:relative;margin-top:6px}
 .recap .rc-fr-j span{position:absolute;top:0;padding-left:6px;border-left:1.5px solid #101828;font-size:7.5pt;color:#344054;white-space:nowrap;line-height:1.2}
 .recap .rc-fr-j span.droite{transform:translateX(-100%);padding:0 6px 0 0;border-left:0;border-right:1.5px solid #101828}
@@ -3708,15 +3720,31 @@ function loyerDuMois(p, m) {
 function calendrier(p, travauxOn) {
   if (!travauxOn && !p.differe) return '';
   const H = Math.max(24, Math.ceil((Math.max(p.differe, travauxOn ? p.finT : 0, p.debutPlein) + 12) / 12) * 12), w = n => (n / H * 100).toFixed(2) + '%';
-  const seg = (cls, a, b, long, court) => b > a ? `<div class="${cls}" style="width:${w(b - a)}" title="${long}">${(b - a) / H > 0.24 ? long : court}</div>` : '';
+  const seg = (cls, a, b, txt) => b > a ? `<div class="${cls}" style="width:${w(b - a)}" title="${txt}"><span>${txt}</span></div>` : '';
   const barre = travauxOn
-    ? seg('ph-avant', 0, p.debutT, `Avant travaux · ${plage(0, p.debutT)}`, plage(0, p.debutT).replace('mois ', '')) + seg('ph-travaux', p.debutT, p.finT, `Travaux · ${plage(p.debutT, p.finT)}`, plage(p.debutT, p.finT).replace('mois ', ''))
-      + seg('ph-apres', p.finT, H, `Après travaux · dès le mois ${p.finT + 1}`, `dès ${p.finT + 1}`)
-    : seg('ph-apres', 0, H, 'Loué dès l\'achat', '');
-  // Le 1er libellé occupe au moins la largeur de l'accolade : le 2e commence là où le différé s'arrête, ou passe à la ligne
-  const diff = p.differe ? `<div class="cal-diff"><div class="acc" style="width:${w(p.differe)}"></div><div class="txts"><div class="txt" style="min-width:min(${w(p.differe)}, 100%)">Différé du crédit : ${plage(0, p.differe)}</div><div class="txt apres">Mensualité pleine dès le mois ${p.differe + 1}</div></div></div>` : '';
-  return `<div class="cal-barre">${barre}</div>${diff}`;
+    ? seg('ph-avant', 0, p.debutT, `Avant travaux · ${plage(0, p.debutT)}`) + seg('ph-travaux', p.debutT, p.finT, `Travaux · ${plage(p.debutT, p.finT)}`)
+      + seg('ph-apres', p.finT, H, `Après travaux · dès le mois ${p.finT + 1}`)
+    : seg('ph-apres', 0, H, 'Loué dès l\'achat');
+  // L'accolade du différé puis le trait de la mensualité pleine jusqu'au bout de la frise ;
+  // le 1er libellé occupe au moins la largeur de l'accolade : le 2e commence là où le différé s'arrête, ou passe à la ligne
+  const diff = p.differe ? `<div class="cal-diff"><div class="traits"><div class="acc" style="width:${w(p.differe)}"></div><div class="plein"></div></div><div class="txts"><div class="txt" style="min-width:min(${w(p.differe)}, 100%)">Différé du crédit : ${plage(0, p.differe)}</div><div class="txt apres">Mensualité pleine dès le mois ${p.differe + 1}</div></div></div>` : '';
+  return `<div class="cal-barre">${barre}</div>${diff}<div class="cal-leg"></div>`;
 }
+// Un segment trop étroit pour son libellé n'en montre aucun (jamais de texte coupé) : le libellé passe sous la frise,
+// avec la couleur du segment. À refaire quand la largeur change (téléphone tourné, carte qui s'affiche)
+function libellesCalendrier(el) {
+  const leg = el.querySelector('.cal-leg');
+  if (!leg || !el.clientWidth) return;
+  leg.innerHTML = '';
+  for (const s of el.querySelectorAll('.cal-barre > div')) {
+    s.classList.remove('etroit');
+    if (s.scrollWidth <= s.clientWidth + 0.5) continue;
+    s.classList.add('etroit');
+    leg.insertAdjacentHTML('beforeend', `<span class="${s.classList[0]}"><i></i>${s.title}</span>`);
+  }
+}
+// Seule la largeur compte : la hauteur change quand les libellés passent dessous
+if (typeof ResizeObserver !== 'undefined') { let l0 = 0; new ResizeObserver(([e]) => { const l = Math.round(e.contentRect.width); if (l !== l0) { l0 = l; libellesCalendrier($('calendrier')); } }).observe($('calendrier')); }
 // Les charges d'un mois de l'année ac, une ligne par charge (celles à 0 € en moins)
 function partsCharges(s, ac) {
   const p = s.p, infl = Math.pow(1 + p.gCharges / 100, ac.y - 1), m = v => v * infl / 12, pct = k => ac.loyers * p[k] / 100 / 12;
@@ -3729,6 +3757,7 @@ function partsCharges(s, ac) {
 function etapes(s) {
   const p = s.p, travauxOn = p.projet !== 'simple', mens = s.ech.pmt + s.ech.assM;
   $('calendrier').innerHTML = calendrier(p, travauxOn);
+  libellesCalendrier($('calendrier'));
   // Étape 2 : en-têtes des périodes, cases calculées et totaux
   const apres = Math.max(p.finT, p.debutPlein), aucun = 'aucun mois';
   $('colAvant').textContent = p.debutT ? plage(0, p.debutT) : aucun;
@@ -4531,9 +4560,16 @@ function recapHtml(d, o = {}) {
     jalons[i] = {m: j[0], l: j[1], ligne: n, droite};
   });
   const lignesJ = Math.max(1, lignes.length);
+  // Différé : son libellé dans sa bande s'il y tient, sinon sur une 2e ligne à gauche ; l'échéance juste après la bande,
+  // ou sur la 2e ligne calée à droite s'il n'y a pas la place (largeurs estimées, ≈ 0,85 % de la frise par caractère)
+  const dTxt = `Différé · ${eurR(c.mensDiff)}/mois`, eTxt = `Échéance ${eurR(c.mens)}/mois`, wd = c.differe / H * 100;
+  const dDedans = dTxt.length * 0.85 + 2 <= wd, eDessous = wd + eTxt.length * 0.85 + 2 > 100;
+  const differe = c.differe > 0 ? `<div class="rc-fr-d"><i style="width:${w(0, c.differe)}">${dDedans ? dTxt : ''}</i>${eDessous ? '' : `<span style="left:${g(c.differe)}">${eTxt}</span>`}</div>
+    ${dDedans && !eDessous ? '' : `<div class="rc-fr-d2">${dDedans ? '' : `<span>${dTxt} · ${c.differe > 1 ? `mois 1 à ${c.differe}` : 'mois 1'}</span>`}${eDessous ? `<span class="droite">${eTxt} · dès le mois ${c.differe + 1}</span>` : ''}</div>`}`
+    : `<div class="rc-fr-d"><span style="left:0">Échéance ${eurR(c.mens)}/mois dès le premier mois</span></div>`;
   const frise = `<div class="rc-frise"><div class="rc-fr-b">${t && t.debut ? seg('f-avant', 0, t.debut, t.finAvant ? 'Loué en l\'état' : 'Avant travaux') : ''}${t ? seg('f-trav', t.debut, fin, 'Travaux') : ''}
       ${d.revente ? seg('f-avant', fin, d.vente.mois, 'Mise en vente') : seg('f-loc', Math.max(fin, debLoc), H, d.saison ? 'Exploitation' : 'Location')}</div>
-    ${c.differe > 0 ? `<div class="rc-fr-d"><i style="width:${w(0, c.differe)}">Différé · ${eurR(c.mensDiff)}/mois</i><span style="left:${g(c.differe)}">Échéance ${eurR(c.mens)}/mois</span></div>` : `<div class="rc-fr-d"><span style="left:0">Échéance ${eurR(c.mens)}/mois dès le premier mois</span></div>`}
+    ${differe}
     <div class="rc-fr-j" style="height:${lignesJ * 15}px">${jalons.map(j => `<span style="left:${g(j.m)};top:${j.ligne * 15}px"${j.droite ? ' class="droite"' : ''}>${j.l}</span>`).join('')}</div>
     <div class="rc-fr-ech"><span>Mois 1</span><span>${H / 12} ans</span></div></div>`;
 
