@@ -1075,6 +1075,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 .recap .rc-liste li{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid #eaecf0}
 .recap .rc-liste span{flex:1}.recap .rc-liste small{color:#667085}
 .recap .rc-note{margin:6px 0 0;font-size:8pt;color:#475467}
+.recap .rc-nuit{margin-top:8px;padding-top:6px;border-top:1px solid #e4e7ec}.recap .rc-nuit>b{display:block;font-size:9pt;margin-bottom:4px}
 .recap .rc-hero{display:flex;gap:22px;align-items:center;padding:18px 18px;border:1px solid #eaecf0;border-radius:8px}
 .recap .rc-hero > div:first-child{flex:0 0 34%}
 .recap .rc-hero > div:first-child span{display:block;font-size:8pt;color:#667085}
@@ -3959,6 +3960,9 @@ function donneesRecap() {
     p.saison ? ['Occupation 10 points plus basse', variante(() => set('occupation', Math.max(0, get('occupation') - 10)))] : ['Un mois de vacance de plus par an', variante(() => set('vacance', get('vacance') + 1))],
     ['Taux 1 point plus haut', variante(() => set('taux', get('taux') + 1))]];
   d.loyersPleins = p.saison && !p.nuitL2 ? s.saison.brutMois + p.loyerB2 : p.loyerTotal;   // loyers du bail, sans vacance : ce que la banque retient en partie
+  // Location à la nuitée (le bien, ou seulement le logement à part) : ce que la banque veut voir pour un saisonnier
+  d.nuitee = p.saison && s.saison ? {surL2: p.nuitL2, nuit: p.nuit, occupation: p.occupation, nuits: Math.round(s.saison.nuits), brutMois: s.saison.brutMois,
+    pctFrais: s.saison.pctFrais, charges: p.chargesSaison, netMois: s.saison.netMois, classe: p.classe === '1'} : null;
   d.totalDiffere = s.totalDiffere;
   d.valeur = {depart: s.base, coutBien: s.coutTotal - mob};
   d.patrimoine = {ans: s.horizon, valeur: s.valeur, net: s.valeur - fin.crd + fin.cumul};
@@ -4681,7 +4685,7 @@ const pctR = (a, b) => b > 0 ? (a / b * 100).toFixed(1).replace('.', ',') + ' %
 const larg = (v, max) => Math.max(0, Math.min(100, max > 0 ? v / max * 100 : 0)).toFixed(2) + '%';
 function recapHtml(d, o = {}) {
   const c = d.credit, a = d.achat, t = d.travaux, b0 = d.biens[0], plusieurs = d.biens.length > 1, est = o.estime || {};
-  const usage = d.revente ? 'achat-revente' : d.saison ? 'location meublée de courte durée' : d.meuble ? 'location meublée' : 'location nue';
+  const usage = d.revente ? 'achat-revente' : d.saison ? 'location meublée de courte durée' : (d.meuble ? 'location meublée' : 'location nue') + (d.nuitee ? ', logement à part à la nuitée' : '');
   const cls = n => n < 0 ? 'rc-neg' : 'rc-pos';
   const sec = (titre, html) => `<div class="rc-sec"><h3>${titre}</h3>${html}</div>`;
   const fig = (k, v, s = '') => `<div class="rc-fig"><span>${k}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`;
@@ -4731,9 +4735,12 @@ function recapHtml(d, o = {}) {
   // Le bien : prix payé, estimation de marché, valeur après travaux, en barres comparées
   const valeurs = [['Prix d\'acquisition', b0.prix, 'c1'], !plusieurs && est.prix && ['Estimation de marché', est.prix, 'c2'], !plusieurs && t && t.valeurApres > 0 && ['Valeur après travaux', t.valeurApres, 'vert']].filter(Boolean);
   const vmax = Math.max(...valeurs.map(x => x[1]));
-  const bienInfos = `${!d.revente ? `<div class="rc-mini"><span>${d.saison ? 'Recettes prévues' : 'Loyer prévu'}</span><b>${eurR(plusieurs ? d.loyersPleins : b0.loyer)}/mois</b>${est.loyer && !d.saison && !plusieurs ? `<small>marché ${eurR(est.loyer)}</small>` : ''}</div>` : ''}
+  const bienInfos = `${!d.revente ? `<div class="rc-mini"><span>${d.saison ? 'Recettes prévues' : d.nuitee ? 'Loyer et recettes prévus' : 'Loyer prévu'}</span><b>${eurR(plusieurs || d.saison ? d.loyersPleins : b0.loyer)}/mois</b>${est.loyer && !d.saison && !plusieurs ? `<small>marché ${eurR(est.loyer)}</small>` : ''}</div>` : ''}
       <div class="rc-mini"><span>Exploitation</span><b>${usage[0].toUpperCase() + usage.slice(1)}</b><small>${esc(d.struct)}</small></div>
       ${t ? `<div class="rc-mini"><span>Travaux</span><b>${eurR(t.montant)}</b><small>mois ${t.debut + 1} à ${t.fin}</small></div>` : ''}`;
+  const nt = d.nuitee, nuitee = nt && !d.revente ? `<div class="rc-nuit"><b>Location à la nuitée${nt.surL2 ? ' · le logement à part' : ''}</b>
+      <div class="rc-figs">${fig('Prix par nuit', eurR(nt.nuit))}${fig('Occupation', `${Math.round(nt.occupation)} %`, `${nt.nuits} nuits par an`)}${fig('Recettes', `${eurR(nt.brutMois)}/mois`, 'en moyenne sur l\'année')}${fig('Frais', `${Math.round(nt.pctFrais)} %`, 'plateforme, ménage, conciergerie')}</div>
+      <p class="rc-note">${nt.classe ? 'Meublé de tourisme classé' : 'Meublé de tourisme non classé'}${nt.charges > 0 ? ` · charges du logement (énergie, internet…) ${eurR(nt.charges)}/mois en exploitation` : ''} · après frais et charges : ${eurR(nt.netMois)}/mois en moyenne.</p></div>` : '';
   const bien = plusieurs
     ? `<div class="rc-2"><ul class="rc-liste">${d.biens.map((b, i) => `<li><span>${esc(b.nom || (i ? `Bien ${i + 1}` : b.type === 'maison' ? 'Maison' : 'Appartement'))}${b.surf ? ` · ${b.surf} m²` : ''}</span><b>${eurR(b.prix)}</b>${b.loyer ? `<small>${eurR(b.loyer)}/mois</small>` : ''}</li>`).join('')}</ul><div>${bienInfos}</div></div>`
     : `<div class="rc-2"><div><div class="rc-bien-t">${b0.type === 'maison' ? 'Maison' : 'Appartement'}${b0.surf ? ` · ${b0.surf} m² · ${eurR(b0.prix / b0.surf)}/m²` : ''}</div>
@@ -4751,7 +4758,7 @@ function recapHtml(d, o = {}) {
       fig(d.saison ? 'Recettes par mois' : 'Loyers par mois', eurR(d.loyersPleins), d.saison ? 'en moyenne' : 'hors charges'), fig('Trésorerie mensuelle', `<span class="${cls(n.cf)}">${sgnR(n.cf / 12)}</span>`, 'une fois le projet en place')];
   const page1 = `<section class="rc-page rc-p1">${tete(1, d.revente ? 'Le projet et son résultat' : 'Le projet et ce qu\'il rapporte')}<p class="rc-objet">${objet}</p>
     <div class="rc-corps"><div class="rc-figs">${figs1.filter(Boolean).join('')}</div>
-    ${sec(plusieurs ? 'Les biens' : 'Le bien', bien)}${sec('Le calendrier', frise)}${x.haut}</div></section>`;
+    ${sec(plusieurs ? 'Les biens' : 'Le bien', bien + nuitee)}${sec('Le calendrier', frise)}${x.haut}</div></section>`;
   return page1 + `<section class="rc-page">${tete(2, d.revente ? 'Le financement demandé' : 'Les résultats et le financement demandé')}<div class="rc-corps">${x.bas}
     ${sec('Le coût et son financement', cout)}${sec('Le prêt sollicité', pret)}</div>${hypotheses()}</section>`;
 
@@ -4761,7 +4768,7 @@ function recapHtml(d, o = {}) {
     const max = Math.max(m(n.loyers), sorties.reduce((s, x) => s + x[1], 0));
     const mois = `<div class="rc-hero"><div><span>Trésorerie mensuelle, une fois le projet en place</span><b class="${cls(n.cf)}">${sgnR(m(n.cf))}</b><small>année ${n.y}, ${imp ? 'après' : 'avant'} impôts</small></div>
       <div class="rc-mt">
-        <div class="rc-hb"><span>Loyers encaissés</span><div><i class="vert" style="width:${larg(m(n.loyers), max)}"></i></div><b>${eurR(m(n.loyers))}</b></div>
+        <div class="rc-hb"><span>${d.saison ? 'Recettes encaissées' : d.nuitee ? 'Loyers et recettes' : 'Loyers encaissés'}</span><div><i class="vert" style="width:${larg(m(n.loyers), max)}"></i></div><b>${eurR(m(n.loyers))}</b></div>
         <div class="rc-hb"><span>Sorties</span><div>${sorties.map(([k, v, cl]) => `<i class="${cl}" style="width:${larg(v, max)}"></i>`).join('')}</div><b>${eurR(sorties.reduce((s, x) => s + x[1], 0))}</b></div>
         <div class="rc-leg">${sorties.map(([k, v, cl]) => `<span><em class="${cl}"></em>${k} <b>${eurR(v)}</b></span>`).join('')}</div></div></div>`;
     // Les périodes, sous la même frise de couleurs : ce qui reste chaque mois
