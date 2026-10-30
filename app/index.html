@@ -2430,7 +2430,8 @@ function renderWorks() {
     if (g) g.onchange = e => { choixTravaux.gamme = e.target.value; save(); updateResult(); };
     if (d) d.onchange = e => { choixTravaux.dpe = e.target.value; save(); renderWorks(); };
     const tt = document.getElementById('w_total');
-    if (tt) tt.onchange = e => { choixTravaux.totalTravaux = +e.target.value || null; save(); renderWorks(); };
+    // Gardé à chaque frappe : un nouveau rendu pendant la saisie (loyer qui arrive) reprend le montant au lieu de l'effacer
+    if (tt) { tt.oninput = e => { choixTravaux.totalTravaux = +e.target.value || null; save(); }; tt.onchange = e => { choixTravaux.totalTravaux = +e.target.value || null; save(); renderWorks(); }; }
   };
   if (niveau === 'diviser' || niveau === 'amenager') return projetSurface(el, niveau, tuilesTravaux(niveau), z, surf);
   if (niveau === 'non') {
@@ -2567,6 +2568,7 @@ function projetSurface(el, niveau, question, z, surf) {
   const maj = () => { save(); state.calcProjet = null; renderWorks(); };
   lierTuiles(el, () => { state.calcProjet = null; });
   // Le montant saisi ne change pas les logements estimés : pas besoin de relancer l'estimation
+  document.getElementById('w_total').oninput = e => { c.totalTravaux = +e.target.value || null; save(); };   // gardé à chaque frappe (voir plus haut)
   document.getElementById('w_total').onchange = e => { c.totalTravaux = +e.target.value || null; save(); renderWorks(); };
   const on = (id, f) => { const x = document.getElementById(id); if (x) x.onchange = e => { f(e.target.value); maj(); }; };
   on('w_nb', v => { c.nbLots = +v; c.surfaces = []; }); on('w_gamme', v => c.gamme = v);
