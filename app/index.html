@@ -4021,7 +4021,7 @@ function rendre() {
       cls: 'croisiere', titre: 'Rythme de croisière', sous: `dès le mois ${ph.fin + 1}${p.differe ? ' · mensualité pleine' : ''}`}, p.avecImpots));
     $('simple').innerHTML = `<div class="card"><h2 class="phases-t">Mois par mois, en ${cartes.length} périodes</h2><div class="phases">${cartes.join('')}</div></div>`;
   } else $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
-    {titre: 'Chaque mois, un mois type', libLoyer: p.deuxBiens || p.loyer2 > 0 ? 'Loyers encaissés' : 'Loyer encaissé', detailLoyer: p.saison ? '' : detailVacance(p.loyerTotal || p.loyer, p.vacance), note: `Moyenne par mois de l'année ${ac.y}${ac.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}.`});
+    {titre: 'Chaque mois, un mois type', libLoyer: p.deuxBiens || p.loyer2 > 0 ? 'Loyers encaissés' : 'Loyer encaissé', detailLoyer: p.saison ? '' : detailVacance(p.loyerTotal || p.loyer, p.vacance), note: `Moyenne par mois de l'année ${ac.y}${ac.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}${ac.y > 1 && (p.gLoyer || p.gCharges) ? `, avec la hausse des ${p.gLoyer && p.gCharges ? 'loyers et des charges' : p.gLoyer ? 'loyers' : 'charges'} depuis l'achat (section Évolutions)` : ''}.`});
   $('apercu').innerHTML = `<span>Résultat : <b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}</b> par mois${ph.fin ? ` dès le mois ${ph.fin + 1}` : ''}</span>${td != null ? `<span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}</b> en tout pendant le différé</span>` : ''}<button data-voir>Voir le résultat</button>`;
   // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
@@ -4474,7 +4474,7 @@ $('form').addEventListener('input', e => {
   const carte = e.target.closest('#cf_biensPlus [data-i], #cf_loyersPlus [data-i]');
   if (carte) {   // un autre bien du même crédit
     const k = e.target.dataset.k;
-    biensPlus[+carte.dataset.i][k] = k === 'nom' ? e.target.value : +e.target.value || 0;
+    biensPlus[+carte.dataset.i][k] = k === 'nom' ? e.target.value : Math.max(0, +e.target.value || 0);   // un montant n'est jamais négatif
     sauver(); rendre(); return;
   }
   const id = e.target.id.replace(/^cf_/, '');
