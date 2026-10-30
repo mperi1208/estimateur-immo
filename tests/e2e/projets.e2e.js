@@ -1,7 +1,7 @@
 // Enregistrer une estimation dans Mes projets : doublon d'adresse signalé, surface qui diffère du financement signalée
 const test = require('node:test');
 const assert = require('node:assert');
-const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, cliquer} = require('./banc');
+const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, cliquer, travaux} = require('./banc');
 
 let nav, page, journal;
 test.before(async () => { nav = await lancerNavigateur(); ({page, journal} = await appareil(nav, nouvelleBase())); await ouvrir(page); await seConnecter(page); });
@@ -51,4 +51,25 @@ test('nouvelle option depuis Financer : l\'option de départ garde son nom, ses 
   assert.equal(await photo(), avant, 'option de départ inchangée');
   await saisir(page, '#cf_duree', 25);   // l'option ouverte change encore, sans enregistrer
   assert.equal(await photo(), avant, 'option de départ toujours inchangée');
+});
+
+test('« J\'ai acheté » une division : la fiche a les deux logements, chacun loué à partir de la fin du chantier', async () => {
+  await page.evaluate(() => { window.prompt = (m, d) => d; window.confirm = () => true; quitterProjet(); });   // nouveau projet
+  await estimer(page, {surf: 60});
+  await travaux(page, 'diviser');
+  await page.click('#w_calc'); await page.waitForFunction(() => state.projet && state.projet.loyers, null, {timeout: 20000});
+  const [l1, l2] = await page.evaluate(() => state.projet.loyers);
+  await page.click('#est_loc'); await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  await page.fill('#cf_nomProjet', 'Division'); await cliquer(page, '#cf_enreg');
+  await page.waitForFunction(() => PROJETS.liste.some(x => x.nom === 'Division'));
+  await page.click('.tabs [data-tab="projets"]');
+  const carte = page.locator('#pj article.pj', {hasText: 'Division'});
+  await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="achete"]').click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && document.getElementById('inv_titre'));
+  const v = c => page.locator(`#inv [data-p="${c}"]`).inputValue();
+  assert.equal(await v('location.statut'), 'lots', 'plusieurs loyers, pas « loué vide » au loyer d\'avant travaux');
+  assert.equal(+await v('lots.0.loyer'), l1); assert.equal(+await v('lots.1.loyer'), l2);
+  const d = new Date(), fin = new Date(d.getFullYear(), d.getMonth() + 1 + 6, 1), mois = fin.getFullYear() + '-' + String(fin.getMonth() + 1).padStart(2, '0');
+  assert.equal(await v('lots.0.debut'), mois, 'loyer à partir du mois 7 (chantier de 6 mois)');
+  assert.doesNotMatch(await page.locator('#inv').innerText(), /jusqu'au début des travaux/, 'chantier dès l\'achat : pas de loyer d\'avant travaux');
 });

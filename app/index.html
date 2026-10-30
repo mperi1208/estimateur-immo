@@ -4316,11 +4316,18 @@ function avecReglages(v, f) {
 // « J'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (prix, frais, travaux, crédit, loyer, charges),
 // avec le lien vers le projet. Le crédit commence le mois prochain ; la valeur est le prix payé.
 function versBien(pr) {
-  const rc = pr.recherche, r = pr.resume || {}, mois = new Date(); mois.setMonth(mois.getMonth() + 1);
+  const rc = pr.recherche, r = pr.resume || {}, auj0 = new Date(), mois = new Date(auj0.getFullYear(), auj0.getMonth() + 1, 1);   // le 1er : un 31 ne saute pas de mois
   const ym = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), auj = ym(new Date());
   return avecReglages(pr.finance, () => {
     const s = simuler(), p = s.p, sci = (p.struct === 'ir' || p.struct === 'is') && p.sciExist;
-    const notes = [p.loyer2 > 0 ? `Un 2e loyer de ${eur(p.loyer2)} par mois est prévu dans le projet${p.debutLoyer2 > 1 ? ` à partir du mois ${p.debutLoyer2}` : ''} : passe la location en « Plusieurs loyers » pour le compter.` : '',
+    // Mois m du projet (0 = 1re échéance, le mois prochain) en « AAAA-MM »
+    const auMois = m => ym(new Date(mois.getFullYear(), mois.getMonth() + m, 1));
+    const travaux = p.projet !== 'simple' && p.travaux > 0, loueAvant = travaux && p.loyerAvant > 0 && p.finAvant > 0, apresTravaux = travaux && !loueAvant;   // loué en attendant le chantier, ou rien avant sa fin
+    // Plusieurs logements (division, logement à part au mois) : un loyer chacun, avec le mois où il commence
+    const lots = p.loyer2 > 0 && !p.nuitL2 ? [{loyer: p.loyer, debut: p.debutLoc}, {loyer: p.loyer2, debut: p.debutLoc2}]
+      .map((x, i) => ({id: 'l' + Date.now().toString(36) + i, libelle: `Logement ${i + 1}`, loyer: Math.round(x.loyer), locataire: '', debut: x.debut > 0 ? auMois(x.debut) : ''})) : null;
+    const notes = [p.loyer2 > 0 && p.nuitL2 ? `Le logement à part est prévu à la nuitée (${eur(p.loyer2)} par mois en moyenne${p.debutLoyer2 > 1 ? ` à partir du mois ${p.debutLoyer2}` : ''}) : ajoute-le en fiche à part pour le compter.` : '',
+      loueAvant ? `Loué ${eur(p.loyerAvant)} par mois jusqu'au début des travaux (mois ${p.finAvant})${lots ? '' : `, puis ${eur(p.loyer)} après`}.` : '',
       p.travaux > 0 ? `Travaux prévus : ${eur(p.travaux)} sur ${p.dureeTravaux} mois, valeur après travaux ${eur(p.valeurApres)}.` : ''].filter(Boolean);
     return {nom: estOption(pr) ? `${pr.nom} · ${nomBranche(pr)}` : pr.nom, adresse: rc ? rc.label : r.label || '', type: p.type === 'maison' ? 'maison' : 'appart', surface: p.surf || null,
       criteres: rc ? Object.fromEntries(Object.entries(rc.criteres || {}).filter(([k]) => k !== 'location')) : {}, geo: rc && rc.lat != null ? {lat: rc.lat, lon: rc.lon, label: rc.label, pour: rc.label} : null,
@@ -4329,7 +4336,11 @@ function versBien(pr) {
       achat: {date: auj, prix: Math.round(p.prix), notaire: Math.round(s.fraisNotaire) || null, travaux: p.travaux > 0 ? Math.round(p.travaux) : null, mobilier: p.mobilier > 0 ? Math.round(p.mobilier) : null,
         frais: Math.round((p.dossier || 0) + (s.fraisGarantie || 0)) || null},
       location: p.saison && !p.nuitL2 ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(365 * p.occupation / 100), fraisSaison: null}
-        : {statut: p.travaux > 0 && !p.loyerAvant ? 'travaux' : p.meuble === '1' ? 'meuble' : 'vide', loyer: Math.round(p.loyerAvant > 0 ? p.loyerAvant : p.loyer), charges: null, locataire: '', debutBail: '', vacance: 0},
+        : lots ? {statut: 'lots', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0}
+        // Un seul loyer : celui d'avant travaux s'il est loué en attendant, sinon celui d'après, qui commence à la fin du chantier
+        : {statut: p.meuble === '1' ? 'meuble' : 'vide', loyer: Math.round(loueAvant ? p.loyerAvant : p.loyer), charges: null, locataire: '',
+          debutBail: apresTravaux && p.debutLoc > 0 ? auMois(p.debutLoc) : '', vacance: 0},
+      ...(lots ? {lots} : {}),
       chargesAn: {tf: p.tf, copro: p.copro, pno: p.pno, gestion: p.gestion || null, entretien: p.entretien || null, compta: null, cfe: null, autres: null},
       prets: s.pret > 0 ? [{id: 'pr' + Date.now().toString(36), banque: '', montant: Math.round(s.pret), taux: p.taux, duree: Math.round(p.duree * 12), debut: ym(mois), offre: auj,
         assurance: Math.round(s.ech.assM * 100) / 100 || null, mensualite: null, progressif: '', hausse: null, mensuLe: '',
