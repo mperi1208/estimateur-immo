@@ -383,11 +383,13 @@ test('espace à aménager à la nuitée, loué seulement l\'été : moins de nui
   assert.equal(an.occupation, 60);
   e.amenag.periode = 'ete';
   const ete = planAmenag(e);
-  assert.equal(ete.occupation, 27); proche(ete.sz.nuits, 365 * 0.27, 1e-9);
+  assert.equal(ete.occupation, 80); proche(ete.sz.nuits, 122 * 0.8, 1e-9);   // taux sur les 122 jours de juin à septembre
   assert.ok(ete.nuit > an.nuit);                       // haute saison : nuit plus chère
   assert.ok(ete.loyer < an.loyer);                     // mais moins de recettes sur l'année
-  e.amenag.occupation = 30;                            // taux saisi : il prime sur la période
-  assert.equal(planAmenag(e).occupation, 30);
+  e.amenag.remplissage = 90;                           // taux saisi : il prime sur celui proposé pour la période
+  assert.equal(planAmenag(e).occupation, 90); proche(planAmenag(e).sz.nuits, 122 * 0.9, 1e-9);
+  delete e.amenag.remplissage; e.amenag.occupation = 27;   // ancien taux saisi sur l'année : mêmes nuits qu'avant
+  proche(planAmenag(e).sz.nuits, 365 * 0.27, 1e-9);
 });
 
 // ---------- Comptable de la SCI ----------

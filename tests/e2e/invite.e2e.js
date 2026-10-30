@@ -206,12 +206,13 @@ test('location saisonnière dans Estimer : recettes à la nuitée, frais, compar
   assert.equal(await page.locator('#s_periode').inputValue(), 'annee');
   await page.selectOption('#s_periode', 'ete');                                     // loué seulement l'été
   const ete = await page.evaluate(() => paramsSaison());
-  assert.equal(ete.occupation, 27); assert.ok(ete.nuit > d.nuit);                   // moins de nuits, plus chères
-  assert.match(await page.locator('#saisonRes').innerText(), /99 nuits/);
+  assert.equal(ete.occupation, 80); assert.ok(ete.nuit > d.nuit);                   // taux proposé sur la période ; nuits plus chères
+  assert.match(await page.locator('#saisonRes').innerText(), /98 nuits \(80 % d'occupation l'été\)/);   // 122 jours × 80 %
   await page.fill('#s_nuit', '90'); await page.dispatchEvent('#s_nuit', 'change');
   await page.fill('#s_occupation', '50'); await page.dispatchEvent('#s_occupation', 'change');
+  assert.equal(await page.locator('#s_periode').inputValue(), 'ete');              // le taux saisi porte sur la période choisie
   const txt = await page.locator('#saisonRes').innerText();
-  assert.match(txt, /90 € × 183 nuits/); assert.match(txt, /16\s425 €\/an/);
+  assert.match(txt, /90 € × 61 nuits/); assert.match(txt, /5\s490 €\/an/);
   assert.match(await page.locator('#synth').innerText(), /Location saisonnière/i);
 });
 
@@ -219,11 +220,13 @@ test('saisonnier → Financer : à la nuitée, meublé forcé, recettes et fisca
   await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(await valeur('locMode'), 'nuit'); assert.equal(+await valeur('nuit'), 90); assert.equal(+await valeur('occupation'), 50);
-  assert.equal(await page.locator('#cf_periode').inputValue(), '');                // 50 % : taux saisi, pas une période
+  assert.equal(await page.locator('#cf_periode').inputValue(), 'ete');             // 50 % de l'été, comme dans Estimer
+  assert.match(await page.locator('#cf_saisonHint').innerText(), /61 nuits par an : 50 % d'occupation l'été/);
   await saisir(page, '#cf_periode', 'juilaout');
-  await page.waitForFunction(() => +document.getElementById('cf_occupation').value === 15);
-  assert.match(await page.locator('#cf_alerts').innerText(), /15 % d'occupation/);
+  await page.waitForFunction(() => +document.getElementById('cf_occupation').value === 90);   // taux proposé pour la période
+  assert.match(await page.locator('#cf_alerts').innerText(), /90 % d'occupation en juillet et août \(56 nuits/);
   await saisir(page, '#cf_occupation', 50);
+  assert.match(await page.locator('#cf_saisonHint').innerText(), /31 nuits par an/);   // 62 jours × 50 %
   assert.equal(await valeur('meuble'), '1'); assert.equal(await page.locator('#cf_meuble').isDisabled(), true);
   assert.match(await page.locator('#cf_alerts').innerText(), /Location saisonnière : 90 € la nuit/);
   await cliquer(page, '#cf_boxImpots summary');
