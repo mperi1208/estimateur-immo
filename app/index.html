@@ -2446,9 +2446,18 @@ function renderWorks() {
   const suggere = Math.round((tM2 + eM2) * surf / 500) * 500, mobSuggere = meubleApres ? budgetMobilier(surf, gamme) : 0;
   // Coût total saisi à la main (devis, budget, tout compris) : il remplace l'estimation au m², qui reste en suggestion
   const saisi = +choixTravaux.totalTravaux > 0, budget = saisi ? +choixTravaux.totalTravaux : suggere, mobilier = saisi ? 0 : mobSuggere;
-  const duree = NIVEAUX[niveau].mois + (eM2 ? 1 : 0);
-  // Valeur et loyer « comme si » les travaux étaient faits : état selon la gamme, DPE visé
-  const etatApres = niveau === 'aucun' ? etat : GAMMES[gamme].etat;
+  const rien = niveau === 'aucun' && !budget;   // énergie seule, mais rien à améliorer avec ce DPE : pas de chantier
+  const duree = rien ? 0 : NIVEAUX[niveau].mois + (eM2 ? 1 : 0);
+  // Valeur et loyer « comme si » les travaux étaient faits, DPE visé. Les travaux ne réparent que ce qu'ils couvrent : ce qui
+  // reste à faire (coût de l'état d'aujourd'hui moins celui des travaux choisis) garde la décote de l'état le plus proche
+  // (un bien à rénover entièrement qu'on rafraîchit reste un bien à gros travaux). Tout réparé : l'état de la gamme, sauf
+  // un rafraîchissement (peinture, sols : cuisine et bains restent) qui laisse au mieux un bon état. Jamais pire qu'avant.
+  const RANG_ETAT = ['renover', 'travaux', 'rafraichir', 'bon', 'neuf', 'luxe'];
+  const coutEtat = k => { const o = crit('etat').options.find(x => x.k === k); return o && o.cout ? o.cout[z] : 0; };
+  const reste = coutEtat(etat) - NIVEAUX[niveau][z];
+  const vise = reste > 0 ? ['renover', 'travaux', 'rafraichir', 'bon'].reduce((a, k) => Math.abs(coutEtat(k) - reste) < Math.abs(coutEtat(a) - reste) ? k : a)
+    : niveau === 'rafraichir' ? 'bon' : GAMMES[gamme].etat;
+  const etatApres = niveau === 'aucun' ? etat : RANG_ETAT[Math.max(RANG_ETAT.indexOf(etat), RANG_ETAT.indexOf(vise))];
   const apres = facteurPour({etat: etatApres, dpe: cible});
   const valeurApres = r.med * apres.factor * surf + apres.abs;
   OVERRIDE = {etat: etatApres, dpe: cible};
@@ -2457,7 +2466,7 @@ function renderWorks() {
   const notaire = state.prix * 0.08;
   const coutBien = state.prix + notaire + budget;   // hors mobilier : il n'ajoute pas de valeur au bien
   const marge = valeurApres - coutBien;
-  state.projet = {travaux: budget, valeurApres: Math.round(valeurApres), loyerApres: Math.round(loyerApres), duree, niveau, dpe: cible, gamme, meuble: meubleApres, mobilier};
+  state.projet = rien ? null : {travaux: budget, valeurApres: Math.round(valeurApres), loyerApres: Math.round(loyerApres), duree, niveau, dpe: cible, gamme, meuble: meubleApres, mobilier};
   const dpeOpts = {'=': dpe === '?' ? 'Inchangé (DPE inconnu)' : `Inchangé (${dpe})`, ...Object.fromEntries([...ORDRE_DPE].map(c => [c, c]))};
   const lignesCout = `<div><span>Prix d'achat estimé, en l'état</span><b>${fmtK(state.prix)}</b></div>
       <div><span>Frais de notaire (≈ 8 %)</span><b>${fmtK(notaire)}</b></div>
@@ -2465,14 +2474,15 @@ function renderWorks() {
       ${mobilier ? `<div><span>Mobilier pour louer meublé<sup>${eM2 ? 3 : 2}</sup></span><b>${fmtK(mobilier)}</b></div>` : ''}`;
   const notes = [marge < 0 ? 'Les travaux coûtent plus qu\'ils n\'ajoutent de valeur : plutôt pour louer longtemps que pour revendre.' : '',
     passoire ? 'DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.' : '',
-    cible === 'G' ? 'Toujours classé G après travaux : pas louable.' : ''].filter(Boolean).join(' ');
+    cible === 'G' ? 'Toujours classé G après travaux : pas louable.' : '',
+    rien ? `Rien à chiffrer sur l'énergie ${dpe === '?' ? 'sans le DPE du bien : renseigne-le dans les détails du bien' : 'avec ce DPE'}, ou choisis le DPE visé.` : ''].filter(Boolean).join(' ');
   el.innerHTML = `${tuilesTravaux(niveau)}
     <div class="crit w-reglages">
       <div class="seul-pro"><label for="w_gamme">Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
       <div class="seul-pro"><label for="w_dpe">DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
       <div><label for="w_total">Ton devis (facultatif)</label><input type="number" id="w_total" min="0" step="1000" value="${saisi ? budget : ''}" placeholder="${fmt(suggere + mobSuggere)} € estimé"><div class="hint">Tout compris${meubleApres ? ', mobilier aussi' : ''}. Vide : estimé.</div></div>
     </div>
-    <div class="hint seul-pro">${NIVEAUX[niveau].d}</div>
+    <div class="hint seul-pro">${NIVEAUX[niveau].d}${niveau !== 'aucun' ? ` Après ces travaux : <b>${lower(crit('etat').options.find(o => o.k === etatApres).l)}</b>${RANG_ETAT.indexOf(etatApres) < RANG_ETAT.indexOf('bon') ? ' (il restera des travaux à faire)' : ''}.` : ''}</div>
     <div class="seul-pro">${tableAvantApres([{nom: `Le logement · ${fmt(surf)} m²`, prix: valeurApres, loyer: cible === 'G' ? 0 : loyerApres}], duree)}</div>
     ${blocResultat({lignesCout, total: {travaux: budget + mobilier, bien: coutBien, tout: coutBien + mobilier}, duree, valeur: valeurApres, loyer: Math.round(loyerApres), marge, notes})}
     <ol class="srcs seul-pro"><li><a href="${SOURCES.couts[1]}" target="_blank" rel="noopener">${SOURCES.couts[0]}</a></li>${eM2 ? `<li><a href="${SOURCES.energie[1]}" target="_blank" rel="noopener">${SOURCES.energie[0]}</a></li>` : ''}${mobilier ? `<li><a href="${SOURCES.mobilier[1]}" target="_blank" rel="noopener">${SOURCES.mobilier[0]}</a></li>` : ''}</ol>`;
@@ -3300,10 +3310,11 @@ const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, 
 const finChantier = () => Math.max(1, Math.round(get('debutTravaux') || 1)) - 1 + get('dureeTravaux');
 // Différé mis tout seul : jusqu'à la fin du chantier, 36 mois au plus (et un an de remboursement au moins). Chantier lancé
 // après 3 ans : un différé ne le couvrirait pas, on n'en met pas
+// Différé mis tout seul (flags.differeAuto) : il suit le chantier dans les deux sens ; réglé à la main, il n'est jamais baissé
 function differeTravaux() {
-  if (Math.round(get('debutTravaux') || 1) > 36) return;
+  if (Math.round(get('debutTravaux') || 1) > 36) { if (flags.differeAuto) { set('differe', 0); flags.differeAuto = false; } return; }
   const fin = Math.min(36, Math.max(0, Math.round(get('duree') * 12) - 12), finChantier());
-  if (get('differe') < fin) { set('differe', fin); set('typeDiff', 'partiel'); flags.differeAuto = true; }
+  if (get('differe') < fin || (flags.differeAuto && get('differe') !== fin)) { set('differe', fin); set('typeDiff', 'partiel'); flags.differeAuto = true; }
 }
 const get = id => $(id).type === 'checkbox' ? $(id).checked : $(id).type === 'number' ? +$(id).value || 0 : $(id).value;
 const set = (id, v) => { if ($(id).type === 'checkbox') $(id).checked = !!v; else $(id).value = v; };
