@@ -60,3 +60,22 @@ test('SCI à l\'IR qui loue en meublé : la fiche prévient qu\'elle passe à l\
   await taper('location.statut', 'meuble');
   await page.waitForFunction(() => /passer d'office à l'IS/.test(document.getElementById('inv').innerText));
 });
+
+test('location saisonnière : 365 nuits par an au plus, frais à 100 % au plus', async () => {
+  await taper('location.statut', 'saisonnier');
+  await page.waitForSelector('#inv [data-p="location.nuitsAn"]');
+  await taper('location.nuitsAn', 400); assert.equal(await valeur('location.nuitsAn'), '365');
+  await taper('location.fraisSaison', 150); assert.equal(await valeur('location.fraisSaison'), '100');
+  assert.match(await message(), /Ramené à 100/);
+});
+
+test('vente datée dans le futur : simulée, mais pas enregistrée (le bien reste dans les totaux)', async () => {
+  await taper('location.statut', 'vide');
+  if (!(await page.locator('#inv [data-p="vente.mois"]').count())) await page.click('#inv [data-a="vente"]');
+  const d = new Date(), f = new Date(d.getFullYear() + 2, d.getMonth(), 1), futur = f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0');
+  await taper('vente.mois', futur);
+  await page.evaluate(() => { window.__alerte = ''; window.alert = m => { window.__alerte = m; }; });
+  await page.click('#inv [data-a="venteEnregistrer"]');
+  assert.match(await page.evaluate(() => window.__alerte), /dans le futur/);
+  assert.equal(await page.locator('#inv [data-a="venteAnnuler"]').count(), 0, 'pas enregistrée');
+});

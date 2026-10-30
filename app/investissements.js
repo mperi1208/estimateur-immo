@@ -2030,6 +2030,8 @@ racine.addEventListener('click', async e => {
   }
   if (a === 'venteEnregistrer') {
     const r = simulerVente(b), dansSci = r.regime === 'is' && !r.sortir;
+    // Vente datée dans le futur : c'est une simulation, le bien est encore à toi (il resterait sinon hors des totaux d'ici là)
+    if (ecartMois(moisCourant(), r.mois) > 0) { alert(`La vente est datée de ${libMois(r.mois)}, dans le futur : la simulation reste affichée, enregistre-la une fois la vente faite.`); return; }
     if (!confirm(`Enregistrer la vente de « ${b.nom} » en ${libMois(r.mois)} pour ${eur(r.prix)} ? Il ne comptera plus dans tes totaux.`)) return;
     b.vendu = {mois: r.mois, prix: r.prix, pv: Math.round(r.pv), impots: Math.round(r.impots), net: Math.round(dansSci ? r.dansSci * r.partSci : r.pourToi), dansSci};
     venteOuverte.delete(b.id); sauver(b); vueDetail(b); window.scrollTo(0, 0); return;
@@ -2197,7 +2199,8 @@ racine.addEventListener('change', async e => {
   racine.querySelectorAll('.aide.corr').forEach(x => x.remove());
   const dire = msg => { const h = document.createElement('div'); h.className = 'aide corr'; h.setAttribute('role', 'status'); h.textContent = msg; t.parentElement.append(h); };
   if (t.type === 'number' && v != null) {
-    const max = /(^|\.)vacance$/.test(chemin) ? 12 : /\.taux$/.test(chemin) ? 15 : null;
+    const max = /(^|\.)vacance$/.test(chemin) ? 12 : /\.taux$/.test(chemin) ? 15 : /nuitsAn$/.test(chemin) ? 365
+      : /(fraisSaison|gestion|entretien)$/.test(chemin) || chemin === 'vente.frais' ? 100 : null;   // nuits par an, et pourcentages
     if (v < 0) { v = 0; t.value = 0; dire('Ramené à 0 : ce nombre ne peut pas être négatif.'); }
     else if (max != null && v > max) { v = max; t.value = max; dire(`Ramené à ${max} : c'est le maximum.`); }
   }
