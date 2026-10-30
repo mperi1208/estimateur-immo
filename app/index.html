@@ -765,7 +765,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf details.carte[open]{padding-bottom:18px}
 #cf .charges-detail{display:flex;flex-wrap:wrap;gap:6px 18px;margin:4px 0 14px;font-size:14px;color:var(--muted)}
 #cf .charges-detail b{color:var(--ink);font-variant-numeric:tabular-nums}
-#cf .chip{font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--bg);color:var(--muted)}
+#cf .chip{font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--bg);color:var(--muted);white-space:nowrap;flex-shrink:0}
 #cf .chip.on{background:var(--accent-soft);color:var(--accent)}
 #cf .hint{font-size:13px;color:var(--muted);margin-top:6px}
 /* Étape 1 : une carte par bien */
@@ -2923,14 +2923,20 @@ function majEstimationProjet() {
     x.maj = Date.now(); n++;
   }
   PROJETS.enregistrer();
-  majSauveEst(`Estimation mise à jour dans <a href="#projets">« ${esc(rv.pr.nom)} »</a>${n > 1 ? `, dans ses ${n} options` : ''}.`);
+  // Le financement garde sa surface : si l'estimation en a une autre, la carte du projet afficherait deux surfaces sans le dire
+  const rs = rv.pr.resume, ecart = est && rv.n == null && rs && rs.nbBiens === 1 && rs.surf > 0 && !rs.amenag && Math.abs(est.surf - rs.surf) >= 1;
+  majSauveEst(`Estimation mise à jour dans <a href="#projets">« ${esc(rv.pr.nom)} »</a>${n > 1 ? `, dans ses ${n} options` : ''}.`
+    + (ecart ? ` Sa surface (${fmt(est.surf)} m²) n'est pas celle du financement (${fmt(rs.surf)} m²) : change-la dans Financer si le bien a vraiment changé.` : ''));
 }
 function enregistrerEstimation() {
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   if (!est) { majSauveEst('Le loyer est encore en calcul : réessaie dans un instant.'); return; }
   const nom = document.getElementById('est_nom').value.trim();
+  // Un projet à cette adresse existe déjà : on le dit, sans l'empêcher (c'est parfois voulu : autre façon de faire)
+  const rc = rechercheCourante(), memes = rc ? PROJETS.liste.filter(x => !x.amenag && x.recherche && memeLieu(x.recherche, rc)) : [];
   CF_APP.enregistrerEstimation(est, est.projet ? 'location' : null, nom);
-  majSauveEst('Enregistré dans <a href="#projets">Mes projets</a>. Tu peux en régler le financement dans l\'onglet Financer.');
+  majSauveEst('Enregistré dans <a href="#projets">Mes projets</a>. Tu peux en régler le financement dans l\'onglet Financer.'
+    + (memes.length ? ` Tu as déjà ${memes.length > 1 ? `${memes.length} projets` : 'un projet'} à cette adresse (« ${esc(memes[0].nom)} ») : pour comparer les deux façons de faire, regroupe-les dans <a href="#projets">Mes projets</a> (⋯ puis « Déplacer dans un projet »).` : ''));
 }
 function majRecentes() {
   const btn = document.getElementById('recentesBtn'), pan = document.getElementById('recentes');
