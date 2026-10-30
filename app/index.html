@@ -251,9 +251,6 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-tete{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .invwrap .pj h3{margin:0;font-size:16px}
 .invwrap .pj-sous{font-size:13px;color:var(--muted);margin-top:2px}
-.invwrap button.pj-x{flex:0 0 auto;width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--muted)}
-.invwrap button.pj-x:hover{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent);border-color:transparent}
-.invwrap button.pj-x svg{width:14px;height:14px}
 .invwrap .pj-chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px 14px;margin:12px 0}
 .invwrap .pj-chiffres span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
 .invwrap .pj-chiffres b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
@@ -269,6 +266,9 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-menu-l{position:absolute;right:0;bottom:calc(100% + 6px);z-index:5;display:grid;min-width:220px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
 .invwrap .pj-menu-l button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;font-weight:400}
 .invwrap .pj-menu-l button:hover{background:var(--accent-soft)}
+.invwrap .pj-menu-l button.danger{color:var(--bad)}
+.invwrap details.pj-menu.vers-bas>.pj-menu-l{top:calc(100% + 6px);bottom:auto}
+.invwrap .pj-menu-l button.danger:hover{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 @media (max-width:600px){.invwrap .pj-chiffres{gap:8px}.invwrap .pj-chiffres b{font-size:15px}.invwrap .pj-chiffres span{font-size:10px}.invwrap .pj-menu-l{left:0;right:auto}}
 .invwrap .pj-date{font-size:12px;color:var(--muted)}
 .pj-trouve{display:contents}
@@ -3252,14 +3252,14 @@ document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter'
 <script>
 // (hors du module Financer : Mes projets s'en sert aussi)
 // Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
-function margeNego(prix, max, quoi, f) {
+function margeNego(prix, max, quoi, f, sansPrix) {   // sansPrix : le prix est déjà affiché juste au-dessus
   const d = max - prix, pct = prix > 0 ? Math.round(Math.abs(d) / prix * 100) : 0;
   const marge = Math.abs(d) < 100 ? 'pile au prix actuel'
     : d > 0 ? `<b class="up">${f(d)} de marge</b> (tu peux monter jusqu'à +${pct} %)`
     : `<b class="down">il faut négocier ${f(-d)}</b> (−${pct} %)`;
   // Mode simple : une phrase, sans « cash-flow »
   if (modeSimple()) return `<span>${quoi === 'bénéfice' ? 'Pour ne rien perdre à la revente' : 'Pour que le loyer paie tout'}, prix maximum <b>${f(max)}</b>${Math.abs(d) < 100 ? ' : c\'est le prix actuel' : d > 0 ? ` : <b class="up">${f(d)} de marge</b>` : ` : <b class="down">${f(-d)} à négocier</b>`}.</span>`;
-  return `<span>Prix actuel : <b>${f(prix)}</b></span><span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
+  return `${sansPrix ? '' : `<span>Prix actuel : <b>${f(prix)}</b></span>`}<span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
 }
 (() => {
 // ---------- Taux de marché (série Observatoire Crédit Logement / CSA : taux moyens accordés) ----------
@@ -4909,6 +4909,13 @@ const caseReste = r => [(r.cfMois || 0) < 0 ? 'Il te manque par mois' : 'Il te r
 const quiP = r => r.struct === 'np' || !r.struct ? '' : `SCI à l'${r.struct === 'is' ? 'IS' : 'IR'}${r.sciNom ? ' « ' + esc(r.sciNom) + ' »' : ''}`;
 const usageP = (r, revente) => revente ? 'achat-revente' : r.saison ? 'saisonnier' : r.meuble ? 'meublé' : 'location vide';
 // Actions rares rangées derrière « ⋯ » : un seul bouton visible à côté de « Modifier le financement »
+// Menu ouvert vers le haut (il reste dans l'écran en bas de page) : vers le bas s'il passerait sous la barre des onglets
+document.addEventListener('toggle', e => {
+  const d = e.target; if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('pj-menu') || !d.open) return;
+  d.classList.remove('vers-bas');
+  const l = d.querySelector('.pj-menu-l'), haut = (document.querySelector('.tabs') || {getBoundingClientRect: () => ({bottom: 0})}).getBoundingClientRect().bottom;
+  if (l && l.getBoundingClientRect().top < haut + 8) d.classList.add('vers-bas');
+}, true);
 const menuP = boutons => boutons.length ? `<details class="pj-menu"><summary aria-label="Autres actions" title="Autres actions">⋯</summary><div class="pj-menu-l">${boutons.join('')}</div></details>` : '';
 // Projet acheté : sa fiche dans Mon patrimoine (tant qu'elle existe)
 const ficheAchat = pr => pr.achete && window.INV && INV.bien && INV.bien(pr.achete.bien) ? pr.achete : null;
@@ -4917,8 +4924,9 @@ function cartePj(pr, sous, corps, boutons, br) {
   boutons = [...boutons, ...boutonsBranche(pr, br)];
   if (br) boutons.unshift('<button data-a="recap">Dossier de financement de cette option</button>');
   if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
-  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>
-    <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
+  // Supprimer : rangé en dernier dans « ⋯ » (comme pour une option), pas une croix à côté du nom qu'on toucherait par erreur
+  boutons.push('<button class="danger" data-a="suppr">Supprimer le projet</button>');
+  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div></div>
     ${corps}
     <div class="pj-bas"><span></span>
       <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
@@ -4931,9 +4939,13 @@ function carteProjet(pr, br) {
   const prix = ['Prix du projet', `<b>${eurP(r.prix)}</b>`];
   const cases = revente ? [prix, ['Valeur après travaux', eurP(r.valeurApres)], [(r.benefice || 0) < 0 ? 'Perte à la revente' : 'Bénéfice à la revente', `<b class="${signeP(r.benefice)}">${eurP(Math.abs(r.benefice || 0))}</b>`]]
     : [prix, ['Mensualité', `<b>${eurP(r.mensualite)}</b>`], caseReste(r)];
-  const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux` : r.prixEstime != null ? `estimé ${eurP(r.prixEstime)}` : '';
+  // Estimation : dite seulement si elle s'écarte du prix du projet (sinon c'est trois fois le même chiffre), avec l'écart
+  const ecartEst = r.prixEstime != null && r.prix > 0 && !deux ? (r.prixEstime - r.prix) / r.prix : null;
+  const estime = !revente && r.travaux > 0 && r.valeurApres > 0 ? `vaut ${eurP(r.valeurApres)} après travaux`
+    : r.prixEstime == null || (ecartEst != null && Math.abs(r.prixEstime - r.prix) < 100) ? ''
+    : `estimé ${eurP(r.prixEstime)}${ecartEst != null ? `, ${Math.abs(Math.round(ecartEst * 100)) || '< 1'} % ${ecartEst > 0 ? 'au-dessus' : 'au-dessous'} du prix du projet` : ''}`;
   // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
-  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP) : `Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
+  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP, !modeSimple()) : `Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
   const corps = (modeSimple() ? chiffresSimples(r, revente, br ? '' : `Prix du projet : <b>${eurP(r.prix)}</b>${r.travaux > 0 ? ` + ${eurP(r.travaux)} de travaux` : ''}${r.apport ? ` · apport ${eurP(r.apport)}` : ''}`, !!br)
     : chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '')) + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
@@ -5028,7 +5040,7 @@ const nomComplet = pr => pr.groupe && branchesDe(pr).length > 1 ? `${pr.nom} · 
 const comparees = new Set();   // projets dont la comparaison des branches est ouverte
 function boutonsBranche(pr, br) {
   const nouvelle = pr.amenag ? '' : `<button data-a="brNouvelle">${br ? 'Nouvelle option à partir de celle-ci' : 'Ajouter une option (autre façon de faire)'}</button>`;
-  return br ? [nouvelle, '<button data-a="brRenommer">Renommer l\'option</button>', '<button data-a="brSortir">Sortir de ce projet</button>', '<button data-a="suppr">Supprimer cette option</button>'].filter(Boolean) : [nouvelle].filter(Boolean);
+  return br ? [nouvelle, '<button data-a="brRenommer">Renommer l\'option</button>', '<button data-a="brSortir">Sortir de ce projet</button>', '<button class="danger" data-a="suppr">Supprimer cette option</button>'].filter(Boolean) : [nouvelle].filter(Boolean);
 }
 // Projets à options repliés par défaut (une ligne : nom, options, meilleure) ; ceux qu'on déplie sont gardés sur l'appareil
 const DEPLIES = (() => { try { return new Set(JSON.parse(localStorage.getItem('projets-deplies') || '[]')); } catch (e) { return new Set(); } })();
@@ -5146,7 +5158,7 @@ function carteGroupe(bs) {
   const depart = bs.find(x => !x.amenag);
   return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
-    <div class="pj-gr-actions">${menuDossier(bs, m)}${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
+    <div class="pj-gr-actions">${menuDossier(bs, m)}${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button class="danger" data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${tuilesProjet(bs, a)}
     <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><span><i class="f-avant"></i>Avant travaux</span> <span><i class="f-travaux"></i>Travaux</span> <span><i class="f-apres"></i>Après</span> <span><i class="f-diff"></i>Différé</span></span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
     ${cartesOptions(bs, a, m)}

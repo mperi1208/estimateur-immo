@@ -509,7 +509,7 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   // mode pro : les trois chiffres des tuiles de Financer
   assert.deepEqual((await carte.locator('.pj-chiffres span').allInnerTexts()).map(x => x.toLowerCase()).slice(0, 2), ['prix du projet', 'mensualité']);
   assert.match(await carte.locator('.pj-chiffres').innerText(), /Il te (reste|manque) par mois/i);
-  await carte.locator('[data-a="suppr"]').click();
+  await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="suppr"]').click();
   await page.waitForFunction(() => !/Projet Lyon 45/.test(document.getElementById('pj').innerText));
   c = await attendreCompte(c => !c.projets.some(x => x.id === pr.id), 'projet supprimé');
   assert.ok(c.supprimes[pr.id]);
@@ -742,7 +742,7 @@ test('ancien projet à deux biens (format d\'avant la liste de biens) : repris a
   assert.equal(+await page.inputValue('#cf_tf'), 900);
   assert.equal(+await page.locator('#cf_biensPlus [data-i="0"] [data-k="tf"]').inputValue(), 400);
   await page.click('.tabs [data-tab="projets"]');
-  await carte.locator('[data-a="suppr"]').click();
+  await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="suppr"]').click();
 });
 
 test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {
@@ -944,7 +944,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.waitForFunction(() => !document.querySelector('#pj .pj-groupe'));
   c = await attendreCompte(c => !c.projets.some(x => x.groupe && /Gaetano/.test(x.nom)) && c.projets.some(x => x.nom === 'Gaetano division'), 'regroupement défait');
   // Ménage
-  for (const x of c.projets.filter(x => /Gaetano/.test(x.nom))) await page.locator(`#pj article.pj[data-id="${x.id}"] [data-a="suppr"]`).click();
+  for (const x of c.projets.filter(x => /Gaetano/.test(x.nom))) { const c = page.locator(`#pj article.pj[data-id="${x.id}"]`); await c.locator('.pj-menu summary').click(); await c.locator('[data-a="suppr"]').click(); }
   await attendreCompte(c => !c.projets.some(x => /Gaetano/.test(x.nom)), 'projets du test supprimés');
   await page.evaluate(() => { window.prompt = window.promptAvant; });
 });
