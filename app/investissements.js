@@ -2098,7 +2098,8 @@ racine.addEventListener('click', async e => {
   if (a === 'supprLigne' && LISTES[b.location.statut] && confirm('Retirer cette ligne ?')) { b[LISTES[b.location.statut].cle].splice(+t.dataset.i, 1); sauver(b); return vueDetail(b); }
   if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
   if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
-  if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, progressif: '', hausse: null, mensuLe: '', typeDiff: '', differe: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
+  // Nouveau prêt : 1re échéance le mois qui suit l'achat (le cas courant), offre signée le mois de l'achat ; modifiables
+  if (a === 'ajoutPret') { const da = normMois(b.achat.date); b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: da ? decalerMois(da, 1) : '', offre: da || '', assurance: null, mensualite: null, progressif: '', hausse: null, mensuLe: '', typeDiff: '', differe: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
   if (a === 'partagePret' || a === 'partageProrata') {
     const p = b.prets[+t.dataset.i]; if (!p) return;
     let l = partagesDe(p);
@@ -2181,6 +2182,26 @@ racine.addEventListener('change', async e => {
   const t = e.target;
   let v = t.type === 'checkbox' ? t.checked : t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' || t.type === 'search' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
   if (t.type === 'month' && t.value && !v) { alert('Date au format AAAA-MM, par exemple 2024-03.'); t.value = lire(b, chemin) || ''; return; }
+  // Cohérence : un montant n'est jamais négatif, une vacance ne dépasse pas l'année ; une date qui contredit une autre
+  // (vendu avant d'être acheté, construction finie avant d'avoir commencé…) est refusée. Message sous le champ.
+  racine.querySelectorAll('.aide.corr').forEach(x => x.remove());
+  const dire = msg => { const h = document.createElement('div'); h.className = 'aide corr'; h.setAttribute('role', 'status'); h.textContent = msg; t.parentElement.append(h); };
+  if (t.type === 'number' && v != null) {
+    const max = /(^|\.)vacance$/.test(chemin) ? 12 : /\.taux$/.test(chemin) ? 15 : null;
+    if (v < 0) { v = 0; t.value = 0; dire('Ramené à 0 : ce nombre ne peut pas être négatif.'); }
+    else if (max != null && v > max) { v = max; t.value = max; dire(`Ramené à ${max} : c'est le maximum.`); }
+  }
+  if (t.type === 'month' && v) {
+    const a = b.achat || {}, vente = (b.vente || {}).mois, avant = (x, y) => !!(x && y) && ecartMois(x, y) > 0;   // x avant y
+    const refus = chemin === 'vente.mois' && avant(v, a.date) ? `Vendu avant d'être acheté ? L'achat date de ${libMois(a.date)}.`
+      : chemin === 'achat.date' && avant(vente, v) ? `Acheté après la vente (${libMois(vente)}) ? Corrige d'abord la date de vente.`
+      : chemin === 'achat.date' && a.mode === 'construction' && avant(a.debutTravaux, v) ? `Le terrain doit être acheté avant le début des travaux (${libMois(a.debutTravaux)}).`
+      : chemin === 'achat.debutTravaux' && avant(v, a.date) ? `Les travaux ne peuvent pas commencer avant l'achat du terrain (${libMois(a.date)}).`
+      : chemin === 'achat.debutTravaux' && avant(a.finTravaux, v) ? `Les travaux commencent après leur fin (${libMois(a.finTravaux)}) ? Corrige d'abord la fin.`
+      : chemin === 'achat.finTravaux' && avant(v, a.debutTravaux) ? `La construction ne peut pas finir avant d'avoir commencé (${libMois(a.debutTravaux)}).` : '';
+    if (refus) { t.value = lire(b, chemin) || ''; dire(refus); return; }
+    if (/^prets\.\d+\.debut$/.test(chemin) && a.date && ecartMois(v, a.date) > 2) dire(`1re échéance avant l'achat (${libMois(a.date)}) : normal seulement pour un rachat de crédit.`);
+  }
   // Prix et valeur tapés en milliers (« 819 ») : compris comme 819 000 €
   if (['valeur', 'achat.prix'].includes(chemin) && v > 0 && v < 2000) { v *= 1000; t.value = v; }
   ecrire(b, chemin, v);

@@ -207,6 +207,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap input,.invwrap select,.invwrap textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:14px}
 .invwrap textarea{resize:vertical}
 .invwrap .aide{font-size:12px;color:var(--muted);margin-top:4px}
+.invwrap .aide.corr{color:var(--warn,#b45309);font-weight:600}
 .invwrap .valeur{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .invwrap .boutons{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .invwrap .total{margin-top:10px;font-size:14px}
@@ -4574,7 +4575,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=d9eeaf58"></script>
+<script src="investissements.js?v=78a32b1b"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
