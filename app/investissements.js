@@ -1112,7 +1112,7 @@ function vueDetail(b) {
   const opt = (o) => o;
   let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
-      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions">${b.vendu ? '' : `<button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button>`}</div></div>
+      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions">${b.vendu ? '' : `<button data-a="vente" title="Ce que la vente te laisserait aujourd'hui, après impôts">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button>`}</div></div>
     ${b.vendu ? venduHTML(b) : ''}${lienHTML(b)}
     <div id="inv_kpis"></div>
     ${venteOuverte.has(b.id) && !b.vendu ? venteHTML(b) : ''}
@@ -1874,7 +1874,13 @@ function majCalculs(b) {
   });
 }
 function resumePret(b, p, e, i) {
-  if (!e) return '<div class="aide">Remplis le taux, la mensualité et le restant dû (ou le montant, la durée et la 1re échéance) pour voir où en est ce prêt.</div>';
+  if (!e) {
+    // Commencé par l'offre (montant saisi) : dire exactement ce qui manque, et que le prêt n'est pas compté d'ici là
+    const manque = [!(p.duree > 0) && 'la durée', !p.debut && 'la 1re échéance'].filter(Boolean);
+    return p.montant > 0 && manque.length
+      ? `<div class="aide manque">Il manque ${manque.join(' et ')} : ce prêt n'est pas encore compté (mensualité, restant dû, cash-flow).</div>`
+      : '<div class="aide">Remplis le taux, la mensualité et le restant dû (ou le montant, la durée et la 1re échéance) pour voir où en est ce prêt.</div>';
+  }
   if (e.mois <= 0) return '<div class="pret-etat"><b>Prêt remboursé</b></div>';
   const a = analyseReneg(p, e, b.structure !== 'np'), dejaPaye = p.montant > 0 ? 1 - e.crd / p.montant : null;
   const taux = v => v.toFixed(2).replace('.', ',') + ' %';
