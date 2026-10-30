@@ -107,3 +107,26 @@ test('Mon patrimoine sur téléphone : liste et fiche sans rien qui dépasse', a
   for (const m of ['pro', 'simple']) { await mode(m); assert.deepEqual(await debordements(), [], 'liste ' + m); }
   await mode('pro');
 });
+
+test('Financer, le calendrier : les libellés du différé ne se chevauchent jamais, rien ne dépasse (360, 390 px et ordinateur)', async () => {
+  await onglet('cashflow');
+  await mode('pro');
+  await cliquer(page, '#cf_etapes button[data-etape="2"]');
+  if (!await page.evaluate(() => document.getElementById('cf_boxProjet').open)) await cliquer(page, '#cf_travauxSeg button[data-v="1"]');
+  await saisir(page, '#cf_travaux', 30000); await saisir(page, '#cf_debutTravaux', 1); await saisir(page, '#cf_dureeTravaux', 2);
+  const differe = n => page.evaluate(n => { const d = document.getElementById('cf_differe'); d.value = n; d.dispatchEvent(new Event('input', {bubbles: true})); }, n);
+  const libelles = () => page.locator('#cf_calendrier .cal-diff .txt').evaluateAll(es => es.map(e => { const r = e.getBoundingClientRect(); return {g: r.left, d: r.right, h: r.top, b: r.bottom}; }));
+  for (const largeur of [360, 390, 1280]) {
+    await page.setViewportSize({width: largeur, height: 844});
+    for (const n of [2, 6, 20, 30]) {
+      await differe(n);
+      await page.waitForFunction(n => new RegExp(`dès le mois ${n + 1}`).test(document.getElementById('cf_calendrier').innerText), n);
+      const [a, b] = await libelles();
+      assert.ok(a.d <= b.g + 0.5 || a.b <= b.h + 0.5, `${largeur} px, différé ${n} mois : libellés l'un sur l'autre ${JSON.stringify([a, b])}`);
+      assert.ok(b.d <= largeur, `${largeur} px, différé ${n} mois : « Mensualité pleine » coupé à droite`);
+      assert.deepEqual(await debordements(), [], `${largeur} px, différé ${n} mois`);
+    }
+  }
+  await page.setViewportSize({width: 390, height: 844});
+  await differe(0);
+});

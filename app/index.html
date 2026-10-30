@@ -779,9 +779,11 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .ph-avant{background:#E8ECF2;color:#344054;border-color:#7A8AA3!important}
 #cf .ph-travaux{background:#FBEBD9;color:#7A3E06;border-color:#C2620C!important}
 #cf .ph-apres{background:var(--accent-soft);color:#08513A;border-color:var(--accent)!important}
-#cf .cal-diff{position:relative;height:36px;margin-top:8px;font-size:13px;font-weight:700}
-#cf .cal-diff .acc{position:absolute;left:0;top:4px;height:10px;border:2px solid #3E4C9B;border-top:0;border-radius:0 0 6px 6px}
-#cf .cal-diff .txt{position:absolute;top:18px;color:#3E4C9B;white-space:nowrap}
+/* L'accolade du différé, puis ses deux libellés sur une ligne s'il y a la place, sinon l'un sous l'autre (jamais l'un sur l'autre) */
+#cf .cal-diff{margin-top:8px;font-size:13px;font-weight:700}
+#cf .cal-diff .acc{margin-top:4px;height:10px;border:2px solid #3E4C9B;border-top:0;border-radius:0 0 6px 6px}
+#cf .cal-diff .txts{display:flex;flex-wrap:wrap;gap:2px 16px;margin-top:4px}
+#cf .cal-diff .txt{color:#3E4C9B;white-space:nowrap;max-width:100%}
 #cf .cal-diff .apres{color:#344054}
 #cf table.loyers{width:100%;border-collapse:separate;border-spacing:8px 6px;margin:8px -8px 0;min-width:560px;font-variant-numeric:tabular-nums}
 #cf table.loyers th,#cf table.loyers td{border:0;padding:0;text-align:left;vertical-align:top;white-space:normal;font-size:14px}
@@ -896,7 +898,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .cf-barre .invite{font-size:14px;color:#C9D2DE}
 #cf .cf-barre #cf_suivant{margin-left:auto;background:#fff;color:var(--ink);border-color:#fff}
 @media (max-width:700px){
-  #cf .cal-diff{height:auto}#cf .cal-diff .acc{position:relative;top:0}#cf .cal-diff .txt{position:static;display:block;margin-top:4px;white-space:normal}
+  #cf .cal-diff .txt{white-space:normal}
   #cf .cf-barre .invite{display:none}
   #cf table.loyers{min-width:0;margin:8px 0 0;border-spacing:0}
   #cf table.loyers thead{display:none}
@@ -3711,8 +3713,8 @@ function calendrier(p, travauxOn) {
     ? seg('ph-avant', 0, p.debutT, `Avant travaux · ${plage(0, p.debutT)}`, plage(0, p.debutT).replace('mois ', '')) + seg('ph-travaux', p.debutT, p.finT, `Travaux · ${plage(p.debutT, p.finT)}`, plage(p.debutT, p.finT).replace('mois ', ''))
       + seg('ph-apres', p.finT, H, `Après travaux · dès le mois ${p.finT + 1}`, `dès ${p.finT + 1}`)
     : seg('ph-apres', 0, H, 'Loué dès l\'achat', '');
-  const loin = p.differe / H > 0.6;
-  const diff = p.differe ? `<div class="cal-diff"><div class="acc" style="width:${w(p.differe)}"></div><div class="txt" style="left:0">Différé du crédit : ${plage(0, p.differe)}</div><div class="txt apres" style="${loin ? 'right:0' : `left:calc(${w(p.differe)} + 10px)`}">Mensualité pleine dès le mois ${p.differe + 1}</div></div>` : '';
+  // Le 1er libellé occupe au moins la largeur de l'accolade : le 2e commence là où le différé s'arrête, ou passe à la ligne
+  const diff = p.differe ? `<div class="cal-diff"><div class="acc" style="width:${w(p.differe)}"></div><div class="txts"><div class="txt" style="min-width:min(${w(p.differe)}, 100%)">Différé du crédit : ${plage(0, p.differe)}</div><div class="txt apres">Mensualité pleine dès le mois ${p.differe + 1}</div></div></div>` : '';
   return `<div class="cal-barre">${barre}</div>${diff}`;
 }
 // Les charges d'un mois de l'année ac, une ligne par charge (celles à 0 € en moins)
