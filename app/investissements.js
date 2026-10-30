@@ -1203,10 +1203,14 @@ function statutsDe(b) {
   return o;
 }
 function locationHTML(b) {
+  // SCI à l'IR qui loue en meublé : au-delà de 10 % de recettes meublées, elle passe d'office à l'IS (comme dans Financer)
+  const x = sciDe(b), st = b.location.statut;
+  const alerte = x && x.regime === 'ir' && ['meuble', 'saisonnier', 'colocation'].includes(st)
+    ? `<div class="aide manque">${esc(x.nom)} est à l'IR : ${st === 'colocation' ? 'si la colocation est meublée, ' : ''}une location meublée la fait passer d'office à l'IS dès que les loyers meublés dépassent 10 % de ses recettes. Vérifie avec ton comptable, et passe la SCI à l'IS dans sa fiche si c'est le cas.</div>` : '';
   const Lc = LISTES[b.location.statut];
   if (Lc) {
     const liste = b[Lc.cle] || [];
-    return section('Location', `<div class="grille">${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}</div>
+    return section('Location', `${alerte}<div class="grille">${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}</div>
       <div class="activites">${liste.map((x, i) => `<div class="activite"><div class="grille">
         ${champ(b, `${Lc.cle}.${i}.libelle`, Lc.nom, {type: 'text', ph: Lc.cle === 'lots' ? `Loyer ${i + 1} (ex. appartement, garage aménagé)` : `${Lc.nom} ${i + 1}`})}${champ(b, `${Lc.cle}.${i}.loyer`, 'Loyer hors charges (€/mois)', {step: 10})}
         ${Lc.cle === 'lots' ? champ(b, `lots.${i}.surface`, 'Surface (m²)') : ''}${champ(b, `${Lc.cle}.${i}.locataire`, 'Locataire', {type: 'text'})}
@@ -1218,7 +1222,7 @@ function locationHTML(b) {
   }
   if (b.location.statut === 'saisonnier') {
     const m = loyersMarche(b.estimation).meuble;
-    return section('Location', `<div class="grille">
+    return section('Location', `${alerte}<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
       ${champ(b, 'location.nuit', 'Prix moyen par nuit (€)', {step: 5, aide: m ? `Point de départ : ≈ ${eur(nuitConseillee(m))} (loyer meublé du marché ÷ 9)` : ''})}
       <div><label for="inv_periode">Période louée</label><select id="inv_periode" data-x="periode">${optionsPeriode(Object.keys(PERIODES_SAISON).find(k => Math.round(365 * PERIODES_SAISON[k].occ / 100) === +b.location.nuitsAn) || '')}</select><div class="aide">Remplit les nuits louées par an</div></div>
@@ -1228,7 +1232,7 @@ function locationHTML(b) {
       ${champ(b, 'location.debutBail', 'Loué à partir de', {type: 'month', aide: 'Vide : déjà en location'})}
     </div><div class="total" id="inv_revTotal"></div>`);
   }
-  return section('Location', `<div class="grille">
+  return section('Location', `${alerte}<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
       ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
       ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}

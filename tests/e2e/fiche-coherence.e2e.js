@@ -50,3 +50,13 @@ test('maison construite : travaux pas avant l\'achat du terrain, fin pas avant l
   await taper('achat.finTravaux', '2022-02');
   assert.equal(await valeur('achat.finTravaux'), '2022-02');
 });
+
+test('SCI à l\'IR qui loue en meublé : la fiche prévient qu\'elle passe à l\'IS', async () => {
+  await page.evaluate(() => { window.prompt = () => 'SCI Famille'; });
+  await page.evaluate(() => { const e = document.querySelector('#inv [data-p="detention"]'); e.value = '+'; e.dispatchEvent(new Event('change', {bubbles: true})); });
+  await page.waitForFunction(() => /SCI Famille/.test(document.getElementById('inv_sous').textContent));
+  await taper('location.statut', 'vide');
+  assert.doesNotMatch(await page.locator('#inv').innerText(), /passer d'office à l'IS/);
+  await taper('location.statut', 'meuble');
+  await page.waitForFunction(() => /passer d'office à l'IS/.test(document.getElementById('inv').innerText));
+});
