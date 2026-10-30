@@ -20,9 +20,9 @@ vm.runInContext([
   bloc(idx, '// ---------- Achat + travaux + revente', 'function rendreRevente'),
   bloc(idx, '// ---------- Prix pour être rentable', 'function programmerCible'),
   bloc(idx, '// ---------- Deux projets de « Mes projets »', 'function regrouper('),
-  'this.X = {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS};',
+  'this.X = {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS, poserPer: o => { loyersPer = o || {}; }};',
 ].join('\n'), ctx);
-const {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS} = ctx.X;
+const {FIELDS, DEFAUTS, set, simuler, financeRegroupee, chargesParBien, migrerFinance, fixerBiensPlus, bilanRevente, surtaxe, prixCible, metrique, anneeRef, anneeCroisiere, abatIR, abatPS, poserPer} = ctx.X;
 // Surtaxe de Mon patrimoine, pour vérifier que les deux onglets calculent pareil
 const pat = vm.createContext({}); vm.runInContext(bloc(inv, 'function surtaxePV', 'const anneesEntre') + 'this.surtaxePV = surtaxePV;', pat);
 const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 'function surtaxePV') + 'this.abatIR = abatIR; this.abatPS = abatPS;', patAbat);
@@ -30,13 +30,14 @@ const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 
 // Formulaire : valeurs par défaut de l'appli, sections fermées, puis réglages du test
 function formulaire(v = {}, ouverts = {}) {
   for (const k of FIELDS) els[k] = CASES.includes(k) ? {type: 'checkbox', checked: false} : {type: 'number', value: ''};
-  for (const k of ['struct', 'meuble', 'regime', 'tmi', 'type', 'neuf', 'vieux', 'typeDiff', 'scenario', 'sciExist', 'locMode', 'classe']) els[k].type = 'select-one';
+  for (const k of ['struct', 'meuble', 'regime', 'tmi', 'type', 'neuf', 'vieux', 'typeDiff', 'scenario', 'sciExist', 'locMode', 'classe', 'nuitSur']) els[k].type = 'select-one';
   for (const b of ['boxProjet', 'boxImpots', 'boxEvol', 'boxBien2']) els[b] = {open: false};
   const tout = {...DEFAUTS, taux: 3.39, tf: 800, copro: 0, compta: 0, vacance: 0, entretien: 0, pno: 0, ...v};
   for (const k of FIELDS) if (tout[k] != null) set(k, tout[k]);
   for (const [k, o] of Object.entries(ouverts)) if (k !== 'bien2') els[{projet: 'boxProjet', impots: 'boxImpots', evol: 'boxEvol'}[k]].open = o;
   // Autres biens du même crédit : la liste, ou l'ancien « 2e bien » (prixB2… compté si la section bien2 était ouverte)
   fixerBiensPlus(tout.biensPlus || migrerFinance({...tout, ouverts}).biensPlus);
+  poserPer(tout.loyersPer);
   return simuler();
 }
 
@@ -399,4 +400,32 @@ test('total pendant le différé : somme des mois du différé (chantier sans lo
   const tot = formulaire({prix: 200000, apport: 0, loyer: 1000, differe: 18, typeDiff: 'total', assur: 0, tf: 1200, gestion: 0, entretien: 0});
   proche(tot.totalDiffere, 1000 * 18 - 1200 * 1.5, 0.01);
   assert.equal(formulaire({differe: 0}).totalDiffere, null);
+});
+
+test('loyers tapés par période : remplacent la règle avant et pendant les travaux, vide = pas loué, rien tapé = comme avant', () => {
+  // Chantier des mois 7 à 10 ; 2e loyer dès le mois 11 ; un autre bien loué 800 €
+  const v = {loyer: 1100, loyerAvant: 900, loyer2: 600, debutLoyer2: 11, debutTravaux: 7, dureeTravaux: 4, travaux: 20000, vacance: 0,
+    biensPlus: [{prix: 90000, loyer: 800}]};
+  const base = formulaire(v, {projet: true});
+  assert.equal(base.annees[0].loyers, 900 * 6 + 1100 * 2 + 600 * 2 + 800 * 12);
+  // Rien de tapé (ou un objet vide, comme les projets déjà enregistrés) : mêmes chiffres
+  assert.deepEqual(formulaire({...v, loyersPer: {}}, {projet: true}).annees.map(a => a.cf), base.annees.map(a => a.cf));
+  // Le bien loué 500 € pendant le chantier, le logement à part 300 € avant et 200 € pendant, l'autre bien pas loué pendant
+  const t = formulaire({...v, loyersPer: {l1: {pendant: 500}, l2: {avant: 300, pendant: 200}},
+    biensPlus: [{prix: 90000, loyer: 800, per: {pendant: 0}}]}, {projet: true});
+  assert.equal(t.annees[0].loyers, (900 + 300 + 800) * 6 + (500 + 200) * 4 + (1100 + 600 + 800) * 2);
+  assert.equal(t.annees[1].loyers, base.annees[1].loyers);       // après les travaux : rien ne change
+  // Sans travaux, les loyers tapés pour ces périodes ne comptent pas
+  assert.equal(formulaire({...v, loyersPer: {l1: {pendant: 500}}}).annees[0].loyers, formulaire(v).annees[0].loyers);
+});
+test('à la nuitée pour le logement à part seulement : le bien reste au mois (avec sa vacance), le logement en recettes à la nuitée', () => {
+  const v = {loyer: 1000, loyer2: 400, vacance: 1, locMode: 'nuit', nuit: 60, occupation: 50, chargesSaison: 0, plateforme: 0, conciergerie: 0, menage: 0};
+  const l2 = formulaire({...v, nuitSur: '2'});
+  assert.equal(l2.p.nuitL2, true); assert.equal(l2.p.loyer, 1000);
+  proche(l2.p.loyer2, l2.saison.brutMois, 0.001);
+  proche(l2.annees[0].loyers, 1000 * 11 + l2.saison.brutMois * 12, 0.01);
+  // Par défaut (projets déjà enregistrés), c'est le bien qui se loue à la nuitée
+  const b1 = formulaire(v);
+  assert.equal(b1.p.nuitL2, false); proche(b1.p.loyer, b1.saison.brutMois, 0.001);
+  proche(b1.annees[0].loyers, b1.saison.brutMois * 12 + 400 * 11, 0.01);
 });
