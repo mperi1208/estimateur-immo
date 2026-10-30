@@ -3493,7 +3493,7 @@ function etat() {
   const v = {};
   for (const k of FIELDS) v[k] = get(k);
   v.ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
-  v.flags = flags;
+  v.flags = JSON.parse(JSON.stringify(flags));   // une copie : le projet enregistré ne doit pas suivre les réglages en cours
   v.biensPlus = biensPlus.map(b => ({...b}));
   v.loyersPer = JSON.parse(JSON.stringify(loyersPer));
   return avecAncienFormat(v);
@@ -4270,7 +4270,8 @@ function enregistrerProjet(nouveau, branche) {
   if (ex && r && ex.recherche && !memeBien(r, ex.recherche)) ex = null;   // autre bien que le projet ouvert : nouveau projet
   if (r) r.bien = ex && ex.recherche && ex.recherche.bien || nouvelIdBien();   // le bien garde son identifiant d'une version à l'autre
   const saisi = $('nomProjet').value.trim(), opt = estOption(ex);
-  const nom = opt ? ex.nom : saisi || (r ? r.label : 'Mon projet');   // option : le champ porte son nom, le projet garde le sien
+  // Option (ou nouvelle option) : le projet garde son nom ; le champ porte le nom de l'option, demandé à part pour une nouvelle
+  const nom = ex && (opt || branche) ? ex.nom : saisi || (r ? r.label : 'Mon projet');
   const inst = instantane(ex);
   inst.resume.label = r ? r.label : ex && ex.resume ? ex.resume.label : '';
   if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
@@ -4282,7 +4283,7 @@ function enregistrerProjet(nouveau, branche) {
     ...(meme && opt && saisi ? {branche: saisi} : {})};
   // Le nom est celui du projet : changé ici, il change pour toutes ses branches
   if (pr.groupe) PROJETS.liste.forEach(x => { if (x.groupe === pr.groupe && x.id !== pr.id && x.nom !== nom) Object.assign(x, {nom, maj: Date.now()}); });
-  PROJETS.ajouter(pr);
+  PROJETS.ajouter(JSON.parse(JSON.stringify(pr)));   // copie : rien de partagé en mémoire avec une autre option (recherche, estimations…)
   fixerProjet(pr.id);
   nomTouche = false; autreBien = false;
   majSauvegarde(pr); majFil();
@@ -4392,7 +4393,7 @@ function restaurer(v, cleBien) {
   for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
   fixerBiensPlus(v.biensPlus);
   loyersPer = v.loyersPer || {};
-  flags = {tauxManuel: false, comptaManuel: false, differeAuto: false, ...(v.flags || {})};
+  flags = {tauxManuel: false, comptaManuel: false, differeAuto: false, ...JSON.parse(JSON.stringify(v.flags || {}))};
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
   projetOuvert = ouvert('projet'); l2Ouvert = false;
   sciVoulue = v.sciExist || '';
@@ -4442,7 +4443,9 @@ $('enregNouveau').onclick = () => enregistrerProjet(true);
 // Même projet, autre façon de le faire : les réglages en cours deviennent une branche à côté de celle ouverte
 $('enregBranche').onclick = () => {
   const pr = projetCourantId && PROJETS.liste.find(x => x.id === projetCourantId); if (!pr) return;
-  const n = (prompt('Nom de la nouvelle option (ce que tu testes) :', 'Option ' + (branchesDe(pr).length + 1)) || '').trim();
+  // Un nom tapé dans le champ avant de cliquer : c'est sans doute celui de la nouvelle option
+  const tape = $('nomProjet').value.trim(), defaut = tape && tape !== pr.nom && tape !== nomBranche(pr) ? tape : 'Option ' + (branchesDe(pr).length + 1);
+  const n = (prompt('Nom de la nouvelle option (ce que tu testes) :', defaut) || '').trim();
   if (n) { enregistrerProjet(false, n); deplier(pr.groupe); }
 };
 $('form').addEventListener('input', e => {
