@@ -78,9 +78,9 @@ test('Mes projets sur téléphone : un projet à deux options déplié se voit e
   await mode('pro');
 });
 
-test('menus ⋯ sur téléphone : panneau en bas de l\'écran, entier, fermé d\'un toucher à côté', async () => {
+test('menus ⋯ et « Dossier de financement » sur téléphone : panneau en bas de l\'écran, entier, fermé d\'un toucher à côté', async () => {
   const carte = page.locator('#pj .pj-groupe');
-  for (const sel of ['.pj-tete .pj-menu', '.pj-carte .pj-opt-act .pj-menu']) {
+  for (const sel of ['.pj-tete .pj-menu:not(.pj-dossier)', '.pj-tete .pj-dossier', '.pj-carte .pj-opt-act .pj-menu']) {
     const menu = carte.locator(sel).first();
     await menu.locator('summary').click();
     const l = await boite(`#pj .pj-groupe ${sel}[open] .pj-menu-l`);

@@ -392,6 +392,14 @@ body.discret #pj :is(.pj-c-gros b, .pj-c-l b, .pj-tuile-d){filter:blur(7px);user
 .invwrap .pj-opt-act details.pj-menu[open]{order:2;flex-basis:100%;display:grid;justify-items:end}
 .invwrap .pj-opt-act .pj-menu-l{position:static;margin-top:6px;min-width:0;width:100%;box-shadow:none;text-align:left}
 .invwrap .pj-gr-actions .pj-menu-l{top:calc(100% + 6px);bottom:auto;right:0;left:auto}
+.invwrap details.pj-dossier>summary{width:auto;height:auto;padding:8px 14px;border-radius:8px;font-size:14px;color:var(--ink);background:var(--panel)}
+.invwrap details.pj-dossier>summary::after{content:"";display:inline-block;width:6px;height:6px;margin:0 2px 3px 10px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+.invwrap details.pj-dossier .pj-menu-l{min-width:300px}
+.invwrap details.pj-dossier .pj-menu-l button{display:grid;gap:1px}
+.invwrap details.pj-dossier .pj-menu-l button small{font-size:12px;color:var(--muted)}
+.invwrap details.pj-dossier .pj-menu-l button small.up{color:var(--good);font-weight:600}
+.invwrap details.pj-dossier .pj-menu-t{padding:10px 10px 4px;margin-top:4px;border-top:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.invwrap details.pj-dossier .pj-menu-t:first-child{margin-top:0;border-top:0}
 .invwrap .pj-opts-btns{display:flex;gap:8px;flex-wrap:wrap}
 .invwrap .pj-sans-tableau{margin:4px 0 2px;font-size:14px}
 .invwrap .pj-gr-bas{display:flex;justify-content:flex-end;margin:10px 0 2px}
@@ -1094,6 +1102,31 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 .recap .rc-axe{position:relative;height:10px;background:linear-gradient(#98a2b3,#98a2b3) 50% 0/1px 100% no-repeat}
 .recap .rc-axe i{position:absolute;top:0;bottom:0;left:50%;border-radius:2px}
 .recap .rc-axe i.neg{left:auto;right:50%}
+.recap .rc-cl{display:grid;grid-template-columns:36% 1fr 92px;align-items:center;gap:10px;padding:5px 0;font-size:8.5pt;color:#475467;border-top:1px solid #f2f4f7}
+.recap .rc-cl:first-of-type{border-top:0}
+.recap .rc-cl > span em{display:inline-block;width:14px;font-style:normal;font-weight:800;color:#98a2b3}
+.recap .rc-cl > span small{display:block;padding-left:14px;font-size:7pt;color:#667085}
+.recap .rc-cl > span u{margin-left:6px;padding:1px 6px;border-radius:99px;background:#0b6e4f;color:#fff;text-decoration:none;font-size:6.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;vertical-align:1px}
+.recap .rc-cl > b{text-align:right;color:#101828;white-space:nowrap}
+.recap .rc-cl.best{color:#101828;font-weight:700}
+.recap .rc-cl.best > span em{color:#0b6e4f}
+.recap .rc-cl .rc-barre{height:12px}
+.recap .rc-cl-fr > div{position:relative;height:12px;border-radius:3px;overflow:hidden;background:#f2f4f7}
+.recap .rc-cl-fr i{position:absolute;top:0;bottom:0}
+.recap .rc-cl-fr s{display:block;height:5px;margin-top:2px;border:1px solid #d0d5dd;border-radius:2px;box-sizing:border-box;background:repeating-linear-gradient(135deg,#eaecf0 0 3px,#f9fafb 3px 6px)}
+.recap .rc-hach{background:repeating-linear-gradient(135deg,#d0d5dd 0 2px,#f9fafb 2px 4px);border:1px solid #d0d5dd;box-sizing:border-box}
+.recap .rc-cl-j{position:relative;height:8px;background:#eaecf0;border-radius:4px}
+.recap .rc-cl-j i{display:block;height:100%;border-radius:4px}
+.recap .rc-cl-j u{position:absolute;top:-3px;bottom:-3px;width:1.5px;background:#101828}
+.recap .rc-cl > b small{font-size:7.5pt;font-weight:400;color:#475467}
+.recap .rc-cl.cal{grid-template-columns:30% 1fr 168px}
+.recap .rc-cmp h3{margin:12px 0 4px}
+.recap .rc-cmp .rc-cl{padding:3px 0}
+.recap .rc-cmp .rc-leg{margin-top:3px}
+.recap .rc-cl-2 .rc-cl{grid-template-columns:38% 1fr 62px;gap:8px}
+.recap .rc-axe.pos{background:none}.recap .rc-axe.pos i{left:0}
+.recap .rc-cmp .rc-objet b{color:#101828}
+.recap .rc-cmp.serre .rc-cl{padding:1px 0}.recap .rc-cmp.serre .rc-cl > span small{display:inline;padding-left:6px}
 .recap .rc-hyp{margin:18px 0 0;padding-top:6px;border-top:1px solid #eaecf0;font-size:7pt;color:#667085}
 /* Téléphone : rien de coupé ni caché sous les barres collées en bas */
 @media (max-width:600px){
@@ -4589,8 +4622,8 @@ function recapHtml(d, o = {}) {
   const cls = n => n < 0 ? 'rc-neg' : 'rc-pos';
   const sec = (titre, html) => `<div class="rc-sec"><h3>${titre}</h3>${html}</div>`;
   const fig = (k, v, s = '') => `<div class="rc-fig"><span>${k}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`;
-  const tete = (n, titre) => `<header class="rc-tete"><div class="rc-sur"><span>Dossier de financement · ${d.revente ? 'achat-revente' : 'investissement locatif'}</span><span>${esc(o.date || '')} · ${n}/2</span></div>
-    <h1>${esc(o.titre || 'Projet')}</h1>${o.adresse ? `<div class="rc-adr">${esc(o.adresse)}</div>` : ''}</header><h2>${titre}</h2>`;
+  const tete = (n, titre) => `<header class="rc-tete"><div class="rc-sur"><span>Dossier de financement · ${d.revente ? 'achat-revente' : 'investissement locatif'}</span><span>${esc(o.date || '')} · ${n + (o.decale || 0)}/${o.total || 2}</span></div>
+    <h1>${esc(o.titre || 'Projet')}</h1>${o.adresse || o.retenue ? `<div class="rc-adr">${[o.adresse && esc(o.adresse), o.retenue && `Option retenue : ${esc(o.retenue)}`].filter(Boolean).join(' · ')}</div>` : ''}</header><h2>${titre}</h2>`;
   const ville = (/\d{5}\s+(.+)$/.exec(o.adresse || '') || [])[1];
   const objet = `Financement de l'acquisition ${plusieurs ? `de ${d.biens.length} biens` : `d'${b0.type === 'maison' ? 'une maison' : 'un appartement'}${b0.surf ? ` de ${b0.surf} m²` : ''}`}${ville ? ` à ${esc(ville)}` : ''}${t ? `, avec ${eurR(t.montant)} de travaux` : ''}, ${d.revente ? 'en vue de sa revente' : `destiné${plusieurs ? 's' : b0.type === 'maison' ? 'e' : ''} à la ${usage}`}.`;
 
@@ -4697,6 +4730,54 @@ function recapHtml(d, o = {}) {
     return `<p class="rc-hyp">Hypothèses : ${x.join(' ; ')}. Projections établies à titre prévisionnel.</p>`;
   }
 }
+// Page de comparaison, avant le détail de l'option retenue : les options côte à côte, en barres sur la même échelle.
+// l : [{lettre, nom, d}] (d : CF_APP.recap de l'option) ; o : comme recapHtml. Retenue : la meilleure trésorerie une fois
+// le projet en place (la meilleure marge si toutes sont revendues)
+function meilleureOption(l) {
+  const val = x => x.d.revente ? null : x.d.annee.cf / 12, louees = l.some(x => !x.d.revente);
+  const v = x => louees ? val(x) : x.d.vente.net;
+  const c = l.filter(x => v(x) != null).sort((a, b) => v(b) - v(a));
+  return {louees, v, retenue: c[0], suivante: c[1]};
+}
+function comparaisonHtml(l, o = {}) {
+  const {louees, v, retenue: r, suivante} = meilleureOption(l), cls = n => n < 0 ? 'rc-neg' : 'rc-pos', n = l.length;
+  const sec = (titre, html) => `<div class="rc-sec"><h3>${titre}</h3>${html}</div>`;
+  const nom = (x, court) => `<em>${esc(x.lettre)}</em>${esc(x.nom)}${x === r && !court ? '<u>Retenue</u>' : ''}`;
+  const ligne = (x, barre, val, sous, court, k = '') => `<div class="rc-cl${k}${x === r ? ' best' : ''}"><span>${nom(x, court)}${sous ? `<small>${sous}</small>` : ''}</span>${barre}<b>${val}</b></div>`;
+  // Barres depuis zéro (trésorerie, solde du différé) ; autour de zéro, comme la résistance du projet, si une option est négative
+  const echelle = f => { const vs = l.map(f).filter(x => x != null); return {amp: Math.max(...vs.map(Math.abs), 1), neg: vs.some(x => x < 0)}; };
+  const axe = (x, val, e) => `<div class="rc-axe${e.neg ? '' : ' pos'}"><i class="${val < 0 ? 'rouge neg' : x === r ? 'vert' : 'c3'}" style="width:${larg(Math.abs(val), e.neg ? e.amp * 2 : e.amp)}"></i></div>`;
+  const amp = echelle(v);
+  const tres = l.map(x => {
+    const t = x.d.travaux, sous = [t ? `travaux ${eurR(t.montant)}` : 'sans travaux', !x.d.revente && `loyers ${eurR(x.d.loyersPleins)}/mois`, x.d.revente && `revente au mois ${x.d.vente.mois}`].filter(Boolean).join(' · ');
+    return v(x) == null ? ligne(x, '<div></div>', '—', sous) : ligne(x, axe(x, v(x), amp), `<span class="${cls(v(x))}">${sgnR(v(x))}</span>`, sous);
+  }).join('');
+  // Le calendrier de chaque option sur la même échelle : avant travaux, travaux, location (ou mise en vente) ; le différé hachuré dessous
+  const H = Math.max(24, ...l.map(x => Math.ceil((Math.max(x.d.credit.differe, x.d.travaux ? Math.max(x.d.travaux.fin, x.d.travaux.debutLoc) : 0, x.d.revente ? x.d.vente.mois : 0) + 12) / 12) * 12));
+  const seg = (k, a, b) => b > a ? `<i class="${k}" style="left:${larg(a, H)};width:${larg(b - a, H)}"></i>` : '';
+  const cal = l.map(x => {
+    const t = x.d.travaux, c = x.d.credit, fin = t ? t.fin : 0;
+    const bar = `<div class="rc-cl-fr"><div>${t ? seg('f-avant', 0, t.debut) + seg('f-trav', t.debut, fin) : ''}${x.d.revente ? seg('f-avant', fin, x.d.vente.mois) : seg('f-loc', Math.max(fin, t ? t.debutLoc : 0), H)}</div>${c.differe > 0 ? `<s style="width:${larg(c.differe, H)}"></s>` : ''}</div>`;
+    return ligne(x, bar, `<small>${t ? `travaux mois ${t.debut + 1}${t.fin - t.debut > 1 ? `–${t.fin}` : ''}` : 'sans travaux'}${c.differe > 0 ? ` · différé ${c.differe} mois` : ''}</small>`, '', true, ' cal');
+  }).join('');
+  // Le coût de chaque option en barres empilées, à la même échelle ; le prêt demandé à droite
+  const cmax = Math.max(...l.map(x => x.d.achat.cout), 1), postes = a => [['Prix d\'acquisition', a.prix, 'c1'], ['Travaux', a.travaux, 'c3'], ['Notaire et frais', a.notaire + a.frais + a.mobilier, 'c4']];
+  const cout = l.map(x => ligne(x, `<div class="rc-barre">${postes(x.d.achat).filter(p => p[1] > 0).map(([k, val, c]) => `<i class="${c}" style="width:${larg(val, cmax)}"></i>`).join('')}</div>`, eurR(x.d.achat.cout), `prêt ${eurR(x.d.achat.pret)} · échéance ${eurR(x.d.credit.mens)}`)).join('')
+    + `<div class="rc-leg">${postes(r.d.achat).map(([k, , c]) => `<span><em class="${c}"></em>${k}</span>`).join('')}</div>`;
+  // Le solde cumulé pendant le différé, s'il y en a un
+  const diff = louees && l.some(x => x.d.totalDiffere != null) ? (e => l.map(x => x.d.totalDiffere == null ? ligne(x, '<div></div>', '—', '', true) : ligne(x, axe(x, x.d.totalDiffere, e), `<span class="${cls(x.d.totalDiffere)}">${sgnR(x.d.totalDiffere)}</span>`, '', true)).join(''))(echelle(x => x.d.totalDiffere)) : '';
+  // Couverture de l'échéance : repère à 100 %
+  const couv = x => x.d.annee && x.d.annee.credit > 0 ? x.d.annee.loyers / x.d.annee.credit : null, cm = Math.max(1.6, ...l.map(x => couv(x) || 0));
+  const couverture = louees ? l.map(x => couv(x) == null ? ligne(x, '<div></div>', '—', '', true) : ligne(x, `<div class="rc-cl-j"><i class="${couv(x) < 1 ? 'rouge' : x === r ? 'vert' : 'c3'}" style="width:${larg(couv(x), cm)}"></i><u style="left:${larg(1, cm)}"></u></div>`, (couv(x) * 100).toFixed(0) + ' %', '', true)).join('') : '';
+  const ecart = suivante ? v(r) - v(suivante) : 0;
+  const objet = `${n} façons de réaliser le projet ont été étudiées. L'option retenue, <b>${esc(r.lettre)} · ${esc(r.nom)}</b>, ${louees ? `dégage la meilleure trésorerie mensuelle une fois le projet en place, <b class="${cls(v(r))}">${sgnR(v(r))}</b> par mois` : `dégage la meilleure marge à la revente, <b class="${cls(v(r))}">${sgnR(v(r))}</b>`}${Math.round(ecart) > 0 ? `, soit ${eurR(ecart)} de plus que l'option ${esc(suivante.lettre)}` : ''}. Elle est détaillée dans les pages suivantes.`;
+  const d0 = r.d;
+  return `<section class="rc-page rc-cmp${n > 5 ? ' serre' : ''}"><header class="rc-tete"><div class="rc-sur"><span>Dossier de financement · ${d0.revente ? 'achat-revente' : 'investissement locatif'}</span><span>${esc(o.date || '')} · 1/${o.total || 3}</span></div>
+    <h1>${esc(o.titre || 'Projet')}</h1>${o.adresse ? `<div class="rc-adr">${esc(o.adresse)}</div>` : ''}</header><h2>Les options étudiées</h2><p class="rc-objet">${objet}</p>
+    <div class="rc-corps">${sec(louees ? 'Trésorerie mensuelle, une fois le projet en place' : 'Marge nette à la revente', tres)}${sec('Le calendrier', `${cal}<div class="rc-leg"><span><em class="f-avant"></em>Avant travaux</span><span><em class="f-trav"></em>Travaux</span><span><em class="f-loc"></em>${louees ? 'Location' : 'Mise en vente'}</span><span><em class="rc-hach"></em>Différé du prêt</span></div>`)}
+    ${sec('Le coût et le prêt', cout)}${diff || couverture ? `<div class="rc-2 rc-cl-2">${diff ? sec('Pendant le différé, solde cumulé', diff) : ''}${couverture ? sec('Couverture de l\'échéance', couverture) : ''}</div>` : ''}</div>
+    <p class="rc-hyp">Chaque option est calculée avec ses propres réglages (prix, travaux, loyers, prêt). ${louees ? 'Les montants mensuels sont ceux de l\'année stabilisée, travaux et différé terminés.' : 'Marges avant ou après impôt selon les réglages de chaque option.'}</p></section>`;
+}
 // ---------- fin du récap
 // Bibliothèque qui met une page HTML en PDF : chargée au premier récap seulement
 let html2pdfPret = null;
@@ -4720,10 +4801,22 @@ async function telechargerRecap(pr, depuisFinancer, bouton) {
   const o = {titre: nom, option: bs.length > 1 ? nomBranche(pr) : '', adresse: pr ? adresseProjet(bs.length ? bs : [pr]) : '',
     date: new Date().toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}),
     estime: pr && pr.resume ? {prix: pr.resume.prixEstime, loyer: pr.resume.loyerEstime} : {}};
-  const fichier = `Dossier de financement - ${nom}${o.option ? ' - ' + o.option : ''}`;
+  return produirePdf(recapHtml(d, o), `Dossier de financement - ${nom}${o.option ? ' - ' + o.option : ''}`, bouton);
+}
+// Les options d'un projet comparées sur une page, puis l'option retenue en détail (trois pages) ; bs : les options, lettres : leur lettre sur les cartes
+async function telechargerComparaison(bs, lettres, bouton) {
+  let l;
+  try { l = bs.map((x, i) => ({lettre: lettres[i], nom: nomBranche(x), pr: x, d: CF_APP.recap(x.finance)})); } catch (e) { console.warn('Dossier impossible :', e); alert('Le dossier n\'a pas pu être préparé.'); return; }
+  const r = meilleureOption(l).retenue; if (!r) return;
+  const o = {titre: bs[0].nom, adresse: adresseProjet(bs), date: new Date().toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}), total: 3};
+  const detail = recapHtml(r.d, {...o, decale: 1, retenue: `${r.lettre} · ${r.nom}`, estime: r.pr.resume ? {prix: r.pr.resume.prixEstime, loyer: r.pr.resume.loyerEstime} : {}});
+  return produirePdf(comparaisonHtml(l, o) + detail, `Dossier de financement - ${o.titre} - comparaison des options`, bouton);
+}
+// Met les pages du dossier dans #recap et télécharge le PDF (une page du PDF par .rc-page)
+async function produirePdf(html, fichier, bouton) {
   let el = document.getElementById('recap');
   if (!el) { el = document.createElement('div'); el.id = 'recap'; document.body.appendChild(el); }
-  el.innerHTML = `<div class="recap" style="width:184mm;background:#fff">${recapHtml(d, o)}</div>`;
+  el.innerHTML = `<div class="recap" style="width:184mm;background:#fff">${html}</div>`;
   const texte = bouton && bouton.textContent;
   if (bouton) { bouton.disabled = true; bouton.textContent = 'PDF en cours…'; }
   try {
@@ -4762,7 +4855,7 @@ const ficheAchat = pr => pr.achete && window.INV && INV.bien && INV.bien(pr.ache
 const chipAchete = pr => ficheAchat(pr) ? `<button class="pj-achete" data-a="voirFiche" title="Voir la fiche dans Mon patrimoine">Acheté · voir la fiche →</button>` : '';
 function cartePj(pr, sous, corps, boutons, br) {
   boutons = [...boutons, ...boutonsBranche(pr, br)];
-  if (br) boutons.unshift('<button data-a="recap">Dossier de financement (PDF)</button>');
+  if (br) boutons.unshift('<button data-a="recap">Dossier de financement de cette option</button>');
   if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
   return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>
     <button class="pj-x" data-a="suppr" aria-label="Supprimer ce projet" title="Supprimer ce projet">${CROIX_X}</button></div>
@@ -4974,6 +5067,14 @@ function carteRepliee(bs, g) {
     ${m ? `<span class="pj-r-best"><span class="pj-r-lab">La meilleure option</span><b class="pj-r-bnom">${esc(nomBranche(m.pr))}</b><span class="pj-r-val ${signeP(m.v)}">${val(m.v)}</span><span class="pj-r-lib">${lib}</span></span>` : ''}
     <span class="chevron" aria-hidden="true"></span></button></article>`;
 }
+// « Dossier de financement » d'un projet à plusieurs options : les comparer (3 pages), ou une option seule (2 pages)
+function menuDossier(bs, m) {
+  const opts = bs.map((x, i) => [x, i < 26 ? String.fromCharCode(65 + i) : String(i + 1)]).filter(([x]) => !x.amenag);
+  return `<details class="pj-menu pj-dossier"><summary title="Télécharger le dossier de financement en PDF, pour la banque">Dossier de financement</summary><div class="pj-menu-l">
+    ${opts.length > 1 ? `<button data-a="recapComparer"><b>Comparer les options</b><small>${opts.length} options côte à côte, puis la meilleure en détail · 3 pages</small></button>` : ''}
+    <span class="pj-menu-t">Une seule option · 2 pages</span>
+    ${opts.map(([x, k]) => `<button data-a="recap" data-id="${esc(x.id)}"><b>Option ${k} · ${esc(nomBranche(x))}</b>${m && m.pr === x ? '<small class="up">la meilleure</small>' : ''}</button>`).join('')}</div></details>`;
+}
 function carteGroupe(bs) {
   const g = groupeDe(bs[0]), ouvert = comparees.has(g);
   if (!DEPLIES.has(g)) return carteRepliee(bs, g);
@@ -4985,7 +5086,7 @@ function carteGroupe(bs) {
   const depart = bs.find(x => !x.amenag);
   return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
-    <div class="pj-gr-actions"><button data-a="recap" title="Le dossier de financement de la meilleure option, en PDF">Dossier de financement</button>${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
+    <div class="pj-gr-actions">${menuDossier(bs, m)}${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${tuilesProjet(bs, a)}
     <div class="pj-opts-tete"><h4>${bs.length} options pour ce projet</h4><div class="pj-opts-btns"><span class="pj-legende"><span><i class="f-avant"></i>Avant travaux</span> <span><i class="f-travaux"></i>Travaux</span> <span><i class="f-apres"></i>Après</span> <span><i class="f-diff"></i>Différé</span></span>${depart ? `<button data-a="brNouvelle" data-id="${esc((m && !m.pr.amenag ? m.pr : depart).id)}">+ Nouvelle option</button>` : ''}</div></div>
     ${cartesOptions(bs, a, m)}
@@ -5161,6 +5262,8 @@ function ouvrirProjet(id, vers) {
   if (vers === 'estimation' && pr.recherche) { reprendre(pr.recherche); setTimeout(() => map.invalidateSize(), 60); }
   else if (vers === 'estimation') majSauveEst();
 }
+// Pendant la préparation du PDF, « PDF en cours… » sur le bouton du menu « Dossier de financement » (le menu, lui, se referme)
+const boutonDossier = t => { const m = t.closest('.pj-dossier'); return m ? m.querySelector('summary') : t; };
 document.getElementById('pj').addEventListener('click', e => {
   const t = e.target.closest('[data-a]'); if (!t) return;
   const id = (t.closest('[data-id]') || {dataset: {}}).dataset.id, menu = t.closest('details.pj-menu');
@@ -5169,7 +5272,11 @@ document.getElementById('pj').addEventListener('click', e => {
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
   else if (t.dataset.a === 'recap') {   // le projet, l'option choisie, ou pour un projet à plusieurs options la meilleure
     const pr = PROJETS.liste.find(x => x.id === id) || (groupe ? (meilleureBranche(membres().filter(x => !x.amenag)) || {}).pr : null);
-    if (pr) telechargerRecap(pr, false, t);
+    if (pr) telechargerRecap(pr, false, boutonDossier(t));
+  }
+  else if (t.dataset.a === 'recapComparer') {   // les lettres des cartes : l'ordre d'enregistrement, aménagements compris
+    const tous = membres().sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || ''))), bs = tous.filter(x => !x.amenag);
+    telechargerComparaison(bs, bs.map(x => { const i = tous.indexOf(x); return i < 26 ? String.fromCharCode(65 + i) : String(i + 1); }), boutonDossier(t));
   }
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'estChoisir') {
