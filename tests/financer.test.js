@@ -241,6 +241,12 @@ test('revente après plus de 5 ans : abattements pour durée de détention', () 
   for (const n of [0, 5, 6, 12, 21, 22, 23, 29, 30, 40]) { proche(abatIR(n), patAbat.abatIR(n), 1e-12); proche(abatPS(n), patAbat.abatPS(n), 1e-12); }                                         // 5 ans : aucun abattement
   proche(long.impot, pv * (0.19 * (1 - 0.30) + 0.172 * (1 - 0.0825)), 0.5);    // 10 ans : 30 % (impôt), 8,25 % (prélèvements)
 });
+test('revente après 5 ans : forfait travaux de 15 % du prix quand les factures sont plus faibles (comme Mon patrimoine)', () => {
+  const v = {travaux: 10000, valeurApres: 220000}, avant = revente({...v, moisRevente: 48}, {impots: true}), apres = revente({...v, moisRevente: 72}, {impots: true});
+  proche(avant.impot, (220000 * 0.95 - (150000 + 12000 + 10000)) * 0.362, 0.5);                       // 4 ans : factures seules
+  const pv = 220000 * 0.95 - (150000 + 12000 + 22500);                                                   // 6 ans : 15 % de 150 000 €
+  proche(apres.impot, pv * (0.19 * (1 - 0.06) + 0.172 * (1 - 0.0165)), 0.5);
+});
 test('revente : intérêts et capital sur la durée de l\'opération ; IRA plafonnées', () => {
   const b = revente({moisRevente: 18, differe: 6});
   proche(b.ira, Math.min(0.03 * b.crd, 6 * b.crd * 0.0339 / 12), 0.01);

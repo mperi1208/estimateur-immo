@@ -396,6 +396,7 @@ function rafraichir() {
 // En revenant sur la page (autre onglet, autre appareil entre-temps) : on relit le compte
 let lectureEnCours = false;
 async function tirer() {
+  if (COMPTE.user && !compteCharge && !document.hidden) return chargerCompte();
   if (!COMPTE.user || !compteCharge || lectureEnCours || enAttente || document.hidden) return;
   lectureEnCours = true;
   try {
@@ -750,8 +751,47 @@ function majAuto(b) {
 }
 
 // ---------- Passage invité ↔ compte ----------
+// Lecture du compte à la connexion. En cas d'échec (réseau coupé…), nouvel essai automatique, de plus en plus espacé, et à
+// chaque retour sur la page ; d'ici là, rien de l'appareil n'est montré comme étant dans le compte, et ce qui est ajouté
+// entre-temps est gardé puis fusionné avec le compte une fois lu. genCompte : un chargement d'un compte quitté entre-temps est ignoré.
+let genCompte = 0, relanceCompte = null, essaisCompte = 0, chargementCompte = false;
+async function chargerCompte(gen = genCompte) {
+  if (gen !== genCompte || !COMPTE.user || compteCharge || chargementCompte) return;
+  chargementCompte = true; clearTimeout(relanceCompte);
+  etatCompte = 'Chargement de ton compte…'; afficher();
+  try {
+    const brut = await COMPTE.lire();
+    if (gen !== genCompte) return;
+    let distants = depuisCompte(brut);
+    const nRech = brut && Array.isArray(brut.recherches) ? brut.recherches.length : 0, nProj = brut && Array.isArray(brut.projets) ? brut.projets.length : 0;
+    const ajoutes = biens, scisAjoutees = scis;   // créés pendant le chargement (la liste part vide à la connexion)
+    if (typeof RECENTES !== 'undefined') RECENTES.fusionner(brut && brut.recherches, brut && brut.supprimes);
+    if (!distants) {   // premier passage : proposer de reprendre ce qui est sur cet appareil (fichiers compris)
+      const locaux = biensLocaux(), scisLoc = scisLocales();
+      distants = locaux.length && confirm(`Mettre dans ton compte ${locaux.length > 1 ? `les ${locaux.length} biens enregistrés` : 'le bien enregistré'} sur cet appareil ?`) ? locaux : [];
+      for (const b of distants) for (const d of b.docs.filter(d => d.local)) {
+        try { const blob = await idbFaire('readonly', s => s.get(d.id)); if (blob) await envoyerDoc(b, d, blob); } catch (e) { console.warn(erreurDocs(e)); }
+      }
+      biens = distants; scis = distants.length ? scisLoc : []; normaliser(); await COMPTE.ecrire(contenu());
+      if (gen !== genCompte) return;
+    }
+    if (brut && Array.isArray(brut.scis)) scis = brut.scis;
+    supprimes = brut && brut.supprimes ? brut.supprimes : {};
+    biens = ajoutes.length ? fusionListes(ajoutes, distants, supprimes) : distants;
+    if (scisAjoutees.length) scis = fusionListes(scisAjoutees, scis, supprimes);
+    normaliser(); compteCharge = true; essaisCompte = 0; etatCompte = 'Enregistré dans ton compte.';
+    if (typeof PROJETS !== 'undefined') { PROJETS.liste = fusionListes(PROJETS.liste, brut && brut.projets, supprimes); PROJETS.garder(); }
+    if (ajoutes.length || scisAjoutees.length || (typeof RECENTES !== 'undefined' && RECENTES.liste.length !== nRech) || (typeof PROJETS !== 'undefined' && PROJETS.liste.length !== nProj)) sauver();   // ce qui est sur cet appareil et pas encore dans le compte
+  } catch (e) {
+    if (gen !== genCompte) return;
+    etatCompte = 'Impossible de lire ton compte : ' + erreurCompte(e) + '. Nouvel essai dans un instant.';
+    relanceCompte = setTimeout(() => chargerCompte(gen), Math.min(60000, 5000 * 2 ** essaisCompte++));
+  } finally { if (gen === genCompte) chargementCompte = false; }
+  afficher();
+}
 COMPTE.surChangement(async user => {
-  compteCharge = false; urls.clear();
+  const gen = ++genCompte;
+  compteCharge = false; chargementCompte = false; essaisCompte = 0; clearTimeout(relanceCompte); urls.clear();
   if (!user) {
     etatCompte = ''; biens = biensLocaux(); scis = scisLocales(); normaliser();
     // Les projets n'existent qu'avec un compte, et les recherches ont été versées dans le compte : à la déconnexion on les
@@ -761,27 +801,8 @@ COMPTE.surChangement(async user => {
     supprimes = {};
     return afficher();
   }
-  etatCompte = 'Chargement de ton compte…'; afficher();
-  try {
-    const brut = await COMPTE.lire();
-    let distants = depuisCompte(brut);
-    const nRech = brut && Array.isArray(brut.recherches) ? brut.recherches.length : 0, nProj = brut && Array.isArray(brut.projets) ? brut.projets.length : 0;
-    if (typeof RECENTES !== 'undefined') RECENTES.fusionner(brut && brut.recherches, brut && brut.supprimes);
-    if (!distants) {   // premier passage : proposer de reprendre ce qui est sur cet appareil (fichiers compris)
-      const locaux = biensLocaux(), scisLoc = scisLocales();
-      distants = locaux.length && confirm(`Mettre dans ton compte ${locaux.length > 1 ? `les ${locaux.length} biens enregistrés` : 'le bien enregistré'} sur cet appareil ?`) ? locaux : [];
-      for (const b of distants) for (const d of b.docs.filter(d => d.local)) {
-        try { const blob = await idbFaire('readonly', s => s.get(d.id)); if (blob) await envoyerDoc(b, d, blob); } catch (e) { console.warn(erreurDocs(e)); }
-      }
-      biens = distants; scis = distants.length ? scisLoc : []; normaliser(); await COMPTE.ecrire(contenu());
-    }
-    if (brut && Array.isArray(brut.scis)) scis = brut.scis;
-    supprimes = brut && brut.supprimes ? brut.supprimes : {};
-    biens = distants; normaliser(); compteCharge = true; etatCompte = 'Enregistré dans ton compte.';
-    if (typeof PROJETS !== 'undefined') { PROJETS.liste = fusionListes(PROJETS.liste, brut && brut.projets, supprimes); PROJETS.garder(); }
-    if ((typeof RECENTES !== 'undefined' && RECENTES.liste.length !== nRech) || (typeof PROJETS !== 'undefined' && PROJETS.liste.length !== nProj)) sauver();   // recherches et projets de cet appareil à ajouter au compte
-  } catch (e) { etatCompte = 'Impossible de lire ton compte : ' + erreurCompte(e); }
-  afficher();
+  biens = []; scis = [];   // les biens de l'appareil (invité) ne sont pas ceux du compte
+  await chargerCompte(gen);
 });
 
 // ---------- Affichage ----------
@@ -940,6 +961,9 @@ function vueListe() {
     h += pli('biens', 'Mes biens', montres.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
     if (vendus.length) h += pli('vendus', 'Biens vendus', vendus.length, `<div class="liste">${vendus.map(carteVendue).join('')}</div>`);
     h += arbreHTML();
+  } else if (COMPTE.user && !compteCharge) {
+    // Compte pas encore lu (ou injoignable) : ne pas laisser croire qu'il est vide
+    h += `<div class="aide attente-compte">${erreurEtat() ? esc(etatCompte) : 'Chargement de ton compte…'}</div>`;
   } else {
     h += `<div class="vide"><div class="ico">${icone('maison')}</div><h2>Ajoute ton premier investissement</h2>
       <p>Pour chaque bien : l'achat, le crédit, la location, les charges, et les plans. Le cash-flow et ce qu'il reste à rembourser se calculent tout seuls. Tes SCI ont aussi leur fiche, avec leurs biens et leurs associés.</p>

@@ -4060,10 +4060,12 @@ function bilanRevente(s) {
     detail = `IS sur le résultat de l'opération${p.distrib ? ', puis flat tax 31,4 % sur la distribution' : ' (bénéfice gardé dans la SCI)'}`;
   } else {
     // Plus-value des particuliers (aussi pour une SCI à l'IR) : frais d'acquisition réels ou forfait 7,5 %, travaux sur factures,
-    // abattements pour durée de détention à partir de la 6e année (mêmes règles que la vente dans Mon patrimoine)
-    const pv = prixVente - fraisVente - (p.prix + Math.max(s.fraisNotaire, 0.075 * p.prix) + p.travaux);
+    // ou forfait de 15 % du prix après 5 ans de détention, abattements pour durée de détention à partir de la 6e année
+    // (mêmes règles que la vente dans Mon patrimoine)
+    const ans = Math.floor(n / 12), travauxPV = ans >= 5 ? Math.max(p.travaux, 0.15 * p.prix) : p.travaux;
+    const pv = prixVente - fraisVente - (p.prix + Math.max(s.fraisNotaire, 0.075 * p.prix) + travauxPV);
     if (pv > 0) {
-      const ans = Math.floor(n / 12), abIR = abatIR(ans), abPS = abatPS(ans), sur = surtaxe(pv * (1 - abIR));
+      const abIR = abatIR(ans), abPS = abatPS(ans), sur = surtaxe(pv * (1 - abIR));
       impot = pv * ((1 - abIR) * 0.19 + (1 - abPS) * PS_FONCIER) + sur;
       detail = `plus-value de ${eur(pv)}${ans < 6 ? ' × 36,2 %' : ''}${sur ? ` + surtaxe ${eur(sur)}` : ''}, ${ans < 6 ? 'sans abattement avant 6 ans' : `abattements de ${Math.round(abIR * 100)} % (impôt) et ${String(Math.round(abPS * 1000) / 10).replace('.', ',')} % (prélèvements) pour ${ans} ans de détention`}`;
     } else detail = 'pas de plus-value imposable';
@@ -4532,7 +4534,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=8a4fb09c"></script>
+<script src="investissements.js?v=db920d2a"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
