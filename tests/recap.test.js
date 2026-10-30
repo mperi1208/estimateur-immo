@@ -110,3 +110,17 @@ test('comparaison : toutes revendues, la meilleure marge ; recapHtml numérote s
   assert.match(d, /· 2\/3 P X · Option retenue : D · Division \+ garage Le projet/);
   assert.match(d, /· 3\/3 P/);
 });
+
+test('frise : le libellé du différé ne déborde jamais de sa bande, l\'échéance ne sort pas à droite de la frise', () => {
+  const frise = o => { const h = ctx.recapHtml({...LOUER, ...o}, {titre: 'T'}).replace(/[\u00a0\u202f]/g, ' '); return h.slice(h.indexOf('rc-fr-d'), h.indexOf('rc-fr-j')); };
+  // Différé de 12 mois sur 2 ans : le libellé tient dans sa bande, l'échéance juste après
+  assert.match(frise({}), /<i style="width:50\.00%">Différé · 750 €\/mois<\/i><span style="left:50\.00%">Échéance 1 260 €\/mois<\/span>/);
+  // Différé de 2 mois : bande vide, libellé dessous à gauche
+  const court = frise({credit: {...LOUER.credit, differe: 2}});
+  assert.match(court, /<i style="width:8\.33%"><\/i><span style="left:8\.33%">Échéance 1 260 €\/mois<\/span>/);
+  assert.match(court, /class="rc-fr-d2"><span>Différé · 750 €\/mois · mois 1 à 2<\/span><\/div>/);
+  // Différé de 60 mois sur 6 ans : l'échéance n'a pas la place à droite de la bande, elle passe dessous, calée à droite
+  const long = frise({credit: {...LOUER.credit, differe: 60}});
+  assert.match(long, /<i style="width:83\.33%">Différé · 750 €\/mois<\/i><\/div>/);
+  assert.match(long, /class="rc-fr-d2"><span class="droite">Échéance 1 260 €\/mois · dès le mois 61<\/span><\/div>/);
+});

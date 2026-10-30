@@ -783,13 +783,23 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf #cf_boxProjet > summary{display:none}
 #cf .cal{margin-top:16px}
 #cf .cal-barre{display:flex;height:44px;border-radius:10px;overflow:hidden;font-size:13px;font-weight:700}
-#cf .cal-barre > div{display:flex;align-items:center;padding:0 10px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:6px solid}
+#cf .cal-barre > div{display:flex;align-items:center;padding:0 10px;min-width:0;white-space:nowrap;overflow:hidden;border-left:6px solid}
+#cf .cal-barre > div.etroit{padding:0}
+#cf .cal-barre > div.etroit span{visibility:hidden}
+/* Les libellés des segments trop étroits, sous la frise */
+#cf .cal-leg{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font-size:13px;font-weight:700}
+#cf .cal-leg:empty{display:none}
+#cf .cal-leg span{display:flex;align-items:center;gap:6px;background:none!important}
+#cf .cal-leg i{width:12px;height:12px;border-radius:3px;border-left:4px solid;border-color:inherit}
+#cf .cal-leg .ph-avant i{background:#E8ECF2}#cf .cal-leg .ph-travaux i{background:#FBEBD9}#cf .cal-leg .ph-apres i{background:var(--accent-soft)}
 #cf .ph-avant{background:#E8ECF2;color:#344054;border-color:#7A8AA3!important}
 #cf .ph-travaux{background:#FBEBD9;color:#7A3E06;border-color:#C2620C!important}
 #cf .ph-apres{background:var(--accent-soft);color:#08513A;border-color:var(--accent)!important}
 /* L'accolade du différé, puis ses deux libellés sur une ligne s'il y a la place, sinon l'un sous l'autre (jamais l'un sur l'autre) */
 #cf .cal-diff{margin-top:8px;font-size:13px;font-weight:700}
-#cf .cal-diff .acc{margin-top:4px;height:10px;border:2px solid #3E4C9B;border-top:0;border-radius:0 0 6px 6px}
+#cf .cal-diff .traits{display:flex;align-items:flex-end;margin-top:4px}
+#cf .cal-diff .acc{flex:none;height:10px;border:2px solid #3E4C9B;border-top:0;border-radius:0 0 6px 6px}
+#cf .cal-diff .plein{flex:1;height:6px;margin-left:3px;border:2px solid #344054;border-top:0;border-right:0;border-radius:0 0 0 4px}
 #cf .cal-diff .txts{display:flex;flex-wrap:wrap;gap:2px 16px;margin-top:4px}
 #cf .cal-diff .txt{color:#3E4C9B;white-space:nowrap;max-width:100%}
 #cf .cal-diff .apres{color:#344054}
@@ -809,7 +819,9 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf table.loyers td .check input{width:16px;height:16px}
 #cf table.loyers tfoot td,#cf table.loyers tfoot th{border-top:2px solid var(--ink);padding:10px 12px 0;font-weight:800;font-size:18px;text-align:right}
 #cf table.loyers tfoot th{text-align:left;font-size:15px;padding-left:0}
-#cf table.loyers.sans-travaux [data-col="avant"],#cf table.loyers.sans-travaux [data-col="pendant"]{display:none}
+#cf table.loyers.sans-travaux [data-col="avant"],#cf table.loyers.sans-travaux [data-col="pendant"],#cf table.loyers.sans-avant [data-col="avant"],#cf table.loyers.sans-pendant [data-col="pendant"]{display:none}
+#cf table.loyers td input.herite{color:var(--muted)}
+#cf table.loyers .herit{display:block;min-height:0;margin:4px 0 0 auto;padding:2px 0;border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;text-decoration:underline}
 #cf table.loyers .retirer{min-height:0;padding:2px 0;border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;text-decoration:underline}
 #cf .loyers-bas{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 #cf .loyers-bas .ajout-bien{width:auto}
@@ -1031,6 +1043,8 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 .recap .rc-fr-d{position:relative;height:18px;margin-top:4px}
 .recap .rc-fr-d i{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding-left:6px;font-style:normal;font-size:7.5pt;color:#344054;background:repeating-linear-gradient(135deg,#eaecf0 0 4px,#f9fafb 4px 8px);border:1px solid #d0d5dd;border-radius:4px;white-space:nowrap;box-sizing:border-box}
 .recap .rc-fr-d span{position:absolute;top:2px;padding-left:8px;font-size:7.5pt;font-weight:700;color:#101828;white-space:nowrap}
+.recap .rc-fr-d2{display:flex;justify-content:space-between;gap:12px;margin-top:2px;font-size:7.5pt;font-weight:700;color:#101828;white-space:nowrap}
+.recap .rc-fr-d2 span:first-child{color:#344054}.recap .rc-fr-d2 .droite{margin-left:auto}
 .recap .rc-fr-j{position:relative;margin-top:6px}
 .recap .rc-fr-j span{position:absolute;top:0;padding-left:6px;border-left:1.5px solid #101828;font-size:7.5pt;color:#344054;white-space:nowrap;line-height:1.2}
 .recap .rc-fr-j span.droite{transform:translateX(-100%);padding:0 6px 0 0;border-left:0;border-right:1.5px solid #101828}
@@ -1258,8 +1272,9 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
       <div class="loc-mode" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><div class="seg" id="cf_locSeg" role="group" aria-label="Louer"><button data-v="mois">Au mois</button><button data-v="nuit">À la nuitée</button></div><select id="cf_locMode" hidden><option value="mois">mois</option><option value="nuit">nuit</option></select>
       <select id="cf_meuble" aria-label="Location vide ou meublée" style="width:auto"><option value="0">Location vide</option><option value="1">Meublée</option></select></div>
     </div>
-    <div class="hint">Hors charges, par mois. Vide = pas loué.</div>
+    <div class="hint">Hors charges, par mois. Vide = pas loué. Les montants en gris clair suivent la règle du projet : tape un montant pour le changer, « ↺ comme avant » pour revenir.</div>
     <div class="grid" data-nuit hidden>
+      <div data-nuitsur hidden><label for="cf_nuitSur">Loué à la nuitée</label><select id="cf_nuitSur"><option value="1">Le bien</option><option value="2">Le logement à part</option></select><div class="hint">L'autre se loue au mois</div></div>
       <div><label for="cf_nuit">Prix par nuit (€)</label><input id="cf_nuit" type="number" min="0" step="5"></div>
       <div><label for="cf_periode">Période louée</label><select id="cf_periode"></select></div>
       <div><label for="cf_occupation">Taux d'occupation (%)</label><input id="cf_occupation" type="number" min="0" max="100" step="5"></div>
@@ -1273,14 +1288,14 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
       <tbody>
         <tr id="cf_rangBien1"><th><b id="cf_nomL1">1er bien</b><small id="cf_quoiL1"></small></th>
           <td data-col="avant"><label for="cf_loyerAvant" class="sr">Loyer avant travaux (€/mois)</label><input id="cf_loyerAvant" type="number" min="0" step="10" placeholder="pas loué"></td>
-          <td data-col="pendant"><div class="calc-l" id="cf_pendant1">pas loué</div><label class="check" data-avant hidden><input type="checkbox" id="cf_loueChantier"> reste loué pendant le chantier</label></td>
-          <td data-col="apres"><div data-mois><label id="cf_loyerLib" for="cf_loyer" class="sr">Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div><div data-nuit hidden class="calc-l" id="cf_nuitL1"></div>
+          <td data-col="pendant"><input type="number" min="0" step="10" data-per="l1:pendant" placeholder="pas loué" aria-label="Loyer du bien pendant les travaux (€/mois)"><button class="herit" data-herit="l1:pendant" hidden>↺ comme avant</button><input type="checkbox" id="cf_loueChantier" hidden></td>
+          <td data-col="apres"><div data-ligne-mois="1"><label id="cf_loyerLib" for="cf_loyer" class="sr">Loyer hors charges (€/mois)</label><input id="cf_loyer" type="number" min="0" step="10"></div><div data-ligne-nuit="1" hidden class="calc-l" id="cf_nuitL1"></div>
             <div class="des" data-loyer2 hidden><label for="cf_debutLoyer1" style="margin:0">loué dès le mois</label><input id="cf_debutLoyer1" type="number" min="1" max="360"></div><div class="sr" id="cf_debutLoyer1Hint"></div></td>
         </tr>
         <tr id="cf_rangL2" hidden><th><b>Logement à part</b><small>studio, garage, annexe…</small><button class="retirer" id="cf_retirerL2">Retirer</button></th>
-          <td data-col="avant"><div class="calc-l" id="cf_l2Avant"></div></td>
-          <td data-col="pendant"><div class="calc-l" id="cf_l2Pendant"></div></td>
-          <td data-col="apres"><label for="cf_loyer2" class="sr">Loyer du logement à part (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="0">
+          <td data-col="avant"><input type="number" min="0" step="10" data-per="l2:avant" placeholder="pas loué" aria-label="Loyer du logement à part avant les travaux (€/mois)"><button class="herit" data-herit="l2:avant" hidden>↺ comme avant</button></td>
+          <td data-col="pendant"><input type="number" min="0" step="10" data-per="l2:pendant" placeholder="pas loué" aria-label="Loyer du logement à part pendant les travaux (€/mois)"><button class="herit" data-herit="l2:pendant" hidden>↺ comme avant</button></td>
+          <td data-col="apres"><div data-ligne-mois="2"><label for="cf_loyer2" class="sr">Loyer du logement à part (€/mois)</label><input id="cf_loyer2" type="number" min="0" step="10" placeholder="0"></div><div data-ligne-nuit="2" hidden class="calc-l" id="cf_nuitL2"></div>
             <div class="des"><label for="cf_debutLoyer2" style="margin:0">loué dès le mois</label><input id="cf_debutLoyer2" type="number" min="1" max="360"></div></td>
         </tr>
       </tbody>
@@ -3260,14 +3275,14 @@ const FIELDS = ['prix', 'type', 'surf', 'neuf', 'notaire', 'travaux', 'mobilier'
   'gestion', 'entretien', 'compta', 'cfe', 'gLoyer', 'gPrix', 'gCharges', 'vieux', 'notaireCredit', 'sciExist',
   'scenario', 'dureeTravaux', 'valeurApres', 'travauxCredit', 'moisRevente', 'fraisRevente', 'loyer2', 'debutLoyer2', 'debutLoyer1',
   'locMode', 'nuit', 'occupation', 'sejour', 'menage', 'plateforme', 'conciergerie', 'chargesSaison', 'classe', 'nomBien',
-  'debutTravaux', 'loyerAvant', 'loueChantier'];
+  'debutTravaux', 'loyerAvant', 'loueChantier', 'nuitSur'];
 // 2e loyer (bien divisé, annexe louée à part) : absent des projets enregistrés avant lui, donc remis à zéro à leur réouverture
 const SANS_LOYER2 = {loyer2: '', debutLoyer2: 1, debutLoyer1: ''};
 // Début des travaux et loyer d'avant travaux : absents des anciens projets (chantier dès l'achat, pas loué avant)
 const SANS_DEBUT = {debutTravaux: '', loyerAvant: '', loueChantier: false};
 // Location saisonnière (à la nuitée) : absente des anciens projets, qui restent au mois
 const SANS_SAISON = {locMode: 'mois', nuit: '', occupation: SAISON_DEFAUTS.occupation, sejour: SAISON_DEFAUTS.sejour, menage: SAISON_DEFAUTS.menage,
-  plateforme: SAISON_DEFAUTS.plateforme, conciergerie: SAISON_DEFAUTS.conciergerie, chargesSaison: '', classe: '0'};
+  plateforme: SAISON_DEFAUTS.plateforme, conciergerie: SAISON_DEFAUTS.conciergerie, chargesSaison: '', classe: '0', nuitSur: '1'};
 const DEFAUTS = {prix: 200000, type: 'appart', surf: 50, neuf: '0', notaire: 8, travaux: 0, mobilier: 0, struct: 'np', meuble: '0', regime: 'auto',
   tmi: '30', terrain: 20, distrib: false, apport: 0, duree: 20, taux: null, assur: 0.30, differe: 0, typeDiff: 'partiel', dossier: 1000,
   garantie: 1.5, loyer: 800, vacance: 0.5, tf: null, copro: null, pno: 150, gestion: 0, entretien: 3, compta: null, cfe: 300,
@@ -3441,6 +3456,15 @@ function avecAncienFormat(v) {
   const l = v.biensPlus || [], somme = k => l.reduce((t, b) => t + (+b[k] || 0), 0);
   return {...v, prixB2: somme('prix'), loyerB2: somme('loyer'), tfB2: somme('tf'), coproB2: somme('copro'), ouverts: {...(v.ouverts || {}), bien2: l.length > 0}};
 }
+// Loyers tapés à la main pour une période (avant ou pendant les travaux) : {l1: {pendant}, l2: {avant, pendant}} ;
+// ceux des autres biens dans biensPlus[i].per. Une case sans valeur ici suit la règle du projet ; 0 = pas loué
+let loyersPer = {};
+const perDe = ligne => ligne[0] === 'b' ? (biensPlus[+ligne.slice(1)] || {}).per : loyersPer[ligne];
+function fixerPer(ligne, col, v) {
+  const o = {...(perDe(ligne) || {})};
+  if (v == null) delete o[col]; else o[col] = v;
+  if (ligne[0] === 'b') { const b = biensPlus[+ligne.slice(1)]; if (b) b.per = o; } else loyersPer = {...loyersPer, [ligne]: o};
+}
 let flags = {tauxManuel: false, comptaManuel: false, differeAuto: false};
 let l2Ouvert = false;   // ligne « Logement à part » ajoutée, loyer pas encore tapé
 const ouvert = k => $(BOXES[k]).open;
@@ -3450,6 +3474,7 @@ function etat() {
   v.ouverts = Object.fromEntries(Object.keys(BOXES).map(k => [k, ouvert(k)]));
   v.flags = flags;
   v.biensPlus = biensPlus.map(b => ({...b}));
+  v.loyersPer = JSON.parse(JSON.stringify(loyersPer));
   return avecAncienFormat(v);
 }
 function sauver() { try { localStorage.setItem('cashflow-v1', JSON.stringify(etat())); } catch (e) {} }
@@ -3466,20 +3491,23 @@ function afficherChamps() {
   CF.querySelectorAll('[data-is]').forEach(e => e.hidden = !is);
   CF.querySelectorAll('[data-amort]').forEach(e => e.hidden = !(is || (st === 'np' && meuble)));
   CF.querySelectorAll('[data-revente]').forEach(e => e.hidden = get('scenario') !== 'revendre');
-  CF.querySelectorAll('[data-loyer2]').forEach(e => e.hidden = !(get('loyer2') > 0));
-  const nuit = get('locMode') === 'nuit';
+  const nuit = get('locMode') === 'nuit', nuitL2 = nuit && get('nuitSur') === '2';
+  CF.querySelectorAll('[data-loyer2]').forEach(e => e.hidden = !(get('loyer2') > 0 || nuitL2));
   CF.querySelectorAll('[data-nuit]').forEach(e => e.hidden = !nuit);
-  CF.querySelectorAll('[data-mois]').forEach(e => e.hidden = nuit);
+  // À la nuitée : un seul logement (le bien, ou le logement à part) ; l'autre reste loué au mois
+  CF.querySelectorAll('[data-ligne-mois]').forEach(e => e.hidden = nuit && e.dataset.ligneMois === (nuitL2 ? '2' : '1'));
+  CF.querySelectorAll('[data-ligne-nuit]').forEach(e => e.hidden = !(nuit && e.dataset.ligneNuit === (nuitL2 ? '2' : '1')));
   CF.querySelectorAll('#cf_locSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === (nuit ? 'nuit' : 'mois')));
   $('meuble').disabled = nuit;   // une location à la nuitée est toujours meublée
   $('debutLoyer1').placeholder = ouvert('projet') ? String(finChantier() + 1) : '1';
   $('debutLoyer1Hint').textContent = ouvert('projet') ? `Vide : après le chantier (mois ${finChantier() + 1}). 1 = déjà loué pendant les travaux` : '1 = dès l\'achat';
-  CF.querySelectorAll('[data-avant]').forEach(e => e.hidden = !(get('loyerAvant') > 0));
   $('loyerLib').textContent = ouvert('projet') ? 'Loyer après travaux (€/mois)' : 'Loyer hors charges (€/mois)';
   CF.querySelectorAll('#cf_scen button').forEach(b => b.classList.toggle('on', b.dataset.v === get('scenario')));
   $('titreBiens').textContent = biensPlus.length ? 'Les biens' : 'Le bien';
   // Étape 2 : le tableau des loyers a une colonne par période quand il y a des travaux, une seule sinon
-  const travauxOn = ouvert('projet'), avecL2 = get('loyer2') > 0 || l2Ouvert;
+  const travauxOn = ouvert('projet'), avecL2 = get('loyer2') > 0 || l2Ouvert || nuitL2;
+  CF.querySelectorAll('[data-nuitsur]').forEach(e => e.hidden = !avecL2);
+  $('nuitSur').options[0].textContent = get('nomBien') || (biensPlus.length ? 'Le 1er bien' : 'Le bien');
   $('loyers').classList.toggle('sans-travaux', !travauxOn);
   $('colApresT').firstChild.textContent = travauxOn ? 'Après travaux' : 'Chaque mois';
   $('rangL2').hidden = !avecL2; $('ajoutL2').hidden = avecL2;
@@ -3501,7 +3529,7 @@ function rendreBiens() {
   </article>`).join('');
   const nomB = (b, i) => esc(b.nom || `${i + 2}e bien`);
   $('loyersPlus').innerHTML = biensPlus.map((b, i) => `<tr data-i="${i}"><th><b data-nom>${nomB(b, i)}</b><small>même crédit, pas de travaux</small></th>
-    <td data-col="avant"><div class="calc-l" data-calc></div></td><td data-col="pendant"><div class="calc-l" data-calc></div></td>
+    ${['avant', 'pendant'].map(c => `<td data-col="${c}"><input type="number" min="0" step="10" data-per="b${i}:${c}" placeholder="pas loué" aria-label="Loyer de ${nomB(b, i)} ${c === 'avant' ? 'avant' : 'pendant'} les travaux (€/mois)"><button class="herit" data-herit="b${i}:${c}" hidden>↺ comme avant</button></td>`).join('')}
     <td data-col="apres"><input type="number" min="0" step="10" data-k="loyer" value="${+b.loyer || ''}" placeholder="pas loué" aria-label="Loyer de ${nomB(b, i)} (€/mois)"></td></tr>`).join('');
 }
 
@@ -3535,13 +3563,16 @@ function simuler() {
   const p = {}; for (const k of FIELDS) p[k] = get(k);
   // À la nuitée : le 1er loyer devient les recettes moyennes du mois ; l'occupation remplace la vacance,
   // plateforme, conciergerie et ménage suivent les recettes, et le logement est forcément meublé
-  p.saison = p.locMode === 'nuit';
+  // nuitL2 : c'est le logement à part qui se loue à la nuitée, le bien reste au mois
+  p.saison = p.locMode === 'nuit'; p.nuitL2 = p.saison && p.nuitSur === '2';
   let sz = null;
   if (p.saison) {
     sz = saisonnier({nuit: p.nuit, occupation: p.occupation, sejour: p.sejour, menage: p.menage, plateforme: p.plateforme, conciergerie: p.conciergerie, charges: p.chargesSaison});
-    p.loyer = sz.brutMois; p.meuble = '1';
+    if (p.nuitL2) p.loyer2 = sz.brutMois; else p.loyer = sz.brutMois;
+    p.meuble = '1';
   }
-  const vac1 = p.saison ? 0 : p.vacance;
+  const vac1 = p.saison && !p.nuitL2 ? 0 : p.vacance;
+  p.per = loyersPer;
   // Sections fermées = non comptées
   // Travaux : comptés seulement si la section est ouverte ; le loyer démarre à la fin du chantier
   const travauxOn = ouvert('projet');
@@ -3603,18 +3634,20 @@ function simuler() {
   for (let y = 1; y <= horizon; y++) {
     let loyers = 0, loyers1 = 0, moisLoues = 0;
     for (let m = 12 * (y - 1); m < 12 * y; m++) {
-      const hausse = Math.pow(1 + p.gLoyer / 100, y - 1), l1 = (m >= p.debutLoc ? p.loyer : m < p.finAvant ? p.loyerAvant : 0) * (1 - vac1 / 12) * hausse;
-      const lm = l1 + ((m >= p.debutLoc2 ? p.loyer2 : 0) + p.loyerB2) * (1 - p.vacance / 12) * hausse;
-      loyers1 += l1; loyers += lm;
-      if (m >= p.debutLoc || m < p.finAvant) moisLoues++;
-      mois.push({loyers: lm, l1, loue: m >= p.debutLoc || m < p.finAvant});
+      const r = loyersMois(p, m), hausse = Math.pow(1 + p.gLoyer / 100, y - 1), l1 = r.l1 * (1 - vac1 / 12) * hausse;
+      // Le logement à la nuitée : pas de vacance (l'occupation la remplace), ses frais suivent ses recettes
+      const lm = p.nuitL2 ? l1 + r.l2 * hausse + r.b * (1 - p.vacance / 12) * hausse : l1 + (r.l2 + r.b) * (1 - p.vacance / 12) * hausse;
+      const ln = p.nuitL2 ? r.l2 * hausse : l1, loue = p.nuitL2 ? r.l2 > 0 : r.l1Tape ? r.l1 > 0 : m >= p.debutLoc || m < p.finAvant;
+      loyers1 += ln; loyers += lm;
+      if (loue) moisLoues++;
+      mois.push({loyers: lm, ln, loue});
     }
     const infl = Math.pow(1 + p.gCharges / 100, y - 1);
     const fixes = (p.tf + p.copro + p.tfB2 + p.coproB2 + p.pno + p.pnoB2 + p.compta + (meuble ? p.cfe : 0)) * infl;
     // Saisonnier : frais en % des recettes de la nuitée, charges du logement pendant les mois d'exploitation
     const fraisSaison = sz ? loyers1 * sz.pctFrais / 100 + p.chargesSaison * moisLoues * infl : 0;
     const charges = fixes + loyers * (p.gestion + p.entretien) / 100 + fraisSaison;
-    mois.slice(12 * (y - 1)).forEach(x => { x.charges = fixes / 12 + x.loyers * (p.gestion + p.entretien) / 100 + (sz ? x.l1 * sz.pctFrais / 100 + (x.loue ? p.chargesSaison * infl : 0) : 0); });
+    mois.slice(12 * (y - 1)).forEach(x => { x.charges = fixes / 12 + x.loyers * (p.gestion + p.entretien) / 100 + (sz ? x.ln * sz.pctFrais / 100 + (x.loue ? p.chargesSaison * infl : 0) : 0); });
     const rows = ech.rows.slice(12 * (y - 1), 12 * y);
     const interets = rows.reduce((s, r) => s + r.i, 0), assurance = rows.reduce((s, r) => s + r.ass, 0);
     const capital = rows.reduce((s, r) => s + r.cap, 0);
@@ -3687,7 +3720,7 @@ function simuler() {
   } else if (meuble) {
     const micro = impotsMicroBic(), reel = impotsLmnpReel();
     const sum = arr => arr.reduce((s, x) => s + x, 0);
-    const okMicro = (p.loyer * (1 - vac1 / 12) + (p.loyer2 + p.loyerB2) * (1 - p.vacance / 12)) * 12 <= microReg.plafond;
+    const okMicro = (p.nuitL2 ? p.loyer * (1 - vac1 / 12) + p.loyer2 + p.loyerB2 * (1 - p.vacance / 12) : p.loyer * (1 - vac1 / 12) + (p.loyer2 + p.loyerB2) * (1 - p.vacance / 12)) * 12 <= microReg.plafond;
     const choix = p.regime === 'micro' && okMicro ? 'micro' : p.regime === 'reel' || !okMicro ? 'reel' : sum(micro) <= sum(reel) ? 'micro' : 'reel';
     impots = choix === 'micro' ? micro : reel;
     regime = (p.saison ? 'Meublé de tourisme ' + (p.classe === '1' ? 'classé' : 'non classé') + ', ' : 'LMNP ') + (choix === 'micro' ? `micro-BIC (abattement ${Math.round(microReg.abattement * 100)} %)` : 'au réel (avec amortissement)')
@@ -3733,23 +3766,46 @@ const pct = n => (n < 0 ? '−' : '') + Math.abs(n).toFixed(1).replace('.', ',')
 // ---------- Étapes : ce qui se calcule sous les champs (calendrier, loyers par période, mensualités, emprunt) ----------
 const signe = n => (n < 0 ? '−' : '+') + fmt(Math.abs(n)) + ' €';
 const plage = (a, b) => b - a <= 1 ? `mois ${a + 1}` : `mois ${a + 1} à ${b}`;
-// Loyers encaissés un mois donné (sans vacance ni hausse) : les cases et les totaux du tableau de l'étape 2
-function loyerDuMois(p, m) {
-  const l1 = m >= p.debutLoc ? p.loyer : m < p.finAvant ? p.loyerAvant : 0, l2 = m >= p.debutLoc2 ? p.loyer2 : 0;
-  return {l1, l2, tot: l1 + l2 + p.loyerB2};
+// Loyers encaissés un mois donné (sans vacance ni hausse) : bien, logement à part, autres biens. Avant et pendant les travaux,
+// un loyer tapé dans le tableau (p.per, b.per) remplace la règle ; sansTape = la règle seule (« comme avant »)
+function loyersMois(p, m, sansTape) {
+  const col = m < p.debutT ? 'avant' : m < p.finT ? 'pendant' : null;
+  const tape = o => !sansTape && col && o && o[col] != null ? +o[col] || 0 : null;
+  const t1 = tape(p.per && p.per.l1), t2 = tape(p.per && p.per.l2);
+  const l1 = t1 != null ? t1 : m >= p.debutLoc ? p.loyer : m < p.finAvant ? p.loyerAvant : 0;
+  const l2 = t2 != null ? t2 : m >= p.debutLoc2 ? p.loyer2 : 0;
+  const b = p.autres.reduce((t, x) => { const v = tape(x.per); return t + (v != null ? v : +x.loyer || 0); }, 0);
+  return {l1, l2, b, tot: l1 + l2 + b, l1Tape: t1 != null};
 }
+const loyerDuMois = loyersMois;
 function calendrier(p, travauxOn) {
   if (!travauxOn && !p.differe) return '';
   const H = Math.max(24, Math.ceil((Math.max(p.differe, travauxOn ? p.finT : 0, p.debutPlein) + 12) / 12) * 12), w = n => (n / H * 100).toFixed(2) + '%';
-  const seg = (cls, a, b, long, court) => b > a ? `<div class="${cls}" style="width:${w(b - a)}" title="${long}">${(b - a) / H > 0.24 ? long : court}</div>` : '';
+  const seg = (cls, a, b, txt) => b > a ? `<div class="${cls}" style="width:${w(b - a)}" title="${txt}"><span>${txt}</span></div>` : '';
   const barre = travauxOn
-    ? seg('ph-avant', 0, p.debutT, `Avant travaux · ${plage(0, p.debutT)}`, plage(0, p.debutT).replace('mois ', '')) + seg('ph-travaux', p.debutT, p.finT, `Travaux · ${plage(p.debutT, p.finT)}`, plage(p.debutT, p.finT).replace('mois ', ''))
-      + seg('ph-apres', p.finT, H, `Après travaux · dès le mois ${p.finT + 1}`, `dès ${p.finT + 1}`)
-    : seg('ph-apres', 0, H, 'Loué dès l\'achat', '');
-  // Le 1er libellé occupe au moins la largeur de l'accolade : le 2e commence là où le différé s'arrête, ou passe à la ligne
-  const diff = p.differe ? `<div class="cal-diff"><div class="acc" style="width:${w(p.differe)}"></div><div class="txts"><div class="txt" style="min-width:min(${w(p.differe)}, 100%)">Différé du crédit : ${plage(0, p.differe)}</div><div class="txt apres">Mensualité pleine dès le mois ${p.differe + 1}</div></div></div>` : '';
-  return `<div class="cal-barre">${barre}</div>${diff}`;
+    ? seg('ph-avant', 0, p.debutT, `Avant travaux · ${plage(0, p.debutT)}`) + seg('ph-travaux', p.debutT, p.finT, `Travaux · ${plage(p.debutT, p.finT)}`)
+      + seg('ph-apres', p.finT, H, `Après travaux · dès le mois ${p.finT + 1}`)
+    : seg('ph-apres', 0, H, 'Loué dès l\'achat');
+  // L'accolade du différé puis le trait de la mensualité pleine jusqu'au bout de la frise ;
+  // le 1er libellé occupe au moins la largeur de l'accolade : le 2e commence là où le différé s'arrête, ou passe à la ligne
+  const diff = p.differe ? `<div class="cal-diff"><div class="traits"><div class="acc" style="width:${w(p.differe)}"></div><div class="plein"></div></div><div class="txts"><div class="txt" style="min-width:min(${w(p.differe)}, 100%)">Différé du crédit : ${plage(0, p.differe)}</div><div class="txt apres">Mensualité pleine dès le mois ${p.differe + 1}</div></div></div>` : '';
+  return `<div class="cal-barre">${barre}</div>${diff}<div class="cal-leg"></div>`;
 }
+// Un segment trop étroit pour son libellé n'en montre aucun (jamais de texte coupé) : le libellé passe sous la frise,
+// avec la couleur du segment. À refaire quand la largeur change (téléphone tourné, carte qui s'affiche)
+function libellesCalendrier(el) {
+  const leg = el.querySelector('.cal-leg');
+  if (!leg || !el.clientWidth) return;
+  leg.innerHTML = '';
+  for (const s of el.querySelectorAll('.cal-barre > div')) {
+    s.classList.remove('etroit');
+    if (s.scrollWidth <= s.clientWidth + 0.5) continue;
+    s.classList.add('etroit');
+    leg.insertAdjacentHTML('beforeend', `<span class="${s.classList[0]}"><i></i>${s.title}</span>`);
+  }
+}
+// Seule la largeur compte : la hauteur change quand les libellés passent dessous
+if (typeof ResizeObserver !== 'undefined') { let l0 = 0; new ResizeObserver(([e]) => { const l = Math.round(e.contentRect.width); if (l !== l0) { l0 = l; libellesCalendrier($('calendrier')); } }).observe($('calendrier')); }
 // Les charges d'un mois de l'année ac, une ligne par charge (celles à 0 € en moins)
 function partsCharges(s, ac) {
   const p = s.p, infl = Math.pow(1 + p.gCharges / 100, ac.y - 1), m = v => v * infl / 12, pct = k => ac.loyers * p[k] / 100 / 12;
@@ -3762,21 +3818,33 @@ function partsCharges(s, ac) {
 function etapes(s) {
   const p = s.p, travauxOn = p.projet !== 'simple', mens = s.ech.pmt + s.ech.assM;
   $('calendrier').innerHTML = calendrier(p, travauxOn);
+  libellesCalendrier($('calendrier'));
   // Étape 2 : en-têtes des périodes, cases calculées et totaux
   const apres = Math.max(p.finT, p.debutPlein), aucun = 'aucun mois';
   $('colAvant').textContent = p.debutT ? plage(0, p.debutT) : aucun;
   $('colPendant').textContent = p.dureeTravaux ? plage(p.debutT, p.finT) : aucun;
   $('colApres').textContent = travauxOn ? `dès le mois ${p.finT + 1}` : '';
   const avant = loyerDuMois(p, 0), pendant = loyerDuMois(p, p.debutT), plein = loyerDuMois(p, apres);
-  const montant = v => v > 0 ? eur(v) : 'pas loué';
-  $('pendant1').textContent = p.dureeTravaux ? montant(pendant.l1) : '—';
-  $('l2Avant').textContent = p.debutT ? montant(avant.l2) : '—';
-  $('l2Pendant').textContent = p.dureeTravaux ? montant(pendant.l2) : '—';
-  $('nuitL1').textContent = p.saison ? `≈ ${eur(p.loyer)} par mois à la nuitée` : '';
+  // Une colonne sans aucun mois disparaît (rien à y louer)
+  $('loyers').classList.toggle('sans-avant', travauxOn && !p.debutT);
+  $('loyers').classList.toggle('sans-pendant', travauxOn && !p.dureeTravaux);
+  // Cases avant / pendant les travaux : la valeur tapée, sinon celle de la règle, en gris
+  const regle = {avant: loyersMois(p, 0, true), pendant: loyersMois(p, p.debutT, true)};
+  CF.querySelectorAll('#cf_loyers [data-per]').forEach(inp => {
+    const [ligne, col] = inp.dataset.per.split(':'), o = perDe(ligne), tape = o && o[col] != null ? +o[col] || 0 : null;
+    const b = ligne[0] === 'b' ? biensPlus[+ligne.slice(1)] || {} : null;
+    const r = b ? (p.autres.includes(b) ? +b.loyer || 0 : 0) : regle[col][ligne];
+    const v = tape != null ? tape : r;
+    if (document.activeElement !== inp) inp.value = v > 0 ? Math.round(v) : '';
+    inp.classList.toggle('herite', tape == null);
+    const btn = inp.nextElementSibling;
+    btn.hidden = tape == null; btn.title = `Revenir à ${r > 0 ? eur(r) : 'pas loué'}`;
+  });
+  $('nuitL1').textContent = p.saison && !p.nuitL2 ? `≈ ${eur(p.loyer)} par mois à la nuitée` : '';
+  $('nuitL2').textContent = p.nuitL2 ? `≈ ${eur(p.loyer2)} par mois à la nuitée` : '';
   CF.querySelectorAll('#cf_loyersPlus [data-i]').forEach(tr => {
     const b = biensPlus[+tr.dataset.i] || {}, i = +tr.dataset.i;
     tr.querySelector('[data-nom]').textContent = b.nom || `${i + 2}e bien`;
-    tr.querySelectorAll('[data-calc]').forEach(c => c.textContent = montant(+b.loyer || 0));
   });
   $('totAvant').textContent = p.debutT ? eur(avant.tot) : '—';
   $('totPendant').textContent = p.dureeTravaux ? eur(pendant.tot) : '—';
@@ -3828,16 +3896,16 @@ function cartePhase(g, avecImpots) {
 function donneesRecap() {
   const s = simuler(), p = s.p, revente = p.projet === 'revente', travauxOn = p.projet !== 'simple', mens = s.ech.pmt + s.ech.assM;
   const mob = p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0, sci = mesScis().find(x => x.id === p.sciExist);
-  const biens = [{nom: p.nomBien || '', type: p.type, surf: p.surf, prix: p.prix1, loyer: p.saison ? null : p.loyer + p.loyer2, nuit: p.saison ? p.nuit : null}]
+  const biens = [{nom: p.nomBien || '', type: p.type, surf: p.surf, prix: p.prix1, loyer: p.saison && !p.nuitL2 ? null : p.loyer + p.loyer2, nuit: p.saison && !p.nuitL2 ? p.nuit : null}]
     .concat(p.autres.map((b, i) => ({nom: b.nom || `${i + 2}e bien`, surf: +b.surf || 0, prix: +b.prix || 0, loyer: +b.loyer || 0})));
-  const d = {revente, biens, saison: p.saison, meuble: p.meuble === '1', avecImpots: p.avecImpots, regime: s.regime,
+  const d = {revente, biens, saison: p.saison && !p.nuitL2, meuble: p.meuble === '1', avecImpots: p.avecImpots, regime: s.regime,
     struct: p.struct === 'np' ? 'En nom propre' : `SCI à l'${s.st === 'is' ? 'IS' : 'IR'}${sci ? ` « ${sci.nom} »` : ''}`,
     achat: {prix: p.prix, notaire: s.fraisNotaire, travaux: travauxOn ? p.travaux : 0, mobilier: mob, frais: p.dossier + s.fraisGarantie, cout: s.coutTotal, apport: s.apportEff, pret: s.pret},
     credit: {pret: s.pret, taux: p.taux, duree: p.duree, assur: p.assur, differe: p.differe, typeDiff: p.typeDiff, mens, mensDiff: p.differe > 0 ? s.ech.mensDiff : null,
       mensAvant: s.ech.mensAvant != null ? s.ech.mensAvant : null, debloc: s.ech.debloc != null ? s.ech.debloc : null,
       cout: s.ech.rows.reduce((t, r) => t + r.i + r.ass, 0) + p.dossier + s.fraisGarantie},
     travaux: travauxOn && p.travaux > 0 ? {montant: p.travaux, debut: p.debutT, fin: p.finT, valeurApres: p.valeurApres, loyerAvant: p.loyerAvant, finAvant: p.finAvant, debutLoc: p.debutLoc} : null,
-    hyp: {vacance: p.saison ? null : p.vacance, occupation: p.saison ? p.occupation : null, gLoyer: p.gLoyer, gPrix: p.gPrix, gCharges: p.gCharges}};
+    hyp: {vacance: p.saison && !p.nuitL2 ? null : p.vacance, occupation: p.saison ? p.occupation : null, gLoyer: p.gLoyer, gPrix: p.gPrix, gCharges: p.gCharges}};
   if (revente) {
     const b = bilanRevente(s);
     d.vente = {mois: b.n, prixVente: b.prixVente, fraisVente: b.fraisVente, crd: b.crd, ira: b.ira, sorties: b.sorties, impot: b.impot, net: b.net, coutAchat: b.coutAchat};
@@ -3855,14 +3923,15 @@ function donneesRecap() {
   const variante = f => {
     const avant = etat();
     try { f(); const s2 = simuler(); return anneeCroisiere(s2).cf / 12; }
-    finally { for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]); biensPlus = avant.biensPlus; }
+    finally { for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]); biensPlus = avant.biensPlus; loyersPer = avant.loyersPer; }
   };
   const fois = (k, x) => set(k, (+get(k) || 0) * x);
   d.sensibilite = [
-    ['Loyers 10\u00a0% plus bas', variante(() => { ['loyer', 'loyer2', 'loyerAvant', 'nuit'].forEach(k => fois(k, 0.9)); biensPlus = biensPlus.map(b => ({...b, loyer: (+b.loyer || 0) * 0.9})); })],
+    ['Loyers 10\u00a0% plus bas', variante(() => { ['loyer', 'loyer2', 'loyerAvant', 'nuit'].forEach(k => fois(k, 0.9)); const moins = o => o && Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v * 0.9]));
+      biensPlus = biensPlus.map(b => ({...b, loyer: (+b.loyer || 0) * 0.9, per: moins(b.per)})); loyersPer = Object.fromEntries(Object.entries(loyersPer).map(([k, o]) => [k, moins(o)])); })],
     p.saison ? ['Occupation 10 points plus basse', variante(() => set('occupation', Math.max(0, get('occupation') - 10)))] : ['Un mois de vacance de plus par an', variante(() => set('vacance', get('vacance') + 1))],
     ['Taux 1 point plus haut', variante(() => set('taux', get('taux') + 1))]];
-  d.loyersPleins = p.saison ? s.saison.brutMois + p.loyerB2 : p.loyerTotal;   // loyers du bail, sans vacance : ce que la banque retient en partie
+  d.loyersPleins = p.saison && !p.nuitL2 ? s.saison.brutMois + p.loyerB2 : p.loyerTotal;   // loyers du bail, sans vacance : ce que la banque retient en partie
   d.totalDiffere = s.totalDiffere;
   d.valeur = {depart: s.base, coutBien: s.coutTotal - mob};
   d.patrimoine = {ans: s.horizon, valeur: s.valeur, net: s.valeur - fin.crd + fin.cumul};
@@ -4201,11 +4270,12 @@ function avecReglages(v, f) {
     for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
     for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
     biensPlus = v.biensPlus.map(b => ({...BIEN_VIDE, ...b}));
+    loyersPer = v.loyersPer || {};
     return f();
   } finally {
     for (const k of FIELDS) if (avant[k] != null) set(k, avant[k]);
     for (const k in BOXES) $(BOXES[k]).open = ouverts[k];
-    biensPlus = avant.biensPlus;
+    biensPlus = avant.biensPlus; loyersPer = avant.loyersPer;
     majScis();
   }
 }
@@ -4224,7 +4294,7 @@ function versBien(pr) {
       valeur: Math.round(p.prix), valeurLe: auj, valeurManuelle: true,
       achat: {date: auj, prix: Math.round(p.prix), notaire: Math.round(s.fraisNotaire) || null, travaux: p.travaux > 0 ? Math.round(p.travaux) : null, mobilier: p.mobilier > 0 ? Math.round(p.mobilier) : null,
         frais: Math.round((p.dossier || 0) + (s.fraisGarantie || 0)) || null},
-      location: p.saison ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(365 * p.occupation / 100), fraisSaison: null}
+      location: p.saison && !p.nuitL2 ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(365 * p.occupation / 100), fraisSaison: null}
         : {statut: p.travaux > 0 && !p.loyerAvant ? 'travaux' : p.meuble === '1' ? 'meuble' : 'vide', loyer: Math.round(p.loyerAvant > 0 ? p.loyerAvant : p.loyer), charges: null, locataire: '', debutBail: '', vacance: 0},
       chargesAn: {tf: p.tf, copro: p.copro, pno: p.pno, gestion: p.gestion || null, entretien: p.entretien || null, compta: null, cfe: null, autres: null},
       prets: s.pret > 0 ? [{id: 'pr' + Date.now().toString(36), banque: '', montant: Math.round(s.pret), taux: p.taux, duree: Math.round(p.duree * 12), debut: ym(mois), offre: auj,
@@ -4292,6 +4362,7 @@ function restaurer(v, cleBien) {
   v = {...SANS_LOYER2, ...SANS_SAISON, ...SANS_DEBUT, nomBien: '', ...migrerFinance(v)};
   for (const k of FIELDS) if (v[k] != null) set(k, v[k]);
   fixerBiensPlus(v.biensPlus);
+  loyersPer = v.loyersPer || {};
   flags = {tauxManuel: false, comptaManuel: false, differeAuto: false, ...(v.flags || {})};
   for (const k in BOXES) $(BOXES[k]).open = !!(v.ouverts && v.ouverts[k]);
   projetOuvert = ouvert('projet'); l2Ouvert = false;
@@ -4346,6 +4417,11 @@ $('enregBranche').onclick = () => {
   if (n) { enregistrerProjet(false, n); deplier(pr.groupe); }
 };
 $('form').addEventListener('input', e => {
+  if (e.target.dataset.per) {   // un loyer d'avant ou de pendant les travaux, tapé : il remplace la règle ; vide = pas loué
+    const [ligne, col] = e.target.dataset.per.split(':');
+    fixerPer(ligne, col, e.target.value === '' ? 0 : Math.max(0, +e.target.value || 0));
+    sauver(); rendre(); return;
+  }
   const carte = e.target.closest('#cf_biensPlus [data-i], #cf_loyersPlus [data-i]');
   if (carte) {   // un autre bien du même crédit
     const k = e.target.dataset.k;
@@ -4436,7 +4512,13 @@ $('ajoutL2').onclick = () => {
   if (ouvert('projet')) { set('debutLoyer2', finChantier() + 1); flags.debutL2Auto = true; }
   rendre(); $('loyer2').focus();
 };
-$('retirerL2').onclick = () => { l2Ouvert = false; for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]); flags.debutL2Auto = false; sauver(); rendre(); };
+$('retirerL2').onclick = () => { l2Ouvert = false; for (const k in SANS_LOYER2) set(k, SANS_LOYER2[k]); set('nuitSur', '1'); fixerPer('l2', 'avant', null); fixerPer('l2', 'pendant', null); flags.debutL2Auto = false; sauver(); rendre(); };
+// « ↺ comme avant » : la case suit de nouveau la règle du projet
+$('loyers').addEventListener('click', e => {
+  const t = e.target.closest('[data-herit]'); if (!t) return;
+  const [ligne, col] = t.dataset.herit.split(':');
+  fixerPer(ligne, col, null); sauver(); rendre();
+});
 etape((() => { try { return localStorage.getItem('financer-etape'); } catch (e) { return 1; } })());
 $('reset').onclick = () => { try { localStorage.removeItem('cashflow-v1'); localStorage.removeItem('cashflow-bien'); } catch (e) {} location.hash = 'cashflow'; location.reload(); };
 rendre();
@@ -4564,9 +4646,16 @@ function recapHtml(d, o = {}) {
     jalons[i] = {m: j[0], l: j[1], ligne: n, droite};
   });
   const lignesJ = Math.max(1, lignes.length);
+  // Différé : son libellé dans sa bande s'il y tient, sinon sur une 2e ligne à gauche ; l'échéance juste après la bande,
+  // ou sur la 2e ligne calée à droite s'il n'y a pas la place (largeurs estimées, ≈ 0,85 % de la frise par caractère)
+  const dTxt = `Différé · ${eurR(c.mensDiff)}/mois`, eTxt = `Échéance ${eurR(c.mens)}/mois`, wd = c.differe / H * 100;
+  const dDedans = dTxt.length * 0.85 + 2 <= wd, eDessous = wd + eTxt.length * 0.85 + 2 > 100;
+  const differe = c.differe > 0 ? `<div class="rc-fr-d"><i style="width:${w(0, c.differe)}">${dDedans ? dTxt : ''}</i>${eDessous ? '' : `<span style="left:${g(c.differe)}">${eTxt}</span>`}</div>
+    ${dDedans && !eDessous ? '' : `<div class="rc-fr-d2">${dDedans ? '' : `<span>${dTxt} · ${c.differe > 1 ? `mois 1 à ${c.differe}` : 'mois 1'}</span>`}${eDessous ? `<span class="droite">${eTxt} · dès le mois ${c.differe + 1}</span>` : ''}</div>`}`
+    : `<div class="rc-fr-d"><span style="left:0">Échéance ${eurR(c.mens)}/mois dès le premier mois</span></div>`;
   const frise = `<div class="rc-frise"><div class="rc-fr-b">${t && t.debut ? seg('f-avant', 0, t.debut, t.finAvant ? 'Loué en l\'état' : 'Avant travaux') : ''}${t ? seg('f-trav', t.debut, fin, 'Travaux') : ''}
       ${d.revente ? seg('f-avant', fin, d.vente.mois, 'Mise en vente') : seg('f-loc', Math.max(fin, debLoc), H, d.saison ? 'Exploitation' : 'Location')}</div>
-    ${c.differe > 0 ? `<div class="rc-fr-d"><i style="width:${w(0, c.differe)}">Différé · ${eurR(c.mensDiff)}/mois</i><span style="left:${g(c.differe)}">Échéance ${eurR(c.mens)}/mois</span></div>` : `<div class="rc-fr-d"><span style="left:0">Échéance ${eurR(c.mens)}/mois dès le premier mois</span></div>`}
+    ${differe}
     <div class="rc-fr-j" style="height:${lignesJ * 15}px">${jalons.map(j => `<span style="left:${g(j.m)};top:${j.ligne * 15}px"${j.droite ? ' class="droite"' : ''}>${j.l}</span>`).join('')}</div>
     <div class="rc-fr-ech"><span>Mois 1</span><span>${H / 12} ans</span></div></div>`;
 
