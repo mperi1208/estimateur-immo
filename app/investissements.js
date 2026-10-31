@@ -1876,6 +1876,7 @@ function resumePret(b, p, e, i) {
   let h = `<div class="pret-etat">
     ${e.differe ? `<div class="pret-pause">Différé ${e.differe.total ? 'total' : 'partiel'} jusqu'en ${libMois(e.differe.fin)} : ${e.differe.total ? 'assurance seule, les intérêts s\'ajoutent au capital' : `${eur(e.M)} d'intérêts par mois`}, puis ${eur(e.differe.apres)} par mois hors assurance.</div>` : ''}
     ${p.progressif && !e.prog ? '<div class="pret-pause">Mensualité progressive : saisis ta mensualité actuelle (ou la hausse par an) pour en tenir compte.</div>' : ''}
+    ${e.capital < 0 && !e.enPause ? `<div class="aide manque">La mensualité ne couvre pas les intérêts (${eur(e.interets / Math.max(1, e.payes))} par mois) : le restant dû augmente. Vérifie la mensualité saisie.</div>` : ''}
     ${e.pauses.map(x => `<div class="pret-pause">Pause ${x.enCours ? `jusqu'en ${libMois(x.fin)}` : `de ${libMois(x.debut)} à ${libMois(x.fin)}`} : ${x.total ? 'rien à payer, les intérêts s\'ajoutent au capital' : 'intérêts seuls'}, puis ${eur(x.apres)} par mois${x.rallonge ? `, prêt rallongé de ${x.mois} mois` : ''}.</div>`).join('')}
     ${e.pause ? `<div class="pret-pause">${e.debutFutur ? `1re échéance en ${libMois(e.reprise)} : rien à payer d'ici là.` : `En pause jusqu'en ${libMois(e.reprise)} : pas d'échéance, les intérêts s'ajoutent au capital.`}</div>` : ''}
     ${mini([[e.pause ? 'À rembourser à la reprise' : 'Restant dû', eur(e.crd)], [e.enPause ? 'Mensualité (en pause)' : 'Mensualité', eur(e.M) + (e.assur ? ' + ' + eur(e.assur) + ' d\'assurance' : '')],
