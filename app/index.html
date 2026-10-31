@@ -3111,7 +3111,7 @@ function ouvrirCompte(mode = 'connexion') {
   } else if (COMPTE.user && mode !== 'nouveau') {
     body.innerHTML = `<h2>Ton compte</h2><p class="hint">Connecté avec <b>${esc(COMPTE.user.email)}</b>. Tes biens et tes projets sont enregistrés dans ton compte : tu les retrouves sur tous tes appareils.</p>
       <button class="cta" id="cpt_out">Se déconnecter</button>`;
-    body.querySelector('#cpt_out').onclick = async () => { await COMPTE.client.auth.signOut(); dlg.close(); };
+    body.querySelector('#cpt_out').onclick = async () => { await seDeconnecter(); dlg.close(); };
   } else {
     const titres = {connexion: 'Se connecter', creer: 'Créer un compte', oubli: 'Mot de passe oublié', nouveau: 'Nouveau mot de passe'};
     body.innerHTML = `<h2>${titres[mode]}</h2>
@@ -3157,8 +3157,13 @@ function ouvrirCompte(mode = 'connexion') {
   if (!dlg.open) dlg.showModal();
   const champ = body.querySelector('input'); if (champ) champ.focus();
 }
+// Déconnexion : ce qui attend d'être enregistré part d'abord dans le compte
+async function seDeconnecter() {
+  try { if (window.INV && INV.vider) await INV.vider(); } catch (e) { console.warn('Enregistrement avant déconnexion :', e); }
+  await COMPTE.client.auth.signOut();
+}
 // Invité : ouvre la connexion. Connecté : déconnecte directement.
-document.getElementById('compteBtn').onclick = () => COMPTE.user && COMPTE.client ? COMPTE.client.auth.signOut() : ouvrirCompte();
+document.getElementById('compteBtn').onclick = () => COMPTE.user && COMPTE.client ? seDeconnecter() : ouvrirCompte();
 document.getElementById('compteStatut').onclick = () => ouvrirCompte();
 document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrirCompte(); } };
 </script>
@@ -4512,7 +4517,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=49ec9be5"></script>
+<script src="investissements.js?v=824dde31"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

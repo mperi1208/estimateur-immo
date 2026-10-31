@@ -2251,6 +2251,8 @@ biens = biensLocaux(); scis = scisLocales(); normaliser();
 try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
 // « J'ai acheté » dans Mes projets : la fiche faite depuis le projet, ouverte (son identifiant est gardé dans le projet)
 function ajouterBien(o) { const b = nouveauBien({...o, id: uid()}); biens.push(b); normaliser(); sauver(b); location.hash = '#investissements/' + b.id; return b.id; }
-window.INV = {ajouterBien, bien: id => { const b = biens.find(x => x.id === id); return b ? {id: b.id, nom: b.nom} : null; }, estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon, place) => estimerDependance(lat, lon, place), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); }};
+window.INV = {ajouterBien, bien: id => { const b = biens.find(x => x.id === id); return b ? {id: b.id, nom: b.nom} : null; }, estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon, place) => estimerDependance(lat, lon, place), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); },
+  // Avant la déconnexion : envoyer tout de suite ce qui attendait son tour (sinon perdu, l'envoi trouverait le compte fermé)
+  vider: async () => { clearTimeout(minuteur); if (enAttente) await envoyer(); }};
 COMPTE.init();
 })();
