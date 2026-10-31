@@ -9,6 +9,9 @@ const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
 const kEur = n => (n < 0 ? '−' : '') + fmtK(Math.abs(n));
 const pct = n => (n < 0 ? '−' : '') + Math.abs(n * 100).toFixed(1).replace('.', ',') + ' %';
 const somme = (l, f) => l.reduce((t, x) => t + (f(x) || 0), 0);
+// Frais d'acquisition (plus-value, prix de revient à l'IS) : notaire et agence ; les frais bancaires (dossier, garantie) n'en
+// font pas partie. Maison construite : les « autres frais » sont ceux du chantier (raccordements, taxe d'aménagement) et comptent.
+const fraisAcquisition = a => (a.notaire || 0) + (a.agence || 0) + (a.mode === 'construction' ? a.frais || 0 : 0);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 // ---------- Mois (« AAAA-MM ») ----------
@@ -261,7 +264,7 @@ function calculs(b) {
   const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + compta + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
     + (b.location.statut === 'saisonnier' && !terrain ? loyersAn * (b.location.fraisSaison || 0) / 100 : 0);   // plateforme, conciergerie, ménage
   const creditAn = somme(actifs, x => (x.e.paye12 + x.e.assur * x.e.payes) * x.k);
-  const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
+  const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.agence || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
   const crd = somme(tous, x => x.e && x.e.crd * x.k), cfAn = loyersAn - chargesAn - creditAn;
   return {prets, recus, loue, loyerMois, loyersAn, chargesAn, compta, creditAn, cout, crd, cfAn, cfMois: cfAn / 12,
     mensuCredit: somme(actifs, x => x.e.pause ? 0 : (x.e.M + x.e.assur) * x.k), interetsAn: somme(actifs, x => (x.e.interets + x.e.assur * x.e.payes) * x.k),
@@ -276,7 +279,7 @@ function nouveauBien(o = {}) {
   return {id: uid(), nom: 'Nouveau bien', type: 'appart', adresse: '', surface: null, pieces: null, annee: null,
     criteres: {}, geo: null, estimation: null, valeurManuelle: false,
     structure: 'np', sciId: null, valeur: null, valeurLe: '',
-    achat: {date: '', prix: null, notaire: null, travaux: null, mobilier: null, frais: null},
+    achat: {date: '', prix: null, notaire: null, agence: null, travaux: null, mobilier: null, frais: null},
     location: {statut: 'vide', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0},
     chargesAn: {tf: null, copro: null, pno: null, gestion: null, entretien: null, compta: null, cfe: null, autres: null},
     prets: [], docs: [], notes: '', ...o};
@@ -396,6 +399,7 @@ function rafraichir() {
 // En revenant sur la page (autre onglet, autre appareil entre-temps) : on relit le compte
 let lectureEnCours = false;
 async function tirer() {
+  if (COMPTE.user && !compteCharge && !document.hidden) return chargerCompte();
   if (!COMPTE.user || !compteCharge || lectureEnCours || enAttente || document.hidden) return;
   lectureEnCours = true;
   try {
@@ -750,8 +754,47 @@ function majAuto(b) {
 }
 
 // ---------- Passage invité ↔ compte ----------
+// Lecture du compte à la connexion. En cas d'échec (réseau coupé…), nouvel essai automatique, de plus en plus espacé, et à
+// chaque retour sur la page ; d'ici là, rien de l'appareil n'est montré comme étant dans le compte, et ce qui est ajouté
+// entre-temps est gardé puis fusionné avec le compte une fois lu. genCompte : un chargement d'un compte quitté entre-temps est ignoré.
+let genCompte = 0, relanceCompte = null, essaisCompte = 0, chargementCompte = false;
+async function chargerCompte(gen = genCompte) {
+  if (gen !== genCompte || !COMPTE.user || compteCharge || chargementCompte) return;
+  chargementCompte = true; clearTimeout(relanceCompte);
+  etatCompte = 'Chargement de ton compte…'; afficher();
+  try {
+    const brut = await COMPTE.lire();
+    if (gen !== genCompte) return;
+    let distants = depuisCompte(brut);
+    const nRech = brut && Array.isArray(brut.recherches) ? brut.recherches.length : 0, nProj = brut && Array.isArray(brut.projets) ? brut.projets.length : 0;
+    const ajoutes = biens, scisAjoutees = scis;   // créés pendant le chargement (la liste part vide à la connexion)
+    if (typeof RECENTES !== 'undefined') RECENTES.fusionner(brut && brut.recherches, brut && brut.supprimes);
+    if (!distants) {   // premier passage : proposer de reprendre ce qui est sur cet appareil (fichiers compris)
+      const locaux = biensLocaux(), scisLoc = scisLocales();
+      distants = locaux.length && confirm(`Mettre dans ton compte ${locaux.length > 1 ? `les ${locaux.length} biens enregistrés` : 'le bien enregistré'} sur cet appareil ?`) ? locaux : [];
+      for (const b of distants) for (const d of b.docs.filter(d => d.local)) {
+        try { const blob = await idbFaire('readonly', s => s.get(d.id)); if (blob) await envoyerDoc(b, d, blob); } catch (e) { console.warn(erreurDocs(e)); }
+      }
+      biens = distants; scis = distants.length ? scisLoc : []; normaliser(); await COMPTE.ecrire(contenu());
+      if (gen !== genCompte) return;
+    }
+    if (brut && Array.isArray(brut.scis)) scis = brut.scis;
+    supprimes = brut && brut.supprimes ? brut.supprimes : {};
+    biens = ajoutes.length ? fusionListes(ajoutes, distants, supprimes) : distants;
+    if (scisAjoutees.length) scis = fusionListes(scisAjoutees, scis, supprimes);
+    normaliser(); compteCharge = true; essaisCompte = 0; etatCompte = 'Enregistré dans ton compte.';
+    if (typeof PROJETS !== 'undefined') { PROJETS.liste = fusionListes(PROJETS.liste, brut && brut.projets, supprimes); PROJETS.garder(); }
+    if (ajoutes.length || scisAjoutees.length || (typeof RECENTES !== 'undefined' && RECENTES.liste.length !== nRech) || (typeof PROJETS !== 'undefined' && PROJETS.liste.length !== nProj)) sauver();   // ce qui est sur cet appareil et pas encore dans le compte
+  } catch (e) {
+    if (gen !== genCompte) return;
+    etatCompte = 'Impossible de lire ton compte : ' + erreurCompte(e) + '. Nouvel essai dans un instant.';
+    relanceCompte = setTimeout(() => chargerCompte(gen), Math.min(60000, 5000 * 2 ** essaisCompte++));
+  } finally { if (gen === genCompte) chargementCompte = false; }
+  afficher();
+}
 COMPTE.surChangement(async user => {
-  compteCharge = false; urls.clear();
+  const gen = ++genCompte;
+  compteCharge = false; chargementCompte = false; essaisCompte = 0; clearTimeout(relanceCompte); urls.clear();
   if (!user) {
     etatCompte = ''; biens = biensLocaux(); scis = scisLocales(); normaliser();
     // Les projets n'existent qu'avec un compte, et les recherches ont été versées dans le compte : à la déconnexion on les
@@ -761,27 +804,8 @@ COMPTE.surChangement(async user => {
     supprimes = {};
     return afficher();
   }
-  etatCompte = 'Chargement de ton compte…'; afficher();
-  try {
-    const brut = await COMPTE.lire();
-    let distants = depuisCompte(brut);
-    const nRech = brut && Array.isArray(brut.recherches) ? brut.recherches.length : 0, nProj = brut && Array.isArray(brut.projets) ? brut.projets.length : 0;
-    if (typeof RECENTES !== 'undefined') RECENTES.fusionner(brut && brut.recherches, brut && brut.supprimes);
-    if (!distants) {   // premier passage : proposer de reprendre ce qui est sur cet appareil (fichiers compris)
-      const locaux = biensLocaux(), scisLoc = scisLocales();
-      distants = locaux.length && confirm(`Mettre dans ton compte ${locaux.length > 1 ? `les ${locaux.length} biens enregistrés` : 'le bien enregistré'} sur cet appareil ?`) ? locaux : [];
-      for (const b of distants) for (const d of b.docs.filter(d => d.local)) {
-        try { const blob = await idbFaire('readonly', s => s.get(d.id)); if (blob) await envoyerDoc(b, d, blob); } catch (e) { console.warn(erreurDocs(e)); }
-      }
-      biens = distants; scis = distants.length ? scisLoc : []; normaliser(); await COMPTE.ecrire(contenu());
-    }
-    if (brut && Array.isArray(brut.scis)) scis = brut.scis;
-    supprimes = brut && brut.supprimes ? brut.supprimes : {};
-    biens = distants; normaliser(); compteCharge = true; etatCompte = 'Enregistré dans ton compte.';
-    if (typeof PROJETS !== 'undefined') { PROJETS.liste = fusionListes(PROJETS.liste, brut && brut.projets, supprimes); PROJETS.garder(); }
-    if ((typeof RECENTES !== 'undefined' && RECENTES.liste.length !== nRech) || (typeof PROJETS !== 'undefined' && PROJETS.liste.length !== nProj)) sauver();   // recherches et projets de cet appareil à ajouter au compte
-  } catch (e) { etatCompte = 'Impossible de lire ton compte : ' + erreurCompte(e); }
-  afficher();
+  biens = []; scis = [];   // les biens de l'appareil (invité) ne sont pas ceux du compte
+  await chargerCompte(gen);
 });
 
 // ---------- Affichage ----------
@@ -940,6 +964,9 @@ function vueListe() {
     h += pli('biens', 'Mes biens', montres.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
     if (vendus.length) h += pli('vendus', 'Biens vendus', vendus.length, `<div class="liste">${vendus.map(carteVendue).join('')}</div>`);
     h += arbreHTML();
+  } else if (COMPTE.user && !compteCharge) {
+    // Compte pas encore lu (ou injoignable) : ne pas laisser croire qu'il est vide
+    h += `<div class="aide attente-compte">${erreurEtat() ? esc(etatCompte) : 'Chargement de ton compte…'}</div>`;
   } else {
     h += `<div class="vide"><div class="ico">${icone('maison')}</div><h2>Ajoute ton premier investissement</h2>
       <p>Pour chaque bien : l'achat, le crédit, la location, les charges, et les plans. Le cash-flow et ce qu'il reste à rembourser se calculent tout seuls. Tes SCI ont aussi leur fiche, avec leurs biens et leurs associés.</p>
@@ -1085,7 +1112,7 @@ function vueDetail(b) {
   const opt = (o) => o;
   let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
-      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions">${b.vendu ? '' : `<button class="primaire" data-a="vente">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button>`}</div></div>
+      <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions">${b.vendu ? '' : `<button data-a="vente" title="Ce que la vente te laisserait aujourd'hui, après impôts">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button>`}</div></div>
     ${b.vendu ? venduHTML(b) : ''}${lienHTML(b)}
     <div id="inv_kpis"></div>
     ${venteOuverte.has(b.id) && !b.vendu ? venteHTML(b) : ''}
@@ -1128,8 +1155,8 @@ function vueDetail(b) {
       ${champ(b, 'achat.debutTravaux', 'Début des travaux', {type: 'month', aide: 'Déclaration d\'ouverture de chantier'})}${champ(b, 'achat.finTravaux', 'Fin de la construction', {type: 'month'})}
       ${champ(b, 'achat.travaux', 'Travaux faits depuis (€)', {step: 500})}`
       : `${champ(b, 'achat.date', 'Date d\'achat', {type: 'month'})}${champ(b, 'achat.prix', 'Prix d\'achat (€)', {step: 1000})}
-      ${champ(b, 'achat.notaire', 'Frais de notaire (€)', {step: 100})}${champ(b, 'achat.travaux', 'Travaux (€)', {step: 500})}`}
-      ${champ(b, 'achat.mobilier', 'Mobilier (€)', {step: 100})}${champ(b, 'achat.frais', 'Autres frais (€)', {step: 100, aide: b.achat.mode === 'construction' ? 'Raccordements, taxe d\'aménagement, dossier…' : 'Agence, dossier, garantie…'})}
+      ${champ(b, 'achat.notaire', 'Frais de notaire (€)', {step: 100})}${champ(b, 'achat.agence', 'Frais d\'agence (€)', {step: 100, aide: 'Payés par toi à l\'achat. Sans agence : laisser vide'})}${champ(b, 'achat.travaux', 'Travaux (€)', {step: 500})}`}
+      ${champ(b, 'achat.mobilier', 'Mobilier (€)', {step: 100})}${b.achat.mode === 'construction' ? champ(b, 'achat.frais', 'Autres frais (€)', {step: 100, aide: 'Raccordements, taxe d\'aménagement…'}) : champ(b, 'achat.frais', 'Frais bancaires (€)', {step: 100, aide: 'Dossier, garantie, courtier…'})}
     </div><div class="total" id="inv_cout"></div>`)}
     ${section('Crédit' + (b.prets.length + pretsRecus(b).length > 1 ? 's' : ''), `<div class="prets">${pretsRecus(b).map(pretRecuHTML).join('')}${b.prets.map((p, i) => pretHTML(b, p, i)).join('')}</div><button data-a="ajoutPret">+ Ajouter un prêt</button>`, true)}
     ${section('Charges du propriétaire (par an)', `${(p => p && ['gestion', 'entretien'].some(k => b.chargesAn[k] == null && p.chargesAn[k] != null) ? `<div class="reprise"><button data-a="copierCharges">Reprendre les % de ${esc(p.nom)}</button><div class="aide">Gestion et entretien, en % des loyers. Taxe foncière, assurance et copropriété restent sur la fiche de ${esc(p.nom)}.</div></div>` : '')(principalDe(b))}<div class="grille">
@@ -1176,10 +1203,14 @@ function statutsDe(b) {
   return o;
 }
 function locationHTML(b) {
+  // SCI à l'IR qui loue en meublé : au-delà de 10 % de recettes meublées, elle passe d'office à l'IS (comme dans Financer)
+  const x = sciDe(b), st = b.location.statut;
+  const alerte = x && x.regime === 'ir' && ['meuble', 'saisonnier', 'colocation'].includes(st)
+    ? `<div class="aide manque">${esc(x.nom)} est à l'IR : ${st === 'colocation' ? 'si la colocation est meublée, ' : ''}une location meublée la fait passer d'office à l'IS dès que les loyers meublés dépassent 10 % de ses recettes. Vérifie avec ton comptable, et passe la SCI à l'IS dans sa fiche si c'est le cas.</div>` : '';
   const Lc = LISTES[b.location.statut];
   if (Lc) {
     const liste = b[Lc.cle] || [];
-    return section('Location', `<div class="grille">${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}</div>
+    return section('Location', `${alerte}<div class="grille">${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}</div>
       <div class="activites">${liste.map((x, i) => `<div class="activite"><div class="grille">
         ${champ(b, `${Lc.cle}.${i}.libelle`, Lc.nom, {type: 'text', ph: Lc.cle === 'lots' ? `Loyer ${i + 1} (ex. appartement, garage aménagé)` : `${Lc.nom} ${i + 1}`})}${champ(b, `${Lc.cle}.${i}.loyer`, 'Loyer hors charges (€/mois)', {step: 10})}
         ${Lc.cle === 'lots' ? champ(b, `lots.${i}.surface`, 'Surface (m²)') : ''}${champ(b, `${Lc.cle}.${i}.locataire`, 'Locataire', {type: 'text'})}
@@ -1191,7 +1222,7 @@ function locationHTML(b) {
   }
   if (b.location.statut === 'saisonnier') {
     const m = loyersMarche(b.estimation).meuble;
-    return section('Location', `<div class="grille">
+    return section('Location', `${alerte}<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
       ${champ(b, 'location.nuit', 'Prix moyen par nuit (€)', {step: 5, aide: m ? `Point de départ : ≈ ${eur(nuitConseillee(m))} (loyer meublé du marché ÷ 9)` : ''})}
       <div><label for="inv_periode">Période louée</label><select id="inv_periode" data-x="periode">${optionsPeriode(Object.keys(PERIODES_SAISON).find(k => Math.abs(PERIODES_SAISON[k].jours * PERIODES_SAISON[k].occ / 100 - b.location.nuitsAn) <= 1) || '', true)}</select><div class="aide">Remplit les nuits louées par an</div></div>
@@ -1201,7 +1232,7 @@ function locationHTML(b) {
       ${champ(b, 'location.debutBail', 'Loué à partir de', {type: 'month', aide: 'Vide : déjà en location'})}
     </div><div class="total" id="inv_revTotal"></div>`);
   }
-  return section('Location', `<div class="grille">
+  return section('Location', `${alerte}<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
       ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
       ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}
@@ -1256,7 +1287,7 @@ function planDetache(b) {
   const lot = b.location.statut === 'lots' && d.lot ? (b.lots || []).find(x => x.id === d.lot) : null;
   const loyer = lot ? lot.loyer || 0 : d.loyer || 0;
   return {d, val, valSugg, prix, prixSugg, r, base, construit, lot, loyer,
-    notaire: Math.round((a.notaire || 0) * r), frais: Math.round((a.frais || 0) * r),
+    notaire: Math.round((a.notaire || 0) * r), agence: Math.round((a.agence || 0) * r), frais: Math.round((a.frais || 0) * r),
     valeurApres: b.valeur ? Math.max(0, b.valeur - (val || 0)) : null, baseApres: base - prix};
 }
 // Fiche associée sans achat : reprendre la date du bien principal et sa part du prix (au prorata des valeurs),
@@ -1266,7 +1297,7 @@ function repriseAchat(b) {
   if (!p || b.achat.prix || p.achat.mode === 'construction' || !(a.date || a.prix)) return null;
   const r = !a.prix ? 0 : p.valeur && b.valeur ? b.valeur / (p.valeur + b.valeur) : partSuggeree(p);
   const prix = Math.round((a.prix || 0) * r / 100) * 100;
-  return {p, date: a.date, r, prix, notaire: Math.round((a.notaire || 0) * r), frais: Math.round((a.frais || 0) * r)};
+  return {p, date: a.date, r, prix, notaire: Math.round((a.notaire || 0) * r), agence: Math.round((a.agence || 0) * r), frais: Math.round((a.frais || 0) * r)};
 }
 // Bien associé sans achat, crédit ni charges à lui : tout est compté dans la fiche du bien principal, rien à saisir
 const lieSimple = b => !!principalDe(b) && !b.saisieAPart && !b.achat.prix && !b.achat.date && !b.prets.length && !pretsRecus(b).length && Object.values(b.chargesAn).every(v => v == null);
@@ -1328,7 +1359,7 @@ function detacher(b) {
   const n = nouveauBien({nom: (d.nom || '').trim() || 'Garage · ' + b.nom, type: d.type || 'parking', ...((d.type || 'parking') === 'parking' ? {place: PLACES[d.place] ? d.place : 'box'} : {}), adresse: b.adresse, geo: b.geo ? {...b.geo} : null,
     structure: b.structure, sciId: b.sciId, part: b.part, lieA: b.id,
     valeur: p.val || null, valeurLe: p.val ? moisCourant() : '', valeurManuelle: !!p.val,
-    achat: {mode: 'existant', date: a.date || '', prix: p.prix || null, notaire: p.notaire || null, travaux: null, mobilier: null, frais: p.frais || null},
+    achat: {mode: 'existant', date: a.date || '', prix: p.prix || null, notaire: p.notaire || null, agence: p.agence || null, travaux: null, mobilier: null, frais: p.frais || null},
     location: loyer ? {statut: 'vide', loyer, charges: null, locataire: lot ? lot.locataire || '' : '', debutBail: lot && normMois(lot.debut) ? normMois(lot.debut) : '', vacance: 0}
       : {statut: (d.type || 'parking') === 'parking' ? 'avec' : 'vacant', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0}, avecVu: true,
     notes: `Sorti de « ${b.nom} » en ${libMois(moisCourant())}.`});
@@ -1337,6 +1368,7 @@ function detacher(b) {
     a.prix = a.prix ? Math.round(a.prix * (1 - p.r)) : a.prix;
     if (p.construit && a.construction) a.construction = Math.round(a.construction * (1 - p.r));
     if (a.notaire) a.notaire -= p.notaire;
+    if (a.agence) a.agence -= p.agence;
     if (a.frais) a.frais -= p.frais;
   }
   if (b.valeur && p.val) { b.valeur = p.valeurApres; b.valeurLe = moisCourant(); }
@@ -1563,7 +1595,7 @@ function simulerVente(b) {
   r.liquide = prix - frais - crd - ira;   // ce qui reste de la vente, avant impôt (pour le bien entier)
   if (regime === 'is') {
     const construit = a.mode === 'construction';
-    const acquisition = (a.prix || 0) + (construit ? a.construction || 0 : 0) + (v.fraisAchat ?? ((a.notaire || 0) + (a.frais || 0))) + (v.travaux ?? (a.travaux || 0));
+    const acquisition = (a.prix || 0) + (construit ? a.construction || 0 : 0) + (v.fraisAchat ?? fraisAcquisition(a)) + (v.travaux ?? (a.travaux || 0));
     // Amortissement : le bâti seulement (≈ 85 % du prix d'un bien acheté ; toute la construction pour une maison construite) sur 30 ans,
     // les travaux sur 15 ans (comme dans Financer) ; jamais plus que leur coût, même détenus plus longtemps
     const ansAmort = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : annees;
@@ -1586,7 +1618,7 @@ function simulerVente(b) {
     // Maison construite : prix d'acquisition = terrain + construction ; forfait de 15 % : 5 ans comptés depuis la fin de la construction
     const acq = (a.prix || 0) + (construit ? a.construction || 0 : 0);
     const ansForfait = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : annees;
-    const fraisAchat = v.fraisAchat ?? Math.max((a.notaire || 0) + (a.frais || 0), 0.075 * (a.prix || 0));
+    const fraisAchat = v.fraisAchat ?? Math.max(fraisAcquisition(a), 0.075 * (a.prix || 0));
     const travaux = v.travaux ?? (ansForfait != null && ansForfait >= 5 ? Math.max(a.travaux || 0, 0.15 * acq) : (a.travaux || 0));
     r.fraisAchat = fraisAchat; r.travaux = travaux; r.rp = rp; r.construit = construit;
     r.pv = prix - frais - (acq + fraisAchat + travaux);
@@ -1666,7 +1698,7 @@ function majVente(b) {
       ${r.surtaxe ? ligne('Surtaxe (plus-value de plus de 50 000 €)', moins(r.surtaxe)) : ''}`}
       ${ligne('<b>Ce qui te revient</b>', eur(r.pourToi), signe(r.pourToi))}</div>
       ${mini([['Plus-value brute', eur(r.pv)], ['Frais d\'achat déduits', eur(r.fraisAchat)], ['Travaux déduits', eur(r.travaux)], ['Maison : détention', r.construit && r.anneesMaison != null ? r.anneesMaison + ' ans depuis le début des travaux' : null], ['Exonération totale', r.annees != null && !r.rp ? (n => n >= 30 ? 'atteinte' : 'dans ' + (30 - n) + ' ans')(r.construit && r.anneesMaison != null ? Math.min(r.annees, r.anneesMaison) : r.annees) : null]], 'petit')}
-      <div class="aide">${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}${r.construit ? 'Maison construite : prix d\'achat = terrain + construction ; la plus-value du terrain compte depuis son achat, celle de la maison depuis le début des travaux. ' : ''}Frais d'achat : réels ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention${r.construit ? ' (comptés depuis la fin de la construction)' : ''}.</div>`;
+      <div class="aide">${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}${r.construit ? 'Maison construite : prix d\'achat = terrain + construction ; la plus-value du terrain compte depuis son achat, celle de la maison depuis le début des travaux. ' : ''}Frais d'achat : notaire et agence (pas les frais bancaires), ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention${r.construit ? ' (comptés depuis la fin de la construction)' : ''}.</div>`;
   }
   if (r.manqueAchat) h += `<div class="warnbox">${b.achat.mode === 'construction' ? 'Renseigne le prix et la date d\'achat du terrain, le coût et le début de la construction' : 'Renseigne le prix et la date d\'achat'} (bloc Achat) : sans eux, la plus-value et les abattements sont faux.</div>`;
   el.innerHTML = h;
@@ -1848,7 +1880,13 @@ function majCalculs(b) {
   });
 }
 function resumePret(b, p, e, i) {
-  if (!e) return '<div class="aide">Remplis le taux, la mensualité et le restant dû (ou le montant, la durée et la 1re échéance) pour voir où en est ce prêt.</div>';
+  if (!e) {
+    // Commencé par l'offre (montant saisi) : dire exactement ce qui manque, et que le prêt n'est pas compté d'ici là
+    const manque = [!(p.duree > 0) && 'la durée', !p.debut && 'la 1re échéance'].filter(Boolean);
+    return p.montant > 0 && manque.length
+      ? `<div class="aide manque">Il manque ${manque.join(' et ')} : ce prêt n'est pas encore compté (mensualité, restant dû, cash-flow).</div>`
+      : '<div class="aide">Remplis le taux, la mensualité et le restant dû (ou le montant, la durée et la 1re échéance) pour voir où en est ce prêt.</div>';
+  }
   if (e.mois <= 0) return '<div class="pret-etat"><b>Prêt remboursé</b></div>';
   const a = analyseReneg(p, e, b.structure !== 'np'), dejaPaye = p.montant > 0 ? 1 - e.crd / p.montant : null;
   const taux = v => v.toFixed(2).replace('.', ',') + ' %';
@@ -1994,6 +2032,8 @@ racine.addEventListener('click', async e => {
   }
   if (a === 'venteEnregistrer') {
     const r = simulerVente(b), dansSci = r.regime === 'is' && !r.sortir;
+    // Vente datée dans le futur : c'est une simulation, le bien est encore à toi (il resterait sinon hors des totaux d'ici là)
+    if (ecartMois(moisCourant(), r.mois) > 0) { alert(`La vente est datée de ${libMois(r.mois)}, dans le futur : la simulation reste affichée, enregistre-la une fois la vente faite.`); return; }
     if (!confirm(`Enregistrer la vente de « ${b.nom} » en ${libMois(r.mois)} pour ${eur(r.prix)} ? Il ne comptera plus dans tes totaux.`)) return;
     b.vendu = {mois: r.mois, prix: r.prix, pv: Math.round(r.pv), impots: Math.round(r.impots), net: Math.round(dansSci ? r.dansSci * r.partSci : r.pourToi), dansSci};
     venteOuverte.delete(b.id); sauver(b); vueDetail(b); window.scrollTo(0, 0); return;
@@ -2051,9 +2091,9 @@ racine.addEventListener('click', async e => {
   if (a === 'dissocier' && confirm('Dissocier ce bien ? Il reste dans ta liste, sans lien avec l\'autre.')) { delete b.lieA; if (b.location.statut === 'avec') b.location.statut = 'vacant'; sauver(b); return vueDetail(b); }
   if (a === 'copierAchat') {
     const r = repriseAchat(b); if (!r) return;
-    const notaire = b.achat.notaire == null ? r.notaire : 0, frais = b.achat.frais == null ? r.frais : 0;   // seulement ce qui est repris
-    Object.assign(b.achat, {mode: 'existant', date: b.achat.date || r.date, prix: r.prix || b.achat.prix, notaire: b.achat.notaire ?? (notaire || null), frais: b.achat.frais ?? (frais || null)});
-    if (r.prix) { const a = r.p.achat; a.prix -= r.prix; if (notaire) a.notaire -= notaire; if (frais) a.frais -= frais; }
+    const notaire = b.achat.notaire == null ? r.notaire : 0, agence = b.achat.agence == null ? r.agence : 0, frais = b.achat.frais == null ? r.frais : 0;   // seulement ce qui est repris
+    Object.assign(b.achat, {mode: 'existant', date: b.achat.date || r.date, prix: r.prix || b.achat.prix, notaire: b.achat.notaire ?? (notaire || null), agence: b.achat.agence ?? (agence || null), frais: b.achat.frais ?? (frais || null)});
+    if (r.prix) { const a = r.p.achat; a.prix -= r.prix; if (notaire) a.notaire -= notaire; if (agence) a.agence -= agence; if (frais) a.frais -= frais; }
     sauver(b, r.p); return vueDetail(b);
   }
   if (a === 'saisirAPart') { b.saisieAPart = true; sauver(b); return vueDetail(b); }
@@ -2072,7 +2112,8 @@ racine.addEventListener('click', async e => {
   if (a === 'supprLigne' && LISTES[b.location.statut] && confirm('Retirer cette ligne ?')) { b[LISTES[b.location.statut].cle].splice(+t.dataset.i, 1); sauver(b); return vueDetail(b); }
   if (a === 'ajoutRevenu') { (b.revenus = b.revenus || []).push({id: uid(), libelle: '', montant: null, periode: 'an'}); sauver(b); vueDetail(b); }
   if (a === 'supprRevenu' && confirm('Retirer cette activité ?')) { b.revenus.splice(+t.dataset.i, 1); sauver(b); vueDetail(b); }
-  if (a === 'ajoutPret') { b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: '', offre: '', assurance: null, mensualite: null, progressif: '', hausse: null, mensuLe: '', typeDiff: '', differe: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
+  // Nouveau prêt : 1re échéance le mois qui suit l'achat (le cas courant), offre signée le mois de l'achat ; modifiables
+  if (a === 'ajoutPret') { const da = normMois(b.achat.date); b.prets.push({id: uid(), banque: '', montant: null, taux: null, duree: 240, debut: da ? decalerMois(da, 1) : '', offre: da || '', assurance: null, mensualite: null, progressif: '', hausse: null, mensuLe: '', typeDiff: '', differe: null, crd: null, mois: null, crdLe: ''}); sauver(b); vueDetail(b); }
   if (a === 'partagePret' || a === 'partageProrata') {
     const p = b.prets[+t.dataset.i]; if (!p) return;
     let l = partagesDe(p);
@@ -2155,6 +2196,27 @@ racine.addEventListener('change', async e => {
   const t = e.target;
   let v = t.type === 'checkbox' ? t.checked : t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.type === 'text' || t.type === 'search' ? t.value : t.type === 'month' ? normMois(t.value) : t.value === '' ? null : +t.value;
   if (t.type === 'month' && t.value && !v) { alert('Date au format AAAA-MM, par exemple 2024-03.'); t.value = lire(b, chemin) || ''; return; }
+  // Cohérence : un montant n'est jamais négatif, une vacance ne dépasse pas l'année ; une date qui contredit une autre
+  // (vendu avant d'être acheté, construction finie avant d'avoir commencé…) est refusée. Message sous le champ.
+  racine.querySelectorAll('.aide.corr').forEach(x => x.remove());
+  const dire = msg => { const h = document.createElement('div'); h.className = 'aide corr'; h.setAttribute('role', 'status'); h.textContent = msg; t.parentElement.append(h); };
+  if (t.type === 'number' && v != null) {
+    const max = /(^|\.)vacance$/.test(chemin) ? 12 : /\.taux$/.test(chemin) ? 15 : /nuitsAn$/.test(chemin) ? 365
+      : /(fraisSaison|gestion|entretien)$/.test(chemin) || chemin === 'vente.frais' ? 100 : null;   // nuits par an, et pourcentages
+    if (v < 0) { v = 0; t.value = 0; dire('Ramené à 0 : ce nombre ne peut pas être négatif.'); }
+    else if (max != null && v > max) { v = max; t.value = max; dire(`Ramené à ${max} : c'est le maximum.`); }
+  }
+  if (t.type === 'month' && v) {
+    const a = b.achat || {}, vente = (b.vente || {}).mois, avant = (x, y) => !!(x && y) && ecartMois(x, y) > 0;   // x avant y
+    const refus = chemin === 'vente.mois' && avant(v, a.date) ? `Vendu avant d'être acheté ? L'achat date de ${libMois(a.date)}.`
+      : chemin === 'achat.date' && avant(vente, v) ? `Acheté après la vente (${libMois(vente)}) ? Corrige d'abord la date de vente.`
+      : chemin === 'achat.date' && a.mode === 'construction' && avant(a.debutTravaux, v) ? `Le terrain doit être acheté avant le début des travaux (${libMois(a.debutTravaux)}).`
+      : chemin === 'achat.debutTravaux' && avant(v, a.date) ? `Les travaux ne peuvent pas commencer avant l'achat du terrain (${libMois(a.date)}).`
+      : chemin === 'achat.debutTravaux' && avant(a.finTravaux, v) ? `Les travaux commencent après leur fin (${libMois(a.finTravaux)}) ? Corrige d'abord la fin.`
+      : chemin === 'achat.finTravaux' && avant(v, a.debutTravaux) ? `La construction ne peut pas finir avant d'avoir commencé (${libMois(a.debutTravaux)}).` : '';
+    if (refus) { t.value = lire(b, chemin) || ''; dire(refus); return; }
+    if (/^prets\.\d+\.debut$/.test(chemin) && a.date && ecartMois(v, a.date) > 2) dire(`1re échéance avant l'achat (${libMois(a.date)}) : normal seulement pour un rachat de crédit.`);
+  }
   // Prix et valeur tapés en milliers (« 819 ») : compris comme 819 000 €
   if (['valeur', 'achat.prix'].includes(chemin) && v > 0 && v < 2000) { v *= 1000; t.value = v; }
   ecrire(b, chemin, v);

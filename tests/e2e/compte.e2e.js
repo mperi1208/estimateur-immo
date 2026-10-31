@@ -511,7 +511,7 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   // mode pro : les trois chiffres des tuiles de Financer
   assert.deepEqual((await carte.locator('.pj-chiffres span').allInnerTexts()).map(x => x.toLowerCase()).slice(0, 2), ['prix du projet', 'mensualité']);
   assert.match(await carte.locator('.pj-chiffres').innerText(), /Il te (reste|manque) par mois/i);
-  await carte.locator('[data-a="suppr"]').click();
+  await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="suppr"]').click();
   await page.waitForFunction(() => !/Projet Lyon 45/.test(document.getElementById('pj').innerText));
   c = await attendreCompte(c => !c.projets.some(x => x.id === pr.id), 'projet supprimé');
   assert.ok(c.supprimes[pr.id]);
@@ -744,7 +744,7 @@ test('ancien projet à deux biens (format d\'avant la liste de biens) : repris a
   assert.equal(+await page.inputValue('#cf_tf'), 900);
   assert.equal(+await page.locator('#cf_biensPlus [data-i="0"] [data-k="tf"]').inputValue(), 400);
   await page.click('.tabs [data-tab="projets"]');
-  await carte.locator('[data-a="suppr"]').click();
+  await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="suppr"]').click();
 });
 
 test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {
@@ -840,8 +840,20 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await rangee('Il te reste par mois').innerText(), /−453 €\s+526 € de moins\s+73 €/);
   assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
-  // Récap banque du projet : la meilleure option (Garage), téléchargée en PDF ; ou celle choisie dans son menu
-  assert.equal(await telecharger(carte.locator('.pj-gr-actions [data-a="recap"]')), 'Dossier de financement - San Gaetano - Garage.pdf');
+  // Dossier de financement du projet : les options comparées puis la meilleure (Garage) en détail, 3 pages ;
+  // ou une option choisie dans le menu du bouton ; ou dans le menu ⋯ de l'option
+  const dossier = carte.locator('.pj-gr-actions .pj-dossier');
+  await dossier.locator('summary').click();
+  assert.match(await dossier.locator('.pj-menu-l').innerText(), /Comparer les options\s*2 options côte à côte[\s\S]*Option A · Division\s*Option B · Garage\s*la meilleure/i);
+  assert.equal(await telecharger(dossier.locator('[data-a="recapComparer"]')), 'Dossier de financement - San Gaetano - comparaison des options.pdf');
+  assert.equal(await page.locator('#recap .rc-page').count(), 3);
+  const rcCmp = await page.evaluate(() => document.getElementById('recap').textContent.replace(/\s+/g, ' '));
+  assert.match(rcCmp, /1\/3.*Les options étudiées.*L'option retenue, B · Garage, dégage la meilleure trésorerie mensuelle/);
+  assert.match(rcCmp, /2\/3 San Gaetano.*Option retenue : B · Garage/);
+  assert.equal(await page.locator('#pj details.pj-menu[open]').count(), 0, 'le menu se referme');
+  await dossier.locator('summary').click();
+  assert.equal(await telecharger(dossier.locator('[data-a="recap"]', {hasText: 'Garage'})), 'Dossier de financement - San Gaetano - Garage.pdf');
+  assert.equal(await page.locator('#recap .rc-page').count(), 2);
   await (await col('Division')).locator('.pj-menu summary').click();
   assert.equal(await telecharger((await col('Division')).locator('[data-a="recap"]')), 'Dossier de financement - San Gaetano - Division.pdf');
   assert.match(await page.evaluate(() => document.getElementById('recap').textContent), /Prix d'acquisition\s*200\s000/);
@@ -929,12 +941,12 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.locator('#pj article.pj', {hasText: 'Gaetano garage'}).waitFor();
   assert.equal(await carte.locator('.pj-opt-act').count(), 3);
   // Défaire le regroupement : chacun redevient un projet
-  await carte.locator('.pj-gr-actions .pj-menu summary').click();
+  await carte.locator('.pj-gr-actions .pj-menu:not(.pj-dossier) summary').click();
   await carte.locator('[data-a="grDefaire"]').click();
   await page.waitForFunction(() => !document.querySelector('#pj .pj-groupe'));
   c = await attendreCompte(c => !c.projets.some(x => x.groupe && /Gaetano/.test(x.nom)) && c.projets.some(x => x.nom === 'Gaetano division'), 'regroupement défait');
   // Ménage
-  for (const x of c.projets.filter(x => /Gaetano/.test(x.nom))) await page.locator(`#pj article.pj[data-id="${x.id}"] [data-a="suppr"]`).click();
+  for (const x of c.projets.filter(x => /Gaetano/.test(x.nom))) { const c = page.locator(`#pj article.pj[data-id="${x.id}"]`); await c.locator('.pj-menu summary').click(); await c.locator('[data-a="suppr"]').click(); }
   await attendreCompte(c => !c.projets.some(x => /Gaetano/.test(x.nom)), 'projets du test supprimés');
   await page.evaluate(() => { window.prompt = window.promptAvant; });
 });

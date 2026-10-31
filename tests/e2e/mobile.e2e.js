@@ -78,9 +78,9 @@ test('Mes projets sur téléphone : un projet à deux options déplié se voit e
   await mode('pro');
 });
 
-test('menus ⋯ sur téléphone : panneau en bas de l\'écran, entier, fermé d\'un toucher à côté', async () => {
+test('menus ⋯ et « Dossier de financement » sur téléphone : panneau en bas de l\'écran, entier, fermé d\'un toucher à côté', async () => {
   const carte = page.locator('#pj .pj-groupe');
-  for (const sel of ['.pj-tete .pj-menu', '.pj-carte .pj-opt-act .pj-menu']) {
+  for (const sel of ['.pj-tete .pj-menu:not(.pj-dossier)', '.pj-tete .pj-dossier', '.pj-carte .pj-opt-act .pj-menu']) {
     const menu = carte.locator(sel).first();
     await menu.locator('summary').click();
     const l = await boite(`#pj .pj-groupe ${sel}[open] .pj-menu-l`);
@@ -129,4 +129,49 @@ test('Financer, le calendrier : les libellés du différé ne se chevauchent jam
   }
   await page.setViewportSize({width: 390, height: 844});
   await differe(0);
+});
+
+test('Financer, le calendrier : un segment étroit n\'a jamais son libellé coupé, il passe sous la frise ; le trait de la mensualité pleine va jusqu\'au bout', async () => {
+  await onglet('cashflow');
+  await mode('pro');
+  await cliquer(page, '#cf_etapes button[data-etape="2"]');
+  if (!await page.evaluate(() => document.getElementById('cf_boxProjet').open)) await cliquer(page, '#cf_travauxSeg button[data-v="1"]');
+  await saisir(page, '#cf_travaux', 30000);
+  const champ = (id, n) => page.evaluate(([id, n]) => { const d = document.getElementById(id); d.value = n; d.dispatchEvent(new Event('input', {bubbles: true})); }, [id, n]);
+  // Chaque segment : son libellé tient dedans, ou bien il est caché et écrit sous la frise
+  const etat = () => page.evaluate(() => {
+    const cal = document.getElementById('cf_calendrier'), r = e => e.getBoundingClientRect();
+    return {segs: [...cal.querySelectorAll('.cal-barre > div')].map(s => ({titre: s.title, etroit: s.classList.contains('etroit'), coupe: s.scrollWidth > s.clientWidth + 0.5, visible: getComputedStyle(s.firstElementChild).visibility !== 'hidden'})),
+      dessous: [...cal.querySelectorAll('.cal-leg span')].map(e => ({t: e.textContent, d: r(e).right})),
+      barre: r(cal.querySelector('.cal-barre')), plein: cal.querySelector('.plein') && r(cal.querySelector('.plein'))};
+  });
+  for (const largeur of [360, 390, 1280]) {
+    await page.setViewportSize({width: largeur, height: 844});
+    for (const [debut, duree, diff] of [[24, 2, 36], [2, 1, 0], [12, 3, 24], [1, 1, 6], [30, 6, 12]]) {
+      await champ('cf_debutTravaux', debut); await champ('cf_dureeTravaux', duree); await champ('cf_differe', diff);
+      await page.waitForFunction(t => document.getElementById('cf_calendrier').innerText.includes(t), `Travaux · ${duree > 1 ? `mois ${debut} à ${debut + duree - 1}` : `mois ${debut}`}`);
+      const e = await etat(), cas = `${largeur} px, travaux mois ${debut} pendant ${duree}, différé ${diff}`;
+      for (const s of e.segs) {
+        if (s.visible) assert.ok(!s.coupe, `${cas} : « ${s.titre} » coupé dans la frise`);
+        else assert.ok(e.dessous.some(x => x.t === s.titre), `${cas} : « ${s.titre} » ni dans la frise ni dessous`);
+        assert.equal(s.etroit, !s.visible, cas);
+      }
+      assert.ok(e.dessous.every(x => x.d <= largeur), `${cas} : libellé sous la frise coupé à droite`);
+      if (diff) assert.ok(Math.abs(e.plein.right - e.barre.right) <= 1, `${cas} : le trait de la mensualité pleine s'arrête avant le bout`);
+      assert.deepEqual(await debordements(), [], cas);
+    }
+  }
+  // Le cas de la capture : 2 mois de travaux sur 4 ans, sur ordinateur, le libellé « Travaux » passe sous la frise
+  await page.setViewportSize({width: 1280, height: 844});
+  await champ('cf_debutTravaux', 24); await champ('cf_dureeTravaux', 2); await champ('cf_differe', 36);
+  await page.waitForFunction(() => document.getElementById('cf_calendrier').innerText.includes('Travaux · mois 24 à 25'));
+  const e = await etat();
+  assert.deepEqual(e.dessous.map(x => x.t), ['Travaux · mois 24 à 25']);
+  assert.ok(e.segs.find(s => s.titre === 'Avant travaux · mois 1 à 23').visible);
+  if (process.env.CAPTURES) await page.locator('#cf_carteCal').screenshot({path: process.env.CAPTURES + '/cal-1280.png'});
+  await page.setViewportSize({width: 360, height: 844});
+  await page.waitForTimeout(100);
+  if (process.env.CAPTURES) { await page.addStyleTag({content: '#cf_save{display:none!important}'}); await page.locator('#cf_carteCal').screenshot({path: process.env.CAPTURES + '/cal-360.png'}); }
+  await page.setViewportSize({width: 390, height: 844});
+  await champ('cf_differe', 0);
 });

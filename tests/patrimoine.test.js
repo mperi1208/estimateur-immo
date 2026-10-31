@@ -140,6 +140,16 @@ test('vente en nom propre après 10 ans : plus-value, forfait travaux 15 %, imp�
   proche(r.ir, 55000 * 0.70 * 0.19); proche(r.ps, 55000 * (1 - 0.0825) * 0.172); assert.equal(r.surtaxe, 0);
   proche(r.pourToi, 300000 - r.impots);
 });
+test('vente : frais d\'agence de l\'achat déduits de la plus-value, frais bancaires (dossier, garantie) non ; sans agence rien à saisir', () => {
+  const achat = o => ({mode: 'existant', date: dans(-120), prix: 200000, notaire: 15000, travaux: null, ...o});
+  assert.equal(simulerVente(aVendre({achat: achat({agence: 8000})})).fraisAchat, 23000);           // notaire + agence
+  assert.equal(simulerVente(aVendre({achat: achat({frais: 4000})})).fraisAchat, 15000);            // frais bancaires : pas déduits
+  assert.equal(simulerVente(aVendre({achat: achat({agence: null, frais: null})})).fraisAchat, 15000);   // sans agence
+  assert.equal(calculs(aVendre({achat: achat({agence: 8000, frais: 4000})})).cout, 200000 + 15000 + 8000 + 4000);   // coût total : tout compte
+  // Maison construite : les « autres frais » sont ceux du chantier (raccordements, taxe d'aménagement), déduits
+  const m = simulerVente(aVendre({type: 'maison', achat: {mode: 'construction', date: dans(-120), prix: 80000, notaire: 7000, construction: 150000, debutTravaux: dans(-110), finTravaux: dans(-100), frais: 6000}}));
+  assert.equal(m.fraisAchat, 13000);
+});
 test('vente : 4 % du prix avec agence, montant fixe sans agence (600 € par défaut), valeurs saisies prioritaires', () => {
   assert.equal(simulerVente(aVendre({vente: {}})).frais, 12000);
   assert.equal(simulerVente(aVendre({vente: {frais: 5}})).frais, 15000);

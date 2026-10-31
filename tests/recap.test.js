@@ -5,7 +5,7 @@ const vm = require('vm');
 const {bloc, idx} = require('./outils');
 
 const ctx = vm.createContext({esc: v => String(v ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';')});
-vm.runInContext(bloc(idx, '// ---------- Récap pour la banque', '// ---------- fin du récap') + 'this.recapHtml = recapHtml;', ctx);
+vm.runInContext(bloc(idx, '// ---------- Récap pour la banque', '// ---------- fin du récap') + 'this.recapHtml = recapHtml; this.comparaisonHtml = comparaisonHtml;', ctx);
 const texte = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').replace(/[  ]/g, ' ').trim();
 
 const LOUER = {revente: false, saison: false, meuble: true, avecImpots: false, regime: 'impôts non comptés', struct: 'En nom propre',
@@ -75,4 +75,52 @@ test('frise : jalons proches (début et fin des travaux, échéance pleine) chac
   const zone = x => { const long = x.l.length * 0.8 + 2; return x.droite ? [x.x - long, x.x] : [x.x, x.x + long]; };
   for (const a of j) for (const b of j) if (a !== b && a.top === b.top) { const [p, q] = zone(a), [r, s] = zone(b); assert.ok(q <= r || s <= p, `${a.l} / ${b.l}`); }
   assert.ok(new Set(j.map(x => x.top)).size >= 2, 'les jalons proches passent sur une autre ligne');
+});
+
+// Plusieurs options : une page qui les compare, la meilleure mise en avant, puis son détail
+const option = (lettre, nom, cf, autre = {}) => ({lettre, nom, d: {...LOUER, annee: {...LOUER.annee, cf: cf * 12}, ...autre}});
+const OPTIONS = [option('A', 'Garage', 117, {achat: {...LOUER.achat, travaux: 30000, cout: 254000}}), option('B', 'Division', 80),
+  option('C', 'Aucun travaux', -187, {travaux: null, totalDiffere: 2000}), option('D', 'Division + garage', 177)];
+
+test('comparaison : une page, les options côte à côte, la meilleure trésorerie retenue et l\'écart avec la suivante', () => {
+  const h = ctx.comparaisonHtml(OPTIONS, {titre: 'San Gaetano', adresse: 'Route de San Gaetano 20600 Bastia', date: '30 octobre 2026', total: 3}), t = texte(h);
+  assert.equal((h.match(/class="rc-page/g) || []).length, 1);
+  assert.match(t, /Dossier de financement · investissement locatif 30 octobre 2026 · 1\/3 San Gaetano Route de San Gaetano 20600 Bastia Les options étudiées/);
+  assert.match(t, /4 façons de réaliser le projet ont été étudiées\. L'option retenue, D · Division \+ garage , dégage la meilleure trésorerie mensuelle une fois le projet en place, \+177 € par mois, soit 60 € de plus que l'option A\./);
+  assert.match(t, /Trésorerie mensuelle, une fois le projet en place A Garage travaux 40 000 € · loyers 1 300 €\/mois \+117 € B Division .* \+80 € C Aucun travaux sans travaux .* −187 € D Division \+ garage Retenue .* \+177 €/);
+  assert.equal((h.match(/rc-cl( cal)? best/g) || []).length, 5, 'la retenue en gras dans chaque section');
+  assert.match(h, /<i class="rouge neg" style="width:50\.00%">/);   // la pire à pleine largeur, à gauche de zéro
+  assert.match(t, /Le calendrier A Garage travaux mois 1–6 · différé 12 mois .* C Aucun travaux sans travaux · différé 12 mois/);
+  assert.match(t, /Le coût et le prêt A Garage prêt 244 000 € · échéance 1 260 € 254 000 €/);
+  assert.match(t, /Pendant le différé, solde cumulé .* C Aucun travaux \+2 000 €/);
+  assert.match(t, /Couverture de l'échéance A Garage 99 %/);
+  // Toutes positives : les barres partent de zéro, à gauche, sur toute la largeur
+  const pos = ctx.comparaisonHtml(OPTIONS.filter(x => x.lettre !== 'C'), {});
+  assert.match(pos, /class="rc-axe pos"><i class="vert" style="width:100\.00%">/);
+  assert.doesNotMatch(t, /il te|banques/i);
+});
+
+test('comparaison : toutes revendues, la meilleure marge ; recapHtml numérote ses pages après la comparaison', () => {
+  const rev = (lettre, nom, net) => ({lettre, nom, d: {...LOUER, revente: true, vente: {mois: 18, prixVente: 320000, fraisVente: 1, crd: 1, ira: 0, sorties: 1, impot: 0, net, coutAchat: 1}}});
+  const t = texte(ctx.comparaisonHtml([rev('A', 'Vite', 20000), rev('B', 'Lent', 35000)], {titre: 'P'}));
+  assert.match(t, /L'option retenue, B · Lent , dégage la meilleure marge à la revente, \+35 000 € ?, soit 15 000 € de plus que l'option A/);
+  assert.match(t, /Marge nette à la revente A Vite travaux 40 000 € · revente au mois 18 \+20 000 €/);
+  assert.doesNotMatch(t, /Couverture|Pendant le différé/);
+  const d = texte(ctx.recapHtml(LOUER, {titre: 'P', adresse: 'X', total: 3, decale: 1, retenue: 'D · Division + garage'}));
+  assert.match(d, /· 2\/3 P X · Option retenue : D · Division \+ garage Le projet/);
+  assert.match(d, /· 3\/3 P/);
+});
+
+test('frise : le libellé du différé ne déborde jamais de sa bande, l\'échéance ne sort pas à droite de la frise', () => {
+  const frise = o => { const h = ctx.recapHtml({...LOUER, ...o}, {titre: 'T'}).replace(/[\u00a0\u202f]/g, ' '); return h.slice(h.indexOf('rc-fr-d'), h.indexOf('rc-fr-j')); };
+  // Différé de 12 mois sur 2 ans : le libellé tient dans sa bande, l'échéance juste après
+  assert.match(frise({}), /<i style="width:50\.00%">Différé · 750 €\/mois<\/i><span style="left:50\.00%">Échéance 1 260 €\/mois<\/span>/);
+  // Différé de 2 mois : bande vide, libellé dessous à gauche
+  const court = frise({credit: {...LOUER.credit, differe: 2}});
+  assert.match(court, /<i style="width:8\.33%"><\/i><span style="left:8\.33%">Échéance 1 260 €\/mois<\/span>/);
+  assert.match(court, /class="rc-fr-d2"><span>Différé · 750 €\/mois · mois 1 à 2<\/span><\/div>/);
+  // Différé de 60 mois sur 6 ans : l'échéance n'a pas la place à droite de la bande, elle passe dessous, calée à droite
+  const long = frise({credit: {...LOUER.credit, differe: 60}});
+  assert.match(long, /<i style="width:83\.33%">Différé · 750 €\/mois<\/i><\/div>/);
+  assert.match(long, /class="rc-fr-d2"><span class="droite">Échéance 1 260 €\/mois · dès le mois 61<\/span><\/div>/);
 });
