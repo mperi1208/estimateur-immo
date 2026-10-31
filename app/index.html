@@ -37,8 +37,10 @@ h1{font-size:20px;margin:0 0 2px}
 .recentes .rec span{font-size:12px;color:var(--muted)}
 .sauveEst{position:sticky;bottom:0;z-index:5;margin-top:12px;padding:12px 16px;background:var(--ink);color:#fff;border-radius:12px}
 .sauveEst .sauve-ligne{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.sauveEst input{flex:1;min-width:180px;background:rgba(255,255,255,.08);border-color:#475467;color:#fff}
-.sauveEst input::placeholder{color:#98A2B3}
+/* Champ du nom dans la barre sombre : "#estim .sauveEst" pour passer devant "#estim input" (fond blanc), sinon le texte blanc est invisible ;
+   -webkit-text-fill-color et opacity pour Safari/iOS, qui peint le texte et le placeholder avec leurs propres couleurs */
+.sauveEst input,#estim .sauveEst input{flex:1;min-width:180px;background:rgba(255,255,255,.08);border-color:#475467;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff}
+.sauveEst input::placeholder,#estim .sauveEst input::placeholder{color:#98A2B3;-webkit-text-fill-color:#98A2B3;opacity:1}
 .sauveEst button{background:transparent;color:#fff;border:1px solid #475467;border-radius:10px;font:inherit;font-weight:600;padding:10px 16px;cursor:pointer}
 .sauveEst button:hover{border-color:#fff}
 .sauveEst button.cta{width:auto;margin:0;background:var(--accent);border-color:var(--accent)}
@@ -909,8 +911,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .cf-barre-in{max-width:1200px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #cf .cf-barre #cf_saveForm,#cf .cf-barre #cf_saveInvite{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;min-width:0}
 #cf .cf-barre #cf_saveForm[hidden],#cf .cf-barre #cf_saveInvite[hidden]{display:none}
-#cf .cf-barre input{flex:1 1 200px;min-width:160px;max-width:340px;background:rgba(255,255,255,.08);border-color:#475467;color:#fff}
-#cf .cf-barre input::placeholder{color:#98A2B3}
+#cf .cf-barre input{flex:1 1 200px;min-width:160px;max-width:340px;background:rgba(255,255,255,.08);border-color:#475467;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff}
+#cf .cf-barre input::placeholder{color:#98A2B3;-webkit-text-fill-color:#98A2B3;opacity:1}
 #cf .cf-barre button{background:transparent;color:#fff;border-color:#475467}
 #cf .cf-barre button:hover{border-color:#fff}
 #cf .cf-barre button.cta{width:auto;margin:0;background:var(--accent);border:1px solid var(--accent);color:#fff}
