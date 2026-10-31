@@ -901,12 +901,11 @@ function totaux(liste) {
   const cs = liste.map(calculs), avec = liste.map((b, i) => [b, cs[i], partDe(b)]), estimes = avec.filter(([b]) => b.valeur > 0);
   const V = somme(estimes, ([b, , k]) => b.valeur * k), Dv = somme(estimes, ([, c, k]) => c.crd * k), D = somme(avec, ([, c, k]) => c.crd * k);
   const aAmenager = liste.filter(b => b.amenag && !b.amenag.fait).length;   // espace pas encore fait : compris dans son bien principal
-  const mois = l => ({loyer: somme(l, ([, c, k]) => c.loyersAn / 12 * k), credit: somme(l, ([, c, k]) => c.creditAn / 12 * k), charges: somme(l, ([, c, k]) => c.chargesAn / 12 * k)});
-  const fam = avec.filter(([b]) => habite(b)), inv = avec.filter(([b]) => !habite(b)), cf = l => somme(l, ([, c, k]) => c.cfMois * k);
+    const fam = avec.filter(([b]) => habite(b)), inv = avec.filter(([b]) => !habite(b)), cf = l => somme(l, ([, c, k]) => c.cfMois * k);
   return {cs, V, D, net: V - Dv, manque: liste.length - aAmenager - estimes.length, n: liste.length - aAmenager, nEst: estimes.length,
-    loyers: somme(avec, ([, c, k]) => c.loyerMois * k), cf: cf(avec), partiel: avec.some(([, , k]) => k < 1), mois: mois(avec),
+    loyers: somme(avec, ([, c, k]) => c.loyerMois * k), cf: cf(avec), partiel: avec.some(([, , k]) => k < 1),
     // Investissement (biens loués, vacants…) d'un côté, logement de la famille de l'autre
-    cfInv: cf(inv), moisInv: mois(inv), nInv: inv.filter(([b]) => !(b.amenag && !b.amenag.fait)).length, cfLog: cf(fam), nLog: fam.length};
+    cfInv: cf(inv), nInv: inv.filter(([b]) => !(b.amenag && !b.amenag.fait)).length, cfLog: cf(fam), nLog: fam.length};
 }
 // Logement de la famille (résidence principale ou secondaire, terrain à usage perso, garage qui va avec) : pas un investissement.
 // Son coût est montré à part, pour que le cash-flow des biens loués ne soit pas noyé dans celui de la maison.
@@ -917,17 +916,8 @@ function habite(b) {
   const p = b.lieA && b.location.statut === 'avec' ? biens.find(x => x.id === b.lieA && x !== b) : null;
   return !!p && p.type !== 'terrain' && HABITE.includes(p.location.statut);
 }
-// Mode simple (interrupteur Simple / Pro du haut de page) : loyer, crédit, charges et ce qu'il reste, en moyenne par mois
-const simple = () => typeof modeSimple === 'function' && modeSimple();
-const moisDe = (c, k = 1) => ({loyer: c.loyersAn / 12 * k, credit: c.creditAn / 12 * k, charges: c.chargesAn / 12 * k, reste: c.cfMois * k});
 function kpisTotaux(t) {
   const log = t.nLog > 0, logLib = t.nLog > 1 ? 'Logements de la famille' : 'Logement de la famille';
-  if (simple()) return `${t.partiel ? '<div class="aide parts">Totaux calculés sur tes parts (biens détenus en partie).</div>' : ''}${log
-    ? (t.nInv ? bilanSimple({...t.moisInv, reste: t.cfInv}, {titre: 'Tes investissements, chaque mois', libLoyer: 'Loyers', plusieurs: t.nInv > 1}) : '')
-      + `<div class="bilan-simple compact logement"><div class="bs-l"><span>${logLib} (crédit, charges)</span><b>− ${eur(-t.cfLog)} par mois</b></div>
-        <div class="bs-l bs-total"><span>Au total, ${t.cf < 0 ? 'il te manque' : 'il te reste'}</span><b class="${signe(t.cf)}">${eur(Math.abs(t.cf))} par mois</b></div><p class="bs-note">Moyenne par mois sur les 12 prochains mois, avant impôts.</p></div>`
-    : bilanSimple({...t.mois, reste: t.cf}, {titre: 'Tous tes biens, chaque mois', libLoyer: 'Loyers', plusieurs: t.n > 1, note: 'Moyenne par mois sur les 12 prochains mois, avant impôts.'})}
-    <div class="kpis deux">${kpi('Valeur de tes biens', t.V ? kEur(t.V) : '—', t.V ? (t.manque ? `sur ${t.nEst} bien${t.nEst > 1 ? 's' : ''} estimé${t.nEst > 1 ? 's' : ''}` : 'estimée') : 'à renseigner')}${kpi('Ce qui est à toi', t.V ? kEur(t.net) : '—', 'valeur − ce qu\'il reste à rembourser', t.V ? signe(t.net) : '')}</div>`;
   const sur = t.manque ? `sur ${t.nEst} bien${t.nEst > 1 ? 's' : ''} estimé${t.nEst > 1 ? 's' : ''}` : '';
   return `${t.partiel ? '<div class="aide parts">Totaux calculés sur tes parts (biens détenus en partie).</div>' : ''}<div class="kpis six">${log ? '' : kpi('Biens', t.n, t.manque ? `${t.manque} sans valeur` : '')}${kpi('Valeur', t.V ? kEur(t.V) : '—', t.V ? sur || 'estimée' : 'à renseigner')}
     ${kpi('Restant dû', kEur(t.D), t.V && !t.manque ? Math.round(t.D / t.V * 100) + ' % de la valeur' : 'tous crédits')}
@@ -1048,11 +1038,7 @@ function carte(b, c) {
   return `<a class="bien" href="#investissements/${encodeURIComponent(b.id)}">
     <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type] ? TYPES[b.type].l : ''}</span></div>
     <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || 'Adresse à renseigner')}</span><span class="tags">${tags.map(esc).join(' · ')}</span></div>
-    <div class="chiffres">${simple() ? (m => `
-      <div><span>Loyer${k < 1 ? ' (ta part)' : ''}</span><b>${m.loyer ? eur(m.loyer) + '/mois' : '—'}</b></div>
-      <div><span>Crédit</span><b>${m.credit ? '− ' + eur(m.credit) + '/mois' : '—'}</b></div>
-      <div><span>Charges</span><b>${m.charges ? '− ' + eur(m.charges) + '/mois' : '—'}</b></div>
-      ${habite(b) ? `<div><span>Coût</span><b>${m.reste ? eur(-m.reste) + '/mois' : '—'}</b></div>` : `<div><span>${m.reste < 0 ? 'Il te manque' : 'Il te reste'}</span><b class="${signe(m.reste)}">${c.loue || c.mensuCredit ? eur(Math.abs(m.reste)) + '/mois' : '—'}</b></div>`}`)(moisDe(c, k)) : `
+    <div class="chiffres">${`
       <div><span>Valeur${k < 1 ? ' (ta part)' : ''}</span><b>${b.valeur ? kEur(x(b.valeur)) : '—'}</b></div>
       <div><span>Restant dû${k < 1 ? ' (ta part)' : ''}</span><b>${c.crd ? kEur(x(c.crd)) : '—'}</b></div>
       ${habite(b) ? `<div><span>Coût${k < 1 ? ' (ta part)' : ''}</span><b>${c.cfMois ? eur(-x(c.cfMois)) + '/mois' : '—'}</b></div>` : `<div><span>Cash-flow${k < 1 ? ' (ta part)' : ''}</span><b class="${signe(c.cfMois)}">${c.loue || c.mensuCredit ? eur(x(c.cfMois)) + '/mois' : '—'}</b></div>`}
@@ -1116,7 +1102,7 @@ function vueDetail(b) {
     ${b.vendu ? venduHTML(b) : ''}${lienHTML(b)}
     <div id="inv_kpis"></div>
     ${venteOuverte.has(b.id) && !b.vendu ? venteHTML(b) : ''}
-    <details class="fiche-detail"${simple() ? '' : ' open'}><summary>Tout le détail du bien : location, achat, crédit, charges, documents</summary>
+    <div class="fiche-detail">
     <div class="blocs">
     ${enProjet(b) ? amenagHTML(b) : ''}
     ${section('Cash-flow', '<div id="inv_renta"></div>')}
@@ -1171,7 +1157,7 @@ function vueDetail(b) {
       <button data-a="fichier">+ Ajouter un plan, une photo ou un document</button> <span class="aide" id="inv_docEtat"></span>
       <div class="aide">${COMPTE.user ? 'Enregistrés dans ton compte (privés).' : 'Mode invité : fichiers gardés sur cet appareil seulement.'} Images et PDF, 10 Mo maximum (photos réduites automatiquement).</div>`, true)}
     </div>
-    </details>
+    </div>
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
   majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b); majDetache(b); majAmenag(b);
@@ -1832,10 +1818,7 @@ function rachatResHTML(b, p) {
 // Chiffres recalculés sans reconstruire le formulaire (pour ne pas perdre le champ en cours de saisie)
 function majCalculs(b) {
   const c = calculs(b), q = s => racine.querySelector(s);
-  if (simple()) q('#inv_kpis').innerHTML = (k => bilanSimple(moisDe(c, k), {titre: k < 1 ? `Chaque mois (ta part : ${Math.round(k * 100)} %)` : 'Chaque mois', note: 'Moyenne par mois sur les 12 prochains mois, avant impôts.',
-      detailLoyer: b.type === 'terrain' || nuitee(b) ? '' : detailVacance(c.loyerMois * k, b.location.vacance)})
-    + `<div class="kpis trois">${kpi('Valeur', b.valeur ? kEur(b.valeur * k) : '—', b.valeur ? '' : 'à renseigner')}${kpi('À rembourser', c.crd ? kEur(c.crd * k) : '—', c.mensuCredit ? eur(c.mensuCredit * k) + ' par mois' : 'pas de crédit')}${kpi('Ce qui est à toi', c.patrimoine != null ? kEur(c.patrimoine * k) : '—', 'valeur − ce qu\'il reste à rembourser', c.patrimoine != null ? signe(c.patrimoine) : '')}</div>`)(partDe(b));
-  else q('#inv_kpis').innerHTML = `<div class="kpis six">
+  q('#inv_kpis').innerHTML = `<div class="kpis six">
     ${kpi('Valeur', b.valeur ? kEur(b.valeur) : '—', !b.valeur ? 'à renseigner' : !b.valeurManuelle && b.estimation && !b.estimation.erreur ? 'estimée automatiquement' : 'saisie à la main' + (b.valeurLe ? ' (' + libMois(b.valeurLe) + ')' : ''))}
     ${kpi('Restant dû', c.crd ? kEur(c.crd) : '—', c.mensuCredit ? eur(c.mensuCredit) + '/mois assurance comprise' : '')}
     ${kpi('Patrimoine net', c.patrimoine != null ? kEur(c.patrimoine) : '—', 'valeur − restant dû', c.patrimoine != null ? signe(c.patrimoine) : '')}

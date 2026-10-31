@@ -393,36 +393,25 @@ test('Financer en 4 étapes : loyers par période (avant, pendant, après travau
   assert.equal(+await valeur('differe'), 0);
 });
 
-test('Estimer en mode simple : il vaut, il se loue, et chaque mois avec un crédit ; apport et durée changent le bilan', async () => {
-  await page.click('.tabs .mode [data-mode="simple"]');
+test('plus de mode Simple : un ancien réglage « simple » est effacé, Estimer montre tous les critères et tout le calcul', async () => {
+  const autre = await appareil(nav, nouvelleBase());
+  const p = autre.page;
+  await p.context().addInitScript(() => { if (!sessionStorage.getItem('vu')) { sessionStorage.setItem('vu', '1'); localStorage.setItem('mode-affichage', 'simple'); localStorage.setItem('achat-simple', '{"apport":5000,"duree":25}'); } });
   try {
-    await estimer(page, {surf: 60});
-    await page.waitForSelector('#estAchat .bilan-simple');
-    const a = page.locator('#estAchat');
-    let t = await a.innerText();
-    assert.match(t, /Acheté [\d\s]+ € à crédit/); assert.match(t, /Il te (reste|manque)/);
-    assert.match(t, /Crédit sur 20 ans, sans apport/); assert.match(t, /moins ½ mois vide par an/);
-    assert.equal(await page.locator('#estim details.detail').isVisible(), false, 'le calcul détaillé reste dans Pro');
-    assert.equal(await page.locator('#works [data-niveau]:visible').count(), 4, 'quatre tuiles seulement');
-    const montant = async () => (await a.locator('.bs-tete').innerText()).replace(/\D/g, '');
-    const avant = await montant();
-    await page.fill('#ea_apport', '50000'); await page.dispatchEvent('#ea_apport', 'change');
-    await page.waitForFunction(v => document.querySelector('#estAchat .bs-tete').innerText.replace(/\D/g, '') !== v, avant);
-    assert.match(await a.innerText(), /50\s000 € d'apport/);
-    const apport = await montant();
-    await page.click('#ea_duree button[data-v="25"]');
-    await page.waitForFunction(v => document.querySelector('#estAchat .bs-tete').innerText.replace(/\D/g, '') !== v, apport);
-    assert.match(await a.innerText(), /Crédit sur 25 ans/);
-    // les travaux comptent dans le crédit
-    await travaux(page, 'diviser');
-    await page.click('#w_calc'); await page.waitForSelector('#works .w-simple');
-    await page.waitForFunction(() => /avec [\d\s]+ € de travaux/.test(document.querySelector('#estAchat').innerText));
-    assert.ok(await page.locator('#estim .w-simple').isVisible()); assert.equal(await page.locator('#estim .w-bas').isVisible(), false);
-    await travaux(page, 'non');
-  } finally {
-    await page.click('.tabs .mode [data-mode="pro"]');
-    await page.evaluate(() => localStorage.removeItem('achat-simple'));
-  }
+    await ouvrir(p);
+    assert.equal(await p.locator('.tabs .mode, [data-mode]').count(), 0, 'plus d\'interrupteur Simple / Pro');
+    assert.equal(await p.evaluate(() => document.body.classList.contains('simple')), false);
+    assert.deepEqual(await p.evaluate(() => [localStorage.getItem('mode-affichage'), localStorage.getItem('achat-simple')]), [null, null]);
+    await estimer(p, {surf: 60});
+    for (const id of ['etat', 'dpe', 'etage', 'ascenseur', 'exterieur'])
+      assert.ok(await p.locator(`#crit > div:has(#c_${id})`).isVisible(), `critère ${id} visible`);
+    assert.ok(await p.locator('#estim details.plus').isVisible(), 'plus de critères');
+    assert.ok(await p.locator('#estim details.detail').isVisible(), 'le calcul détaillé');
+    assert.equal(await p.locator('#estAchat').count(), 0);
+    assert.equal(await p.locator('#works [data-niveau]').count(), 7, 'les sept projets de travaux');
+    assert.equal(await p.locator('#louer button[data-v="coloc"]').count(), 1, 'la colocation reste proposée');
+    assert.deepEqual(autre.journal.erreurs, []);
+  } finally { await p.context().close(); }
 });
 
 test('nouvelle version en ligne : la page se recharge toute seule, une fois par version', async () => {

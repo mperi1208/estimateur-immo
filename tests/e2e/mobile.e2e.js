@@ -1,5 +1,5 @@
 // Parcours sur un téléphone (390 × 844, tactile) : rien de coupé ni de plus large que l'écran, dans chaque onglet,
-// en Pro comme en Simple ; un projet déplié se voit en entier ; menus ⋯ en bas de l'écran ; barres du bas basses
+// un projet déplié se voit en entier ; menus ⋯ en bas de l'écran ; barres du bas basses
 const test = require('node:test');
 const assert = require('node:assert');
 const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, cliquer} = require('./banc');
@@ -21,7 +21,6 @@ const debordements = () => page.evaluate(() => {
   return res;
 });
 const onglet = async (t) => { await page.click(`.tabs [data-tab="${t}"]`); await page.waitForFunction(t => document.body.dataset.onglet === t, t); await page.waitForTimeout(150); };
-const mode = async m => { await page.click(`.tabs [data-mode="${m}"]`); await page.waitForFunction(m => document.body.classList.contains('simple') === (m === 'simple'), m); };
 const boite = sel => page.locator(sel).first().evaluate(e => { const r = e.getBoundingClientRect(); return {haut: r.top, bas: r.bottom, gauche: r.left, droite: r.right, h: r.height, l: r.width}; });
 
 test('Estimer et Financer sur téléphone : rien ne dépasse, barres du bas basses, toutes les étapes visibles', async () => {
@@ -40,7 +39,7 @@ test('Estimer et Financer sur téléphone : rien ne dépasse, barres du bas bass
   }
 });
 
-test('Mes projets sur téléphone : un projet à deux options déplié se voit en entier (Pro et Simple)', async () => {
+test('Mes projets sur téléphone : un projet à deux options déplié se voit en entier', async () => {
   await seConnecter(page);
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements');
   await page.evaluate(() => { window.prompt = (m, d) => d; });
@@ -64,18 +63,13 @@ test('Mes projets sur téléphone : un projet à deux options déplié se voit e
   await carte.waitFor();
   if (await carte.evaluate(e => e.classList.contains('replie'))) await carte.locator('button.pj-plier').click();
   await carte.locator('.pj-cartes').waitFor();
-  for (const m of ['pro', 'simple']) {
-    await mode(m);
-    await carte.locator('.pj-cartes').waitFor();
-    const liste = await boite('#pj .pj-liste'), c = await boite('#pj .pj-groupe');
-    assert.ok(c.droite <= liste.droite + 0.5 && c.droite <= 390, `${m} : la carte du projet tient dans l'écran (${c.droite} > ${liste.droite})`);
-    assert.deepEqual(await debordements(), [], m);
-    // Les cartes des options l'une sous l'autre, chacune sur toute la largeur
-    const [a, b] = await carte.locator('.pj-carte').evaluateAll(cs => cs.map(e => { const r = e.getBoundingClientRect(); return {haut: r.top, bas: r.bottom, l: r.width}; }));
-    assert.ok(b.haut >= a.bas, `${m} : options l'une sous l'autre`);
-    assert.ok(a.l > 250, `${m} : option sur toute la largeur (${a.l})`);
-  }
-  await mode('pro');
+  const liste = await boite('#pj .pj-liste'), c = await boite('#pj .pj-groupe');
+  assert.ok(c.droite <= liste.droite + 0.5 && c.droite <= 390, `la carte du projet tient dans l'écran (${c.droite} > ${liste.droite})`);
+  assert.deepEqual(await debordements(), []);
+  // Les cartes des options l'une sous l'autre, chacune sur toute la largeur
+  const [a, b] = await carte.locator('.pj-carte').evaluateAll(cs => cs.map(e => { const r = e.getBoundingClientRect(); return {haut: r.top, bas: r.bottom, l: r.width}; }));
+  assert.ok(b.haut >= a.bas, `options l'une sous l'autre`);
+  assert.ok(a.l > 250, `option sur toute la largeur (${a.l})`);
 });
 
 test('menus ⋯ et « Dossier de financement » sur téléphone : panneau en bas de l\'écran, entier, fermé d\'un toucher à côté', async () => {
@@ -100,17 +94,14 @@ test('Mon patrimoine sur téléphone : liste et fiche sans rien qui dépasse', a
   await saisir(page, '#inv [data-p="location.loyer"]', 800);
   await page.click('#inv [data-a="ajoutPret"]');
   await saisir(page, '#inv [data-p="prets.0.montant"]', 150000); await saisir(page, '#inv [data-p="prets.0.taux"]', 3); await saisir(page, '#inv [data-p="prets.0.duree"]', 240);
-  for (const m of ['pro', 'simple']) { await mode(m); assert.deepEqual(await debordements(), [], 'fiche ' + m); }
-  await mode('pro');
+  assert.deepEqual(await debordements(), [], 'fiche');
   await page.click('#inv a.retour');
   await page.waitForSelector('#inv .invhead');
-  for (const m of ['pro', 'simple']) { await mode(m); assert.deepEqual(await debordements(), [], 'liste ' + m); }
-  await mode('pro');
+  assert.deepEqual(await debordements(), [], 'liste');
 });
 
 test('Financer, le calendrier : les libellés du différé ne se chevauchent jamais, rien ne dépasse (360, 390 px et ordinateur)', async () => {
   await onglet('cashflow');
-  await mode('pro');
   await cliquer(page, '#cf_etapes button[data-etape="2"]');
   if (!await page.evaluate(() => document.getElementById('cf_boxProjet').open)) await cliquer(page, '#cf_travauxSeg button[data-v="1"]');
   await saisir(page, '#cf_travaux', 30000); await saisir(page, '#cf_debutTravaux', 1); await saisir(page, '#cf_dureeTravaux', 2);
@@ -133,7 +124,6 @@ test('Financer, le calendrier : les libellés du différé ne se chevauchent jam
 
 test('Financer, le calendrier : un segment étroit n\'a jamais son libellé coupé, il passe sous la frise ; le trait de la mensualité pleine va jusqu\'au bout', async () => {
   await onglet('cashflow');
-  await mode('pro');
   await cliquer(page, '#cf_etapes button[data-etape="2"]');
   if (!await page.evaluate(() => document.getElementById('cf_boxProjet').open)) await cliquer(page, '#cf_travauxSeg button[data-v="1"]');
   await saisir(page, '#cf_travaux', 30000);

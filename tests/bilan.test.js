@@ -1,15 +1,20 @@
-// Mode simple : bilan du mois (loyer − crédit − charges = ce qu'il reste) et phrase en langage courant
+// Bilan du mois de Financer (loyer − crédit − charges = ce qu'il reste) et phrase en langage courant
 const test = require('node:test');
 const assert = require('node:assert');
 const vm = require('vm');
-const {bloc, idx} = require('./outils');
+const {bloc, idx, inv} = require('./outils');
 
-const ctx = vm.createContext({localStorage: {getItem: () => 'simple'}});
-vm.runInContext(bloc(idx, '// ---------- Mode simple', '// ---------- fin du mode simple') + 'this.X = {bilanSimple, phraseSimple, modeSimple, detailVacance, bilanAchat};', ctx);
-const {bilanSimple, phraseSimple, modeSimple, detailVacance, bilanAchat} = ctx.X;
+const efface = [];
+const ctx = vm.createContext({localStorage: {removeItem: k => efface.push(k)}});
+vm.runInContext(bloc(idx, '// ---------- Bilan du mois', '// ---------- fin du bilan du mois') + 'this.X = {bilanSimple, phraseSimple, detailVacance};', ctx);
+const {bilanSimple, phraseSimple, detailVacance} = ctx.X;
 const texte = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
-test('le mode est lu sur l\'appareil', () => assert.equal(modeSimple(), true));
+test('l\'ancien mode Simple n\'existe plus : ses réglages gardés sur l\'appareil sont effacés', () => {
+  assert.deepEqual(efface, ['mode-affichage', 'achat-simple']);
+  assert.doesNotMatch(idx, /data-mode=|modeSimple|seul-simple|body\.simple/);
+  assert.doesNotMatch(inv, /modeSimple|simple\(\)/);
+});
 
 test('bilan : loyer − crédit − charges = ce qu\'il reste, avec le signe de chaque ligne', () => {
   const t = texte(bilanSimple({loyer: 800, credit: 666, charges: 75}));
@@ -47,19 +52,4 @@ test('bilan : en gros en tête, deux barres à la même échelle, détail du loy
   assert.match(h, /bs-loyer" style="width:37\.4%/); assert.match(h, /bs-credit" style="width:92\.6%/); assert.match(h, /bs-charges" style="width:7\.4%/);
   assert.match(texte(h), /Loyer encaissé 682 € moins ½ mois vide par an \+ 654 €/);
   assert.equal(detailVacance(800, 0), ''); assert.equal(detailVacance(800, 1.5), '800 € moins 1,5 mois vide par an');
-  assert.doesNotMatch(bilanSimple({loyer: 1, credit: 1, charges: 0}, {sansTete: true}), /bs-total/);
-});
-
-test('achat à crédit (Estimer simple) : mêmes chiffres que Financer avec ses réglages par défaut', () => {
-  const r = bilanAchat({prix: 245845, loyer: 682, surf: 60, appart: true, taux: 3.39});
-  assert.equal(Math.round(r.pret), 270571); assert.equal(Math.round(r.mensualite), 1622);
-  assert.equal(Math.round(r.charges), 129); assert.equal(Math.round(r.reste), -1097); assert.equal(Math.round(r.loyer), 654);
-  // au prix maximum, ce qu'il reste tombe à 0 ; avec l'apport plein aussi
-  const a = bilanAchat({prix: r.prixMax, loyer: 682, surf: 60, appart: true, taux: 3.39});
-  assert.ok(Math.abs(a.reste) < 0.01);
-  const b = bilanAchat({prix: 245845, apport: r.apportPlein, loyer: 682, surf: 60, appart: true, taux: 3.39});
-  assert.ok(Math.abs(b.reste) < 0.01);
-  // apport et travaux bougent le prêt
-  assert.ok(bilanAchat({prix: 245845, apport: 50000, loyer: 682, surf: 60, appart: true, taux: 3.39}).pret < r.pret);
-  assert.ok(bilanAchat({prix: 245845, travaux: 60000, loyer: 682, surf: 60, appart: true, taux: 3.39}).pret > r.pret);
 });

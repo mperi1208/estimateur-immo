@@ -478,6 +478,5 @@ test('totaux : logement de la famille (résidence principale, secondaire, garage
   proche(t.cfLog, c(maison) + c(garage) + c(secondaire), 1e-9);
   proche(t.cf, t.cfInv + t.cfLog, 1e-9);                 // le total reste la somme des deux
   assert.ok(t.cfLog < 0 && t.cfInv > 0);
-  proche(t.moisInv.loyer, 900, 1e-9);
   ctx.setBiens([]);
 });
