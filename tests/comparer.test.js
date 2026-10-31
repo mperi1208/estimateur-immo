@@ -45,10 +45,6 @@ test('patrimoine : pas de gagnant si les durées diffèrent ; travaux cachés si
   assert.equal(ligne(l, 'Travaux'), undefined);
 });
 
-test('mode simple : prix, mensualité et ce qu\'il reste', () => {
-  assert.deepEqual(lignesComparaison([A, B], true).map(x => x.k), ['Prix du projet', 'Mensualité', 'Il te reste par mois']);
-});
-
 test('achat-revente contre location : chacun ses chiffres, pas de verdict', () => {
   const R = {scenario: 'revendre', prix: 180000, travaux: 30000, apport: 15000, benefice: 25000};
   const l = lignesComparaison([A, R]);
@@ -93,8 +89,8 @@ test('projet : le 2e appart et le crédit restent fixes (une fois), seules les d
   assert.equal(a.adresse, 'Route de San Gaetano 20600 Bastia');
 });
 
-test('total pendant le différé : ligne du tableau (aussi en mode simple), gagnant seulement à durée égale', () => {
-  const l = lignesComparaison([{...A, differe: 36, totalDiffere: 4000}, {...B, differe: 36, totalDiffere: -1500}], true);
+test('total pendant le différé : ligne du tableau, gagnant seulement à durée égale', () => {
+  const l = lignesComparaison([{...A, differe: 36, totalDiffere: 4000}, {...B, differe: 36, totalDiffere: -1500}]);
   const d = ligne(l, 'Total pendant les 36 mois de différé');
   assert.deepEqual([d.v, d.gagnant, d.ecart], [[4000, -1500], 0, 5500]);
   assert.equal(ligne(lignesComparaison([{...A, differe: 36, totalDiffere: 4000}, {...B, differe: 24, totalDiffere: 5000}]), 'Total pendant le différé').gagnant, null);

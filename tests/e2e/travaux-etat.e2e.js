@@ -9,7 +9,7 @@ test.before(async () => { nav = await lancerNavigateur(); ({page, journal} = awa
 test.after(async () => { assert.deepEqual(journal.erreurs, [], 'erreurs JavaScript dans la page'); await nav.close(); });
 
 const projet = () => page.evaluate(() => state.projet && {valeur: state.projet.valeurApres, loyer: state.projet.loyerApres, duree: state.projet.duree});
-const aide = () => page.locator('#works .hint.seul-pro').first().innerText();
+const aide = () => page.locator('#works .hint.w-aide').first().innerText();
 
 test('bien à rénover entièrement : rafraîchir < gros travaux < rénovation complète, et l\'état obtenu est dit', async () => {
   await estimer(page, {surf: 60, details: {etat: 'renover', dpe: 'D'}});
