@@ -30,7 +30,7 @@ const patAbat = vm.createContext({}); vm.runInContext(bloc(inv, 'const abatIR', 
 // Formulaire : valeurs par défaut de l'appli, sections fermées, puis réglages du test
 function formulaire(v = {}, ouverts = {}) {
   for (const k of FIELDS) els[k] = CASES.includes(k) ? {type: 'checkbox', checked: false} : {type: 'number', value: ''};
-  for (const k of ['struct', 'meuble', 'regime', 'tmi', 'type', 'neuf', 'vieux', 'typeDiff', 'scenario', 'sciExist', 'locMode', 'classe', 'nuitSur']) els[k].type = 'select-one';
+  for (const k of ['struct', 'meuble', 'regime', 'tmi', 'type', 'neuf', 'vieux', 'typeDiff', 'scenario', 'sciExist', 'locMode', 'periode', 'classe', 'nuitSur']) els[k].type = 'select-one';
   for (const b of ['boxProjet', 'boxImpots', 'boxEvol', 'boxBien2']) els[b] = {open: false};
   const tout = {...DEFAUTS, taux: 3.39, tf: 800, copro: 0, compta: 0, vacance: 0, entretien: 0, pno: 0, ...v};
   for (const k of FIELDS) if (tout[k] != null) set(k, tout[k]);
@@ -132,6 +132,25 @@ test('saisonnier : valeurs de départ', () => {
   const r = z.X.saisonnier({nuit: 100, occupation: 60, sejour: 3, menage: 30, plateforme: 15, conciergerie: 5, charges: 100});
   proche(r.pctFrais, 20 + 10, 0.001);                          // 30 € de ménage pour 300 € de séjour = 10 %
   proche(r.netAn, 21900 * 0.7 - 1200, 0.01);
+});
+test('saisonnier : le taux d\'occupation porte sur la période louée', () => {
+  const s = formulaire({locMode: 'nuit', nuit: 90, periode: 'longue', occupation: 80, sejour: 3, menage: 0, plateforme: 0, conciergerie: 0, chargesSaison: 0});
+  proche(s.saison.nuits, 214 * 0.8, 1e-9);                      // d'avril à octobre : 214 jours remplis à 80 %
+  proche(s.annees[0].loyers, 90 * 214 * 0.8, 0.01);             // recettes de l'année, lissées sur les 12 mois
+  proche(s.saison.brutMois, 90 * 214 * 0.8 / 12, 1e-9);
+  proche(formulaire({locMode: 'nuit', nuit: 90, periode: 'juilaout', occupation: 100, sejour: 3, menage: 0, plateforme: 0, conciergerie: 0, chargesSaison: 0}).saison.nuits, 62, 1e-9);
+});
+test('saisonnier : un ancien taux sur l\'année devient un taux sur la période, recettes inchangées', () => {
+  const ancien = o => migrerFinance({locMode: 'nuit', nuit: 90, occupation: o, biensPlus: []});
+  assert.deepEqual([ancien(41).periode, ancien(41).occupation], ['longue', 70]);       // 41 % de l'année = d'avril à octobre à 70 %
+  assert.deepEqual([ancien(27).periode, ancien(27).occupation], ['ete', 80]);
+  assert.deepEqual([ancien(15).periode, ancien(15).occupation], ['juilaout', 90]);
+  assert.deepEqual([ancien(50).periode, ancien(50).occupation], ['annee', 50]);        // taux saisi : reste sur l'année
+  assert.equal(migrerFinance({periode: 'ete', occupation: 41, biensPlus: []}).occupation, 41);   // déjà au nouveau format
+  const nuits = o => formulaire({locMode: 'nuit', nuit: 90, ...ancien(o), sejour: 3, menage: 0, plateforme: 0, conciergerie: 0, chargesSaison: 0}).saison.nuits;
+  proche(nuits(41), 365 * 0.41, 0.5);                           // 150 nuits comme avant
+  proche(nuits(50), 365 * 0.5, 1e-9);
+  for (const o of [27, 15]) assert.ok(Math.abs(nuits(o) / (365 * o / 100) - 1) < 0.02);   // à 2 % près (taux arrondis d'avant)
 });
 // ---------- Crédit et apport ----------
 test('frais de notaire hors crédit : l\'apport doit au moins les couvrir (mise de départ relevée)', () => {

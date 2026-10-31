@@ -197,8 +197,10 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   await page.waitForFunction(() => /À la nuitée/i.test(document.getElementById('inv_amenagRes').innerText));
   const res2 = await page.locator('#inv_amenagRes').innerText();
   assert.match(res2, /80 € × 219 nuits/); assert.match(res2, /42\s000 €/);
-  await champ('amenag.periode', 'ete');                              // loué seulement l'été : 27 % de l'année
-  await page.waitForFunction(() => /80 € × 99 nuits/.test(document.getElementById('inv_amenagRes').innerText));
+  await champ('amenag.periode', 'ete');                              // loué seulement l'été : 80 % des 122 jours
+  await page.waitForFunction(() => /80 € × 98 nuits par an \(80 % d'occupation l'été\)/.test(document.getElementById('inv_amenagRes').innerText));
+  await champ('amenag.remplissage', 90);                             // taux sur la période, saisi
+  await page.waitForFunction(() => /80 € × 110 nuits/.test(document.getElementById('inv_amenagRes').innerText));
   await champ('amenag.periode', 'annee');
   await page.waitForFunction(() => /80 € × 219 nuits/.test(document.getElementById('inv_amenagRes').innerText));
   // Totaux : tant que ce n'est pas fait, l'espace ne compte pas comme un bien de plus

@@ -27,10 +27,18 @@ test('le bien loué à la nuitée : prix par nuit, occupation, recettes moyennes
   await page.click('#cf_locSeg button[data-v="nuit"]'); await poser('nuit', 85); await poser('occupation', 65);
   const d = await dossier();
   assert.match(d.texte, /Location à la nuitée/i);
-  assert.match(d.texte, /Prix par nuit\s*85\s€/i); assert.match(d.texte, /65 %\s*237 nuits par an/i);
+  assert.match(d.texte, /Prix par nuit\s*85\s€/i); assert.match(d.texte, /65 %\s*sur l'année, soit 237 nuits par an/i);
   assert.match(d.texte, /Recettes prévues\s*1\s681\s€\/mois/, 'pas « —/mois »');
   assert.match(d.texte, /Recettes encaissées/i);
   assert.equal(d.pages.length, 2); d.pages.forEach(h => assert.ok(h <= 273, `page de ${Math.round(h)} mm`));
+});
+
+test('loué d\'avril à octobre : le taux porte sur la période louée', async () => {
+  await poser('periode', 'longue'); await poser('occupation', 80);
+  const d = await dossier();
+  assert.match(d.texte, /80 %\s*d'avril à octobre, soit 171 nuits par an/i);   // 214 jours × 80 %
+  assert.match(d.texte, /taux d'occupation de 80 % d'avril à octobre/i);
+  await poser('periode', 'annee'); await poser('occupation', 65);
 });
 
 test('seulement le logement à part à la nuitée : le dossier le dit', async () => {
