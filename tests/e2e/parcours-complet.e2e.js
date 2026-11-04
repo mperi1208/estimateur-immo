@@ -43,10 +43,10 @@ test('enregistrer le projet, puis une option sans travaux', async () => {
 
 test('dossier pour la banque : l\'utilisateur choisit l\'option détaillée, l\'appli n\'en désigne pas une « meilleure »', async () => {
   await page.evaluate(() => { aNavigue = true; showTab('projets'); });
-  assert.ok(await page.locator('#pj .pj-carte .risque').count() >= 2, 'une note de risque par option');
-  // Projet replié : la note de risque reste visible, celle de l'option mise en avant
-  const plies = await page.evaluate(() => { const d = [...DEPLIES]; DEPLIES.clear(); afficherProjets(); const n = document.querySelectorAll('#pj .pj-groupe.replie .risque').length; d.forEach(g => DEPLIES.add(g)); afficherProjets(); return n; });
-  assert.equal(plies, 1, 'note de risque sur le projet replié');
+  assert.equal(await page.locator('#pj button.pj-ligne .risque').count(), 2, 'une note de risque par option');
+  // Projet replié : chaque option garde sa ligne et sa note de risque
+  const plies = await page.evaluate(() => { const d = [...DEPLIES]; DEPLIES.clear(); afficherProjets(); const n = document.querySelectorAll('#pj .pj-groupe.replie button.pj-ligne .risque').length; d.forEach(g => DEPLIES.add(g)); afficherProjets(); return n; });
+  assert.equal(plies, 2, 'notes de risque sur le projet replié');
   const menu = page.locator('#pj details.pj-dossier').first();
   await menu.locator('summary').click();
   const t = await menu.locator('.pj-menu-l').innerText();
@@ -56,7 +56,9 @@ test('dossier pour la banque : l\'utilisateur choisit l\'option détaillée, l\'
 });
 
 test('« J\'ai acheté » l\'option avec travaux : la fiche porte le nom du projet, sa valeur suit les travaux', async () => {
-  const carte = page.locator('#pj .pj-carte', {hasText: 'Version de départ'}).first();
+  const ligne = page.locator('#pj button.pj-ligne', {hasText: 'Version de départ'}).first();
+  if (await ligne.getAttribute('aria-expanded') !== 'true') await ligne.click();
+  const carte = page.locator('#pj .pj-detail');
   await carte.locator('.pj-menu summary').click();
   await carte.locator('[data-a="achete"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && document.getElementById('inv_titre'));

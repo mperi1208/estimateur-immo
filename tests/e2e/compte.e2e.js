@@ -790,19 +790,26 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.click('#pj [data-a="deplacerGarder"]');
   const carte = page.locator('#pj .pj-groupe', {hasText: 'San Gaetano'});
   await carte.waitFor();
-  // Une carte par option : ses boutons (⋯ et Ouvrir) en bas de la carte, dans le même ordre que les colonnes du tableau
-  const col = async n => carte.locator('.pj-opt-act').nth((await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents()).indexOf(n));
-  assert.deepEqual(await carte.locator('.pj-carte h4.pj-opt-nom').allTextContents(), ['Division', 'Garage']);
-  assert.match(await carte.locator('.pj-carte.best').innerText(), /La meilleure[\s\S]*Garage[\s\S]*Chaque mois/i);
-  assert.match(await carte.locator('.pj-carte', {hasText: 'Division'}).innerText(), /de moins que la meilleure/i);
-  assert.deepEqual(await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents(), ['Division', 'Garage']);
-  assert.match(await carte.locator('.pj-opts thead th.best').innerText(), /Garage\s*La meilleure/i);
+  // Une ligne par option, toutes à égalité (aucune « meilleure ») ; toucher une ligne ouvre son détail et ses boutons (⋯ et Ouvrir)
+  const opt = async n => {
+    const l = carte.locator('button.pj-ligne', {hasText: n});
+    if (await l.getAttribute('aria-expanded') !== 'true') await l.click();
+    await carte.locator('button.pj-ligne[aria-expanded="true"]', {hasText: n}).waitFor();
+    return carte.locator('.pj-detail .pj-opt-act');
+  };
+  assert.deepEqual(await carte.locator('.pj-l-nom').allTextContents(), ['Division', 'Garage']);
+  assert.doesNotMatch(await carte.innerText(), /meilleure/i);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73 €[\s\S]*il reste, par mois/);
+  assert.equal(await carte.locator('.pj-detail').count(), 1, 'une seule option ouverte à la fois');
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'options dans le compte');
-  // Les tuiles (biens et crédit), puis le tableau : il te reste en gros (écart avec la meilleure) et ce qui change
-  assert.match(await carte.locator('.pj-tuiles').innerText(), /change selon l'option/i);
-  assert.match(await carte.locator('.pj-fixe').innerText(), /crédit[\s\S]*apport 20\s000 €/i);
+  // Ce qui est commun (le crédit) en une ligne ; le tableau sur demande (« Comparer les chiffres ») : ce qu'elles donnent et ce qui change
+  assert.match(await carte.locator('.pj-commun').innerText(), /crédit[\s\S]*apport 20\s000 €/i);
+  assert.equal(await carte.locator('.pj-opts').count(), 0, 'tableau fermé au départ');
+  await carte.locator('[data-a="tableau"]').click();
+  await carte.locator('.pj-opts').waitFor();
+  assert.deepEqual(await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents(), ['Division', 'Garage']);
   const rangee = k => carte.locator('.pj-opts tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
-  assert.match(await rangee('Par mois').innerText(), /il manque 453 €\s+526 € de moins\s+il reste 73 €/);
+  assert.match(await rangee('Par mois').innerText(), /−453 €\s+\+73 €/);
   assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
   // Dossier de financement du projet : les options comparées puis celle que l'utilisateur choisit en détail, 3 pages ;
@@ -821,8 +828,8 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await dossier.locator('summary').click();
   assert.equal(await telecharger(dossier.locator('[data-a="recap"]', {hasText: 'Garage'})), 'Dossier de financement - San Gaetano - Garage.pdf');
   assert.equal(await page.locator('#recap .rc-page').count(), 2);
-  await (await col('Division')).locator('.pj-menu summary').click();
-  assert.equal(await telecharger((await col('Division')).locator('[data-a="recap"]')), 'Dossier de financement - San Gaetano - Division.pdf');
+  await (await opt('Division')).locator('.pj-menu summary').click();
+  assert.equal(await telecharger((await opt('Division')).locator('[data-a="recap"]')), 'Dossier de financement - San Gaetano - Division.pdf');
   assert.match(await page.evaluate(() => document.getElementById('recap').textContent), /Prix d'acquisition\s*200\s000/);
   // Chercher un projet : par nom ou option, sans majuscules ; rien trouvé : c'est dit
   await page.fill('#pj_cherche', 'gaetano GARAGE');
@@ -833,12 +840,9 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await page.locator('#pj_rien').innerText(), /Aucun projet ne correspond à « zzz »/);
   await page.fill('#pj_cherche', '');
   await page.waitForSelector('#pj_rien', {state: 'hidden'});
-  // Tableau masqué puis réaffiché (gardé sur l'appareil)
+  // Tableau masqué puis réaffiché
   await carte.locator('[data-a="tableau"]').click();
-  await carte.locator('.pj-sans-tableau').waitFor();
-  assert.equal(await carte.locator('.pj-opts').count(), 0);
-  assert.match(await carte.locator('.pj-sans-tableau').innerText(), /2 options · La meilleure : Garage/);
-  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-sans-tableau')).length), 1);
+  await page.waitForFunction(() => !document.querySelector('#pj .pj-opts'));
   await carte.locator('[data-a="tableau"]').click();
   await carte.locator('.pj-opts').waitFor();
   // Tableau détaillé : meilleur chiffre et écart
@@ -850,7 +854,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   for (const k of ['Mensualité', 'Loyers par mois', 'Charges par mois', 'Par mois', 'Rendement brut', 'Patrimoine dans \\d+ ans', 'Coût du crédit']) assert.equal(await ligne(k).count(), 1, k);
   // « Modifier » une option : Financer l'ouvre sous son nom, l'enregistrement la met à jour (pas un autre projet)
   const nDiv = await page.evaluate(() => PROJETS.liste.find(x => x.branche === 'Division').id);
-  await (await col('Division')).locator('[data-a="financer"]').click();
+  await (await opt('Division')).locator('[data-a="financer"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.match(await page.locator('#cf_bien').innerText(), /San Gaetano · option Division/i);
   assert.equal(await page.inputValue('#cf_nomProjet'), 'Division');
@@ -867,20 +871,21 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {}).branche === 'Division', 'nom remis');
   await page.evaluate(() => { aNavigue = true; showTab('projets'); });
-  // Replié : nom, nombre d'options, les autres en petit et la meilleure en gros ; gardé sur l'appareil ; « Tout déplier » le rouvre
+  // Replié : nom, nombre d'options, puis une ligne par option (aucune mise en avant) ; gardé sur l'appareil ; « Tout déplier » le rouvre
   await carte.locator('.pj-plier-zone').click();
   await page.locator('#pj .pj-groupe.replie', {hasText: 'San Gaetano'}).waitFor();
   assert.equal(await carte.locator('.pj-opt-act').count(), 0);
-  assert.match(await carte.locator('.pj-sous').innerText(), /^2 options/);
-  assert.match(await carte.locator('.pj-r-best').innerText(), /La meilleure option\s*Garage\s*\+73 €\s*il te reste, par mois/i);
-  assert.equal(await carte.locator('.pj-r-opt').count(), 1);
+  assert.match(await carte.locator('.pj-sous').innerText(), /2 options$/);
+  assert.equal(await carte.locator('button.pj-ligne').count(), 2);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73 €[\s\S]*il reste, par mois/);
+  assert.doesNotMatch(await carte.innerText(), /meilleure/i);
   assert.ok(!(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-deplies') || '[]'))).length, 'replié gardé');
   await page.click('#pj .actions [data-a="toutPlier"]');
-  await carte.locator('.pj-opt-act').first().waitFor();
+  await carte.locator('.pj-commun').waitFor();
   assert.match(await page.locator('#pj .actions [data-a="toutPlier"]').innerText(), /Tout replier/i);
   // Nouvelle option à partir d'une autre : ouverte dans Financer, modifiée, enregistrée dans le projet
-  await (await col('Division')).locator('.pj-menu summary').click();
-  await (await col('Division')).locator('[data-a="brNouvelle"]').click();
+  await (await opt('Division')).locator('.pj-menu summary').click();
+  await (await opt('Division')).locator('[data-a="brNouvelle"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.match(await page.locator('#cf_bien').innerText(), /option Option 3/i);
   assert.equal(await page.locator('#cf_enreg').innerText(), 'Mettre à jour l\'option « Option 3 »');
@@ -895,14 +900,14 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.equal(c.projets.find(x => x.branche === 'Option 4').finance.loyer, 700);
   assert.equal(c.projets.find(x => x.branche === 'Option 3').finance.loyer, 1900);
   await page.evaluate(() => { aNavigue = true; showTab('projets'); });
-  assert.equal(await carte.locator('.pj-opt-act').count(), 4);
+  assert.equal(await carte.locator('button.pj-ligne').count(), 4);
   assert.equal(await carte.locator('.pj-compare thead th').count(), 5);
   assert.match(await carte.locator('.pj-compare').innerText(), /« Option 3 » te laisse le plus par mois/i);
   // Sortir une option : elle redevient un projet à part avec son nom d'avant
-  await (await col('Garage')).locator('.pj-menu summary').click();
-  await (await col('Garage')).locator('[data-a="brSortir"]').click();
+  await (await opt('Garage')).locator('.pj-menu summary').click();
+  await (await opt('Garage')).locator('[data-a="brSortir"]').click();
   await page.locator('#pj article.pj', {hasText: 'Gaetano garage'}).waitFor();
-  assert.equal(await carte.locator('.pj-opt-act').count(), 3);
+  assert.equal(await carte.locator('button.pj-ligne').count(), 3);
   // Défaire le regroupement : chacun redevient un projet
   await carte.locator('.pj-gr-actions .pj-menu:not(.pj-dossier) summary').click();
   await carte.locator('[data-a="grDefaire"]').click();

@@ -61,19 +61,20 @@ test('Mes projets sur téléphone : un projet à deux options déplié se voit e
   const carte = page.locator('#pj .pj-groupe');
   await carte.waitFor();
   if (await carte.evaluate(e => e.classList.contains('replie'))) await carte.locator('button.pj-plier').click();
-  await carte.locator('.pj-cartes').waitFor();
+  await carte.locator('.pj-detail').waitFor();
   const liste = await boite('#pj .pj-liste'), c = await boite('#pj .pj-groupe');
   assert.ok(c.droite <= liste.droite + 0.5 && c.droite <= 390, `la carte du projet tient dans l'écran (${c.droite} > ${liste.droite})`);
   assert.deepEqual(await debordements(), []);
-  // Les cartes des options l'une sous l'autre, chacune sur toute la largeur
-  const [a, b] = await carte.locator('.pj-carte').evaluateAll(cs => cs.map(e => { const r = e.getBoundingClientRect(); return {haut: r.top, bas: r.bottom, l: r.width}; }));
+  // Une ligne par option, l'une sous l'autre, sur toute la largeur ; le détail de l'option ouverte aussi
+  const [a, b] = await carte.locator('button.pj-ligne').evaluateAll(cs => cs.map(e => { const r = e.getBoundingClientRect(); return {haut: r.top, bas: r.bottom, l: r.width}; }));
   assert.ok(b.haut >= a.bas, `options l'une sous l'autre`);
   assert.ok(a.l > 250, `option sur toute la largeur (${a.l})`);
+  assert.ok((await boite('#pj .pj-detail')).droite <= 390, 'le détail tient dans l\'écran');
 });
 
 test('menus ⋯ et « Dossier de financement » sur téléphone : panneau en bas de l\'écran, entier, fermé d\'un toucher à côté', async () => {
   const carte = page.locator('#pj .pj-groupe');
-  for (const sel of ['.pj-tete .pj-menu:not(.pj-dossier)', '.pj-tete .pj-dossier', '.pj-carte .pj-opt-act .pj-menu']) {
+  for (const sel of ['.pj-tete .pj-menu:not(.pj-dossier)', '.pj-tete .pj-dossier', '.pj-detail .pj-opt-act .pj-menu']) {
     const menu = carte.locator(sel).first();
     await menu.locator('summary').click();
     const l = await boite(`#pj .pj-groupe ${sel}[open] .pj-menu-l`);
