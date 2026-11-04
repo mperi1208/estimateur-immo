@@ -15,8 +15,9 @@ test('projet seul : fin et plié, déplié au toucher, replié au second toucher
     await carte.waitFor();
     const ligne = carte.locator('button.pj-seul-l');
     assert.equal(await ligne.getAttribute('aria-expanded'), 'false');
-    assert.match(await ligne.innerText(), /Studio fin[\s\S]*€[\s\S]*par mois/);
+    assert.match(await ligne.innerText(), /Studio fin[\s\S]*€\s*\/mois/);
     assert.equal(await carte.locator('.risque').count(), 1, 'le risque se voit plié');
+    assert.equal(await carte.locator('.pj-pastille').count(), 1, 'le prix en pastille');
     assert.equal(await carte.locator('[data-a="financer"]').count(), 0, 'boutons cachés tant que c\'est plié');
     assert.ok((await carte.boundingBox()).height < 110, 'carte fine');
     await ligne.click();
