@@ -28,6 +28,7 @@ h1{font-size:20px;margin:0 0 2px}
 .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
 .titre-ligne{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .titre-ligne h1{margin:0}
+.titre-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .recentes-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .recentes-btn[aria-expanded="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
 .recentes{margin:10px 0 4px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
@@ -1192,7 +1193,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 <div class="est" id="estim">
 <div class="cf-tete" id="est_tete" hidden></div>
 <header class="est-haut"><div class="est-in">
-  <div class="titre-ligne"><div><h1>Estimer un bien</h1><div class="sub">Prix et loyer à partir des ventes réelles autour du bien (DVF), partout en France</div></div><button id="recentesBtn" class="recentes-btn" hidden aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Récentes</button></div>
+  <div class="titre-ligne"><div><h1>Estimer un bien</h1><div class="sub">Prix et loyer à partir des ventes réelles autour du bien (DVF), partout en France</div></div><div class="titre-actions"><button id="nouvelleBtn" class="recentes-btn" hidden title="Effacer l'adresse, les détails et le résultat"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Nouvelle recherche</button><button id="recentesBtn" class="recentes-btn" hidden aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Récentes</button></div></div>
   <div id="recentes" class="recentes" hidden></div>
   <div class="est-cherche">
     <div class="est-adr"><label for="addr">Adresse <span class="hint">(ou clique sur la carte)</span></label>
@@ -2721,6 +2722,7 @@ function placer(lat, lon, zoom, label, code) {
   choixTravaux = {}; try { localStorage.removeItem('travaux-choix'); } catch (e) {}
   if (choixSaison.nuit != null || choixSaison.charges != null) { choixSaison = {...choixSaison, nuit: null, charges: null}; try { localStorage.setItem('saison-choix', JSON.stringify(choixSaison)); } catch (e) {} }   // propres à l'ancien bien
   state.lat = lat; state.lon = lon; state.adresse = label; state.lance = false; state.base = null; state.run++;
+  document.getElementById('nouvelleBtn').hidden = false;
   majZone(lat, lon, code);
   if (pin) pin.remove();
   pin = L.marker([lat, lon]).addTo(map);
@@ -2963,6 +2965,34 @@ function reprendre(r) {
   state.lance = true; estimate();
   window.scrollTo(0, 0);
 }
+// « Nouvelle recherche » : tout reprend comme à l'arrivée (adresse, type, surface, détails, travaux, résultat)
+function nouvelleRecherche() {
+  if (state.projet) quitterProjet();
+  else if (typeof voirFinance === 'function') voirFinance(false);
+  state.run++;   // une estimation encore en cours n'affichera rien
+  addr.value = ''; sugg.hidden = true; clearTimeout(timer); geoRun++;
+  document.getElementById('surf').value = 50;
+  document.getElementById('since').value = 'auto';
+  state.type = '121';
+  document.querySelectorAll('#type button').forEach(x => x.classList.toggle('on', x.dataset.v === '121'));
+  majModeGarage();
+  saved = {}; try { localStorage.removeItem('criteres-v2'); } catch (e) {}
+  CRITERES.filter(c => c.options).forEach(c => { field(c.id).innerHTML = ''; });   // fillOptions reprend alors le choix par défaut
+  syncForm(); fillOptions();
+  CRITERES.filter(c => c.check).forEach(c => field(c.id).checked = false);
+  CRITERES.filter(c => c.number).forEach(c => field(c.id).value = '');
+  majAffiner();
+  choixTravaux = {}; state.calcProjet = null; choixSaison = {}; 
+  try { localStorage.removeItem('travaux-choix'); localStorage.removeItem('saison-choix'); } catch (e) {}
+  state.lat = null; state.lon = null; state.adresse = null; state.lance = false; state.base = null; state.prix = null; state.loyerHC = null;
+  if (pin) { pin.remove(); pin = null; }
+  layer.clearLayers(); markers = []; if (circle) { circle.remove(); circle = null; }
+  map.setView([46.6, 2.4], 6);
+  document.getElementById('out').innerHTML = '<div class="empty">Renseigne l\'adresse et la surface, puis clique sur « Estimer ».</div>';
+  document.getElementById('nouvelleBtn').hidden = true;
+  window.scrollTo(0, 0); addr.focus();
+}
+document.getElementById('nouvelleBtn').onclick = nouvelleRecherche;
 document.getElementById('recentesBtn').onclick = () => {
   const pan = document.getElementById('recentes'), b = document.getElementById('recentesBtn');
   pan.hidden = !pan.hidden; b.setAttribute('aria-expanded', String(!pan.hidden));
