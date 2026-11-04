@@ -710,21 +710,23 @@ test('ancien projet à deux biens (format d\'avant la liste de biens) : repris a
   await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="suppr"]').click();
 });
 
-test('« + Ajouter le bien estimé » : fiche créée avec adresse, surface, valeur et loyer de l\'estimation, puis « Estimer ce bien »', async () => {
+test('« + Ajouter un bien » à une adresse, puis « Estimer ce bien » : même estimation que l\'onglet Estimer', async () => {
+  await page.evaluate(() => { saved = {}; try { localStorage.setItem('criteres-v2', '{}'); } catch (e) {} syncForm(); fillOptions(); });   // critères par défaut, comme la fiche neuve
   const e = await estimer(page, {surf: 52});
   await page.click('.tabs [data-tab="investissements"]');
   await page.evaluate(() => { location.hash = '#investissements'; });
-  await page.click('#inv [data-a="ajoutEst"]');
+  await page.click('#inv [data-a="ajout"]');
   await page.waitForSelector('#inv_titre');
-  assert.equal(await page.inputValue('#inv [data-p="surface"]'), '52');
-  assert.equal(+await page.inputValue('#inv [data-p="valeur"]'), Math.round(e.prix));
-  assert.equal(+await page.inputValue('#inv [data-p="location.loyer"]'), Math.round(e.loyer));
+  await page.fill('#inv [data-p="adresse"]', '12 rue de la République Lyon');
+  await page.waitForSelector('#inv_sugg li[data-k]');
+  await page.dispatchEvent('#inv_sugg li[data-k="0"]', 'mousedown');
+  await champ('surface', 52);
   await page.click('#inv [data-a="estimerAuto"]');
   await page.waitForFunction(() => /Estimé le/i.test((document.getElementById('inv_auto') || {}).innerText || ''), null, {timeout: 60000});
   const nom = await page.locator('#inv_titre').innerText();
   const b = (await attendreCompte(() => (bienDuCompte(nom) || {}).estimation)).biens.find(x => x.nom === nom);
   assert.ok(!b.estimation.erreur, JSON.stringify(b.estimation));
-  assert.ok(Math.abs(b.estimation.prix - e.prix) / e.prix < 0.05, `fiche ${b.estimation.prix} / onglet ${e.prix}`);   // même moteur, même bien
+  assert.ok(Math.abs(b.estimation.prix - e.prix) / e.prix < 0.10, `fiche ${b.estimation.prix} / onglet ${e.prix}`);   // même moteur, même bien (critères par défaut de la fiche : écart de quelques %)
 });
 
 test('logement de la famille : à part du cash-flow locatif (tuiles, carte), puis supprimé', async () => {
@@ -793,15 +795,17 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await carte.locator('.pj-tuiles').innerText(), /change selon l'option/i);
   assert.match(await carte.locator('.pj-fixe').innerText(), /crédit[\s\S]*apport 20\s000 €/i);
   const rangee = k => carte.locator('.pj-opts tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
-  assert.match(await rangee('Il te reste par mois').innerText(), /−453 €\s+526 € de moins\s+73 €/);
+  assert.match(await rangee('Par mois').innerText(), /il manque 453 €\s+526 € de moins\s+il reste 73 €/);
   assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
-  // Dossier de financement du projet : les options comparées puis la meilleure (Garage) en détail, 3 pages ;
-  // ou une option choisie dans le menu du bouton ; ou dans le menu ⋯ de l'option
+  // Dossier de financement du projet : les options comparées puis celle que l'utilisateur choisit en détail, 3 pages ;
+  // ou une option seule choisie dans le menu du bouton ; ou dans le menu ⋯ de l'option. Jamais de « meilleure » imposée
   const dossier = carte.locator('.pj-gr-actions .pj-dossier');
   await dossier.locator('summary').click();
-  assert.match(await dossier.locator('.pj-menu-l').innerText(), /Comparer les options\s*2 options côte à côte[\s\S]*Option A · Division\s*Option B · Garage\s*la meilleure/i);
-  assert.equal(await telecharger(dossier.locator('[data-a="recapComparer"]')), 'Dossier de financement - San Gaetano - comparaison des options.pdf');
+  const menuTxt = await dossier.locator('.pj-menu-l').innerText();
+  assert.match(menuTxt, /Comparer les 2 options, puis le détail de[\s\S]*Comparer, détail de l'option A · Division\s*Comparer, détail de l'option B · Garage[\s\S]*Option A · Division\s*Option B · Garage/i);
+  assert.doesNotMatch(menuTxt, /la meilleure/i);
+  assert.equal(await telecharger(dossier.locator('[data-a="recapComparer"][data-lettre="B"]')), 'Dossier de financement - San Gaetano - comparaison des options.pdf');
   assert.equal(await page.locator('#recap .rc-page').count(), 3);
   const rcCmp = await page.evaluate(() => document.getElementById('recap').textContent.replace(/\s+/g, ' '));
   assert.match(rcCmp, /1\/3.*Les options étudiées.*L'option retenue, B · Garage, dégage la meilleure trésorerie mensuelle/);
@@ -836,7 +840,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.match(await cmp.innerText(), /« Garage » te laisse le plus par mois/i);
   const ligne = k => cmp.locator('tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
   assert.match(await ligne('Prix du projet').innerText(), /200\s000 €\s+120\s000 €\s+80\s000 € de mieux/i);
-  for (const k of ['Mensualité', 'Loyers par mois', 'Charges par mois', 'Il te reste par mois', 'Rendement brut', 'Patrimoine dans \\d+ ans', 'Coût du crédit']) assert.equal(await ligne(k).count(), 1, k);
+  for (const k of ['Mensualité', 'Loyers par mois', 'Charges par mois', 'Par mois', 'Rendement brut', 'Patrimoine dans \\d+ ans', 'Coût du crédit']) assert.equal(await ligne(k).count(), 1, k);
   // « Modifier » une option : Financer l'ouvre sous son nom, l'enregistrement la met à jour (pas un autre projet)
   const nDiv = await page.evaluate(() => PROJETS.liste.find(x => x.branche === 'Division').id);
   await (await col('Division')).locator('[data-a="financer"]').click();

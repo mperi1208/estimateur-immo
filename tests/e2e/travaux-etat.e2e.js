@@ -31,10 +31,14 @@ test('bien en bon état : un rafraîchissement n\'en fait pas un bien refait à 
   assert.match(await aide(), /Après ces travaux : bon état/);
 });
 
-test('énergie seule avec un DPE inconnu : rien à chiffrer, pas de chantier ni de bouton « Travaux + »', async () => {
-  await estimer(page, {surf: 60, details: {etat: 'bon', dpe: '?'}});
-  await travaux(page, 'aucun');
-  assert.equal(await projet(), null);
-  assert.match(await page.locator('#works').innerText(), /Rien à chiffrer sur l'énergie sans le DPE/);
+test('énergie seule : « Pas de travaux » puis un DPE visé chiffre l\'isolation et le chauffage ; revenir à « Aucune » l\'enlève', async () => {
+  await estimer(page, {surf: 60, details: {etat: 'bon', dpe: 'F'}});
+  await travaux(page, 'non');
+  assert.equal(await page.locator('#works [data-niveau="aucun"]').count(), 0, 'plus de tuile « Énergie seule »');
+  await page.selectOption('#w_dpe', 'C');
+  await page.waitForFunction(() => state.projet && state.projet.niveau === 'aucun' && state.projet.travaux > 0);
+  assert.equal(await page.locator('#works [data-niveau="non"]').getAttribute('aria-pressed'), 'true', 'la tuile « Pas de travaux » reste choisie');
+  await page.selectOption('#w_dpe', '=');
+  await page.waitForFunction(() => state.projet === null);
   assert.equal(await page.locator('#est_financer').count(), 1, 'bouton « Financer ce bien »');
 });

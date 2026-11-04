@@ -61,7 +61,7 @@ test('Estimer → Financer : le bien estimé est repris (prix, loyer, surface), 
   assert.equal(await page.evaluate(() => document.getElementById('cf_boxProjet').open), false);
   assert.match(await page.locator('#cf_bien').innerText(), /prix estimé/);
   const tuiles = await page.locator('#cf_tiles').innerText();
-  assert.match(tuiles, /Mensualité/i); assert.match(tuiles, /Il te (reste|manque) par mois/i);
+  assert.match(tuiles, /Mensualité/i); assert.match(await page.locator('#cf main').innerText(), /Il te (reste|manque) [\d\s  ]+€/i);   // dit une fois, en tête ou dans le bilan du mois
   assert.doesNotMatch(tuiles, /Rendement/i);                 // case retirée de Financer
   assert.doesNotMatch(tuiles, /pendant le différé/i);         // pas de différé : pas de case
 });
@@ -408,7 +408,7 @@ test('plus de mode Simple : un ancien réglage « simple » est effacé, Estimer
     assert.ok(await p.locator('#estim details.plus').isVisible(), 'plus de critères');
     assert.ok(await p.locator('#estim details.detail').isVisible(), 'le calcul détaillé');
     assert.equal(await p.locator('#estAchat').count(), 0);
-    assert.equal(await p.locator('#works [data-niveau]').count(), 7, 'les sept projets de travaux');
+    assert.equal(await p.locator('#works [data-niveau]').count(), 6, 'les six projets de travaux (l\'énergie seule est dans « Pas de travaux »)');
     assert.equal(await p.locator('#louer button[data-v="coloc"]').count(), 1, 'la colocation reste proposée');
     assert.deepEqual(autre.journal.erreurs, []);
   } finally { await p.context().close(); }

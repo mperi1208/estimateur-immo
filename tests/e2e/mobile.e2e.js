@@ -40,17 +40,16 @@ test('Estimer et Financer sur téléphone : rien ne dépasse, barres du bas bass
 });
 
 test('Mes projets sur téléphone : un projet à deux options déplié se voit en entier', async () => {
-  await seConnecter(page);
-  await page.waitForFunction(() => document.body.dataset.onglet === 'investissements');
+  await seConnecter(page);   // on travaillait dans Financer : on y reste
   await page.evaluate(() => { window.prompt = (m, d) => d; });
   await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.ok((await boite('#cf_save')).h <= 120, 'barre de Financer : deux lignes au plus');
   await saisir(page, '#cf_prix', 200000); await saisir(page, '#cf_loyer', 900); await saisir(page, '#cf_apport', 20000);
-  await page.fill('#cf_nomProjet', 'Gaetano division'); await cliquer(page, '#cf_enreg');
+  await page.evaluate(() => CF_APP.etape(4)); await page.click('#cf_plus'); await page.fill('#cf_nomProjet', 'Gaetano division'); await cliquer(page, '#cf_enreg');
   await page.waitForFunction(() => PROJETS.liste.some(x => x.nom === 'Gaetano division'));
-  await saisir(page, '#cf_prix', 120000); await page.fill('#cf_nomProjet', 'Gaetano garage'); await cliquer(page, '#cf_enregNouveau');
+  await saisir(page, '#cf_prix', 120000); await page.click('#cf_plus'); await page.fill('#cf_nomProjet', 'Gaetano garage'); await cliquer(page, '#cf_enregNouveau');
   await page.waitForFunction(() => PROJETS.liste.some(x => x.nom === 'Gaetano garage'));
   await onglet('projets');
   const id = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Gaetano garage').id);

@@ -27,14 +27,14 @@ test('page 1 : le projet et ce qu\'il rapporte (chiffres clés, le bien, la fris
   const p1 = texte(h.split('<section')[1]);
   assert.match(p1, /Dossier de financement · investissement locatif 28 octobre 2026 · 1\/2 San Gaetano 1 rue X 69002 Lyon Le projet et ce qu'il rapporte/);
   assert.match(p1, /Financement de l'acquisition d'une maison de 90 m² à Lyon, avec 40 000 € de travaux, destinée à la location meublée\./);
-  assert.match(p1, /Prix d'acquisition 200 000 € Travaux 40 000 € valeur après travaux 290 000 € Loyers par mois 1 300 € hors charges Trésorerie mensuelle −208 € une fois le projet en place/);
+  assert.match(p1, /Prix d'acquisition 200 000 € Travaux 40 000 € valeur après travaux 290 000 € Loyers par mois 1 300 € hors charges Il manque par mois 208 € une fois le projet en place/);
   assert.match(p1, /Le bien Maison · 90 m² · 2 222 €\/m² Prix d'acquisition 200 000 € Estimation de marché 210 000 € Valeur après travaux 290 000 € Valeur après travaux : \+31 000 €/);
   assert.match(p1, /Loyer prévu 1 300 €\/mois marché 1 250 € Exploitation Location meublée En nom propre Travaux 40 000 € mois 1 à 6/);
   // Frise sur 2 ans : travaux mois 1 à 6, location ensuite, différé 12 mois ; fin des travaux et échéance pleine en jalons
   assert.match(h, /class="f-trav" style="left:0\.00%;width:25\.00%">Travaux/);
   assert.match(h, /class="f-loc" style="left:25\.00%;width:75\.00%">Location/);
   assert.match(p1, /Différé · 750 €\/mois Échéance 1 260 €\/mois Acquisition Fin des travaux · mois 6 Échéance pleine · mois 13/);
-  assert.match(p1, /Ce qu'il rapporte chaque mois Trésorerie mensuelle, une fois le projet en place −208 € année 2, avant impôts Loyers encaissés 1 250 € Sorties 1 458 € Échéance du prêt 1 258 € Charges 200 €/);
+  assert.match(p1, /Ce qu'il rapporte chaque mois Chaque mois, une fois le projet en place Il manque 208 € année 2, avant impôts Loyers encaissés 1 250 € Sorties 1 458 € Échéance du prêt 1 258 € Charges 200 €/);
   assert.doesNotMatch(p1, /Prêt sollicité|Coût total de l'opération/);   // ce qui est demandé : à la fin
   assert.doesNotMatch(texte(h), /banques|Patrimoine dans|il te/i);   // on parle à un banquier, pas de lui
 });

@@ -316,6 +316,13 @@ function normaliser() {
     }
     delete b.dpe; delete b.etage;
   }
+  // Bien acheté avec travaux (« J'ai acheté ») : à la fin du chantier, la valeur passe à la valeur après travaux prévue
+  for (const b of biens) {
+    const va = b.valeurApres;
+    if (va && !va.fait && va.valeur > 0 && normMois(va.le) && ecartMois(normMois(va.le), moisCourant()) >= 0) {
+      b.valeur = va.valeur; b.valeurLe = normMois(va.le); b.valeurManuelle = true; va.fait = true; b.maj = Date.now();
+    }
+  }
   // Chaque prêt a un identifiant (regroupement dans un rachat)
   for (const b of biens) for (const p of b.prets || []) if (!p.id) p.id = uid();
   // Garage associé : « vacant » voulait dire loué ou habité avec le bien principal (statut « avec » depuis)
@@ -768,7 +775,7 @@ async function chargerCompte(gen = genCompte) {
     let distants = depuisCompte(brut);
     const nRech = brut && Array.isArray(brut.recherches) ? brut.recherches.length : 0, nProj = brut && Array.isArray(brut.projets) ? brut.projets.length : 0;
     const ajoutes = biens, scisAjoutees = scis;   // créés pendant le chargement (la liste part vide à la connexion)
-    if (typeof RECENTES !== 'undefined') RECENTES.fusionner(brut && brut.recherches, brut && brut.supprimes);
+    if (typeof RECENTES !== 'undefined') RECENTES.fusionner(brut && brut.recherches, (brut && brut.supprimes) || {});
     if (!distants) {   // premier passage : proposer de reprendre ce qui est sur cet appareil (fichiers compris)
       const locaux = biensLocaux(), scisLoc = scisLocales();
       distants = locaux.length && confirm(`Mettre dans ton compte ${locaux.length > 1 ? `les ${locaux.length} biens enregistrés` : 'le bien enregistré'} sur cet appareil ?`) ? locaux : [];
@@ -929,10 +936,9 @@ function kpisTotaux(t) {
 const ICONE_SCI = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9 21v-4h6v4M9 10h6M9 13.5h6"/></svg>';
 
 function vueListe() {
-  const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   if (filtre !== 'tout' && filtre !== 'np' && !scis.some(x => x.id === filtre)) filtre = 'tout';
   let h = `<div class="invhead"><div class="titre-discret"><h1>Mon patrimoine</h1>${boutonDiscret()}${pastilleCompte()}</div><div class="actions">
-      ${est ? `<button data-a="ajoutEst" title="${esc(est.label)}">+ Ajouter le bien estimé</button>` : ''}
+
       <button data-a="ajoutSci">+ Créer une SCI</button>
       <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
   if (biens.length || scis.length) {
@@ -968,7 +974,7 @@ function vueListe() {
 // Organigramme du patrimoine : moi → nom propre et chaque SCI (avec ses associés) → leurs biens (montants à hauteur de la part détenue)
 function arbreHTML() {
   const biens = detenus().filter(b => !enProjet(b));
-  if (!biens.length || (biens.length < 2 && !scis.length)) return '';   // un seul bien en nom propre : l'arbre redirait la liste
+  if (!biens.length || !scis.length) return '';   // sans SCI, l'arbre ne ferait que redire la liste des biens
   const chiffres = (net, cf) => `<span class="chiffres-arbre">${net != null ? `<span>net <b class="${signe(net)}">${kEur(net)}</b></span>` : ''}${cf != null ? `<span><b class="${signe(cf)}">${eur(cf)}/mois</b></span>` : ''}</span>`;
   const tot = t => chiffres(t.V ? t.net : null, t.nInv ? t.cfInv : null);   // cash-flow des investissements, sans le logement de la famille
   const feuille = (b, i, l) => {
@@ -1819,7 +1825,7 @@ function rachatResHTML(b, p) {
 function majCalculs(b) {
   const c = calculs(b), q = s => racine.querySelector(s);
   q('#inv_kpis').innerHTML = `<div class="kpis six">
-    ${kpi('Valeur', b.valeur ? kEur(b.valeur) : '—', !b.valeur ? 'à renseigner' : !b.valeurManuelle && b.estimation && !b.estimation.erreur ? 'estimée automatiquement' : 'saisie à la main' + (b.valeurLe ? ' (' + libMois(b.valeurLe) + ')' : ''))}
+    ${kpi('Valeur', b.valeur ? kEur(b.valeur) : '—', !b.valeur ? 'à renseigner' : b.valeurApres && !b.valeurApres.fait ? `en travaux · ${kEur(b.valeurApres.valeur)} après, en ${libMois(normMois(b.valeurApres.le))}` : !b.valeurManuelle && b.estimation && !b.estimation.erreur ? 'estimée automatiquement' : 'saisie à la main' + (b.valeurLe ? ' (' + libMois(b.valeurLe) + ')' : ''))}
     ${kpi('Restant dû', c.crd ? kEur(c.crd) : '—', c.mensuCredit ? eur(c.mensuCredit) + '/mois assurance comprise' : '')}
     ${kpi('Patrimoine net', c.patrimoine != null ? kEur(c.patrimoine) : '—', 'valeur − restant dû', c.patrimoine != null ? signe(c.patrimoine) : '')}
     ${habite(b) ? kpi('Coût', c.cfMois ? eur(-c.cfMois) : '—', 'par mois, logement de la famille') : kpi('Cash-flow', c.loue || c.mensuCredit ? eur(c.cfMois) : '—', 'par mois, avant impôts', signe(c.cfMois))}
@@ -1990,13 +1996,6 @@ racine.addEventListener('click', async e => {
       marquerSupprime(sci.id); scis = scis.filter(x => x !== sci); sauver(...deplaces); location.hash = '#investissements';
     }
     return;
-  }
-  if (a === 'ajoutEst') {
-    const est = estimationCourante(); if (!est) return;
-    return ajouter({nom: est.label.split(' ').slice(0, 4).join(' '), adresse: est.label, type: est.type, surface: est.surf,
-      criteres: Object.fromEntries(Object.entries(saved).filter(([k]) => k !== 'location')), geo: state.lat != null ? {lat: state.lat, lon: state.lon, label: est.label, pour: est.label} : null,
-      valeur: est.prix, valeurLe: moisCourant(), location: {statut: est.saison ? 'saisonnier' : est.meuble ? 'meuble' : 'vide', loyer: est.loyer, charges: null, locataire: '', debutBail: '', vacance: 0,
-        ...(est.saison ? (z => ({nuit: est.saison.nuit, nuitsAn: Math.round(z.nuits), fraisSaison: Math.round(z.pctFrais)}))(saisonnier(est.saison)) : {})}});
   }
   if (!b) return;
   if (a === 'voirProjet') { e.preventDefault(); if (typeof ouvrirProjet === 'function') ouvrirProjet(b.projet, 'cashflow'); return; }
@@ -2220,6 +2219,7 @@ racine.addEventListener('change', async e => {
     b.detache.estimation = replacer(b.detache.estimation, v);
     if (b.detache.valeur === avant) b.detache.valeur = b.detache.estimation.prix;
   }
+  if (chemin === 'valeur' && b.valeurApres) b.valeurApres.fait = true;   // valeur tapée : plus de bascule automatique à la fin des travaux
   if (chemin === 'valeur') { b.valeurManuelle = v != null; if (v == null && b.estimation && b.estimation.prix) { b.valeur = b.estimation.prix; t.value = b.valeur; } }
   // Mensualité progressive : la mensualité saisie est celle du mois de la saisie (elle augmente ensuite)
   if (/^prets\.\d+\.(mensualite|progressif)$/.test(chemin)) { const p = lire(b, chemin.replace(/\.\w+$/, '')); p.mensuLe = p.progressif && p.mensualite ? moisCourant() : ''; }

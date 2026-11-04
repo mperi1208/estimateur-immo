@@ -45,6 +45,17 @@ h1{font-size:20px;margin:0 0 2px}
 .sauveEst button:hover{border-color:#fff}
 .sauveEst button.cta{width:auto;margin:0;background:var(--accent);border-color:var(--accent)}
 .sauveEst .hint{margin-top:6px;color:#C9D2DE}
+/* Barres du bas sur téléphone : un bouton principal et « ⋯ » qui déplie le reste */
+.plus-barre{display:none}
+@media (max-width:600px){
+  .sauveEst .plus-barre,#cf_plus{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:44px;font-size:20px;line-height:1}
+  .sauveEst:not(.ouvert) .sec{display:none}
+  .sauveEst .sauve-ligne>.cta:not(.sec),.sauveEst .sauve-ligne>button.blanc:not(.sec){flex:1}
+  .sauveEst .esp{display:none}
+  #cf_save:has(#cf_saveInvite:not([hidden])) #cf_plus{display:none}
+  #cf_save:not(.ouvert) #cf_saveForm>:not(#cf_enreg):not(#cf_saveMsg){display:none}
+  #cf:not([data-etape="4"]) #cf_save:not(.ouvert) #cf_saveForm{display:none}
+}
 .sauveEst .hint a{color:#7CD4AE}
 /* Estimer rouvert depuis un projet : même en-tête que Financer (projet › option, les 4 étapes) */
 #est_tete .cf-etapes button[aria-current="step"]{cursor:default}
@@ -606,6 +617,7 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 #estim .est-ct > i{font-style:normal;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:800}
 #estim .est-ct .chip{margin-left:auto;font-size:11px;font-weight:700}
 #estim .crit{grid-template-columns:minmax(0,1fr)}
+#estim #crit{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:10px}#estim #crit>div{grid-column:1/-1}#estim #crit>[data-crit=etage],#estim #crit>[data-crit=ascenseur]{grid-column:auto}
 #estim .crit .seg-src{display:none}
 #estim details.plus{margin-top:12px;border:0;border-top:1px solid var(--line);border-radius:0;padding:4px 0 0}
 #estim details.plus summary{font-size:14px;font-weight:700}
@@ -896,6 +908,7 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 /* La barre d'enregistrement : toujours en bas, au même endroit */
 #cf .cf-barre{position:sticky;bottom:0;z-index:900;background:var(--ink);color:#fff}
 #cf .cf-barre-in{max-width:1200px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#cf .resume-barre{flex:1 1 100%;font-size:13px;color:#C9D2DE}#cf .resume-barre b{color:#fff}#cf .resume-barre b.down{color:#FDA29B}#cf .resume-barre b.up{color:#7CD4AE}#cf .resume-barre:empty,#cf[data-etape="4"] .resume-barre{display:none}
 #cf .cf-barre #cf_saveForm,#cf .cf-barre #cf_saveInvite{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;min-width:0}
 #cf .cf-barre #cf_saveForm[hidden],#cf .cf-barre #cf_saveInvite[hidden]{display:none}
 #cf .cf-barre input{flex:1 1 200px;min-width:160px;max-width:340px;background:rgba(255,255,255,.08);border-color:#475467;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff}
@@ -1337,7 +1350,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <aside class="carte emprunt" id="cf_emprunt"><h2>Ce que tu empruntes</h2><div id="cf_empruntL"></div><button id="cf_tauxMarche">Mettre le taux du marché</button></aside>
   </div>
 </section>
-<div class="apercu" id="cf_apercu"></div>
+<div class="apercu" id="cf_apercu" hidden></div>
 </aside>
 
 <main>
@@ -1370,12 +1383,13 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 </main>
 </div>
 <div class="cf-barre" id="cf_save"><div class="cf-barre-in">
+  <div class="resume-barre" id="cf_resumeBarre" aria-live="polite"></div>
   <div id="cf_saveForm">
     <input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregBranche" hidden>Nouvelle option</button><button id="cf_enregNouveau" hidden>Nouveau projet</button>
     <div id="cf_saveMsg" role="status"></div>
   </div>
   <div id="cf_saveInvite" hidden><span class="invite">Connecte-toi pour enregistrer ce projet dans « Mes projets ».</span><button class="cta" id="cf_connexion">Se connecter</button></div>
-  <button id="cf_suivant">Étape suivante</button>
+  <button type="button" class="plus-barre" id="cf_plus" aria-label="Autres actions" aria-expanded="false">⋯</button><button id="cf_suivant">Étape suivante</button>
 </div></div>
 <div class="tip cftip" id="cf_tip"></div>
 </section>
@@ -1513,7 +1527,7 @@ const CRITERES = [
     {k: 'jardin', l: 'Jardin privatif (rez-de-jardin)', p: 0.125, src: 'ext20'}]},
   {id: 'sdb', label: 'Salles de bain', pour: 'tous', src: 'nf', options: [
     {k: '1', l: '1', d: 1}, {k: '2', l: '2 ou plus', p: {appart: 0.14, maison: 0.09}}]},
-  {id: 'mitoyen', label: 'Implantation', pour: 'maison', src: 'est', options: [
+  {id: 'mitoyen', essentiel: true, label: 'Implantation', pour: 'maison', src: 'est', options: [
     {k: 'indiv', l: 'Individuelle', d: 1}, {k: 'mit1', l: 'Mitoyenne 1 côté', p: -0.05}, {k: 'mit2', l: 'Mitoyenne 2 côtés', p: -0.08}]},
   {id: 'terrain', essentiel: true, label: 'Terrain (m²)', pour: 'maison', special: true, number: true},
   {id: 'vue', label: 'Vue', pour: 'tous', src: 'est', options: [
@@ -1831,6 +1845,8 @@ function render(r) {
   });
   majSauveEst();
   updateResult();
+  // Sur téléphone, le résultat est sous les critères et la carte : après « Estimer », on l'amène à l'écran
+  if (state.defiler) { state.defiler = false; if (innerWidth < 800) requestAnimationFrame(() => { const y = out.getBoundingClientRect().top + scrollY - 64; window.scrollTo({top: Math.max(0, y), behavior: 'smooth'}); }); }
 }
 
 // --- Critères : formulaire, ajustements et carte de résultat ---
@@ -1872,7 +1888,7 @@ function buildForm() {
   const el = id => document.getElementById(id);
   for (const c of CRITERES) {
     const wrap = document.createElement('div');
-    wrap.dataset.pour = c.pour;
+    wrap.dataset.pour = c.pour; wrap.dataset.crit = c.id;
     const cible = c.cache ? el('critCache') : c.check ? el('checks') : c.essentiel ? el('crit') : el('crit2');
     if (c.check) {
       wrap.innerHTML = `<label><input type="checkbox" id="c_${c.id}"${saved[c.id] ? ' checked' : ''}> ${c.label}</label>`;
@@ -2318,7 +2334,7 @@ let choixTravaux = {};
 try { choixTravaux = JSON.parse(localStorage.getItem('travaux-choix') || '{}'); } catch (e) {}
 
 // --- « 3 Un projet de travaux ? » : une tuile par projet, ses réglages, puis aujourd'hui / après travaux, le coût et la valeur créée ---
-const TUILES = {non: ['Pas de travaux', 'acheté et loué tel quel'], aucun: ['Énergie seule', 'isolation, chauffage'], rafraichir: ['Rafraîchir', 'peinture, sols'],
+const TUILES = {non: ['Pas de travaux', 'ou seulement l\'énergie'], rafraichir: ['Rafraîchir', 'peinture, sols'],
   travaux: ['Gros travaux', 'cuisine, bains, électricité'], renover: ['Rénovation complète', 'tous corps d\'état'], diviser: ['Diviser', '2 à 4 logements'],
   amenager: ['Aménager une surface', 'garage, sous-sol, combles']};
 function tuilesTravaux(niveau) {
@@ -2330,6 +2346,7 @@ function lierTuiles(el, apres) {
   el.querySelectorAll('[data-niveau]').forEach(b => b.onclick = () => {
     if (choixTravaux.niveau === b.dataset.niveau) return;
     choixTravaux.niveau = b.dataset.niveau; choixTravaux.totalTravaux = null;
+    if (b.dataset.niveau === 'non') choixTravaux.dpe = '=';
     try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {}
     if (apres) apres();
     renderWorks();
@@ -2360,7 +2377,10 @@ function renderWorks() {
   const z = state.zone === 'paris' ? 'paris' : 'autre', surf = r.surf;
   const etat = selected(crit('etat')).k, dpe = selected(crit('dpe')).k;
   const aRenover = ['renover', 'travaux', 'rafraichir'].includes(etat), passoire = 'EFG'.includes(dpe) && dpe !== '?';
-  const niveau = choixTravaux.niveau && NIVEAUX[choixTravaux.niveau] ? choixTravaux.niveau : aRenover ? etat : passoire ? 'aucun' : 'non';
+  // « Pas de travaux » avec un DPE visé : travaux d'énergie seuls (l'ancienne tuile « Énergie seule », qui revient ici)
+  const choisi = choixTravaux.niveau && NIVEAUX[choixTravaux.niveau] ? choixTravaux.niveau : aRenover ? etat : 'non';
+  const energie = (choisi === 'non' || choisi === 'aucun') && ORDRE_DPE.includes(choixTravaux.dpe);
+  const niveau = energie ? 'aucun' : choisi === 'aucun' ? 'non' : choisi, affiche = niveau === 'aucun' ? 'non' : niveau;
   const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${v}</option>`).join('');
   const bind = () => {
     const save = () => { try { localStorage.setItem('travaux-choix', JSON.stringify(choixTravaux)); } catch (e) {} };
@@ -2375,7 +2395,8 @@ function renderWorks() {
   if (niveau === 'diviser' || niveau === 'amenager') return projetSurface(el, niveau, tuilesTravaux(niveau), z, surf);
   if (niveau === 'non') {
     state.projet = null;
-    el.innerHTML = tuilesTravaux(niveau);
+    const mieux = [...ORDRE_DPE].filter(c => dpe === '?' || ORDRE_DPE.indexOf(c) < ORDRE_DPE.indexOf(dpe));
+    el.innerHTML = tuilesTravaux(affiche) + (mieux.length ? `<div class="crit w-reglages"><div><label for="w_dpe">Rénovation énergétique seule</label><select id="w_dpe"><option value="=">Aucune</option>${mieux.map(c => `<option value="${c}">Viser un DPE ${c}</option>`).join('')}</select><div class="hint">Isolation, fenêtres, chauffage : chiffrés sans autres travaux.</div></div></div>` : '');
     bind(); renderSynth(); majSauveEst();
     return;
   }
@@ -2417,7 +2438,7 @@ function renderWorks() {
     passoire ? 'DPE : depuis le 1er janvier 2026, le calcul de l\'électricité a changé et environ 850 000 logements sont sortis de F-G sans travaux. Un nouveau diagnostic peut changer la donne.' : '',
     cible === 'G' ? 'Toujours classé G après travaux : pas louable.' : '',
     rien ? `Rien à chiffrer sur l'énergie ${dpe === '?' ? 'sans le DPE du bien : renseigne-le dans les détails du bien' : 'avec ce DPE'}, ou choisis le DPE visé.` : ''].filter(Boolean).join(' ');
-  el.innerHTML = `${tuilesTravaux(niveau)}
+  el.innerHTML = `${tuilesTravaux(affiche)}
     <div class="crit w-reglages">
       <div><label for="w_gamme">Gamme des finitions</label><select id="w_gamme">${opt(Object.fromEntries(Object.entries(GAMMES).map(([k, v]) => [k, v.l])), gamme)}</select></div>
       <div><label for="w_dpe">DPE visé après travaux</label><select id="w_dpe">${opt(dpeOpts, dpeVise)}</select></div>
@@ -2701,7 +2722,7 @@ async function lancer() {
   const q = addr.value.trim();
   if (q.length >= 3 && q !== state.adresse) { if (!await localiser(q, true)) return; }
   else if (state.lat == null) { document.getElementById('out').innerHTML = '<div class="empty">Tape une adresse (ou clique sur la carte).</div>'; return; }
-  state.lance = true; estimate();
+  state.lance = true; state.defiler = true; estimate();
 }
 function showSuggestions(feats, title, lancerApres = false) {
   sugg.innerHTML = (title ? `<li class="title">${title}</li>` : '') +
@@ -2740,7 +2761,8 @@ const RECENTES = {
   supprimer(cle) { this.liste = this.liste.filter(x => x.cle !== cle); if (window.INV) INV.marquerSupprime(cle); this.enregistrer(); },
   effacer() { this.liste.forEach(r => { if (window.INV) INV.marquerSupprime(r.cle); }); this.liste = []; this.enregistrer(); },
   // Fusion avec celles du compte : la plus récente de chaque recherche gagne (sauf si elle a été supprimée depuis)
-  fusionner(autres, sup = {}) {
+  fusionner(autres, sup) {
+    sup = sup || {};   // compte neuf : rien en ligne, la liste des suppressions arrive à null
     const m = new Map();
     // Une entrée abîmée (sans clé ni date) est écartée : elle ne doit pas empêcher de lire le compte
     [...this.liste, ...(Array.isArray(autres) ? autres : [])].filter(r => r && r.cle).forEach(r => {
@@ -2817,13 +2839,18 @@ function majSauveEst(msg) {
   const financer = rv && pj ? `<button class="cta" id="w_option" onclick="ajouterOptionTravaux()">Ajouter comme option de « ${esc(rv.pr.nom)} » →</button>`
     : pj ? `<button id="est_rev" onclick="financerBien('revente')" title="Financer : travaux puis revente">Travaux + revente</button><button class="cta blanc" id="est_loc" onclick="financerBien('location')" title="Financer : travaux puis location">Travaux + location →</button>`
     : `<button class="cta blanc" id="est_financer" onclick="financerBien()">${saisonActive() ? 'Financer en location saisonnière →' : 'Financer ce bien →'}</button>`;
+  // Sur téléphone : un bouton principal et « ⋯ » pour le reste (les boutons « sec » se cachent derrière)
+  const sec = h => h.replace(/<button( class="[^"]*")?/g, (m, c) => `<button class="sec${c ? ' ' + c.slice(8, -1) : ''}"`);
+  const plus = '<button type="button" class="plus-barre" aria-label="Autres actions" aria-expanded="false">⋯</button>';
   el.innerHTML = rv
-    ? `<div class="sauve-ligne"><button class="cta" id="est_maj">Mettre à jour l'estimation dans « ${esc(rv.pr.nom)} »</button><button id="est_nouveau">Nouveau projet</button><span class="esp"></span>${financer}</div>
+    ? `<div class="sauve-ligne">${plus}<button class="cta" id="est_maj">Mettre à jour l'estimation dans « ${esc(rv.pr.nom)} »</button>${sec('<button id="est_nouveau">Nouveau projet</button>')}<span class="esp"></span>${sec(financer)}</div>
        <div class="hint" id="est_msg">${msg || `Remplace l'estimation de${nomBien ? ` « ${esc(nomBien)} » dans` : ''} « ${esc(rv.pr.nom)} » par celle-ci. Ton financement (prix, loyers) ne change pas.`}</div>`
     : co
-    ? `<div class="sauve-ligne"><input id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="cta" id="est_enreg">${contexteProjet() ? 'Enregistrer comme nouveau projet' : 'Enregistrer dans Mes projets'}</button><span class="esp"></span>${financer}</div>
+    ? `<div class="sauve-ligne">${plus}<input class="sec" id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="sec cta" id="est_enreg">${contexteProjet() ? 'Enregistrer comme nouveau projet' : 'Enregistrer dans Mes projets'}</button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>
        ${msg ? `<div class="hint" id="est_msg">${msg}</div>` : '<div class="hint" id="est_msg" hidden></div>'}`
-    : `<div class="sauve-ligne"><button class="cta" id="est_connexion">Se connecter pour enregistrer</button><span class="esp"></span>${financer}</div>`;
+    : `<div class="sauve-ligne">${plus}<button class="sec cta" id="est_connexion">Se connecter pour enregistrer</button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>`;
+  el.classList.remove('ouvert');
+  el.querySelector('.plus-barre').onclick = e => { const o = el.classList.toggle('ouvert'); e.currentTarget.setAttribute('aria-expanded', String(o)); };
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
   const m = document.getElementById('est_maj'); if (m) m.onclick = majEstimationProjet;
   const nv = document.getElementById('est_nouveau'); if (nv) nv.onclick = quitterProjet;
@@ -3834,7 +3861,7 @@ const TITRES_PH = {avant: 'Avant travaux', travaux: 'Pendant les travaux', apres
 function cartePhase(g, avecImpots) {
   const l = (k, v) => `<div class="l"><span>${k}</span><b>${signe(v)}</b></div>`;
   return `<div class="phase ${g.cls}"><div class="t">${g.titre}</div><div class="s">${g.sous}</div>${l('Loyers', g.loyers)}${l('Crédit', -g.credit)}${l('Charges', -g.charges)}${avecImpots ? l('Impôts', -g.impots) : ''}
-    <div class="l tot"><span>${g.reste < 0 ? 'Il te manque' : 'Il te reste'}</span><b class="${g.reste < 0 ? 'down' : 'up'}">${signe(g.reste)}</b></div></div>`;
+    <div class="l tot"><span>${g.reste < 0 ? 'Il te manque' : 'Il te reste'}</span><b class="${g.reste < 0 ? 'down' : 'up'}">${eur(Math.abs(g.reste))}</b></div></div>`;
 }
 
 // ---------- Chiffres du récap banque, sans rien afficher (mise en page dans Mes projets, recapHtml) ----------
@@ -3887,6 +3914,8 @@ function donneesRecap() {
 }
 function recap(v) { return v ? avecReglages(v, donneesRecap) : donneesRecap(); }
 
+// La phrase du résultat, en petit dans la barre du bas (après le rendu de l'aperçu)
+function majResumeBarre() { setTimeout(() => { const l = [...$('apercu').querySelectorAll('span')].map(x => x.innerHTML); $('resumeBarre').innerHTML = l.join(' · '); }); }
 function rendre() {
   afficherChamps();
   const s = simuler(), p = s.p, revente = p.projet === 'revente';
@@ -3913,9 +3942,8 @@ function rendre() {
   const resteMois = ac.cf / 12;
   $('tiles').innerHTML = [
     ['Mensualité', eur(mens), `prêt de ${eur(s.pret)}, ${p.differe > 0 ? `${eur(s.ech.mensDiff)} pendant le différé (${p.differe} mois)${s.ech.mensAvant != null ? `, ${eur(s.ech.mensAvant)} avant les travaux` : ''}` : 'assurance comprise'}`],
-    [resteMois < 0 ? 'Il te manque par mois' : 'Il te reste par mois', `<span class="${resteMois < 0 ? 'down' : 'up'}">${eur(Math.abs(resteMois))}</span>`,
-      `${p.differe > 0 && ac.y !== a1.y ? `après le différé · ${eur(a1.cf / 12)} pendant` : `année ${ac.y}`}, ${p.avecImpots ? 'après' : 'avant'} impôts`],
-    [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), 'mise de départ déduite'],
+    // Ce qu'il reste par mois est dit une fois, en tête (ou dans le bilan du mois) : pas de tuile en double
+    [`Patrimoine dans ${s.horizon} ans`, eur(patrimoine), `5 ans après la fin du crédit · mise de départ déduite`],
   ].map(([k, v, d]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
   $('tilesPlus').textContent = `Coût du crédit ${eur(coutCredit)} (intérêts, assurance, frais) · cash-flow moyen ${eur(cfMoyen)} par mois sur la durée du crédit${s.totalDiffere != null ? ` · ${s.totalDiffere < 0 ? '' : '+'}${eur(s.totalDiffere)} en tout pendant les ${p.differe} mois de différé, soit ${eur(s.totalDiffere / p.differe)} par mois en moyenne` : ''}.`;
 
@@ -3925,7 +3953,7 @@ function rendre() {
   $('tete').hidden = !ph.liste.length && td == null;
   $('tete').classList.remove('revente');
   if (!ph.liste.length) $('tete').innerHTML = td != null ? `<div><span>Pendant les ${p.differe} mois du différé</span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}<em> en tout</em></b><small>soit ${eur(td / p.differe)} par mois en moyenne</small></div>` : '';
-  else $('tete').innerHTML = `<div class="fonce"><span>${ph.fin ? `Une fois tout en place, dès le mois ${ph.fin + 1}` : 'Chaque mois'}</span><b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}<em> par mois</em></b><small>${resteMois < 0 ? 'ce que tu sors de ta poche' : 'ce qu\'il te reste'}, ${p.avecImpots ? 'après' : 'avant'} impôts</small></div>`
+  else $('tete').innerHTML = `<div class="fonce"><span>${ph.fin ? `Une fois tout en place, dès le mois ${ph.fin + 1}` : 'Chaque mois'}</span><b class="${resteMois < 0 ? 'down' : 'up'}">${resteMois < 0 ? 'Il te manque' : 'Il te reste'} ${eur(Math.abs(resteMois))}<em> par mois</em></b><small>${p.avecImpots ? 'après' : 'avant'} impôts</small></div>`
     + (td != null ? `<div><span>Pendant les ${p.differe} mois du différé</span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}<em> en tout</em></b><small>soit ${eur(td / p.differe)} par mois en moyenne</small></div>`
       : `<div><span>Mensualité du crédit</span><b>${eur(mens)}</b><small>assurance comprise, sur ${p.duree} ans</small></div>`);
   if (ph.liste.length) {
@@ -3936,7 +3964,7 @@ function rendre() {
     $('simple').innerHTML = `<div class="card"><h2 class="phases-t">Mois par mois, en ${cartes.length} périodes</h2><div class="phases">${cartes.join('')}</div></div>`;
   } else $('simple').innerHTML = bilanSimple({loyer: ac.loyers / 12, credit: ac.credit / 12, charges: ac.charges / 12, impots: p.avecImpots ? ac.impots / 12 : null},
     {titre: 'Chaque mois, un mois type', libLoyer: p.deuxBiens || p.loyer2 > 0 ? 'Loyers encaissés' : 'Loyer encaissé', detailLoyer: p.saison ? '' : detailVacance(p.loyerTotal || p.loyer, p.vacance), note: `Moyenne par mois de l'année ${ac.y}${ac.y > 1 ? (p.differe > 0 ? ', après le différé' : ', 1re année pleine de location') : ''}${p.avecImpots ? ', impôts compris' : ', avant impôts'}${ac.y > 1 && (p.gLoyer || p.gCharges) ? `, avec la hausse des ${p.gLoyer && p.gCharges ? 'loyers et des charges' : p.gLoyer ? 'loyers' : 'charges'} depuis l'achat (section Évolutions)` : ''}.`});
-  $('apercu').innerHTML = `<span>Résultat : <b class="${resteMois < 0 ? 'down' : 'up'}">${signe(resteMois)}</b> par mois${ph.fin ? ` dès le mois ${ph.fin + 1}` : ''}</span>${td != null ? `<span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}</b> en tout pendant le différé</span>` : ''}<button data-voir>Voir le résultat</button>`;
+  majResumeBarre(); $('apercu').innerHTML = `<span><b class="${resteMois < 0 ? 'down' : 'up'}">${resteMois < 0 ? 'Il te manque' : 'Il te reste'} ${eur(Math.abs(resteMois))}</b> par mois${ph.fin ? ` dès le mois ${ph.fin + 1}` : ''}</span>${td != null ? `<span><b class="${td < 0 ? 'down' : 'up'}">${signe(td)}</b> en tout pendant le différé</span>` : ''}<button data-voir>Voir le résultat</button>`;
   // Seulement ce que l'écran ne montre pas déjà : les pastilles « compté / non compté » des sections disent le reste
   let al = p.avecImpots ? `<div class="okbox">Fiscalité appliquée : <b>${s.regime}</b>.</div>` : '';
   const coutBien = s.coutTotal - (p.meuble === '1' ? p.mobilier + p.mobilierB2 : 0);
@@ -3953,7 +3981,6 @@ function rendre() {
   if (s.st === 'is' && p.avecImpots) al += '<div class="warnbox">SCI à l\'IS : l\'amortissement réduit fortement l\'impôt pendant la détention, mais à la revente la plus-value est calculée sur la valeur après amortissements, et taxée à l\'IS puis à la flat tax si elle est distribuée.</div>';
   if (p.projet === 'location' && s.st !== 'is' && p.meuble !== '1' && p.travaux > 0) al += '<div class="warnbox">Revenus fonciers : les travaux d\'entretien et d\'amélioration sont déductibles (d\'où le déficit foncier la 1re année), mais pas ceux qui reconstruisent ou agrandissent le bien.</div>';
   if (bienEst && (bienEst.dpe === 'G' || bienEst.etat === 'renover') && p.projet === 'simple') al += `<div class="alert">${bienEst.dpe === 'G' ? 'Classé G : <b>location interdite</b> sans travaux énergétiques' : 'À rénover entièrement : <b>pas louable en l\'état</b>'}. Ouvre « Travaux » (ou lance le projet depuis l'onglet Estimer) pour une simulation réaliste.</div>`;
-  if (a1.cf < 0) al += `<div class="warnbox">Effort d'épargne : environ <b>${eur(-a1.cf / 12)}</b> par mois à sortir de ta poche en année ${a1.y}${a1.y > 1 ? ', la première année pleine de location' : ''}.</div>`;
   $('alerts').innerHTML = al;
   $('chartTitle').textContent = `Cash-flow annuel ${p.avecImpots ? 'après' : 'avant'} impôts (${s.horizon} ans)`;
   graphe(s.annees, s.finCredit);
@@ -4030,7 +4057,7 @@ function rendreRevente(s) {
   $('tete').hidden = false; $('tete').classList.add('revente');
   $('tete').innerHTML = `<div class="fonce"><span>Revendu au bout de ${b.n} mois</span><b class="${nb < 0 ? 'down' : 'up'}">${signe(nb)}<em> ${nb < 0 ? 'de perte' : 'de bénéfice'}</em></b><small>${p.avecImpots ? 'après' : 'avant'} impôt</small></div>`
     + `<div><span>Effort pendant l'opération</span><b>${eur(b.sorties / b.n)}<em> par mois</em></b><small>mensualités et charges${b.loyers ? ', moins les loyers' : ''}</small></div>`;
-  $('apercu').innerHTML = `<span>Revente : <b class="${nb < 0 ? 'down' : 'up'}">${signe(nb)}</b> ${nb < 0 ? 'de perte' : 'de bénéfice'} au bout de ${b.n} mois</span><button data-voir>Voir le résultat</button>`;
+  majResumeBarre(); $('apercu').innerHTML = `<span>Revente : <b class="${nb < 0 ? 'down' : 'up'}">${signe(nb)}</b> ${nb < 0 ? 'de perte' : 'de bénéfice'} au bout de ${b.n} mois</span><button data-voir>Voir le résultat</button>`;
   const ligne = (l, v, cls = '') => `<tr${cls ? ` class="${cls}"` : ''}><td>${l}</td><td>${v < 0 ? '−' : ''} ${fmt(Math.abs(v))} €</td></tr>`;
   $('bilan').innerHTML = `<h2>Bilan de l'opération (${b.n} mois)</h2><div class="scroll"><table>
     ${ligne('Prix de revente', b.prixVente)}${ligne('Frais de revente', -b.fraisVente)}${ligne('Remboursement du crédit (capital restant dû)', -b.crd)}${ligne('Indemnités de remboursement anticipé (au plus)', -b.ira)}
@@ -4242,10 +4269,11 @@ function versBien(pr) {
     const notes = [p.loyer2 > 0 && p.nuitL2 ? `Le logement à part est prévu à la nuitée (${eur(p.loyer2)} par mois en moyenne${p.debutLoyer2 > 1 ? ` à partir du mois ${p.debutLoyer2}` : ''}) : ajoute-le en fiche à part pour le compter.` : '',
       loueAvant ? `Loué ${eur(p.loyerAvant)} par mois jusqu'au début des travaux (mois ${p.finAvant})${lots ? '' : `, puis ${eur(p.loyer)} après`}.` : '',
       p.travaux > 0 ? `Travaux prévus : ${eur(p.travaux)} sur ${p.dureeTravaux} mois, valeur après travaux ${eur(p.valeurApres)}.` : ''].filter(Boolean);
-    return {nom: estOption(pr) ? `${pr.nom} · ${nomBranche(pr)}` : pr.nom, adresse: rc ? rc.label : r.label || '', type: p.type === 'maison' ? 'maison' : 'appart', surface: p.surf || null,
+    return {nom: pr.nom, adresse: rc ? rc.label : r.label || '', type: p.type === 'maison' ? 'maison' : 'appart', surface: p.surf || null,
       criteres: rc ? Object.fromEntries(Object.entries(rc.criteres || {}).filter(([k]) => k !== 'location')) : {}, geo: rc && rc.lat != null ? {lat: rc.lat, lon: rc.lon, label: rc.label, pour: rc.label} : null,
       structure: sci ? 'sci' : p.struct === 'np' ? 'np' : p.struct, sciId: sci || null, ...(p.struct !== 'np' && !sci ? {sci: r.sciNom || 'Ma SCI'} : {}),
-      valeur: Math.round(p.prix), valeurLe: auj, valeurManuelle: true,
+      valeur: Math.round(p.prix + (travaux ? p.travaux : 0)), valeurLe: auj, valeurManuelle: true,
+      ...(travaux && p.valeurApres > 0 ? {valeurApres: {valeur: Math.round(p.valeurApres), le: auMois(p.finT)}} : {}),
       achat: {date: auj, prix: Math.round(p.prix), notaire: Math.round(s.fraisNotaire) || null, travaux: p.travaux > 0 ? Math.round(p.travaux) : null, mobilier: p.mobilier > 0 ? Math.round(p.mobilier) : null,
         frais: Math.round((p.dossier || 0) + (s.fraisGarantie || 0)) || null},
       location: p.saison && !p.nuitL2 ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(s.saison.nuits), fraisSaison: null}
@@ -4481,6 +4509,7 @@ function etape(n) {
   n = Math.min(4, Math.max(1, Math.round(+n) || 1));
   const avant = CF.dataset.etape;
   CF.dataset.etape = n;
+  $('save').classList.remove('ouvert'); $('plus').setAttribute('aria-expanded', 'false');
   CF.querySelectorAll('#cf_etapes button').forEach(b => { if (+b.dataset.etape === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
   $('suivant').hidden = n === 4;
   $('suivant').textContent = n === 3 ? 'Voir le résultat' : 'Étape suivante';
@@ -4489,6 +4518,7 @@ function etape(n) {
 }
 CF.querySelectorAll('#cf_etapes button').forEach(b => b.onclick = () => etape(b.dataset.etape));
 $('suivant').onclick = () => etape(+CF.dataset.etape + 1);
+$('plus').onclick = e => { const o = $('save').classList.toggle('ouvert'); e.currentTarget.setAttribute('aria-expanded', String(o)); };
 $('apercu').addEventListener('click', e => { if (e.target.closest('[data-voir]')) etape(4); });
 // Travaux : l'interrupteur ouvre ou ferme la section (comptée seulement ouverte, comme avant)
 CF.querySelectorAll('#cf_travauxSeg button').forEach(b => b.onclick = () => { $('boxProjet').open = b.dataset.v === '1'; });
@@ -4517,7 +4547,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=38c030e0"></script>
+<script src="investissements.js?v=d61b602b"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -4546,8 +4576,8 @@ const CRITERES_C = [
   {k: 'Loyers par mois', v: loyerC, mieux: 1},
   {k: 'Charges par mois', v: r => r.mois ? r.mois.charges : null, mieux: -1},
   {k: 'Impôts par mois', v: r => r.mois ? r.mois.impots : null, mieux: -1},
-  {k: 'Il te reste par mois', v: r => reventeC(r) ? null : r.cfMois, mieux: 1},
-  {k: 'Pendant le différé', v: r => r.cfDiffere, mieux: 1},
+  {k: 'Par mois', v: r => reventeC(r) ? null : r.cfMois, mieux: 1, reste: true},
+  {k: 'Pendant le différé', v: r => r.cfDiffere, mieux: 1, reste: true},
   {k: 'Total pendant le différé', v: r => r.totalDiffere, mieux: 1, sous: r => r.differe ? `${r.differe} mois` : '', memeHorizon: true, pareil: x => `Total pendant les ${x} de différé`},
   {k: 'Rendement brut', v: r => (c => loyerC(r) != null && c > 0 ? loyerC(r) * 12 / c : null)((r.prix || 0) + (r.travaux || 0)), mieux: 1, pct: true},
   {k: 'Bénéfice à la revente', v: r => reventeC(r) ? r.benefice : null, mieux: 1},
@@ -4566,7 +4596,7 @@ function lignesComparaison(rs) {
       const tri = v.map((x, i) => [x * c.mieux, i]).sort((a, b) => b[0] - a[0]);
       if (tri[0][0] !== tri[1][0]) { gagnant = tri[0][1]; ecart = tri[0][0] - tri[1][0]; }
     }
-    return {k: pareil ? c.pareil(sous[0]) : c.k, v, pct: !!c.pct, gagnant, ecart, sous: pareil ? null : sous};
+    return {k: pareil ? c.pareil(sous[0]) : c.k, v, pct: !!c.pct, reste: !!c.reste, gagnant, ecart, sous: pareil ? null : sous};
   }).filter(Boolean);
 }
 // La phrase du haut : ce qui compte le plus (le reste par mois, ou le bénéfice si toutes sont des achats-reventes)
@@ -4579,9 +4609,9 @@ function verdictComparaison(noms, rs) {
 }
 // prs : [{nom, resume}] ; o.sous : une ligne sous chaque nom (usage)
 function tableComparaison(prs, o = {}) {
-  const rs = prs.map(p => p.resume || {}), noms = prs.map(p => esc(p.nom)), f = (x, l) => x == null ? '—' : l.pct ? pctC(x) : eurC(x);
+  const rs = prs.map(p => p.resume || {}), noms = prs.map(p => esc(p.nom)), f = (x, l) => x == null ? '—' : l.pct ? pctC(x) : l.reste ? (x < 0 ? 'il manque ' : 'il reste ') + eurC(Math.abs(x)) : eurC(x);
   const cellule = (l, i) => {
-    const x = l.v[i], g = l.gagnant === i, signe = /reste|différé|Bénéfice/i.test(l.k) && x != null ? (x < 0 ? 'down' : x > 0 ? 'up' : '') : '';
+    const x = l.v[i], g = l.gagnant === i, signe = (l.reste || /différé|Bénéfice/i.test(l.k)) && x != null ? (x < 0 ? 'down' : x > 0 ? 'up' : '') : '';
     const plus = g ? `<small>${l.pct ? (l.ecart * 100).toFixed(1).replace('.', ',') + ' pt' : eurC(l.ecart)} de mieux</small>` : l.sous && l.sous[i] ? `<small>${l.sous[i]}</small>` : '';
     return `<td${g ? ' class="mieux"' : ''}><b class="${signe}">${f(x, l)}</b>${plus}</td>`;
   };
@@ -4672,7 +4702,7 @@ function recapHtml(d, o = {}) {
   const figs1 = d.revente
     ? [fig('Prix d\'acquisition', eurR(a.prix)), t && fig('Travaux', eurR(t.montant)), fig('Prix de revente', eurR(d.vente.prixVente), `au mois ${d.vente.mois}`), fig(d.vente.net < 0 ? 'Perte nette' : 'Marge nette', `<span class="${cls(d.vente.net)}">${sgnR(d.vente.net)}</span>`)]
     : [fig('Prix d\'acquisition', eurR(a.prix)), t ? fig('Travaux', eurR(t.montant), t.valeurApres > 0 ? `valeur après travaux ${eurR(t.valeurApres)}` : '') : est.prix && !plusieurs ? fig('Estimation de marché', eurR(est.prix)) : fig('Coût total', eurR(a.cout)),
-      fig(d.saison ? 'Recettes par mois' : 'Loyers par mois', eurR(d.loyersPleins), d.saison ? 'en moyenne' : 'hors charges'), fig('Trésorerie mensuelle', `<span class="${cls(n.cf)}">${sgnR(n.cf / 12)}</span>`, 'une fois le projet en place')];
+      fig(d.saison ? 'Recettes par mois' : 'Loyers par mois', eurR(d.loyersPleins), d.saison ? 'en moyenne' : 'hors charges'), fig(n.cf < 0 ? 'Il manque par mois' : 'Il reste par mois', `<span class="${cls(n.cf)}">${eurR(Math.abs(n.cf / 12))}</span>`, 'une fois le projet en place')];
   const page1 = `<section class="rc-page rc-p1">${tete(1, d.revente ? 'Le projet et son résultat' : 'Le projet et ce qu\'il rapporte')}<p class="rc-objet">${objet}</p>
     <div class="rc-corps"><div class="rc-figs">${figs1.filter(Boolean).join('')}</div>
     ${sec(plusieurs ? 'Les biens' : 'Le bien', bien + nuitee)}${sec('Le calendrier', frise)}${x.haut}</div></section>`;
@@ -4683,7 +4713,7 @@ function recapHtml(d, o = {}) {
     const n = d.annee, z = d.croisiere, imp = n.impots != null, m = v => v / 12;
     const sorties = [['Échéance du prêt', m(n.credit), 'c1'], ['Charges', m(n.charges), 'c3'], imp && n.impots > 0 && ['Impôts', m(n.impots), 'c4']].filter(Boolean);
     const max = Math.max(m(n.loyers), sorties.reduce((s, x) => s + x[1], 0));
-    const mois = `<div class="rc-hero"><div><span>Trésorerie mensuelle, une fois le projet en place</span><b class="${cls(n.cf)}">${sgnR(m(n.cf))}</b><small>année ${n.y}, ${imp ? 'après' : 'avant'} impôts</small></div>
+    const mois = `<div class="rc-hero"><div><span>Chaque mois, une fois le projet en place</span><b class="${cls(n.cf)}">${n.cf < 0 ? 'Il manque' : 'Il reste'} ${eurR(Math.abs(m(n.cf)))}</b><small>année ${n.y}, ${imp ? 'après' : 'avant'} impôts</small></div>
       <div class="rc-mt">
         <div class="rc-hb"><span>${d.saison ? 'Recettes encaissées' : d.nuitee ? 'Loyers et recettes' : 'Loyers encaissés'}</span><div><i class="vert" style="width:${larg(m(n.loyers), max)}"></i></div><b>${eurR(m(n.loyers))}</b></div>
         <div class="rc-hb"><span>Sorties</span><div>${sorties.map(([k, v, cl]) => `<i class="${cl}" style="width:${larg(v, max)}"></i>`).join('')}</div><b>${eurR(sorties.reduce((s, x) => s + x[1], 0))}</b></div>
@@ -4720,14 +4750,16 @@ function recapHtml(d, o = {}) {
 // Page de comparaison, avant le détail de l'option retenue : les options côte à côte, en barres sur la même échelle.
 // l : [{lettre, nom, d}] (d : CF_APP.recap de l'option) ; o : comme recapHtml. Retenue : la meilleure trésorerie une fois
 // le projet en place (la meilleure marge si toutes sont revendues)
-function meilleureOption(l) {
+// choix : la lettre de l'option que l'utilisateur retient pour le dossier ; sans choix, celle qui laisse le plus
+function meilleureOption(l, choix) {
   const val = x => x.d.revente ? null : x.d.annee.cf / 12, louees = l.some(x => !x.d.revente);
   const v = x => louees ? val(x) : x.d.vente.net;
   const c = l.filter(x => v(x) != null).sort((a, b) => v(b) - v(a));
-  return {louees, v, retenue: c[0], suivante: c[1]};
+  const retenue = (choix && l.find(x => x.lettre === choix)) || c[0];
+  return {louees, v, retenue, suivante: c.find(x => x !== retenue), meilleure: c[0]};
 }
 function comparaisonHtml(l, o = {}) {
-  const {louees, v, retenue: r, suivante} = meilleureOption(l), cls = n => n < 0 ? 'rc-neg' : 'rc-pos', n = l.length;
+  const {louees, v, retenue: r, suivante, meilleure} = meilleureOption(l, o.choix), cls = n => n < 0 ? 'rc-neg' : 'rc-pos', n = l.length;
   const sec = (titre, html) => `<div class="rc-sec"><h3>${titre}</h3>${html}</div>`;
   const nom = (x, court) => `<em>${esc(x.lettre)}</em>${esc(x.nom)}${x === r && !court ? '<u>Retenue</u>' : ''}`;
   const ligne = (x, barre, val, sous, court, k = '') => `<div class="rc-cl${k}${x === r ? ' best' : ''}"><span>${nom(x, court)}${sous ? `<small>${sous}</small>` : ''}</span>${barre}<b>${val}</b></div>`;
@@ -4757,7 +4789,10 @@ function comparaisonHtml(l, o = {}) {
   const couv = x => x.d.annee && x.d.annee.credit > 0 ? x.d.annee.loyers / x.d.annee.credit : null, cm = Math.max(1.6, ...l.map(x => couv(x) || 0));
   const couverture = louees ? l.map(x => couv(x) == null ? ligne(x, '<div></div>', '—', '', true) : ligne(x, `<div class="rc-cl-j"><i class="${couv(x) < 1 ? 'rouge' : x === r ? 'vert' : 'c3'}" style="width:${larg(couv(x), cm)}"></i><u style="left:${larg(1, cm)}"></u></div>`, (couv(x) * 100).toFixed(0) + ' %', '', true)).join('') : '';
   const ecart = suivante ? v(r) - v(suivante) : 0;
-  const objet = `${n} façons de réaliser le projet ont été étudiées. L'option retenue, <b>${esc(r.lettre)} · ${esc(r.nom)}</b>, ${louees ? `dégage la meilleure trésorerie mensuelle une fois le projet en place, <b class="${cls(v(r))}">${sgnR(v(r))}</b> par mois` : `dégage la meilleure marge à la revente, <b class="${cls(v(r))}">${sgnR(v(r))}</b>`}${Math.round(ecart) > 0 ? `, soit ${eurR(ecart)} de plus que l'option ${esc(suivante.lettre)}` : ''}. Elle est détaillée dans les pages suivantes.`;
+  // Retenue par l'utilisateur sans être celle qui laisse le plus : on le dit, avec l'écart
+  const objet = r !== meilleure && meilleure && v(r) != null
+    ? `${n} façons de réaliser le projet ont été étudiées. L'option retenue est <b>${esc(r.lettre)} · ${esc(r.nom)}</b> : <b class="${cls(v(r))}">${sgnR(v(r))}</b>${louees ? ' par mois une fois le projet en place' : ' à la revente'}. L'option ${esc(meilleure.lettre)} · ${esc(meilleure.nom)} ${louees ? 'laisse' : 'rapporte'} ${eurR(v(meilleure) - v(r))} de plus${louees ? ' par mois' : ''}. L'option retenue est détaillée dans les pages suivantes.`
+    : `${n} façons de réaliser le projet ont été étudiées. L'option retenue, <b>${esc(r.lettre)} · ${esc(r.nom)}</b>, ${louees ? `dégage la meilleure trésorerie mensuelle une fois le projet en place, <b class="${cls(v(r))}">${sgnR(v(r))}</b> par mois` : `dégage la meilleure marge à la revente, <b class="${cls(v(r))}">${sgnR(v(r))}</b>`}${Math.round(ecart) > 0 ? `, soit ${eurR(ecart)} de plus que l'option ${esc(suivante.lettre)}` : ''}. Elle est détaillée dans les pages suivantes.`;
   const d0 = r.d;
   return `<section class="rc-page rc-cmp${n > 5 ? ' serre' : ''}"><header class="rc-tete"><div class="rc-sur"><span>Dossier de financement · ${d0.revente ? 'achat-revente' : 'investissement locatif'}</span><span>${esc(o.date || '')} · 1/${o.total || 3}</span></div>
     <h1>${esc(o.titre || 'Projet')}</h1>${o.adresse ? `<div class="rc-adr">${esc(o.adresse)}</div>` : ''}</header><h2>Les options étudiées</h2><p class="rc-objet">${objet}</p>
@@ -4791,11 +4826,11 @@ async function telechargerRecap(pr, depuisFinancer, bouton) {
   return produirePdf(recapHtml(d, o), `Dossier de financement - ${nom}${o.option ? ' - ' + o.option : ''}`, bouton);
 }
 // Les options d'un projet comparées sur une page, puis l'option retenue en détail (trois pages) ; bs : les options, lettres : leur lettre sur les cartes
-async function telechargerComparaison(bs, lettres, bouton) {
+async function telechargerComparaison(bs, lettres, bouton, choix) {
   let l;
   try { l = bs.map((x, i) => ({lettre: lettres[i], nom: nomBranche(x), pr: x, d: CF_APP.recap(x.finance)})); } catch (e) { console.warn('Dossier impossible :', e); alert('Le dossier n\'a pas pu être préparé.'); return; }
-  const r = meilleureOption(l).retenue; if (!r) return;
-  const o = {titre: bs[0].nom, adresse: adresseProjet(bs), date: new Date().toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}), total: 3};
+  const r = meilleureOption(l, choix).retenue; if (!r) return;
+  const o = {titre: bs[0].nom, adresse: adresseProjet(bs), date: new Date().toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}), total: 3, choix: r.lettre};
   const detail = recapHtml(r.d, {...o, decale: 1, retenue: `${r.lettre} · ${r.nom}`, estime: r.pr.resume ? {prix: r.pr.resume.prixEstime, loyer: r.pr.resume.loyerEstime} : {}});
   return produirePdf(comparaisonHtml(l, o) + detail, `Dossier de financement - ${o.titre} - comparaison des options`, bouton);
 }
@@ -5042,9 +5077,9 @@ function tableOptions(bs, a, m) {
   const tete = `<tr><th></th>${bs.map((x, i) => `<th${cl(i)}><span class="pj-opt-nom">${esc(nomBranche(x))}</span>${best(i) ? '<span class="pj-top">La meilleure</span>' : ''}</th>`).join('')}</tr>`;
   const gros = rs.map((r, i) => {
     const v = revente ? r.benefice : r.scenario === 'revendre' ? null : r.cfMois, ecart = m && !best(i) && v != null ? m.v - v : 0;
-    return `<td${cl(i)}>${v == null ? '—' : `<b class="pj-gros ${signeP(v)}">${v < 0 ? '−' : ''}${eurP(Math.abs(v))}</b>`}${Math.round(ecart) > 0 ? `<small class="down">${eurP(ecart)} de moins</small>` : ''}</td>`;
+    return `<td${cl(i)}>${v == null ? '—' : `<b class="pj-gros ${signeP(v)}">${revente ? (v < 0 ? '−' : '') : v < 0 ? 'il manque ' : 'il reste '}${eurP(Math.abs(v))}</b>`}${Math.round(ecart) > 0 ? `<small class="down">${eurP(ecart)} de moins</small>` : ''}</td>`;
   });
-  const lignes = [`<tr class="pj-principal"><th>${revente ? 'Bénéfice à la revente' : 'Il te reste par mois'}</th>${gros.join('')}</tr>`];
+  const lignes = [`<tr class="pj-principal"><th>${revente ? 'Bénéfice à la revente' : 'Par mois'}</th>${gros.join('')}</tr>`];
   if (rs.some(r => r.totalDiffere != null)) {
     const d = rs.map(r => r.differe || 0), meme = d.every(x => x === d[0]);
     lignes.push(`<tr><th>${meme ? `Pendant les ${d[0]} mois de différé, en tout` : 'Pendant le différé, en tout'}</th>${rs.map((r, i) => `<td${cl(i)}>${r.totalDiffere == null ? '—' : `<b class="${signeP(r.totalDiffere)}">${r.totalDiffere < 0 ? '−' : ''}${eurP(Math.abs(r.totalDiffere))}</b>${r.differe ? `<small class="pj-moy">soit ${r.totalDiffere < 0 ? '−' : ''}${eurP(Math.abs(Math.round(r.totalDiffere / r.differe)))}/mois en moyenne</small>` : ''}`}${!meme && d[i] ? `<small>${d[i]} mois</small>` : ''}</td>`).join('')}</tr>`);
@@ -5068,9 +5103,10 @@ function carteRepliee(bs, g) {
 function menuDossier(bs, m) {
   const opts = bs.map((x, i) => [x, i < 26 ? String.fromCharCode(65 + i) : String(i + 1)]).filter(([x]) => !x.amenag);
   return `<details class="pj-menu pj-dossier"><summary title="Télécharger le dossier de financement en PDF, pour la banque">Dossier de financement</summary><div class="pj-menu-l">
-    ${opts.length > 1 ? `<button data-a="recapComparer"><b>Comparer les options</b><small>${opts.length} options côte à côte, puis la meilleure en détail · 3 pages</small></button>` : ''}
+    ${opts.length > 1 ? `<span class="pj-menu-t">Comparer les ${opts.length} options, puis le détail de · 3 pages</span>
+    ${opts.map(([x, k]) => `<button data-a="recapComparer" data-lettre="${k}"><b>Comparer, détail de l'option ${k} · ${esc(nomBranche(x))}</b></button>`).join('')}` : ''}
     <span class="pj-menu-t">Une seule option · 2 pages</span>
-    ${opts.map(([x, k]) => `<button data-a="recap" data-id="${esc(x.id)}"><b>Option ${k} · ${esc(nomBranche(x))}</b>${m && m.pr === x ? '<small class="up">la meilleure</small>' : ''}</button>`).join('')}</div></details>`;
+    ${opts.map(([x, k]) => `<button data-a="recap" data-id="${esc(x.id)}"><b>Option ${k} · ${esc(nomBranche(x))}</b></button>`).join('')}</div></details>`;
 }
 function carteGroupe(bs) {
   const g = groupeDe(bs[0]), ouvert = comparees.has(g);
@@ -5267,13 +5303,14 @@ document.getElementById('pj').addEventListener('click', e => {
   const groupe = (t.closest('[data-groupe]') || {dataset: {}}).dataset.groupe, membres = () => PROJETS.liste.filter(x => groupeDe(x) === groupe);
   if (menu) menu.open = false;
   if (t.dataset.a === 'financer') ouvrirProjet(id, 'cashflow');
-  else if (t.dataset.a === 'recap') {   // le projet, l'option choisie, ou pour un projet à plusieurs options la meilleure
-    const pr = PROJETS.liste.find(x => x.id === id) || (groupe ? (meilleureBranche(membres().filter(x => !x.amenag)) || {}).pr : null);
+  else if (t.dataset.a === 'recap') {   // le projet, ou l'option choisie (sans choix : celle ouverte dans Financer, sinon la 1re) — jamais une « meilleure » calculée
+    const bsR = groupe ? membres().filter(x => !x.amenag).sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || ''))) : [];
+    const pr = PROJETS.liste.find(x => x.id === id) || bsR.find(x => x.id === projetCourantId) || bsR[0];
     if (pr) telechargerRecap(pr, false, boutonDossier(t));
   }
   else if (t.dataset.a === 'recapComparer') {   // les lettres des cartes : l'ordre d'enregistrement, aménagements compris
     const tous = membres().sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || ''))), bs = tous.filter(x => !x.amenag);
-    telechargerComparaison(bs, bs.map(x => { const i = tous.indexOf(x); return i < 26 ? String.fromCharCode(65 + i) : String(i + 1); }), boutonDossier(t));
+    telechargerComparaison(bs, bs.map(x => { const i = tous.indexOf(x); return i < 26 ? String.fromCharCode(65 + i) : String(i + 1); }), boutonDossier(t), t.dataset.lettre);
   }
   else if (t.dataset.a === 'estimer') ouvrirProjet(id, 'estimation');
   else if (t.dataset.a === 'estChoisir') {
@@ -5396,7 +5433,8 @@ function verifierOnglet() {
   const t = document.body.dataset.onglet;
   if (!COMPTE.pret) return;   // on ne sait pas encore si la personne est connectée
   if (!COMPTE.user && COMPTE.actif() && PRIVES.includes(t)) showTab('estimation');
-  else if (COMPTE.user && arriveeParDefaut && !aNavigue) { arriveeParDefaut = false; showTab('investissements', false); }
+  // Connexion depuis l'écran d'arrivée vierge : Mon patrimoine ; en plein travail (estimation lancée, Financer…), on y reste
+  else if (COMPTE.user && arriveeParDefaut && !aNavigue) { arriveeParDefaut = false; if (t === 'estimation' && !state.lance) showTab('investissements', false); }
 }
 function showTab(t, maj = true, mode = null, sous = null) {
   if (PRIVES.includes(t) && COMPTE.pret && !COMPTE.user && COMPTE.actif()) { t = 'estimation'; sous = null; }

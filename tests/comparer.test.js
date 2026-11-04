@@ -21,7 +21,7 @@ const C = {...B, prix: 160000, cfMois: 100, mensualite: 900, coutCredit: 50000};
 test('gagnant et écart : le plus bas pour un coût, le plus haut pour un gain', () => {
   const l = lignesComparaison([A, B]);
   assert.deepEqual([ligne(l, 'Prix du projet').gagnant, ligne(l, 'Prix du projet').ecart], [1, 50000]);
-  assert.deepEqual([ligne(l, 'Il te reste par mois').gagnant, ligne(l, 'Il te reste par mois').ecart], [1, 230]);
+  assert.deepEqual([ligne(l, 'Par mois').gagnant, ligne(l, 'Par mois').ecart], [1, 230]);
   assert.equal(ligne(l, 'Apport').gagnant, null);                         // ni mieux ni moins bien
   assert.equal(ligne(l, 'Travaux').gagnant, 0);
   assert.equal(ligne(l, 'Pendant le différé').gagnant, null);             // un seul des deux a un différé
@@ -33,7 +33,7 @@ test('gagnant et écart : le plus bas pour un coût, le plus haut pour un gain',
 
 test('trois branches : le meilleur et son avance sur le 2e', () => {
   const l = lignesComparaison([A, B, C]);
-  assert.deepEqual([ligne(l, 'Il te reste par mois').gagnant, ligne(l, 'Il te reste par mois').ecart], [2, 120]);
+  assert.deepEqual([ligne(l, 'Par mois').gagnant, ligne(l, 'Par mois').ecart], [2, 120]);
   assert.deepEqual([ligne(l, 'Prix du projet').gagnant, ligne(l, 'Prix du projet').ecart], [1, 10000]);
   assert.equal(ligne(l, 'Loyers par mois').gagnant, null);               // B et C à égalité en tête
   assert.match(verdictComparaison(['A', 'B', 'C'], [A, B, C]), /« C » te laisse le plus par mois : <b>120 €<\/b> de plus que « B »/);
@@ -49,7 +49,7 @@ test('achat-revente contre location : chacun ses chiffres, pas de verdict', () =
   const R = {scenario: 'revendre', prix: 180000, travaux: 30000, apport: 15000, benefice: 25000};
   const l = lignesComparaison([A, R]);
   assert.deepEqual(ligne(l, 'Bénéfice à la revente').v, [null, 25000]);
-  assert.equal(ligne(l, 'Il te reste par mois').v[1], null);
+  assert.equal(ligne(l, 'Par mois').v[1], null);
   assert.equal(verdictComparaison(['A', 'R'], [A, R]), '');
   assert.match(verdictComparaison(['R1', 'R2'], [R, {...R, benefice: 10000}]), /« R1 » te rapporte le plus à la revente : <b>15\s000 €<\/b> de plus que « R2 »/);
   assert.match(verdictComparaison(['A', 'B'], [A, {...B, cfMois: -250}]), /« A » et « B » te laissent autant par mois/);
@@ -59,7 +59,7 @@ test('tableau : verdict, noms, écart dans la case du meilleur', () => {
   const t = texte(tableComparaison([{nom: 'Diviser <2>', resume: A}, {nom: 'Garage', resume: B}], {sous: ['location vide', 'meublé']}));
   assert.match(t, /« Garage » te laisse le plus par mois : 230 € de plus que « Diviser &#60;2&#62; »/);
   assert.match(t, /Diviser &#60;2&#62; location vide Garage meublé/);
-  assert.match(t, /Il te reste par mois −250 € −20 € 230 € de mieux/);
+  assert.match(t, /Par mois il manque 250 € il manque 20 € 230 € de mieux/);
   assert.match(t, /Rendement brut 5,4 % 6,7 % 1,3 pt de mieux/);
   assert.match(t, /Patrimoine dans 25 ans 150\s000 € 160\s000 € 10\s000 € de mieux/);
 });
