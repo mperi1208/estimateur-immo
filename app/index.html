@@ -331,6 +331,7 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-r-val{font-size:28px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
 .invwrap .pj-r-val.up{color:var(--good)}.invwrap .pj-r-val.down{color:var(--bad)}
 .invwrap .pj-r-lib{font-size:12px;color:var(--muted)}
+.invwrap .pj-r-best .risque{margin-top:6px}
 @media (max-width:600px){.invwrap .pj-groupe.replie button.pj-plier{flex-wrap:wrap}.invwrap .pj-r-g{flex-basis:calc(100% - 40px)}.invwrap .pj-r-best{flex:1;justify-items:start;text-align:left}}
 body.discret #pj :is(.pj-r-val, .pj-r-opt b){filter:blur(7px);user-select:none}
 .invwrap .pj-plier-t b{font-size:16px}
@@ -5328,7 +5329,7 @@ function carteRepliee(bs, g) {
   const lib = cle === 'cfMois' ? (m && m.v < 0 ? 'il te manque, par mois' : 'il te reste, par mois') : m && m.v < 0 ? 'perte à la revente' : 'bénéfice à la revente';
   return `<article class="pj pj-groupe replie" data-groupe="${esc(g)}"><button class="pj-plier" data-a="plier" aria-expanded="false">
     <span class="pj-r-g"><b class="pj-r-nom">${esc(bs[0].nom)}</b><span class="pj-sous">${[`${bs.length} options`, a.adresse ? esc(a.adresse) : ''].filter(Boolean).join(' · ')}</span>${autres ? `<span class="pj-r-opts">${autres}</span>` : ''}</span>
-    ${m ? `<span class="pj-r-best"><span class="pj-r-lab">La meilleure option</span><b class="pj-r-bnom">${esc(nomBranche(m.pr))}</b><span class="pj-r-val ${signeP(m.v)}">${val(m.v)}</span><span class="pj-r-lib">${lib}</span></span>` : ''}
+    ${m ? `<span class="pj-r-best"><span class="pj-r-lab">La meilleure option</span><b class="pj-r-bnom">${esc(nomBranche(m.pr))}</b><span class="pj-r-val ${signeP(m.v)}">${val(m.v)}</span><span class="pj-r-lib">${lib}</span>${m.pr.amenag ? '' : barresRisque(risqueDe(m.pr))}</span>` : ''}
     <span class="chevron" aria-hidden="true"></span></button></article>`;
 }
 // « Dossier de financement » d'un projet à plusieurs options : les comparer (3 pages), ou une option seule (2 pages)

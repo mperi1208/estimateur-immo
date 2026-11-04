@@ -44,6 +44,9 @@ test('enregistrer le projet, puis une option sans travaux', async () => {
 test('dossier pour la banque : l\'utilisateur choisit l\'option détaillée, l\'appli n\'en désigne pas une « meilleure »', async () => {
   await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   assert.ok(await page.locator('#pj .pj-carte .risque').count() >= 2, 'une note de risque par option');
+  // Projet replié : la note de risque reste visible, celle de l'option mise en avant
+  const plies = await page.evaluate(() => { const d = [...DEPLIES]; DEPLIES.clear(); afficherProjets(); const n = document.querySelectorAll('#pj .pj-groupe.replie .risque').length; d.forEach(g => DEPLIES.add(g)); afficherProjets(); return n; });
+  assert.equal(plies, 1, 'note de risque sur le projet replié');
   const menu = page.locator('#pj details.pj-dossier').first();
   await menu.locator('summary').click();
   const t = await menu.locator('.pj-menu-l').innerText();
