@@ -50,3 +50,19 @@ test('travaux payés par le crédit après la fin du crédit : avertissement ; p
   await page.evaluate(() => CF_APP.etape(4));
   assert.match(await page.locator('#cf_alerts').innerText(), /après la fin du crédit \(mois 60\)/);
 });
+
+test('revente : le mois suit la fin du chantier tant qu\'on ne le tape pas ; tapé, il reste ; vidé, il suit de nouveau', async () => {
+  await taper('duree', 20); await taper('debutTravaux', 1); await taper('dureeTravaux', 4);
+  await page.evaluate(() => { document.getElementById('cf_boxProjet').open = true; CF_APP.etape(4); });
+  await page.click('#cf_scen button[data-v="revendre"]');
+  await taper('moisRevente', '');   // case vidée : calculée
+  assert.equal(await valeur('moisRevente'), '10', 'fin du chantier (mois 4) + 6 mois');
+  assert.equal(await page.locator('#cf_moisRevente.auto').count(), 1, 'en gris : remplie toute seule');
+  await taper('dureeTravaux', 8);
+  assert.equal(await valeur('moisRevente'), '14', 'le chantier s\'allonge : la revente suit');
+  await taper('moisRevente', 20);
+  await taper('dureeTravaux', 6);
+  assert.equal(await valeur('moisRevente'), '20', 'tapée : elle ne bouge plus');
+  assert.equal(await page.locator('#cf_moisRevente.auto').count(), 0);
+  await page.click('#cf_scen button[data-v="louer"]');
+});

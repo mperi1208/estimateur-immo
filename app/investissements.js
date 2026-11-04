@@ -210,7 +210,9 @@ const loyerLogement = b => lignesLoyer(b) ? somme(lignesLoyer(b), x => x.loyer) 
 const moisDeLoyer = (debut, auj = moisCourant()) => (debut = normMois(debut)) ? Math.max(0, Math.min(12, 12 - ecartMois(auj, debut))) : 12;
 const commence = (x, auj = moisCourant()) => !normMois(x.debut) || ecartMois(normMois(x.debut), auj) >= 0;
 // Un seul loyer : un bail qui commence plus tard (garage sorti d'un lot à venir, logement en travaux…) ne rapporte qu'à partir de là
-const debutBailFutur = b => (d => d && !commence({debut: d}) ? d : '')(normMois(b.location.debutBail));
+// Maison en construction sans date de bail : louée à partir du mois qui suit la fin de la construction
+const bailApresConstruction = b => b.achat && b.achat.mode === 'construction' && normMois(b.achat.finTravaux) ? decalerMois(normMois(b.achat.finTravaux), 1) : '';
+const debutBailFutur = b => (d => d && !commence({debut: d}) ? d : '')(normMois(b.location.debutBail) || bailApresConstruction(b));
 const loyerActuel = b => lignesLoyer(b) ? somme(lignesLoyer(b).filter(x => commence(x)), x => x.loyer) : debutBailFutur(b) ? 0 : loyerLogement(b);
 const STATUTS_TERRAIN = {loue: 'Loué (bail)', activites: 'Activités qui rapportent', perso: 'Usage personnel', libre: 'Non exploité'};
 const NATURES = {'': '—', constructible: 'Constructible', agricole: 'Agricole', naturel: 'Naturel / boisé', loisirs: 'Loisirs / agrément', stockage: 'Parking / stockage', autre: 'Autre'};
@@ -1227,7 +1229,7 @@ function locationHTML(b) {
   return section('Location', `${alerte}<div class="grille">
       ${champ(b, 'location.statut', 'Situation', {options: statutsDe(b)})}
       ${LOUE.includes(b.location.statut) ? `${champ(b, 'location.loyer', 'Loyer hors charges (€/mois)', {step: 10, aide: (L => L.vide || L.meuble ? `Marché : vide ${L.vide != null ? eur(L.vide) : '—'} · meublé ${L.meuble != null ? eur(L.meuble) : '—'}` : '')(loyersMarche(b.estimation))})}${champ(b, 'location.charges', 'Charges locataire (€/mois)', {step: 10})}
-      ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month'})}
+      ${champ(b, 'location.locataire', 'Locataire', {type: 'text'})}${champ(b, 'location.debutBail', 'Début du bail', {type: 'month', aide: bailApresConstruction(b) && !normMois(b.location.debutBail) ? `Vide : à partir de ${libMois(bailApresConstruction(b))}, après la construction` : ''})}
       ${champ(b, 'location.vacance', 'Vacance (mois/an)', {step: 0.5, aide: 'Mois sans locataire en moyenne'})}` : ''}
     </div>${b.location.statut === 'avec' && principalDe(b) ? `<div class="aide">${(p => LOUE.includes(p.location.statut) ? `Pas de loyer à part : il est compris dans celui de ${esc(p.nom)}, et son loyer de marché compte le ${b.type === 'parking' ? 'garage' : 'bien'}.` : `Utilisé avec ${esc(p.nom)}, sans loyer à part.`)(principalDe(b))}</div>` : ''}`);
 }

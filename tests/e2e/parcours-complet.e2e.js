@@ -31,6 +31,7 @@ test('créer son compte depuis Financer : on y reste, et le compte se charge mal
 
 test('enregistrer le projet, puis une option sans travaux', async () => {
   await page.evaluate(() => CF_APP.etape(4));
+  assert.match(await page.locator('#cf_risque').innerText(), /Risque [1-5]\/5/, 'note de risque à côté du résultat');
   await page.fill('#cf_nomProjet', 'T2 Lyon'); await cliquer(page, '#cf_enreg');
   await attendreCompte(c => (c.projets || []).some(x => x.nom === 'T2 Lyon'), 'projet enregistré dans le compte');
   await page.evaluate(() => { document.getElementById('cf_boxProjet').open = false; });
@@ -40,6 +41,7 @@ test('enregistrer le projet, puis une option sans travaux', async () => {
 
 test('dossier pour la banque : l\'utilisateur choisit l\'option détaillée, l\'appli n\'en désigne pas une « meilleure »', async () => {
   await page.click('.tabs [data-tab="projets"]');
+  assert.ok(await page.locator('#pj .pj-carte .risque').count() >= 2, 'une note de risque par option');
   const menu = page.locator('#pj details.pj-dossier').first();
   await menu.locator('summary').click();
   const t = await menu.locator('.pj-menu-l').innerText();

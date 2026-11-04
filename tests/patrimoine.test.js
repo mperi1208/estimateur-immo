@@ -121,6 +121,16 @@ test('garage lié sans achat ni crédit : tout est compté avec le bien principa
   assert.equal(lieSimple(g), false);
 });
 
+test('maison en construction sans date de bail : le loyer ne compte qu\'après la fin de la construction', () => {
+  const b = nouveauBien({type: 'maison', chargesAn: sansCharges, location: {statut: 'vide', loyer: 1000, vacance: 0},
+    achat: {mode: 'construction', date: dans(-12), prix: 80000, construction: 150000, debutTravaux: dans(-6), finTravaux: dans(3)}});
+  const c = calculs(b);
+  assert.equal(c.loyerMois, 0, 'pas encore de loyer ce mois-ci');
+  assert.equal(c.loyersAn, 1000 * 8, 'sur les 12 prochains mois : à partir du 4e');
+  b.location.debutBail = dans(1);   // date tapée : elle compte
+  assert.equal(calculs(b).loyersAn, 1000 * 11);
+});
+
 // ---------- Simulation de vente ----------
 const aVendre = o => nouveauBien(Object.assign({valeur: 300000, chargesAn: sansCharges, location: {statut: 'vide', loyer: 0},
   achat: {mode: 'existant', date: dans(-120), prix: 200000, notaire: 15000, travaux: null, frais: null}, vente: {frais: 0}}, o));
