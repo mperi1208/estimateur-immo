@@ -48,3 +48,10 @@ test('cinq barres, autant de remplies que la note, et le détail lisible', () =>
   assert.equal((h.match(/<i/g) || []).length, 5);
   assert.match(h, /Risque élevé \(4\/5\) : 200 000 € en jeu, il manque 300 € par mois/);
 });
+
+test('aménagement d\'un bien déjà à soi (pas de prix d\'achat) : noté sur le montant des travaux, pas « 100 % du prix »', () => {
+  const r = risqueProjet({prix: 0, travaux: 10000, apport: 0, mensualite: 68, cfMois: 157, mois: {loyer: 1200}});
+  assert.ok(r.note >= 1 && r.note <= 2, `note ${r.note}`);
+  assert.ok(r.raisons.some(t => /travaux de 10\s000 €/.test(t)));
+  assert.ok(!r.raisons.some(t => /% du prix/.test(t)));
+});

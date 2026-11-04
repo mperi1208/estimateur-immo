@@ -4809,8 +4809,9 @@ function risqueProjet(r, f = {}) {
     if (m > 0) { const c = loyer / m; ajoute(c >= 1.2 ? 0 : c >= 1 ? 1 : c >= 0.8 ? 2 : c >= 0.6 ? 3 : 4, `les loyers couvrent ${Math.round(c * 100)} % de la mensualité`); }
   }
   if (travaux > 0) {
-    const t = prix > 0 ? travaux / prix : 1;
-    ajoute(t < 0.15 ? 1 : t < 0.4 ? 2 : 3, `travaux : ${Math.round(t * 100)} % du prix`);
+    // Aménagement d'un bien déjà à soi (pas de prix d'achat) : on juge les travaux sur leur montant
+    if (prix > 0) { const t = travaux / prix; ajoute(t < 0.15 ? 1 : t < 0.4 ? 2 : 3, `travaux : ${Math.round(t * 100)} % du prix`); }
+    else ajoute(travaux < 20000 ? 1 : travaux < 60000 ? 2 : 3, `travaux de ${eurP(travaux)}`);
     ajoute((+f.dureeTravaux || 0) > 6 ? 1 : 0, `chantier de ${+f.dureeTravaux} mois`);
     ajoute(+f.loyer2 > 0 ? 1 : 0, 'plusieurs logements à créer');
   }
@@ -5160,7 +5161,7 @@ function cartePj(pr, sous, corps, boutons, br) {
   if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
   // Supprimer : rangé en dernier dans « ⋯ » (comme pour une option), pas une croix à côté du nom qu'on toucherait par erreur
   boutons.push('<button class="danger" data-a="suppr">Supprimer le projet</button>');
-  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>${pr.amenag ? '' : barresRisque(risqueDe(pr))}</div>
+  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>${barresRisque(risqueDe(pr))}</div>
     ${corps}
     <div class="pj-bas"><span></span>
       <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
@@ -5321,7 +5322,7 @@ function ligneOption(x, i, ouvert) {
   const plus = [r.travaux > 0 ? `travaux ${eurP(r.travaux)}` : '', x.amenag ? 'aménagement' : ''].filter(Boolean).join(' · ');
   return `<button type="button" class="pj-ligne" data-a="optVoir" data-id="${esc(x.id)}" aria-expanded="${ouvert}">
     <span class="pj-l-lettre">${lettreP(i)}</span><span class="pj-l-nom">${esc(nomBranche(x))}</span><b class="pj-l-val ${signeP(v)}">${montantP(v)}</b>
-    <span class="pj-l-sous">${x.amenag ? '' : barresRisque(risqueDe(x))}<span>${lib}${plus ? ' · ' + plus : ''}</span></span><span class="chevron" aria-hidden="true"></span></button>`;
+    <span class="pj-l-sous">${barresRisque(risqueDe(x))}<span>${lib}${plus ? ' · ' + plus : ''}</span></span><span class="chevron" aria-hidden="true"></span></button>`;
 }
 function detailOption(x, a) {
   const r = x.resume || {}, f = x.finance || {}, {v, rev} = valeurOption(x);
@@ -5345,7 +5346,7 @@ function tableOptions(bs, a) {
   const lignes = [];
   if (vs.some(o => !o.rev)) lignes.push(`<tr class="pj-principal"><th>Par mois</th>${vs.map(o => `<td>${o.rev || o.v == null ? '—' : `<b class="pj-gros ${signeP(o.v)}">${montantP(o.v)}</b>`}</td>`).join('')}</tr>`);
   if (vs.some(o => o.rev)) lignes.push(`<tr class="pj-principal"><th>À la revente</th>${vs.map(o => `<td>${!o.rev || o.v == null ? '—' : `<b class="pj-gros ${signeP(o.v)}">${montantP(o.v)}</b>`}</td>`).join('')}</tr>`);
-  if (bs.some(x => !x.amenag)) lignes.push(`<tr><th>Risque</th>${bs.map(x => `<td>${x.amenag ? '—' : barresRisque(risqueDe(x))}</td>`).join('')}</tr>`);
+  lignes.push(`<tr><th>Risque</th>${bs.map(x => `<td>${barresRisque(risqueDe(x))}</td>`).join('')}</tr>`);
   if (rs.some(r => r.totalDiffere != null)) lignes.push(`<tr><th>Pendant le différé, en tout</th>${rs.map(r => `<td>${r.totalDiffere == null ? '—' : `<b class="${signeP(r.totalDiffere)}">${montantP(r.totalDiffere)}</b>${r.differe ? `<small class="pj-moy">${r.differe} mois</small>` : ''}`}</td>`).join('')}</tr>`);
   a.lignes.forEach(l => lignes.push(`<tr><th>${l.k}</th>${l.v.map(v => `<td>${v}</td>`).join('')}</tr>`));
   lignes.push(`<tr><th>Mensualité du crédit</th>${rs.map(r => `<td>${r.mensualite != null ? eurP(r.mensualite) : '—'}</td>`).join('')}</tr>`);
