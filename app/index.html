@@ -172,7 +172,8 @@ details.plus{margin-top:12px;border-style:dashed}
 @media (max-width:420px){.kpi .v{font-size:18px}}
 /* --- Mon patrimoine --- */
 #invest{min-height:calc(100vh - 56px)}
-.invwrap{max-width:1040px;margin:0 auto;padding:20px 16px 40px}
+.invwrap{max-width:1200px;margin:0 auto;padding:20px 24px 40px}
+@media (max-width:800px){.invwrap{padding-left:16px;padding-right:16px}}
 .invwrap h1{font-size:24px;margin:0}
 .invwrap .invhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .invwrap .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -739,7 +740,8 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 @media (max-width:360px){.tabs button{font-size:11.5px!important}.tabs .compte button{padding:0 7px!important;font-size:11px!important}}
 @media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte .statut.connecte{display:flex;padding:0 6px}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
 /* Onglets et compte au même endroit sur tous les onglets : alignés sur la colonne centrale (1040 px) */
-@media (min-width:521px){.tabs{padding-left:max(16px, calc((100% - 1040px) / 2 + 4px));padding-right:max(16px, calc((100% - 1040px) / 2 + 16px))}}
+/* Un seul bord gauche pour tout : barre du haut, Simuler, Financer et Mes biens sur la même colonne de 1200 px */
+@media (min-width:801px){.tabs{padding-left:max(24px, calc((100% - 1200px) / 2 + 24px));padding-right:max(24px, calc((100% - 1200px) / 2 + 24px))}}
 #compteDlg{border:1px solid var(--line);border-radius:14px;padding:20px;width:min(380px,calc(100vw - 32px));background:var(--panel);color:var(--ink)}
 #compteDlg::backdrop{background:rgba(0,0,0,.35)}
 #compteDlg .fermer{position:absolute;top:10px;right:10px;margin:0}
@@ -767,7 +769,8 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 :is(#cf, #est_tete) .fil .fil-x:first-of-type{margin-left:auto}
 :is(#cf, #est_tete) .fil .fil-x:hover{background:var(--bg)}
 :is(#cf, #est_tete, #simTete) .cf-etapes{display:flex;gap:4px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
-.sim-tete{background:var(--panel);border-bottom:1px solid var(--line);padding:0 max(16px, calc((100% - 1200px) / 2 + 24px))}
+.sim-tete{background:var(--panel);border-bottom:1px solid var(--line);padding:0 max(24px, calc((100% - 1200px) / 2 + 24px))}
+@media (max-width:800px){.sim-tete{padding:0 16px}}
 .sim-tete .cf-etapes{margin-top:8px}
 #cf_etapes{display:none!important}
 #cf[data-etape="2"] .etape[data-etape="1"]{display:flex}
@@ -2888,6 +2891,7 @@ function majSauveEst(msg) {
   // Le bouton dit ce qu'il montre : le nom du projet, ou d'autres choix (« Nouveau projet », « Travaux + revente »)
   const plusLib = co && !rv && !pj ? 'Nommer' : 'Autres choix';
   const plus = (co || pj) ? `<button type="button" class="plus-barre" aria-expanded="false">${plusLib}<span class="chev" aria-hidden="true"></span></button>` : '';
+  const actif = document.activeElement, avant = {ouvert: el.classList.contains('ouvert'), focus: !!actif && actif.id === 'est_nom', curseur: actif && actif.id === 'est_nom' ? actif.selectionStart : 0};
   el.innerHTML = rv
     ? `<div class="sauve-ligne">${plus}<button class="cta${rv.pr.estimationSeule ? ' sec' : ''}" id="est_maj">Mettre à jour l'estimation dans « ${esc(rv.pr.nom)} »</button>${sec('<button id="est_nouveau">Nouveau projet</button>')}<span class="esp"></span>${rv.pr.estimationSeule ? financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"') : sec(financer)}</div>
        <div class="hint" id="est_msg">${msg || `Remplace l'estimation de${nomBien ? ` « ${esc(nomBien)} » dans` : ''} « ${esc(rv.pr.nom)} » par celle-ci. Ton financement (prix, loyers) ne change pas.`}</div>`
@@ -2895,7 +2899,13 @@ function majSauveEst(msg) {
     ? `<div class="sauve-ligne">${plus}<input class="sec" id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="garder" id="est_enreg"><span class="long">${contexteProjet() ? 'Garder comme nouvelle estimation' : 'Garder l\'estimation'}</span><span class="court">Garder</span></button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>
        ${msg ? `<div class="hint" id="est_msg">${msg}</div>` : '<div class="hint" id="est_msg" hidden></div>'}`
     : `<div class="sauve-ligne">${plus}<button class="garder" id="est_connexion" title="Connecte-toi pour garder l'estimation"><span class="long">Se connecter pour garder</span><span class="court">Garder</span></button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>`;
-  el.classList.remove('ouvert');
+  // La barre se redessine quand l'estimation se complète (loyer, travaux…) : on garde le champ du nom ouvert, et le curseur
+  // où il était, sinon sur téléphone il se refermait pendant qu'on tapait
+  const garder = avant.ouvert && !!el.querySelector('.plus-barre');
+  el.classList.toggle('ouvert', garder);
+  if (garder) el.querySelector('.plus-barre').setAttribute('aria-expanded', 'true');
+  const nomEl = document.getElementById('est_nom');
+  if (avant.focus && nomEl) { nomEl.focus(); try { nomEl.setSelectionRange(avant.curseur, avant.curseur); } catch (e) {} }
   const pb = el.querySelector('.plus-barre'); if (pb) pb.onclick = e => { const o = el.classList.toggle('ouvert'); e.currentTarget.setAttribute('aria-expanded', String(o)); };
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
   const m = document.getElementById('est_maj'); if (m) m.onclick = majEstimationProjet;

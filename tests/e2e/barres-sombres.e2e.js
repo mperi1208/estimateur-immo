@@ -2,7 +2,7 @@
 // doivent trancher sur le fond (bug du 2026-10-31 : texte blanc sur champ blanc, invisible), sur ordinateur et sur téléphone
 const test = require('node:test');
 const assert = require('node:assert');
-const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer} = require('./banc');
+const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, calme} = require('./banc');
 
 // Contraste WCAG entre la couleur du texte et le fond réel du champ (fond du champ posé sur celui de la barre, alpha compris)
 const contrastes = (page, sel) => page.locator(sel).first().evaluate(e => {
@@ -38,6 +38,7 @@ for (const mobile of [false, true]) {
       await ouvrir(page);
       await seConnecter(page);
       await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
+      await calme(page, '#sauveEst');   // la barre se refait quand le loyer arrive : on tape une fois qu'elle ne bouge plus
       if (mobile) {   // téléphone : le nom est derrière un bouton qui le dit (plus de « ⋯ »)
         assert.match(await page.locator('#sauveEst .plus-barre').innerText(), /Nommer/);
         await page.click('#sauveEst .plus-barre');

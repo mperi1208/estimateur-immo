@@ -199,4 +199,11 @@ const lireNombre = async (page, sel) => nombre(await page.locator(sel).first().i
 // Valeurs lisibles : « 1 234 € » → 1234 (espaces insécables, signe moins typographique)
 const nombre = t => +String(t).replace(/[\s  €%]|k€|\/mois/g, '').replace('−', '-').replace(',', '.');
 
-module.exports = {ORIGINE, ADRESSE, ANNEE, lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, nombre, ventesDvf, estimer, saisir, lireNombre, cliquer, versEtape, travaux};
+// Attend qu'une zone ne se redessine plus (ex. la barre du bas d'Estimer, refaite quand le loyer arrive)
+const calme = (page, sel, ms = 600) => page.evaluate(([sel, ms]) => new Promise(ok => {
+  const el = document.querySelector(sel); if (!el) return ok();
+  let t = setTimeout(fin, ms); const obs = new MutationObserver(() => { clearTimeout(t); t = setTimeout(fin, ms); });
+  function fin() { obs.disconnect(); ok(); }
+  obs.observe(el, {childList: true, subtree: true});
+}), [sel, ms]);
+module.exports = {ORIGINE, ADRESSE, ANNEE, lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, nombre, ventesDvf, estimer, saisir, lireNombre, cliquer, versEtape, travaux, calme};
