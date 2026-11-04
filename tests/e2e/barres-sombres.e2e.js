@@ -6,7 +6,14 @@ const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer} =
 
 // Contraste WCAG entre la couleur du texte et le fond réel du champ (fond du champ posé sur celui de la barre, alpha compris)
 const contrastes = (page, sel) => page.locator(sel).first().evaluate(e => {
-  const rgba = c => { const m = c.match(/[\d.]+/g).map(Number); return {r: m[0], g: m[1], b: m[2], a: m.length > 3 ? m[3] : 1}; };
+  // Couleur calculée : rgb()/rgba(), « color(srgb …) » (color-mix() dans certains Chrome), ou sans chiffre (transparent) ;
+  // une couleur illisible compte comme transparente plutôt que de faire planter la mesure
+  const rgba = c => {
+    const srgb = /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/.exec(c || '');
+    if (srgb) return {r: srgb[1] * 255, g: srgb[2] * 255, b: srgb[3] * 255, a: srgb[4] != null ? +srgb[4] : 1};
+    const m = String(c || '').match(/[\d.]+/g);
+    return m && m.length >= 3 ? {r: +m[0], g: +m[1], b: +m[2], a: m.length > 3 ? +m[3] : 1} : {r: 0, g: 0, b: 0, a: 0};
+  };
   const sur = (h, b) => ({r: h.r * h.a + b.r * (1 - h.a), g: h.g * h.a + b.g * (1 - h.a), b: h.b * h.a + b.b * (1 - h.a), a: 1});
   const fond = el => { const pile = []; for (let x = el; x; x = x.parentElement) { const c = rgba(getComputedStyle(x).backgroundColor); if (c.a > 0) pile.push(c); if (c.a === 1) break; }
     return pile.reverse().reduce((b, h) => sur(h, b), {r: 255, g: 255, b: 255, a: 1}); };
