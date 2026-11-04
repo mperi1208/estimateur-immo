@@ -344,7 +344,8 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-l-val{font-size:17px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .invwrap .pj-l-val.up{color:var(--good)}.invwrap .pj-l-val.down{color:var(--bad)}
 .invwrap .pj-l-sous{grid-column:2/4;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
-.invwrap .pj-l-sous .risque{margin:0}
+.invwrap .pj-l-sous .risque{margin:2px 0 0}
+.invwrap .pj-lignes .pj-l-sous{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start}
 .invwrap .pj-l-sous .risque em{display:none}
 .invwrap button.pj-ligne .chevron{grid-row:1/3;grid-column:4;justify-self:center;transform:rotate(-45deg)!important;margin:0!important}
 .invwrap button.pj-ligne[aria-expanded="true"] .chevron{transform:rotate(45deg)!important}
@@ -5190,9 +5191,10 @@ function cartePj(pr, sous, corps, boutons, br) {
   boutons.push('<button class="danger" data-a="suppr">Supprimer le projet</button>');
   // Fin par défaut : une ligne (nom, ce qu'il donne, risque) ; touchée, elle déplie les chiffres et les boutons
   const ouvert = SEULS_OUVERTS ? !DEPLIES.has(pr.id) : DEPLIES.has(pr.id), {v, lib} = valeurOption(pr);
+  const r0 = pr.resume || {}, prixP = [r0.prix > 0 ? `prix\u00a0${eurP(r0.prix)}` : '', r0.travaux > 0 ? `travaux\u00a0${eurP(r0.travaux)}` : ''].filter(Boolean).join(' · ');
   return `<article class="pj pj-seul${ouvert ? '' : ' replie'}" data-id="${esc(pr.id)}"><button type="button" class="pj-ligne pj-seul-l" data-a="pjPlier" aria-expanded="${ouvert}">
     <span class="pj-l-nom">${esc(pr.nom)}</span><b class="pj-l-val ${signeP(v)}">${montantP(v)}</b>
-    <span class="pj-l-sous">${barresRisque(risqueDe(pr))}<span>${lib}${sous ? ' · ' + sous : ''}</span></span><span class="chevron" aria-hidden="true"></span></button>
+    <span class="pj-l-sous">${barresRisque(risqueDe(pr))}<span>${lib}${prixP ? ' · ' + prixP : ''}${sous ? ' · ' + sous : ''}</span></span><span class="chevron" aria-hidden="true"></span></button>
     ${ouvert ? `<div class="pj-seul-corps">${chipAchete(pr)}${corps}
     <div class="pj-bas"><span></span>
       <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></div>` : ''}</article>`;
@@ -5348,11 +5350,11 @@ const montantP = v => v == null ? '—' : `${v < 0 ? '−' : v > 0 ? '+' : ''}${
 // Ce que donne une option : ce qu'il reste chaque mois, ou le bénéfice si elle est revendue
 function valeurOption(x) {
   const r = x.resume || {}, rev = r.scenario === 'revendre', v = rev ? r.benefice : r.cfMois;
-  return {v: v == null ? null : v, rev, lib: rev ? (v < 0 ? 'perte à la revente' : 'à la revente') : v < 0 ? 'il manque, par mois' : 'il reste, par mois'};
+  return {v: v == null ? null : v, rev, lib: rev ? (v < 0 ? 'perte à la revente' : 'à la revente') : 'par mois'};   // le signe et la couleur disent déjà s'il manque ou s'il reste
 }
 function ligneOption(x, i, ouvert) {
   const r = x.resume || {}, {v, lib} = valeurOption(x);
-  const plus = [r.travaux > 0 ? `travaux ${eurP(r.travaux)}` : '', x.amenag ? 'aménagement' : ''].filter(Boolean).join(' · ');
+  const plus = [r.prix > 0 ? `prix\u00a0${eurP(r.prix)}` : '', r.travaux > 0 ? `travaux\u00a0${eurP(r.travaux)}` : '', x.amenag ? 'aménagement' : ''].filter(Boolean).join(' · ');
   return `<button type="button" class="pj-ligne" data-a="optVoir" data-id="${esc(x.id)}" aria-expanded="${ouvert}">
     <span class="pj-l-lettre">${lettreP(i)}</span><span class="pj-l-nom">${esc(nomBranche(x))}</span><b class="pj-l-val ${signeP(v)}">${montantP(v)}</b>
     <span class="pj-l-sous">${barresRisque(risqueDe(x))}<span>${lib}${plus ? ' · ' + plus : ''}</span></span><span class="chevron" aria-hidden="true"></span></button>`;
