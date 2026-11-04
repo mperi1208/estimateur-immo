@@ -5640,7 +5640,8 @@ function separerProjet(id) {
   PROJETS.enregistrer();
 }
 // Boutons d'Estimer (« Financer ce bien », « Travaux + location »...) : repartent de l'estimation en cours, même après la réouverture d'un projet
-function financerBien(mode) { CF_APP.liberer(); showTab('cashflow', true, mode || null); }
+// Financer un bien qu'on vient d'estimer : toujours depuis l'étape 2 (Travaux et loyers), pas la dernière étape ouverte
+function financerBien(mode) { CF_APP.liberer(); showTab('cashflow', true, mode || null); CF_APP.etape(2); }
 // Mon patrimoine et Mes projets : réservés aux comptes (sans compte : Estimer et Financer)
 const PRIVES = ['investissements', 'projets'];
 let aNavigue = false, arriveeParDefaut = false;

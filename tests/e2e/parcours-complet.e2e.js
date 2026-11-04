@@ -17,8 +17,10 @@ async function attendreCompte(f, msg) {
 test('invité : estimer un bien à rénover, puis le financer avec les travaux', async () => {
   await estimer(page, {surf: 48, details: {etat: 'renover', dpe: 'F'}});
   await travaux(page, 'renover');
+  await page.evaluate(() => CF_APP.etape(4));   // la dernière fois, on était resté sur le résultat
   await page.click('#est_loc');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.equal(await page.evaluate(() => document.getElementById('cf').dataset.etape), '2', 'Financer part de l\'étape 2, pas du résultat');
 });
 
 test('créer son compte depuis Financer : on y reste, et le compte se charge malgré la recherche faite en invité', async () => {
