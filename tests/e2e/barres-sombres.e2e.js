@@ -38,13 +38,16 @@ for (const mobile of [false, true]) {
       await ouvrir(page);
       await seConnecter(page);
       await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
-      if (mobile) await page.click('#sauveEst .plus-barre');   // téléphone : le nom est derrière « ⋯ »
+      if (mobile) {   // téléphone : le nom est derrière un bouton qui le dit (plus de « ⋯ »)
+        assert.match(await page.locator('#sauveEst .plus-barre').innerText(), /Nommer/);
+        await page.click('#sauveEst .plus-barre');
+      }
       await page.fill('#est_nom', 'Mon projet');
       assert.equal(await page.inputValue('#est_nom'), 'Mon projet');
       await verifier(page, '#est_nom', 'Estimer');
       await page.click('#est_financer');
       await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
-      if (mobile) await page.click('#cf_plus');
+      if (mobile) { assert.match(await page.locator('#cf_plus').innerText(), /Enregistrer/); await page.click('#cf_plus'); }
       const champs = await page.locator('#cf .cf-barre input:visible').evaluateAll(l => l.map(e => '#' + e.id));
       assert.ok(champs.includes('#cf_nomProjet'), 'champ du nom dans la barre de Financer');
       for (const sel of champs)
