@@ -464,6 +464,7 @@ body.discret #pj :is(.pj-c-gros b, .pj-c-l b, .pj-tuile-d){filter:blur(7px);user
 .invwrap .pj-opt-act{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center}
 .invwrap .pj-opt-act details.pj-menu[open]{order:2;flex-basis:100%;display:grid;justify-items:end}
 .invwrap .pj-opt-act .pj-menu-l{position:static;margin-top:6px;min-width:0;width:100%;box-shadow:none;text-align:left}
+@media (max-width:600px){.invwrap .pj-groupe:not(.replie) > .pj-tete{flex-direction:column;align-items:stretch;gap:2px}.invwrap .pj-groupe:not(.replie) > .pj-tete .pj-gr-actions{justify-content:flex-start;margin:8px 0 0}.invwrap .pj-gr-actions .pj-dossier summary{white-space:nowrap}}
 .invwrap .pj-gr-actions .pj-menu-l{top:calc(100% + 6px);bottom:auto;right:0;left:auto}
 .invwrap details.pj-dossier>summary{width:auto;height:auto;padding:8px 14px;border-radius:8px;font-size:14px;color:var(--ink);background:var(--panel)}
 .invwrap details.pj-dossier>summary::after{content:"";display:inline-block;width:6px;height:6px;margin:0 2px 3px 10px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
@@ -4797,7 +4798,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=e6645fef"></script>
+<script src="investissements.js?v=ca497c85"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

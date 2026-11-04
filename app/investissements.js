@@ -6,7 +6,7 @@ if (typeof MOTEUR !== 'undefined' && MOTEUR) return;
 const T = window.CF_APP.taux;   // taux du marché, historique, surprime SCI (onglet Financer)
 const racine = document.getElementById('inv');
 const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
-const kEur = n => (n < 0 ? '−' : '') + fmtK(Math.abs(n));
+const kEur = n => !n ? '0 €' : (n < 0 ? '−' : '') + fmtK(Math.abs(n));   // 0 : « 0 € », pas « 0 k€ »
 const pct = n => (n < 0 ? '−' : '') + Math.abs(n * 100).toFixed(1).replace('.', ',') + ' %';
 const somme = (l, f) => l.reduce((t, x) => t + (f(x) || 0), 0);
 // Frais d'acquisition (plus-value, prix de revient à l'IS) : notaire et agence ; les frais bancaires (dossier, garantie) n'en
@@ -117,7 +117,7 @@ function etatPret(p, auj = moisCourant()) {
   // Pauses en cours ou à venir : dates, ce qu'on paie pendant, et la mensualité d'après
   const pauses = pl.pauses.filter(x => x.s + x.mois > ecart && x.s < n).map(x => ({debut: decalerMois(debut, x.s), fin: decalerMois(debut, x.s + x.mois - 1),
     mois: x.mois, total: x.type !== 'partiel', enCours: ecart >= x.s, apres: (l[x.s + x.mois] || {}).paye || 0, rallonge: x.suite !== 'mensu'}));
-  return {crd, mois, M, pause, payes, reprise, debutFutur: pause > 0 && !pl.releve, assur: p.assurance || 0, fin: decalerMois(auj, mois),
+  return {le: auj, crd, mois, M, pause, payes, reprise, debutFutur: pause > 0 && !pl.releve, assur: p.assurance || 0, fin: decalerMois(auj, mois),
     interets, capital, paye12, resteAPayer, differe, prog, pauses, enPause: !!(n && ecart >= 0 && ecart < n && l[jCour].pause)};
 }
 // Allonger la durée d'un prêt en cours (avenant) : nouvelle mensualité, et ce que ça coûte en plus (intérêts et assurance)
@@ -142,7 +142,14 @@ function analyseReneg(p, e, sci) {
   if (!e || !(e.mois > 0 && e.crd > 1000 && p.taux > 0)) return null;
   const n = e.mois - (e.pause || 0), tNew = T.tauxDuree(T.TAUX_ACTUEL, n) + (sci ? T.SURPRIME_SCI : 0);   // durée de remboursement restante
   // Gain : ce qui reste à payer (mensualités qui montent, différé…) moins la nouvelle mensualité fixe
-  const mensu2 = pmt(e.crd, tNew / 1200, n), gainMois = mensuHorsPause(e) - mensu2, gainTotal = (e.resteAPayer ?? e.M * n) - mensu2 * n;
+  // Pendant un différé : on compare la mensualité d'après le différé à celle d'un prêt au nouveau taux qui garde le même différé
+  // (pas la mensualité réduite d'aujourd'hui, sinon même taux = faux gain)
+  const dReste = e.differe ? Math.max(0, ecartMois(e.le || moisCourant(), e.differe.fin) + 1) : 0;
+  const mensu2 = pmt(e.crd, tNew / 1200, Math.max(1, n - dReste)), gainMois = (e.differe ? e.differe.apres : mensuHorsPause(e)) - mensu2;
+  // Gain sur toute la durée : exact pour un prêt classique ; avec différé, mensualités progressives ou pauses, les intérêts qui
+  // restent à payer baissent (ou montent) comme le taux, à échéancier égal
+  const simple = !e.differe && !e.prog && !(e.pauses || []).length;
+  const gainTotal = simple ? (e.resteAPayer ?? e.M * n) - mensu2 * n : Math.max(0, (e.resteAPayer ?? 0) - e.crd) * (1 - tNew / p.taux);
   const ira = Math.min(0.03 * e.crd, 6 * e.crd * p.taux / 1200), fraisRachat = ira + 1000 + 0.015 * e.crd;
   let surprime = null;
   const offre = p.offre || p.debut;
@@ -232,7 +239,9 @@ function partComptaSci(b) {
   const x = b.chargesAn.comptaSci && sciDe(b); if (!x) return null;
   return (x.compta || 0) / Math.max(1, avecComptaSci(x, b).length);
 }
-const statutLib = b => b.amenag && !b.amenag.fait ? 'À aménager' : b.location.statut === 'avec' ? (p => p ? 'Avec ' + p.nom : '')(principalDe(b)) : (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
+// Loué, mais pas encore de loyer encaissé (travaux, bail qui commence plus tard) : on ne dit pas « Loué »
+const A_VENIR = {vide: 'Location vide à venir', meuble: 'Location meublée à venir', colocation: 'Colocation à venir', lots: 'Loyers à venir', saisonnier: 'Location saisonnière à venir'};
+const statutLib = b => b.amenag && !b.amenag.fait ? 'À aménager' : b.type !== 'terrain' && A_VENIR[b.location.statut] && !(loyerActuel(b) > 0) ? A_VENIR[b.location.statut] : b.location.statut === 'avec' ? (p => p ? 'Avec ' + p.nom : '')(principalDe(b)) : (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
 // ---------- Un crédit pour plusieurs biens (achat groupé, deux appartements au même vendeur…) ----------
 // Le prêt est saisi sur la fiche d'un bien ; p.partage = [{id, part}] : les autres biens qu'il finance et leur part (%).
 // Le bien qui porte le prêt garde le reste. Chaque bien compte sa part du restant dû et des mensualités : les totaux ne le comptent qu'une fois.
@@ -1544,7 +1553,7 @@ function vueSci(x) {
     ${kpisTotaux(t)}
     <div class="blocs">
     ${section('Identité', `<div class="grille">
-      ${champ(x, 'nom', 'Nom', {type: 'text'})}${champ(x, 'regime', 'Régime fiscal', {options: {ir: 'Impôt sur le revenu (IR)', is: 'Impôt sur les sociétés (IS)'}})}
+      ${champ(x, 'nom', 'Nom', {type: 'text'})}${champ(x, 'regime', 'Régime fiscal', {options: {ir: 'IR · impôt sur le revenu', is: 'IS · impôt sur les sociétés'}})}
       ${champ(x, 'siren', 'SIREN', {type: 'text', ph: '9 chiffres'})}${champ(x, 'creation', 'Date de création', {type: 'month'})}
       ${champ(x, 'capital', 'Capital social (€)', {step: 100})}${champ(x, 'cloture', 'Clôture de l\'exercice', {type: 'text', ph: '31/12'})}
       ${champ(x, 'siege', 'Siège social', {type: 'text', large: true})}
@@ -1913,7 +1922,7 @@ function resumePret(b, p, e, i) {
     ${e.prog ? `<div class="aide">Mensualité progressive : +${(e.prog.g * 100).toFixed(2).replace('.', ',')} % par an${e.prog.saisie ? '' : ' (calculée avec le montant, le taux et la durée)'}${e.prog.hausse ? `, ${eur(e.prog.hausse.M)} à partir de ${libMois(e.prog.hausse.mois)}` : ''}, jusqu'à ${eur(e.prog.max)} la dernière année.</div>` : ''}
   </div>`;
   if (a && !(p.rachat && p.rachat.ouvert)) h += `<div class="reneg ${a.netAvenant > 0 ? 'oui' : 'non'}"><div class="reneg-titre">Aux taux d'aujourd'hui : ${taux(a.tNew)}${b.structure !== 'np' ? ' (SCI)' : ''} au lieu de ${taux(p.taux)}</div>
-    ${mini([['Nouvelle mensualité', eur(a.mensu2)], [e.prog ? 'Différence aujourd\'hui' : 'Différence', (a.gainMois >= 0 ? '−' : '+') + eur(Math.abs(a.gainMois)) + '/mois', a.gainMois > 0 ? 'up' : 'down'],
+    ${mini([['Nouvelle mensualité', eur(a.mensu2)], [e.differe ? 'Différence après le différé' : e.prog ? 'Différence aujourd\'hui' : 'Différence', (a.gainMois >= 0 ? '−' : '+') + eur(Math.abs(a.gainMois)) + '/mois', a.gainMois > 0 ? 'up' : 'down'],
       ['Gain net : renégociation', '≈ ' + eur(a.netAvenant), signe(a.netAvenant)], ['Gain net : rachat', '≈ ' + eur(a.netRachat), signe(a.netRachat)]])}
     <div class="aide">Renégociation avec ta banque : avenant ≈ 600 €. Rachat par une autre banque : indemnités ≈ ${eur(a.ira)}, plus dossier et garantie.${a.surprime ? ` Surprime payée en ${libMois(a.offre)} : ${a.surprime[0] >= 0 ? '+' : ''}${a.surprime[0].toFixed(2).replace('.', ',')}${a.surprime[1] !== a.surprime[0] ? ' à ' + (a.surprime[1] >= 0 ? '+' : '') + a.surprime[1].toFixed(2).replace('.', ',') : ''} point par rapport au marché de l'époque.` : ''}</div>
     <div class="boutons"><button data-a="rachatOuvrir" data-i="${i}">Simuler un rachat ou une renégociation →</button></div></div>`;

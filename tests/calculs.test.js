@@ -306,3 +306,18 @@ test('taux du marché par durée : interpolé entre 15, 20 et 25 ans', () => {
   assert.equal(tauxDuree(R, 120), R[15]); assert.equal(tauxDuree(R, 240), R[20]); assert.equal(tauxDuree(R, 360), R[25]);
   proche(tauxDuree(R, 270), (R[20] + R[25]) / 2, 1e-9);
 });
+
+test('renégociation pendant un différé, au même taux : pas de faux gain (la mensualité d\'après le différé est comparée, pas celle des intérêts seuls)', () => {
+  avecTaux();
+  const p0 = {montant: 213796, duree: 240, debut: '2026-12', typeDiff: 'partiel', differe: 7};
+  const e0 = etatPret({...p0, taux: 3.39}, '2027-01'), t = ctx.T.tauxDuree(ctx.T.TAUX_ACTUEL, e0.mois);
+  const p = {...p0, taux: t}, e = etatPret(p, '2027-01'), a = ctx.X.analyseReneg(p, e, false);
+  assert.ok(e.differe, 'encore en différé');
+  assert.ok(Math.abs(a.gainMois) < 5, `différence ≈ 0 au même taux (${a.gainMois})`);
+  assert.ok(Math.abs(a.gainTotal) < 50, `gain ≈ 0 au même taux (${a.gainTotal})`);
+  assert.ok(a.netAvenant < 0, 'l\'avenant ne vaut pas le coup');
+  // Un taux plus haut que le marché : un vrai gain, comparé à la mensualité d'après le différé
+  const ph = {...p0, taux: t + 1}, eh = etatPret(ph, '2027-01'), ah = ctx.X.analyseReneg(ph, eh, false);
+  assert.ok(ah.gainMois > 50 && ah.gainTotal > 5000);
+  proche(ah.gainMois, eh.differe.apres - ah.mensu2, 1e-6);
+});
