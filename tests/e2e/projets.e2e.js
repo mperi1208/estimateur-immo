@@ -62,7 +62,7 @@ test('« J\'ai acheté » une division : la fiche a les deux logements, chacun l
   await page.click('#est_loc'); await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.fill('#cf_nomProjet', 'Division'); await cliquer(page, '#cf_enreg');
   await page.waitForFunction(() => PROJETS.liste.some(x => x.nom === 'Division'));
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const carte = page.locator('#pj article.pj', {hasText: 'Division'});
   await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="achete"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && document.getElementById('inv_titre'));

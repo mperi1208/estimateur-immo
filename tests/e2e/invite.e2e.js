@@ -59,7 +59,7 @@ test('Estimer → Financer : le bien estimé est repris (prix, loyer, surface), 
   assert.equal(+await valeur('prix'), Math.round(e.prix)); assert.equal(+await valeur('loyer'), Math.round(e.loyer));
   assert.equal(+await valeur('surf'), 45);
   assert.equal(await page.evaluate(() => document.getElementById('cf_boxProjet').open), false);
-  assert.match(await page.locator('#cf_bien').innerText(), /prix estimé/);
+  assert.match(await page.locator('#cf_bien').innerText(), /estimé/);
   const tuiles = await page.locator('#cf_tiles').innerText();
   assert.match(tuiles, /Mensualité/i); assert.match(await page.locator('#cf main').innerText(), /Il te (reste|manque) [\d\s  ]+€/i);   // dit une fois, en tête ou dans le bilan du mois
   assert.doesNotMatch(tuiles, /Rendement/i);                 // case retirée de Financer
@@ -69,8 +69,8 @@ test('Estimer → Financer : le bien estimé est repris (prix, loyer, surface), 
 test('Financer : un réglage fait à la main n\'est pas écrasé en revenant sur l\'onglet, et survit au rechargement', async () => {
   await saisir(page, '#cf_apport', 30000);
   await saisir(page, '#cf_duree', 25);
-  await page.click('.tabs [data-tab="estimation"]');
-  await page.click('.tabs [data-tab="cashflow"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
+  await page.evaluate(() => { aNavigue = true; showTab('cashflow'); });
   assert.equal(+await valeur('apport'), 30000);
   await page.reload(); await ouvrir(page, '#cashflow');
   assert.equal(+await valeur('apport'), 30000); assert.equal(+await valeur('duree'), 25);
@@ -99,7 +99,7 @@ test('Estimer « rénovation complète » → « Travaux + location » : travaux
 });
 
 test('Travaux + revente : scénario « Revendre », bilan de l\'opération', async () => {
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await page.waitForSelector('#est_rev');
   await page.click('#est_rev');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
@@ -119,7 +119,7 @@ test('Financer : prix d\'équilibre sur une seule ligne, sans champ à remplir',
 });
 
 test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le total, loyers et charges de chaque bien)', async () => {
-  if (await onglet() !== 'cashflow') await page.click('.tabs [data-tab="cashflow"]');
+  if (await onglet() !== 'cashflow') await page.evaluate(() => { aNavigue = true; showTab('cashflow'); });
   await saisir(page, '#cf_prix', 150000); await saisir(page, '#cf_loyer', 700); await saisir(page, '#cf_apport', 0);
   const pretSeul = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
   assert.match(await page.locator('#cf_titreBiens').innerText(), /^le bien$/i);
@@ -156,8 +156,8 @@ test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le tota
 test('sans compte : enregistrer un projet propose de se connecter', async () => {
   assert.equal(await page.locator('#cf_saveInvite').isVisible(), true);
   assert.equal(await page.locator('#cf_saveForm').isVisible(), false);
-  await page.click('.tabs [data-tab="estimation"]');
-  assert.match(await page.locator('#sauveEst').innerText(), /Se connecter pour enregistrer/);
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
+  assert.match(await page.locator('#sauveEst').innerText(), /Se connecter pour garder/);
 });
 
 test('recherches récentes : gardées sur l\'appareil, reprises d\'un clic, supprimables', async () => {
@@ -238,7 +238,7 @@ test('saisonnier → Financer : à la nuitée, meublé forcé, recettes et fisca
 });
 
 test('aménager une surface en plus (logement à part) : chaque logement estimé, 2 loyers dans Financer', async () => {
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await page.click('#louer button[data-v="vide"]');
   await estimer(page, {surf: 60});
   await travaux(page, 'amenager');
@@ -263,7 +263,7 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
 });
 
 test('garage aménagé en chambre : loyer après travaux estimé, loué en l\'état avant, travaux lancés au mois 25', async () => {
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await travaux(page, 'amenager');
   await page.selectOption('#w_usage', 'agrandir');
   await page.selectOption('#w_type', 'autre');
@@ -283,12 +283,12 @@ test('garage aménagé en chambre : loyer après travaux estimé, loué en l\'é
   await saisir(page, '#cf_debutTravaux', 25);
   assert.equal(+await valeur('differe'), 36);                      // le différé choisi ne bouge pas
   assert.match(await page.locator('#cf_alerts').innerText(), new RegExp(`Travaux du mois 25 au mois ${24 + pj.duree}`));
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await travaux(page, 'non');
 });
 
 test('diviser en 3 logements : surfaces modifiables, coûts par logement, 3 loyers (dont 2 en 2e loyer)', async () => {
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await travaux(page, 'diviser');
   await page.selectOption('#w_nb', '3');
   assert.equal(await page.locator('[data-lot]').count(), 3);
@@ -298,12 +298,12 @@ test('diviser en 3 logements : surfaces modifiables, coûts par logement, 3 loye
   await page.click('#est_loc');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.equal(+await valeur('loyer2'), pj.loyers[1] + pj.loyers[2]);
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await travaux(page, 'non');
 });
 
 test('diviser en 2 et rattacher le garage à un logement, travaux au mois 25 : loué en l\'état avant, 2 loyers après', async () => {
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await travaux(page, 'diviser');
   await page.selectOption('#w_nb', '2');
   await page.fill('[data-lot="0"]', '40'); await page.dispatchEvent('[data-lot="0"]', 'change');
@@ -322,16 +322,16 @@ test('diviser en 2 et rattacher le garage à un logement, travaux au mois 25 : l
   await saisir(page, '#cf_debutTravaux', 25);
   assert.equal(+await valeur('debutLoyer2'), 24 + 8 + 1);           // le studio est loué à la fin du chantier
   assert.match(await page.locator('#cf_alerts').innerText(), /Travaux du mois 25 au mois 32 : loué .* en l'état jusqu'au mois 24/);
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await page.fill('#w_divM2', ''); await page.dispatchEvent('#w_divM2', 'change');
   await travaux(page, 'non');
 });
 
 test('Financer en 4 étapes : loyers par période (avant, pendant, après travaux), différé, résultat en périodes', async () => {
-  if (await onglet() !== 'cashflow') await page.click('.tabs [data-tab="cashflow"]');
+  if (await onglet() !== 'cashflow') await page.evaluate(() => { aNavigue = true; showTab('cashflow'); });
   while (await page.locator('#cf_biensPlus [data-a="retirerBien"]').count()) await cliquer(page, '#cf_biensPlus [data-a="retirerBien"] >> nth=0');   // tests d'avant : un seul bien
   await saisir(page, '#cf_loyer2', 0);
-  await cliquer(page, '#cf_etapes button[data-etape="2"]');
+  await cliquer(page, '#simEtapes button[data-e="2"]');
   assert.equal(await page.locator('#cf_loyers').isVisible(), true);
   assert.equal(await page.locator('#cf_tiles').isVisible(), false);                // le résultat est à l'étape 4
   if (!await page.evaluate(() => document.getElementById('cf_boxProjet').open)) await cliquer(page, '#cf_travauxSeg button[data-v="1"]');
@@ -378,7 +378,7 @@ test('Financer en 4 étapes : loyers par période (avant, pendant, après travau
   assert.equal(await page.locator('#cf_loyer').isVisible(), false); assert.match(await page.locator('#cf_nuitL1').innerText(), /par mois à la nuitée/);
   await cliquer(page, '#cf_locSeg button[data-v="mois"]');
   // Étape 3 : ce qu'on paie, période par période
-  await cliquer(page, '#cf_etapes button[data-etape="3"]');
+  await cliquer(page, '#simEtapes button[data-e="3"]');
   assert.match(await page.locator('#cf_mensPeriodes').innerText(), /Mois 1 à 24[\s\S]*Mois 25 à 36[\s\S]*Dès le mois 37/);
   // Étape 4 : avant, pendant, après les travaux, puis le rythme de croisière
   await cliquer(page, '#cf_suivant');

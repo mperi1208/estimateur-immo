@@ -155,7 +155,7 @@ async function seConnecter(page, email = 'marc@exemple.fr', mdp = 'secret123', c
 
 // Estimer : adresse, surface, détails, puis « Rechercher » ; attend le prix et le loyer
 async function estimer(page, {surf = 50, type, details = {}} = {}) {
-  if (!await page.locator('#estim').isVisible()) await page.click('.tabs [data-tab="estimation"]');
+  if (!await page.locator('#estim').isVisible()) await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   if (type) await page.click(`#type button[data-v="${type}"]`);
   await page.fill('#addr', 'rue de la République Lyon');
   await page.fill('#surf', String(surf));
@@ -172,6 +172,11 @@ async function travaux(page, niveau) {
 }
 // Financer est en 4 étapes : avant de toucher un élément de l'onglet, ouvrir l'étape qui le contient
 async function versEtape(page, sel) {
+  // Fiche d'un bien : ouvrir le sous-onglet (Résumé, Crédit, Location…) qui contient l'élément
+  await page.evaluate(sel => {
+    const e = document.querySelector(sel), z = e && e.closest('#inv [data-ong]:not(button)');
+    if (z && z.hidden) { const b = document.querySelector(`#inv .sous-fiche [data-ong="${z.dataset.ong}"]`); if (b) b.click(); }
+  }, sel);
   await page.evaluate(sel => {
     const e = document.querySelector(sel); if (!e || !e.closest('#cf') || !window.CF_APP) return;
     const et = e.closest('#cf section.etape'), n = e.closest('#cf main') ? 4 : et ? +et.dataset.etape : null;

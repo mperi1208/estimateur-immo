@@ -29,7 +29,7 @@ const mois = k => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() 
 // Carte d'un bien par son nom (une autre carte peut citer ce nom : « Crédit commun avec … »)
 const carteBien = nom => page.locator('#inv a.bien').filter({has: page.locator('.infos > b', {hasText: new RegExp('^' + nom + '$')})});
 const ouvrirFiche = async nom => {
-  if (await onglet() !== 'investissements') await page.click('.tabs [data-tab="investissements"]');
+  if (await onglet() !== 'investissements') await page.evaluate(() => { aNavigue = true; showTab('investissements'); });
   await page.evaluate(() => { location.hash = '#investissements'; });
   await carteBien(nom).first().click();
   await page.waitForFunction(n => (document.getElementById('inv_titre') || {}).textContent === n, nom);
@@ -47,15 +47,16 @@ test('connexion : Mon patrimoine et Mes projets apparaissent, arrivée sur Mon p
   assert.equal(await onglet(), 'estimation');
   await seConnecter(page, EMAIL, MDP);
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements');
+  assert.equal(await page.locator('.tabs [data-tab="investissements"]').innerText(), 'Mes biens');   // en projet et détenus
   assert.equal(await page.locator('.tabs [data-tab="investissements"]').isVisible(), true);
-  assert.equal(await page.locator('.tabs [data-tab="projets"]').isVisible(), true);
+  assert.match(await page.locator('#inv .seg-biens').innerText(), /En projet\s*0\s*Détenus\s*0/);
   await page.waitForSelector('#inv .vide');
   const c = await attendreCompte(c => Array.isArray(c.biens), 'compte créé au premier passage');
   assert.deepEqual(c.biens, []);
 });
 
 test('Mon patrimoine : un bien avec achat, crédit, loyer et charges ; chiffres de la fiche', async () => {
-  await page.click('#inv [data-a="ajout"]');
+  await cliquer(page, '#inv [data-a="ajout"]');
   await page.waitForSelector('#inv_titre');
   await champ('nom', 'Studio Test');
   await champ('adresse', '12 rue de la République Lyon');
@@ -64,7 +65,7 @@ test('Mon patrimoine : un bien avec achat, crédit, loyer et charges ; chiffres 
   assert.equal(await page.locator('#inv [data-p="valeur"]').inputValue(), '200000');
   await champ('achat.date', mois(-36)); await champ('achat.prix', 180000); await champ('achat.notaire', 14000);
   await champ('location.loyer', 800); await champ('chargesAn.tf', 900);
-  await page.click('#inv [data-a="ajoutPret"]');
+  await cliquer(page, '#inv [data-a="ajoutPret"]');
   await champ('prets.0.montant', 150000); await champ('prets.0.taux', 3); await champ('prets.0.duree', 240); await champ('prets.0.debut', mois(-24));
   const M = pmt(150000, 3, 240);
   assert.equal(await kpi('Valeur'), '200 k€');
@@ -84,7 +85,7 @@ test('Mon patrimoine : un bien avec achat, crédit, loyer et charges ; chiffres 
 });
 
 test('liste : totaux du patrimoine (valeur, restant dû, net, loyers, cash-flow)', async () => {
-  await page.click('#inv a.retour');
+  await cliquer(page, '#inv a.retour');
   await page.waitForSelector('#inv .invhead .kpis, #inv .invhead ~ .kpis');
   const t = await page.locator('#inv .kpis').first().innerText();
   assert.match(t, /Biens\s*\n\s*1/i); assert.match(t, /Valeur\s*\n\s*200 k€/i); assert.match(t, /Loyers\s*\n\s*800 €/i);
@@ -106,18 +107,18 @@ test('deux appareils sur le même compte : un changement fait sur l\'un arrive s
     await seConnecter(p2, EMAIL, MDP, false);
     await p2.waitForFunction(() => document.body.dataset.onglet === 'investissements');
     await p2.locator('#inv a.bien', {hasText: 'Studio Test'}).click();
-    await p2.waitForSelector('#inv [data-p="location.loyer"]');
+    await p2.waitForSelector('#inv [data-p="location.loyer"]', {state: 'attached'});   // sous-onglet Location : champ() l'ouvre
     await champ('location.loyer', 850, p2);
     await attendreCompte(() => bienDuCompte('Studio Test').location.loyer === 850);
     // Le premier appareil relit le compte en revenant sur la page
     await page.evaluate(() => { document.activeElement && document.activeElement.blur(); window.dispatchEvent(new Event('focus')); });
     await page.waitForFunction(() => document.querySelector('#inv [data-p="location.loyer"]').value === '850');
     // Deux changements en même temps sur deux biens différents : aucun n'écrase l'autre
-    await p2.click('#inv a.retour'); await p2.click('#inv [data-a="ajout"]'); await p2.waitForSelector('#inv [data-p="nom"]');
+    await cliquer(p2, '#inv a.retour'); await cliquer(p2, '#inv [data-a="ajout"]'); await p2.waitForSelector('#inv [data-p="nom"]');
     await Promise.all([champ('chargesAn.copro', 300), champ('nom', 'Parking Test', p2)]);
     await attendreCompte(() => bienDuCompte('Studio Test').chargesAn.copro === 300 && bienDuCompte('Parking Test'), 'les deux changements gardés');
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await page.click('#inv a.retour');
+    await cliquer(page, '#inv a.retour');
     await page.waitForSelector('#inv a.bien >> text=Parking Test');
     assert.deepEqual(j2.erreurs, []);
   } finally { await p2.context().close(); }
@@ -125,10 +126,10 @@ test('deux appareils sur le même compte : un changement fait sur l\'un arrive s
 
 test('garage sorti en bien à part : sa valeur et sa part du prix quittent le bien, le total ne bouge pas', async () => {
   await ouvrirFiche('Studio Test');
-  await page.click('#inv [data-a="detacheOuvrir"][data-m="separer"]');
+  await cliquer(page, '#inv [data-a="detacheOuvrir"][data-m="separer"]');
   await champ('detache.valeur', 15000);
   assert.match(await page.locator('#inv_detacheRes').innerText(), /Studio Test ensuite\s*185\s000 €/i);
-  await page.click('#inv [data-a="detacher"]');
+  await cliquer(page, '#inv [data-a="detacher"]');
   await page.waitForFunction(() => /^Garage · Studio Test$/.test((document.getElementById('inv_titre') || {}).textContent));
   assert.match(await page.locator('#inv .lie-a').innerText(), /Associé à Studio Test/);
   const c = await attendreCompte(() => bienDuCompte('Garage · Studio Test') && bienDuCompte('Studio Test').valeur === 185000);
@@ -136,7 +137,7 @@ test('garage sorti en bien à part : sa valeur et sa part du prix quittent le bi
   assert.equal(g.valeur, 15000); assert.equal(g.lieA, s.id);
   assert.equal(g.achat.prix + s.achat.prix, 180000);                 // prix d'achat réparti au prorata des valeurs
   assert.equal(g.achat.prix, 13500); assert.equal(g.achat.date, s.achat.date);
-  await page.click('#inv a.retour');
+  await cliquer(page, '#inv a.retour');
   await page.waitForSelector('#inv .invhead');
   const t = await page.locator('#inv .kpis').first().innerText();
   assert.match(t, /Valeur\s*\n\s*200 k€/i);                         // 185 000 + 15 000 : le patrimoine total ne change pas
@@ -145,10 +146,10 @@ test('garage sorti en bien à part : sa valeur et sa part du prix quittent le bi
 
 test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Estimer), ajouté à Mes projets, puis travaux terminés', async () => {
   await ouvrirFiche('Studio Test');
-  await page.click('#inv [data-a="amenagCreer"]');
+  await cliquer(page, '#inv [data-a="amenagCreer"]');
   await page.waitForFunction(() => /^Sous-sol · Studio Test$/.test((document.getElementById('inv_titre') || {}).textContent));
   await champ('amenag.m2', 30);
-  await page.click('#inv [data-a="amenagEstimer"]');
+  await cliquer(page, '#inv [data-a="amenagEstimer"]');
   await page.waitForSelector('#inv_amenagRes .auto-res', {timeout: 60000});
   const res = await page.locator('#inv_amenagRes').innerText();
   const valeur = nombre(res.match(/Valeur une fois aménagé\s*\n\s*([^\n]+)/i)[1]) * 1000, loyer = nombre(res.match(/Loyer possible\s*\n\s*([^\n]+)/i)[1]);
@@ -158,7 +159,7 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   await page.waitForFunction(() => /Montant que tu as saisi/i.test(document.getElementById('inv_amenagRes').innerText));
   // « Pour le louer » : trois boutons visibles, dont « À la nuitée »
   assert.deepEqual(await page.locator('#inv [data-cible="inv_amenag_meuble"]').allInnerTexts(), ['Vide', 'Meublé', 'À la nuitée']);
-  await page.click('#inv [data-cible="inv_amenag_meuble"][data-v="nuit"]');
+  await cliquer(page, '#inv [data-cible="inv_amenag_meuble"][data-v="nuit"]');
   await page.waitForSelector('#inv [data-p="amenag.nuit"]');
   assert.equal(await page.locator('#inv [data-cible="inv_amenag_meuble"].on').innerText(), 'À la nuitée');
   await champ('amenag.nuit', 80);
@@ -172,16 +173,16 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   await champ('amenag.periode', 'annee');
   await page.waitForFunction(() => /80 € × 219 nuits/.test(document.getElementById('inv_amenagRes').innerText));
   // Totaux : tant que ce n'est pas fait, l'espace ne compte pas comme un bien de plus
-  await page.click('#inv [data-a="amenagProjet"]');
+  await cliquer(page, '#inv [data-a="amenagProjet"]');
   await page.waitForFunction(() => /Ajouté dans/.test(document.getElementById('inv_amenagMsg').innerText));
   const c = await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Sous-sol · Studio Test'));
   const pr = c.projets.find(x => x.nom === 'Sous-sol · Studio Test');
   assert.equal(pr.finance.prix, 0); assert.equal(pr.finance.travaux, 42000); assert.equal(pr.finance.mobilier, 0); assert.equal(pr.amenag.bien, bienDuCompte('Sous-sol · Studio Test').id);
   assert.equal(pr.finance.locMode, 'nuit'); assert.equal(pr.finance.nuit, 80); assert.equal(pr.resume.saison.nuit, 80);
   // Pas encore fait : absent de la liste de Mon patrimoine (et de l'organisation), seulement dans Mes projets
-  await page.click('#inv a.retour'); await page.waitForSelector('#inv .invhead');
+  await cliquer(page, '#inv a.retour'); await page.waitForSelector('#inv .invhead');
   assert.equal(await page.locator('#inv', {hasText: 'Sous-sol · Studio Test'}).count(), 0);
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const carte = page.locator('#pj .pj', {hasText: 'Sous-sol · Studio Test'});
   await carte.waitFor();
   const txt = await carte.innerText();                              // la carte dans Mes projets : travaux saisis, recettes à la nuitée
@@ -189,12 +190,12 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   await carte.locator('.pj-menu summary').click();                // actions rares derrière « ⋯ »
   await carte.locator('[data-a="fiche"]').click();                 // « Voir la fiche » ramène dans Mon patrimoine
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && /^Sous-sol/.test((document.getElementById('inv_titre') || {}).textContent));
-  await page.click('#inv [data-a="amenagFait"]');                  // confirm() accepté par le banc
+  await cliquer(page, '#inv [data-a="amenagFait"]');                  // confirm() accepté par le banc
   await page.waitForFunction(() => !document.getElementById('inv_amenagRes'));
   const b = (await attendreCompte(() => bienDuCompte('Sous-sol · Studio Test').amenag.fait)).biens.find(x => x.nom === 'Sous-sol · Studio Test');
   assert.ok(Math.abs(b.valeur - valeur) < 1000, `valeur ${b.valeur} ≈ ${valeur}`);
   assert.equal(b.achat.travaux, 42000); assert.equal(b.location.statut, 'saisonnier'); assert.equal(b.location.nuit, 80);
-  await page.click('#inv a.retour');
+  await cliquer(page, '#inv a.retour');
   await page.waitForSelector('#inv .invhead');
   assert.equal(await page.locator('#inv .groupe-bien .bien-lie', {hasText: 'Sous-sol · Studio Test'}).count(), 1);   // fait : il rejoint la liste
   const t = await page.locator('#inv .kpis').first().innerText();
@@ -212,13 +213,13 @@ test('location saisonnière dans une fiche : recettes à la nuitée, frais, cash
 
 test('simuler la vente : le détail s\'additionne, puis vente enregistrée (hors totaux) et annulée', async () => {
   await ouvrirFiche('Studio Test');
-  await page.click('#inv [data-a="vente"]');
+  await cliquer(page, '#inv [data-a="vente"]');
   await champ('vente.prix', 230000);
-  await page.click('#inv [data-a="venteAgence"][data-v="0"]');     // sans agence : montant fixe en euros, 600 € par défaut
+  await cliquer(page, '#inv [data-a="venteAgence"][data-v="0"]');     // sans agence : montant fixe en euros, 600 € par défaut
   await page.waitForFunction(() => /−600 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
   await champ('vente.fraisFixe', 450);
   await page.waitForFunction(() => /−450 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
-  await page.click('#inv [data-a="venteAgence"][data-v="1"]');
+  await cliquer(page, '#inv [data-a="venteAgence"][data-v="1"]');
   await page.waitForSelector('#inv_vente_frais');
   await champ('vente.frais', 5);
   const calc = await page.locator('#inv_venteRes .calc').innerText();
@@ -228,23 +229,23 @@ test('simuler la vente : le détail s\'additionne, puis vente enregistrée (hors
   assert.equal(prix, 230000); assert.equal(frais, -11500);
   assert.ok(crd < -130000 && ira < 0 && ir < 0 && ps < 0, calc);  // moins de 5 ans : imposé sans abattement
   assert.ok(Math.abs(prix + frais + crd + ira + ir + ps - net) <= 3, `${prix} ${frais} ${crd} ${ira} ${ir} ${ps} = ${net}`);
-  await page.click('#inv [data-a="venteEnregistrer"]');
+  await cliquer(page, '#inv [data-a="venteEnregistrer"]');
   await page.waitForSelector('#inv .vendu-bandeau');
-  await page.click('#inv a.retour'); await page.waitForSelector('#inv .invhead');
+  await cliquer(page, '#inv a.retour'); await page.waitForSelector('#inv .invhead');
   assert.equal(await page.locator('#inv details[data-pli="vendus"] a.bien', {hasText: 'Studio Test'}).count(), 1);
   assert.doesNotMatch(await page.locator('#inv details[data-pli="biens"]').innerText(), /^Studio Test$/m);
   const t = await page.locator('#inv .kpis').first().innerText();
   assert.doesNotMatch(t, /Restant dû\s*\n\s*1\d\d k€/i);          // le crédit du bien vendu ne compte plus
   assert.equal((await attendreCompte(() => bienDuCompte('Studio Test').vendu)).biens.find(b => b.nom === 'Studio Test').vendu.prix, 230000);
   await page.locator('#inv details[data-pli="vendus"] a.bien', {hasText: 'Studio Test'}).click();
-  await page.click('#inv [data-a="venteAnnuler"]');
+  await cliquer(page, '#inv [data-a="venteAnnuler"]');
   await page.waitForFunction(() => !document.querySelector('#inv .vendu-bandeau'));
   await attendreCompte(() => !bienDuCompte('Studio Test').vendu);
 });
 
 test('SCI : création, bien rattaché, filtre par détenteur et totaux de la SCI', async () => {
   await page.evaluate(() => { location.hash = '#investissements'; });
-  await page.click('#inv [data-a="ajoutSci"]');
+  await cliquer(page, '#inv [data-a="ajoutSci"]');
   await page.waitForSelector('#inv [data-p="nom"]');
   await champ('nom', 'SCI Famille'); await champ('regime', 'is');
   const sci = (await attendreCompte(c => (c.scis || []).some(x => x.nom === 'SCI Famille' && x.regime === 'is'))).scis.find(x => x.nom === 'SCI Famille');
@@ -253,13 +254,13 @@ test('SCI : création, bien rattaché, filtre par détenteur et totaux de la SCI
   await page.waitForSelector('#inv a[href^="#investissements/sci:"]');
   assert.match(await page.locator('#inv_sous').innerText(), /SCI Famille/);
   await attendreCompte(() => bienDuCompte('Parking Test').sciId === sci.id);
-  await page.click('#inv a.retour'); await page.waitForSelector('#inv .filtres');
-  await page.click(`#inv .filtres [data-f="${sci.id}"]`);
+  await cliquer(page, '#inv a.retour'); await page.waitForSelector('#inv .filtres');
+  await cliquer(page, `#inv .filtres [data-f="${sci.id}"]`);
   const liste = await page.locator('#inv details[data-pli="biens"] .liste').innerText();
   assert.match(liste, /Parking Test/); assert.doesNotMatch(liste, /Studio Test/);
-  await page.click('#inv .filtres [data-f="np"]');
+  await cliquer(page, '#inv .filtres [data-f="np"]');
   assert.doesNotMatch(await page.locator('#inv details[data-pli="biens"] .liste').innerText(), /Parking Test/);
-  await page.click('#inv .filtres [data-f="tout"]');
+  await cliquer(page, '#inv .filtres [data-f="tout"]');
   assert.match(await page.locator('#inv details[data-pli="scis"]').innerText(), /SCI Famille[\s\S]*SCI à l'IS · 1 bien/i);
 });
 
@@ -278,6 +279,7 @@ test('comptable de la SCI : honoraires saisis sur la SCI, comptés dans les char
   assert.equal(cfMois, avant);
   assert.ok(Math.abs(cfAn / 12 - cfMois) <= 1);
   const bouton = l => page.locator('#inv [data-a="segChoix"][data-cible="inv_chargesAn_comptaSci"]', {hasText: l});
+  await cliquer(page, '#inv .sous-fiche [data-ong="location"]');   // charges : sous-onglet Location
   assert.equal(await bouton('Oui, comptable de la SCI').isVisible(), true);       // l'option se voit sans ouvrir de menu
   await bouton('Oui, comptable de la SCI').click();
   await page.waitForSelector('#inv [data-p="chargesAn.compta"]', {state: 'detached'});
@@ -292,7 +294,7 @@ test('comptable de la SCI : honoraires saisis sur la SCI, comptés dans les char
 
 test('crédit progressif et différé : boutons visibles, mensualité actuelle qui augmente, différé partiel', async () => {
   await ouvrirFiche('Studio Test');
-  await page.click('#inv [data-a="ajoutPret"]');
+  await cliquer(page, '#inv [data-a="ajoutPret"]');
   await champ('prets.1.montant', 101058); await champ('prets.1.taux', 3.7); await champ('prets.1.duree', 300); await champ('prets.1.debut', mois(-5));
   const resume = () => page.locator('[data-resume="1"]').innerText();
   const bouton = (cible, l) => page.locator(`#inv [data-a="segChoix"][data-cible="${cible}"]`, {hasText: l});
@@ -323,13 +325,13 @@ test('crédit progressif et différé : boutons visibles, mensualité actuelle q
 
 test('pause du crédit et durée allongée : mensualité, fin du prêt et tableau d\'amortissement recalculés', async () => {
   await ouvrirFiche('Studio Test');
-  await page.click('#inv [data-a="ajoutPret"]');
+  await cliquer(page, '#inv [data-a="ajoutPret"]');
   await champ('prets.1.montant', 200000); await champ('prets.1.taux', 3); await champ('prets.1.duree', 240); await champ('prets.1.debut', mois(-12));
   const resume = () => page.locator('[data-resume="1"]').innerText();
   const fin = async () => (await resume()).match(/Fin du prêt\s*\n\s*([^\n]+)/i)[1];
   const finAvant = await fin();
   // Pause de 6 mois qui a commencé le mois dernier : rien à payer, prêt rallongé de 6 mois
-  await page.click('#inv [data-a="ajoutPause"][data-i="1"]');
+  await cliquer(page, '#inv [data-a="ajoutPause"][data-i="1"]');
   await page.waitForSelector('#inv [data-p="prets.1.pauses.0.debut"]');
   await champ('prets.1.pauses.0.debut', mois(-1));
   let r = await resume();
@@ -347,10 +349,10 @@ test('pause du crédit et durée allongée : mensualité, fin du prêt et tablea
   assert.match(await page.locator('[data-resume="1"] details.amort').innerText(), /pause \d mois/i);
   await champ('prets.1.assurance', 10);                                                    // le tableau reste ouvert
   assert.equal(await page.locator('[data-resume="1"] details.amort').evaluate(d => d.open), true);
-  await page.click('#inv [data-a="supprPause"][data-i="1"][data-j="0"]');
+  await cliquer(page, '#inv [data-a="supprPause"][data-i="1"][data-j="0"]');
   await page.waitForSelector('#inv [data-p="prets.1.pauses.0.debut"]', {state: 'detached'});
   // Allonger de 3 ans : simulation, puis enregistré sur le prêt
-  await page.click('#inv [data-a="allongeOuvrir"][data-i="1"]');
+  await cliquer(page, '#inv [data-a="allongeOuvrir"][data-i="1"]');
   await page.waitForSelector('#inv [data-p="prets.1.allonge.ans"]');
   const al = () => page.locator('[data-allonge="1"]').innerText();
   r = await al();
@@ -359,11 +361,11 @@ test('pause du crédit et durée allongée : mensualité, fin du prêt et tablea
   const nouvelle = nombre(r.match(/Nouvelle mensualité\s*\n\s*([^\n]+)/i)[1]);
   assert.ok(nouvelle < 1109 && nouvelle > 950, `nouvelle mensualité ${nouvelle}`);
   assert.equal(await fin(), finAvant);                                                     // pas encore enregistré
-  await page.click('#inv [data-a="allongeFaire"][data-i="1"]');
+  await cliquer(page, '#inv [data-a="allongeFaire"][data-i="1"]');
   await page.waitForSelector('#inv [data-a="allongeAnnuler"]');
   assert.notEqual(await fin(), finAvant);
   await attendreCompte(() => (x => x && x.fait === '1' && x.ans === 3)(bienDuCompte('Studio Test').prets[1].allonge));
-  await page.click('#inv [data-a="allongeAnnuler"][data-i="1"]');
+  await cliquer(page, '#inv [data-a="allongeAnnuler"][data-i="1"]');
   await page.waitForSelector('#inv [data-a="allongeFaire"]');
   assert.equal(await fin(), finAvant);
   await page.locator('#inv [data-a="supprPret"][data-i="1"]').click();
@@ -375,13 +377,13 @@ test('un seul crédit pour deux biens : prêt partagé au prorata des prix, chaq
   const nouveau = async (nom, valeur, prix, loyer) => {
     await page.evaluate(() => { location.hash = '#investissements'; });
     await page.waitForSelector('#inv .invhead');
-    await page.click('#inv [data-a="ajout"]');
+    await cliquer(page, '#inv [data-a="ajout"]');
     await page.waitForSelector('#inv_titre');
     await champ('nom', nom); await champ('valeur', valeur); await champ('achat.prix', prix); await champ('location.loyer', loyer);
   };
   await nouveau('T2 Vendeur', 110000, 100000, 500);
   await nouveau('T3 Vendeur', 160000, 150000, 700);
-  await page.click('#inv [data-a="ajoutPret"]');
+  await cliquer(page, '#inv [data-a="ajoutPret"]');
   await champ('prets.0.montant', 250000); await champ('prets.0.taux', 3.5); await champ('prets.0.duree', 240); await champ('prets.0.debut', mois(-12));
   const M = pmt(250000, 3.5, 240);
   const boutonT2 = page.locator('#inv .partage [data-a="partagePret"]', {hasText: 'T2 Vendeur'});
@@ -398,12 +400,13 @@ test('un seul crédit pour deux biens : prêt partagé au prorata des prix, chaq
   await attendreCompte(() => (p => p && p.partage && p.partage[0].part === 40)((bienDuCompte('T3 Vendeur') || {prets: []}).prets[0]));
   // Fiche du T2 : sa part du prêt, en lecture
   await ouvrirFiche('T2 Vendeur');
+  await cliquer(page, '#inv .sous-fiche [data-ong="credit"]');
   const recu = await page.locator('#inv .pret.recu').innerText();
   assert.match(recu, /commun avec\s*T3 Vendeur/i); assert.match(recu, /Part de ce bien\s*\n\s*40 %/i);
   assert.equal(nombre(await kpi('Cash-flow')), Math.round(500 - M * 0.4));
   assert.ok(Math.abs(nombre(await kpi('Restant dû')) * 1000 - crd * 0.4) < 600, 'restant dû de T2 : 40 %');
   // Liste : étiquette sur les deux cartes
-  await page.click('#inv a.retour');
+  await cliquer(page, '#inv a.retour');
   assert.match(await carteBien('T2 Vendeur').innerText(), /Crédit commun avec T3 Vendeur/i);
   assert.match(await carteBien('T3 Vendeur').innerText(), /Crédit commun avec T2 Vendeur/i);
   // Part changée à la main, puis le T2 retiré du prêt
@@ -414,7 +417,7 @@ test('un seul crédit pour deux biens : prêt partagé au prorata des prix, chaq
   await page.locator('#inv .partage [data-a="partagePret"]', {hasText: 'T2 Vendeur'}).click();
   await page.waitForSelector('#inv .part-porteur', {state: 'detached'});
   assert.equal(nombre(await kpi('Cash-flow')), Math.round(700 - M));
-  for (const nom of ['T2 Vendeur', 'T3 Vendeur']) { await ouvrirFiche(nom); await page.click('#inv [data-a="supprimer"]'); await page.waitForSelector('#inv .invhead'); }
+  for (const nom of ['T2 Vendeur', 'T3 Vendeur']) { await ouvrirFiche(nom); await cliquer(page, '#inv [data-a="supprimer"]'); await page.waitForSelector('#inv .invhead'); }
   await attendreCompte(c => !c.biens.some(b => /Vendeur/.test(b.nom)), 'biens du test supprimés');
 });
 
@@ -422,7 +425,7 @@ test('rachat de crédit : simulation modifiable (taux, durée, frais, renégocia
   await ouvrirFiche('Studio Test');
   const res = () => page.locator('[data-rachat="0"]').innerText();
   assert.match(await page.locator('[data-resume="0"]').innerText(), /Aux taux d'aujourd'hui/i);
-  await page.click('#inv [data-a="rachatOuvrir"][data-i="0"]');
+  await cliquer(page, '#inv [data-a="rachatOuvrir"][data-i="0"]');
   await page.waitForSelector('#inv [data-p="prets.0.rachat.taux"]');
   assert.doesNotMatch(await page.locator('[data-resume="0"]').innerText(), /Aux taux d'aujourd'hui/i);   // remplacé par la simulation
   const bouton = (cible, l) => page.locator(`#inv [data-a="segChoix"][data-cible="${cible}"]`, {hasText: l});
@@ -444,7 +447,7 @@ test('rachat de crédit : simulation modifiable (taux, durée, frais, renégocia
   await bouton('inv_prets_0_rachat_finance', 'Ajoutés').click();
   await page.waitForFunction(() => /Frais ajoutés au nouveau prêt/i.test(document.querySelector('[data-rachat="0"]').innerText));
   await attendreCompte(() => (r => r && r.ouvert && r.taux === 2 && r.duree === 120 && r.mode === 'reneg' && r.finance === '1')(bienDuCompte('Studio Test').prets[0].rachat));
-  await page.click('#inv [data-a="rachatFermer"]');
+  await cliquer(page, '#inv [data-a="rachatFermer"]');
   await page.waitForSelector('#inv [data-p="prets.0.rachat.taux"]', {state: 'detached'});
   assert.match(await page.locator('[data-resume="0"]').innerText(), /Aux taux d'aujourd'hui/i);
 });
@@ -459,7 +462,7 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   let c = await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Projet Lyon 45'));
   const n = c.projets.length, pr = c.projets.find(x => x.nom === 'Projet Lyon 45');
   assert.equal(pr.finance.prix, Math.round(e.prix));
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const carte = page.locator('#pj .pj', {hasText: 'Projet Lyon 45'});
   await carte.locator('[data-a="financer"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
@@ -468,7 +471,7 @@ test('Mes projets : enregistré depuis Financer, rouvert, mis à jour (pas de do
   await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => c.projets.find(x => x.id === pr.id).finance.apport === 40000, 'projet mis à jour');
   assert.equal(c.projets.length, n);
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   assert.ok(c.projets.find(x => x.id === pr.id).resume.mois, 'détail du mois enregistré (comparaison des options)');
   await carte.locator('.pj-chiffres').waitFor();
   // les trois chiffres des tuiles de Financer
@@ -484,7 +487,7 @@ test('Estimer : « Enregistrer mon estimation » range l\'estimation dans Mes pr
   await estimer(page, {surf: 52});
   await page.fill('#est_nom', 'Estimation 52 m²');
   await page.click('#est_enreg');
-  await page.waitForFunction(() => /Enregistré dans/.test(document.getElementById('sauveEst').innerText));
+  await page.waitForFunction(() => /Gardée dans/.test(document.getElementById('sauveEst').innerText));
   const pr = (await attendreCompte(c => c.projets.some(x => x.nom === 'Estimation 52 m²'))).projets.find(x => x.nom === 'Estimation 52 m²');
   assert.equal(pr.finance.surf, 52); assert.ok(pr.recherche && pr.recherche.surf === 52);
   assert.equal(await onglet(), 'estimation');                        // on reste sur Estimer
@@ -492,13 +495,17 @@ test('Estimer : « Enregistrer mon estimation » range l\'estimation dans Mes pr
 
 test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option du même projet, pas comme nouveau projet', async () => {
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
-  await page.click('.tabs [data-tab="projets"]');
+  // L'estimation gardée seule est d'abord financée et enregistrée : un projet financé peut avoir des options
+  await page.evaluate(id => { ouvrirProjet(id, 'cashflow'); CF_APP.etape(4); }, pr.id);
+  await cliquer(page, '#cf_enreg');
+  await page.waitForFunction(id => !PROJETS.liste.find(x => x.id === id).estimationSeule, pr.id);
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   await page.evaluate(id => document.querySelector(`#pj [data-id="${id}"] [data-a="estimer"], #pj [data-a="estimer"][data-id="${id}"]`).click(), pr.id);
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation' && state.loyerHC);
   // même en-tête que Financer : le projet, puis les 4 étapes (« Le bien » ouverte)
   await page.waitForFunction(() => !document.getElementById('est_tete').hidden);
-  assert.match(await page.locator('#est_tete .bienbar').innerText(), /Mes projets › Estimation 52 m²/);
-  assert.equal(await page.locator('#est_tete [aria-current="step"]').innerText(), '1\nLe bien');
+  assert.match(await page.locator('#est_tete .bienbar').innerText(), /Mes biens › Estimation 52 m²/);
+  assert.equal(await page.locator('#simEtapes [aria-current="step"]').innerText(), '1\nLe bien');
   assert.match(await page.locator('#sauveEst').innerText(), /Mettre à jour l'estimation dans « Estimation 52 m² »/);
   await travaux(page, 'diviser');
   await page.click('#w_calc');
@@ -519,36 +526,36 @@ test('« Revoir l\'estimation » puis travaux (division) : ajoutés comme option
   assert.equal(+await page.inputValue('#cf_debutLoyer2'), 24 + pj.duree + 1);
   // Rangement pour les tests suivants : option retirée, projet refermé
   await page.evaluate(() => { const o = PROJETS.liste.find(x => x.branche === 'Division'); PROJETS.supprimer(o.id); deplier(o.groupe, false); fixerProjet(null); });
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await travaux(page, 'non');
 });
 
 test('projet en cours : en haut d\'Estimer et de Financer, gardé au rechargement, pas quitté en changeant d\'adresse, quitté d\'un clic', async () => {
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   await page.locator('#pj .pj', {hasText: 'Estimation 52 m²'}).locator('[data-a="financer"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.waitForSelector('#cf_fil:not([hidden])');
-  assert.match(await page.locator('#cf_fil').innerText(), /Mes projets › Estimation 52 m²/);
+  assert.match(await page.locator('#cf_fil').innerText(), /Mes biens › Estimation 52 m²/);
   // rechargement : toujours dans le projet
   await page.goto(`${require('./banc').ORIGINE}/app/index.html#cashflow`);
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow' && /Estimation 52 m²/.test(document.getElementById('cf_fil').innerText), null, {timeout: 10000});
   // Estimer : le projet est en haut ; une autre adresse ne fait pas sortir du projet, mais c'est dit
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await page.waitForFunction(() => /Estimation 52 m²/.test(document.getElementById('est_tete').innerText));
   await page.evaluate(() => { const r = PROJETS.liste.find(x => x.nom === 'Estimation 52 m²').recherche; state.prix = null; reprendre({...r, lat: r.lat + 0.003, lon: r.lon + 0.003, label: 'Autre adresse'}); });
   await page.waitForFunction(() => state.prix != null && state.loyerHC != null && /n'est pas celle du projet/.test(document.getElementById('est_tete').innerText), null, {timeout: 20000});
-  assert.match(await page.locator('#sauveEst').innerText(), /Enregistrer comme nouveau projet/i);
+  assert.match(await page.locator('#sauveEst').innerText(), /Garder comme nouvelle estimation/i);
   await page.click('#est_financer');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   assert.match(await page.locator('#cf_fil').innerText(), /Estimation 52 m²[\s\S]*pas celui du projet/);
   assert.equal(await page.evaluate(() => projetCourantId), pr.id);
   assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer comme nouveau projet');
   // retour au bien du projet : son estimation se met de nouveau à jour
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   await page.click('#est_revoir');
   await page.waitForSelector('#est_maj', {timeout: 20000});
-  await page.click('.tabs [data-tab="cashflow"]');
+  await page.evaluate(() => { aNavigue = true; showTab('cashflow'); });
   assert.doesNotMatch(await page.locator('#cf_fil').innerText(), /pas celui du projet/);
   assert.equal(await page.locator('#cf_enreg').innerText(), 'Mettre à jour « Estimation 52 m² »');
   // quitter le projet : plus de fil d'Ariane, Enregistrer créera un nouveau projet
@@ -556,9 +563,9 @@ test('projet en cours : en haut d\'Estimer et de Financer, gardé au rechargemen
   assert.equal(await page.locator('#cf_fil').isHidden(), true);
   assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer dans mes projets');
   assert.equal(await page.evaluate(() => projetCourantId), null);
-  await page.click('.tabs [data-tab="estimation"]');
+  await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   assert.equal(await page.locator('#est_tete').isHidden(), true);
-  assert.match(await page.locator('#sauveEst').innerText(), /Enregistrer dans Mes projets/i);
+  assert.match(await page.locator('#sauveEst').innerText(), /Garder l'estimation/i);
 });
 
 test('options d\'un projet : même bien partout ; son estimation revue (même à côté sur la carte) se met à jour dans toutes', async () => {
@@ -598,7 +605,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.fill('#cf_nomProjet', 'Lot B');
   await cliquer(page, '#cf_enregNouveau');
   await attendreCompte(c => (c.projets || []).some(x => x.nom === 'Lot B'));
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
   // « Ajouter un bien (un seul crédit) » dans le menu du 1er projet : le bien du 2e le rejoint
   const ajouterBien = async (a, b) => {
@@ -624,7 +631,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   // Le projet regroupé remplace les deux (pas trois fois les mêmes biens dans la liste)
   let c = await attendreCompte(c => !c.projets.some(x => x.nom === 'Lot A' || x.nom === 'Lot B'), 'projets d\'origine remplacés');
   assert.equal(c.projets.filter(x => x.nom === 'Lot A + Lot B').length, 1);
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const carte = page.locator('#pj .pj', {hasText: 'Lot A + Lot B'});
   assert.match(await carte.innerText(), /un seul crédit/i);
   // « Estimation 1 » et « Estimation 2 » : l'estimation de chaque bien dans Estimer, sans toucher au projet regroupé
@@ -641,19 +648,19 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   assert.match(await page.locator('#est_msg').innerText(), /Estimation mise à jour/);
   assert.equal(await page.evaluate(() => PROJETS.liste.length), nbAvant);
   assert.equal(await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Lot A + Lot B').estimations[1].surf), 45);
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   // « Séparer » : les deux projets reviennent, le projet regroupé part
   await carte.locator('.pj-menu summary').click();
   await carte.locator('[data-a="separer"]').click();
   c = await attendreCompte(c => !c.projets.some(x => x.nom === 'Lot A + Lot B') && ['Lot A', 'Lot B'].every(n => c.projets.some(x => x.nom === n)), 'projets séparés');
   assert.equal(c.projets.find(x => x.nom === 'Lot B').finance.prix, 120000);
   // Projet regroupé qui a perdu ses deux projets d'origine : on choisit ses deux estimations, gardées dans le compte
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   await ajouterBien('Lot A', 'Lot B');
   await page.click('#pj [data-a="bienGarder"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
   await page.evaluate(() => { const p = PROJETS.liste.find(x => x.nom === 'Lot A + Lot B'); delete p.regroupe; PROJETS.enregistrer(); });
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   assert.equal(await carte.locator('[data-a="estimerN"]').count(), 0);
   await carte.locator('.pj-menu summary').click();
   await carte.locator('[data-a="estChoisir"]').click();
@@ -669,7 +676,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
   await page.waitForFunction(() => document.body.dataset.onglet === 'estimation');
   assert.equal(await page.inputValue('#surf'), '45');
   // Carte d'un projet à deux biens : pas la phrase « un seul crédit pour « A » et « B » »
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   assert.doesNotMatch(await carte.innerText(), /un seul crédit pour/i);
   assert.match(await carte.innerText(), /Deux biens, un seul crédit · 90 m² en tout/i);
   // Ancien regroupement sans ses deux projets, qui sont revenus à côté (doublon) : le refaire le remplace
@@ -687,7 +694,7 @@ test('Mes projets : deux projets financés par un seul crédit', async () => {
 });
 
 test('ancien projet à deux biens (format d\'avant la liste de biens) : repris avec ses deux biens nommés, total inchangé', async () => {
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const avant = await page.evaluate(() => {
     const f = {...PROJETS.liste[0].finance, nomBien: undefined, prix: 220000, loyer: 1700, tf: 900, copro: 0, prixB2: 80000, loyerB2: 750, tfB2: 400, coproB2: 0, ouverts: {bien2: true}};
     delete f.biensPlus; delete f.nomBien;
@@ -706,22 +713,22 @@ test('ancien projet à deux biens (format d\'avant la liste de biens) : repris a
   assert.equal(await page.inputValue('#cf_nomBien'), 'Route de San Gaetano');
   assert.equal(+await page.inputValue('#cf_tf'), 900);
   assert.equal(+await page.locator('#cf_biensPlus [data-i="0"] [data-k="tf"]').inputValue(), 400);
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   await carte.locator('.pj-menu summary').click(); await carte.locator('[data-a="suppr"]').click();
 });
 
 test('« + Ajouter un bien » à une adresse, puis « Estimer ce bien » : même estimation que l\'onglet Estimer', async () => {
   await page.evaluate(() => { saved = {}; try { localStorage.setItem('criteres-v2', '{}'); } catch (e) {} syncForm(); fillOptions(); });   // critères par défaut, comme la fiche neuve
   const e = await estimer(page, {surf: 52});
-  await page.click('.tabs [data-tab="investissements"]');
+  await page.evaluate(() => { aNavigue = true; showTab('investissements'); });
   await page.evaluate(() => { location.hash = '#investissements'; });
-  await page.click('#inv [data-a="ajout"]');
+  await cliquer(page, '#inv [data-a="ajout"]');
   await page.waitForSelector('#inv_titre');
   await page.fill('#inv [data-p="adresse"]', '12 rue de la République Lyon');
   await page.waitForSelector('#inv_sugg li[data-k]');
   await page.dispatchEvent('#inv_sugg li[data-k="0"]', 'mousedown');
   await champ('surface', 52);
-  await page.click('#inv [data-a="estimerAuto"]');
+  await cliquer(page, '#inv [data-a="estimerAuto"]');
   await page.waitForFunction(() => /Estimé le/i.test((document.getElementById('inv_auto') || {}).innerText || ''), null, {timeout: 60000});
   const nom = await page.locator('#inv_titre').innerText();
   const b = (await attendreCompte(() => (bienDuCompte(nom) || {}).estimation)).biens.find(x => x.nom === nom);
@@ -733,11 +740,11 @@ test('logement de la famille : à part du cash-flow locatif (tuiles, carte), pui
   await page.evaluate(() => { location.hash = '#investissements'; });
   await page.waitForSelector('#inv .invhead');
   const avant = nombre(await kpi('Cash-flow', '#inv .kpis.six'));
-  await page.click('#inv [data-a="ajout"]');
+  await cliquer(page, '#inv [data-a="ajout"]');
   await page.waitForSelector('#inv_titre');
   await champ('nom', 'Maison Famille'); await champ('valeur', 300); await champ('location.statut', 'rp'); await champ('chargesAn.tf', 1200);
   await page.waitForFunction(() => /Coût\s*\n\s*100 €/i.test(document.getElementById('inv_kpis').innerText));                                     // taxe foncière ÷ 12, pas un cash-flow
-  await page.click('#inv a.retour'); await page.waitForSelector('#inv .invhead');   // la liste, pas les tuiles de la fiche
+  await cliquer(page, '#inv a.retour'); await page.waitForSelector('#inv .invhead');   // la liste, pas les tuiles de la fiche
   await page.waitForFunction(() => /Logement famille/i.test(document.querySelector('#inv .kpis.six').innerText));
   const t = await page.locator('#inv .kpis.six').innerText();
   assert.equal(nombre(t.match(/Cash-flow locatif\s*\n\s*([^\n]+)/i)[1]), avant);   // les investissements ne bougent pas
@@ -745,7 +752,7 @@ test('logement de la famille : à part du cash-flow locatif (tuiles, carte), pui
   assert.equal(nombre(t.match(/total\s+([^\n]+)/i)[1]), avant - 100);
   assert.match(await carteBien('Maison Famille').innerText(), /Coût\s*\n\s*100 €\/mois/i);
   await ouvrirFiche('Maison Famille');
-  await page.click('#inv [data-a="supprimer"]');
+  await cliquer(page, '#inv [data-a="supprimer"]');
   await page.waitForSelector('#inv .invhead');                                          // la liste, pas les tuiles de la fiche
   await page.waitForFunction(() => !/Logement famille/i.test(document.querySelector('#inv .kpis.six').innerText));
   assert.match(await page.locator('#inv .kpis.six').innerText(), /Cash-flow\s*\n/i);
@@ -772,7 +779,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   const id = nom => page.evaluate(n => PROJETS.liste.find(x => x.nom === n).id, nom);
   const ids = [await id('Gaetano division'), await id('Gaetano garage')];
   // « Déplacer dans un projet » (menu de « Gaetano garage ») : le projet à la même adresse est proposé en tête, puis renommé
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const garage = page.locator(`#pj article.pj[data-id="${ids[1]}"]`);
   await garage.locator('.pj-menu summary').click();
   await garage.locator('[data-a="pjDeplacer"]').click();
@@ -859,7 +866,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await page.fill('#cf_nomProjet', 'Division');
   await cliquer(page, '#cf_enreg');
   c = await attendreCompte(c => (c.projets.find(x => x.id === nDiv) || {}).branche === 'Division', 'nom remis');
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   // Replié : nom, nombre d'options, les autres en petit et la meilleure en gros ; gardé sur l'appareil ; « Tout déplier » le rouvre
   await carte.locator('.pj-plier-zone').click();
   await page.locator('#pj .pj-groupe.replie', {hasText: 'San Gaetano'}).waitFor();
@@ -887,7 +894,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano').length === 4, 'option ajoutée depuis Financer');
   assert.equal(c.projets.find(x => x.branche === 'Option 4').finance.loyer, 700);
   assert.equal(c.projets.find(x => x.branche === 'Option 3').finance.loyer, 1900);
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   assert.equal(await carte.locator('.pj-opt-act').count(), 4);
   assert.equal(await carte.locator('.pj-compare thead th').count(), 5);
   assert.match(await carte.locator('.pj-compare').innerText(), /« Option 3 » te laisse le plus par mois/i);
@@ -909,7 +916,11 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
 
 test('dossier de financement : PDF de deux pages (le projet, ce qu\'il rapporte, puis le coût et le prêt), depuis Mes projets et Financer', async () => {
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
-  await page.click('.tabs [data-tab="projets"]');
+  // Une estimation gardée seule n'a pas de dossier : on la finance et on l'enregistre d'abord
+  await page.evaluate(id => { ouvrirProjet(id, 'cashflow'); CF_APP.etape(4); }, pr.id);
+  await cliquer(page, '#cf_enreg');
+  await page.waitForFunction(id => !PROJETS.liste.find(x => x.id === id).estimationSeule, pr.id);
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   assert.equal(await telecharger(page.locator(`#pj article.pj[data-id="${pr.id}"] .pj-actions [data-a="recap"]`)), 'Dossier de financement - Estimation 52 m2.pdf');
   const rc = await page.evaluate(() => document.getElementById('recap').textContent);
   assert.equal(await page.locator('#recap .rc-page').count(), 2);
@@ -929,7 +940,7 @@ test('dossier de financement : PDF de deux pages (le projet, ce qu\'il rapporte,
 
 test('« J\'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (prix, frais, crédit, loyer), liée dans les deux sens', async () => {
   const pr = await page.evaluate(() => PROJETS.liste.find(x => x.nom === 'Estimation 52 m²'));
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   const carte = page.locator(`#pj article.pj[data-id="${pr.id}"]`);
   await carte.locator('.pj-menu summary').click();
   await page.evaluate(() => { window.confirmAvant = window.confirm; window.confirm = () => true; });
@@ -948,16 +959,14 @@ test('« J\'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (p
   assert.equal(b.prets[0].duree, pr.finance.duree * 12); assert.equal(b.prets[0].taux, pr.finance.taux);
   assert.equal(+await page.inputValue('#inv [data-p="achat.prix"]'), Math.round(pr.finance.prix));
   // La fiche ramène au projet (dans Financer)
-  await page.click('#inv [data-a="voirProjet"]');
+  await cliquer(page, '#inv [data-a="voirProjet"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow' && /Estimation 52 m²/.test(document.getElementById('cf_fil').innerText));
-  // Le projet reste dans Mes projets, marqué acheté, et mène à la fiche ; plus de « J'ai acheté »
-  await page.click('.tabs [data-tab="projets"]');
-  await carte.locator('.pj-achete').waitFor();
-  assert.equal(await carte.locator('[data-a="achete"]').count(), 0);
-  await page.fill('#pj_cherche', 'acheté');
-  await page.waitForFunction(() => [...document.querySelectorAll('#pj .pj-trouve')].filter(z => !z.hidden).length === 1);
-  await page.fill('#pj_cherche', '');
-  await carte.locator('.pj-achete').click();
+  // Acheté, le bien quitte « En projet » : il vit dans « Détenus » (sa fiche garde le lien vers la simulation)
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
+  assert.equal(await carte.count(), 0, 'plus dans En projet');
+  assert.match(await page.locator('#pj .seg-biens').innerText(), /Détenus\s*[1-9]/);
+  await page.evaluate(() => { aNavigue = true; showTab('investissements'); });
+  await page.locator('#inv a.bien', {hasText: 'Estimation 52 m²'}).first().click();
   await page.waitForFunction(() => (document.getElementById('inv_titre') || {}).textContent === 'Estimation 52 m²');
 });
 
@@ -971,6 +980,6 @@ test('déconnexion : Mon patrimoine et Mes projets se ferment, rien ne reste sur
   // Reconnexion : tout revient du compte
   await seConnecter(page, EMAIL, MDP, false);
   await page.waitForFunction(() => PROJETS.liste.length > 0);
-  await page.click('.tabs [data-tab="investissements"]');
+  await page.evaluate(() => { aNavigue = true; showTab('investissements'); });
   await page.waitForSelector('#inv a.bien >> text=Studio Test');
 });

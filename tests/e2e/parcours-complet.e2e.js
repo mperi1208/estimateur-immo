@@ -40,7 +40,7 @@ test('enregistrer le projet, puis une option sans travaux', async () => {
 });
 
 test('dossier pour la banque : l\'utilisateur choisit l\'option détaillée, l\'appli n\'en désigne pas une « meilleure »', async () => {
-  await page.click('.tabs [data-tab="projets"]');
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
   assert.ok(await page.locator('#pj .pj-carte .risque').count() >= 2, 'une note de risque par option');
   const menu = page.locator('#pj details.pj-dossier').first();
   await menu.locator('summary').click();

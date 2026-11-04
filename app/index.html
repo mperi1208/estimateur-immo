@@ -55,6 +55,7 @@ h1{font-size:20px;margin:0 0 2px}
   #cf_save:has(#cf_saveInvite:not([hidden])) #cf_plus{display:none}
   #cf_save:not(.ouvert) #cf_saveForm>:not(#cf_enreg):not(#cf_saveMsg){display:none}
   #cf:not([data-etape="4"]) #cf_save:not(.ouvert) #cf_saveForm{display:none}
+  #cf_save:not(.ouvert) #cf_enreg{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 .sauveEst .hint a{color:#7CD4AE}
 /* Estimer rouvert depuis un projet : même en-tête que Financer (projet › option, les 4 étapes) */
@@ -280,6 +281,17 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-menu-l button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;font-weight:400}
 .invwrap .pj-menu-l button:hover{background:var(--accent-soft)}
 .invwrap .pj-menu-l button.danger{color:var(--bad)}
+.invwrap .sous-fiche{display:flex;gap:4px;margin:4px 0 16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.invwrap .sous-fiche button{flex:0 0 auto;border:0;background:none;padding:10px 14px;font:inherit;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;border-radius:0}
+.invwrap .sous-fiche button[aria-current]{color:var(--ink);border-bottom-color:var(--ink)}
+.invwrap .seg-biens{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);margin:0 0 16px}
+.invwrap .seg-biens a{padding:9px 16px;text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center}
+.invwrap .seg-biens a b{font-size:12px;background:var(--bg);border-radius:99px;padding:1px 8px;color:inherit}
+.invwrap .seg-biens a[aria-current]{background:var(--ink);color:#fff}
+.invwrap .seg-biens a[aria-current] b{background:rgba(255,255,255,.18)}
+.sauveEst button.garder{background:#fff;color:var(--ink);border-color:#fff}
+.sauveEst .court{display:none}
+@media (max-width:600px){.sauveEst .long{display:none}.sauveEst .court{display:inline}.sauveEst button.garder{flex:0 0 auto;padding:10px 14px}}
 .risque{display:inline-flex;align-items:flex-end;gap:2px;flex:0 0 auto;margin-left:auto;cursor:help}
 .risque i{display:block;width:5px;border-radius:1.5px;background:var(--line)}
 .risque i:nth-child(1){height:6px}.risque i:nth-child(2){height:9px}.risque i:nth-child(3){height:12px}.risque i:nth-child(4){height:15px}.risque i:nth-child(5){height:18px}
@@ -735,12 +747,16 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 :is(#cf, #est_tete) .fil .fil-x{width:auto;min-height:0;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 12px;font:inherit;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer}
 :is(#cf, #est_tete) .fil .fil-x:first-of-type{margin-left:auto}
 :is(#cf, #est_tete) .fil .fil-x:hover{background:var(--bg)}
-:is(#cf, #est_tete) .cf-etapes{display:flex;gap:4px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
-:is(#cf, #est_tete) .cf-etapes button{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:12px 16px;border:0;border-radius:12px 12px 0 0;background:none;color:#344054;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
-:is(#cf, #est_tete) .cf-etapes button i{font-style:normal;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:13px;background:#E8ECF2;color:#344054}
-:is(#cf, #est_tete) .cf-etapes button:hover{background:var(--bg)}
-:is(#cf, #est_tete) .cf-etapes button[aria-current="step"]{background:var(--ink);color:#fff}
-:is(#cf, #est_tete) .cf-etapes button[aria-current="step"] i{background:#fff;color:var(--ink)}
+:is(#cf, #est_tete, #simTete) .cf-etapes{display:flex;gap:4px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
+.sim-tete{background:var(--panel);border-bottom:1px solid var(--line);padding:0 max(16px, calc((100% - 1200px) / 2 + 24px))}
+.sim-tete .cf-etapes{margin-top:8px}
+#cf_etapes{display:none!important}
+#cf[data-etape="2"] .etape[data-etape="1"]{display:flex}
+:is(#cf, #est_tete, #simTete) .cf-etapes button{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:12px 16px;border:0;border-radius:12px 12px 0 0;background:none;color:#344054;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+:is(#cf, #est_tete, #simTete) .cf-etapes button i{font-style:normal;width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:13px;background:#E8ECF2;color:#344054}
+:is(#cf, #est_tete, #simTete) .cf-etapes button:hover{background:var(--bg)}
+:is(#cf, #est_tete, #simTete) .cf-etapes button[aria-current="step"]{background:var(--ink);color:#fff}
+:is(#cf, #est_tete, #simTete) .cf-etapes button[aria-current="step"] i{background:#fff;color:var(--ink)}
 #cf .cfwrap{flex:1;width:100%;max-width:1200px;margin:0 auto;padding:24px 24px 32px}
 #cf aside{background:none;border:0;padding:0;overflow:visible;height:auto}
 #cf .etape{display:none;flex-direction:column;gap:18px}
@@ -1133,8 +1149,8 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   #estim .sauveEst .sauve-ligne > button{flex:1 1 0;min-width:0;padding:9px 10px;font-size:14px;line-height:1.2}
   #estim .sauveEst .hint{font-size:12.5px}
   /* Étapes : seul le nom de l'étape en cours est écrit, les autres gardent leur numéro */
-  :is(#cf, #est_tete) .cf-etapes button:not([aria-current]){font-size:0;gap:0;padding:12px 10px}
-  :is(#cf, #est_tete) .cf-etapes button:not([aria-current]) i{font-size:13px}
+  :is(#cf, #est_tete, #simTete) .cf-etapes button:not([aria-current]){font-size:0;gap:0;padding:12px 10px}
+  :is(#cf, #est_tete, #simTete) .cf-etapes button:not([aria-current]) i{font-size:13px}
 }
 @media (max-width:700px){
   /* Financer : nom du projet sur une ligne, puis « Enregistrer » et « Étape suivante » côte à côte */
@@ -1149,12 +1165,13 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 <body>
 <nav class="tabs" role="tablist">
   <span class="brand">Patrimoniu</span>
-  <button role="tab" data-tab="investissements" data-prive aria-selected="false"><span class="long">Mon patrimoine</span><span class="court">Patrimoine</span></button>
-  <button role="tab" data-tab="projets" data-prive aria-selected="false"><span class="long">Mes projets</span><span class="court">Projets</span></button>
-  <button role="tab" data-tab="estimation" aria-selected="true">Estimer</button>
-  <button role="tab" data-tab="cashflow" aria-selected="false">Financer</button>
+  <button role="tab" data-tab="estimation" data-groupe="simuler" aria-selected="true">Simuler</button>
+  <button role="tab" data-tab="investissements" data-groupe="biens" data-prive aria-selected="false">Mes biens</button>
   <div class="compte"><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog"><span class="long">Se connecter</span><span class="court">Connexion</span></button></div>
 </nav>
+<div class="sim-tete" id="simTete" hidden><nav class="cf-etapes" id="simEtapes" aria-label="Étapes de la simulation">
+  <button data-e="1"><i>1</i>Le bien</button><button data-e="2"><i>2</i>Travaux et loyers</button><button data-e="3"><i>3</i>Le crédit</button><button data-e="4"><i>4</i>Le résultat</button>
+</nav></div>
 <dialog id="compteDlg" aria-label="Compte">
   <form method="dialog" class="fermer"><button aria-label="Fermer">✕</button></form>
   <div id="compteBody"></div>
@@ -2822,8 +2839,8 @@ function contexteProjet() {
 }
 // L'estimation à l'écran est celle du bien du projet : « Mettre à jour » la remplace dans le projet
 const revueEnCours = () => { const c = contexteProjet(), rc = c && c.cible && rechercheCourante(); return rc && memeBien(rc, c.cible) ? {...c, rc: {...rc, bien: c.cible.bien || nouvelIdBien()}} : null; };
-const filProjet = (pr, bien) => `<a href="#projets">Mes projets</a> › <b>${esc(pr.nom)}</b>${pr.groupe && typeof branchesDe === 'function' && branchesDe(pr).length > 1 ? ` › option <b>${esc(nomBranche(pr))}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''}`;
-function quitterProjet() { fixerProjet(null); fixerRevue(null); if (window.CF_APP) CF_APP.quitter(); majSauveEst(); }
+const filProjet = (pr, bien) => `<a href="#projets">Mes biens</a> › <b>${esc(pr.nom)}</b>${pr.groupe && typeof branchesDe === 'function' && branchesDe(pr).length > 1 ? ` › option <b>${esc(nomBranche(pr))}</b>` : ''}${bien ? ` › ${esc(bien)}` : ''}`;
+function quitterProjet() { fixerProjet(null); fixerRevue(null); if (window.CF_APP) CF_APP.quitter(); if (window.majEtapesSim && typeof voirFinance === 'function') voirFinance(false); majSauveEst(); }
 const ETAPES = ['Le bien', 'Travaux et loyers', 'Le crédit', 'Le résultat'];
 function majTeteEst() {
   const el = document.getElementById('est_tete'); if (!el) return;
@@ -2831,9 +2848,7 @@ function majTeteEst() {
   if (!c) { el.innerHTML = ''; return; }
   const pr = c.pr, rv = revueEnCours(), rc = rechercheCourante();
   // Une autre adresse que celle du projet : on reste dans le projet, mais on le dit (l'enregistrer en fera un nouveau)
-  el.innerHTML = `<div class="bienbar fil"><span>${filProjet(pr, c.nomBien)}${rv ? ' · l\'estimation du bien' : ''}</span>${!rv && rc ? '<span class="fil-note">Cette adresse n\'est pas celle du projet : l\'enregistrer en fera un nouveau projet.</span>' : ''}${!rv && c.cible ? '<button type="button" class="fil-x" id="est_revoir">Revoir le bien du projet</button>' : ''}<button type="button" class="fil-x" id="est_quitter">Quitter le projet</button></div>
-    <nav class="cf-etapes" aria-label="Étapes du projet">${ETAPES.map((t, i) => `<button data-etape="${i + 1}"${i ? '' : ' aria-current="step"'}><i>${i + 1}</i>${t}</button>`).join('')}</nav>`;
-  el.querySelectorAll('button[data-etape]').forEach(b => b.onclick = () => { const k = +b.dataset.etape; if (k > 1) { ouvrirProjet(pr.id, 'cashflow'); CF_APP.etape(k); } });
+  el.innerHTML = `<div class="bienbar fil"><span>${filProjet(pr, c.nomBien)}${rv ? ' · l\'estimation du bien' : ''}</span>${!rv && rc ? '<span class="fil-note">Cette adresse n\'est pas celle du projet : l\'enregistrer en fera un nouveau projet.</span>' : ''}${!rv && c.cible ? '<button type="button" class="fil-x" id="est_revoir">Revoir le bien du projet</button>' : ''}<button type="button" class="fil-x" id="est_quitter">Quitter le projet</button></div>`;
   el.querySelector('#est_quitter').onclick = quitterProjet;
   const rev = el.querySelector('#est_revoir'); if (rev) rev.onclick = () => { reprendre(c.cible); setTimeout(() => map.invalidateSize(), 60); };
 }
@@ -2844,19 +2859,20 @@ function majSauveEst(msg) {
   const co = !!COMPTE.user || !COMPTE.actif(), rv = co && revueEnCours(), pj = state.projet;
   const nomBien = rv ? rv.nomBien : '';
   const nomTape = (document.getElementById('est_nom') || {}).value || '';
-  const financer = rv && pj ? `<button class="cta" id="w_option" onclick="ajouterOptionTravaux()">Ajouter comme option de « ${esc(rv.pr.nom)} » →</button>`
+  // Estimation gardée seule : pas encore de financement, donc rien à « ajouter comme option » : on la finance
+  const financer = rv && pj && !rv.pr.estimationSeule ? `<button class="cta" id="w_option" onclick="ajouterOptionTravaux()">Ajouter comme option de « ${esc(rv.pr.nom)} » →</button>`
     : pj ? `<button id="est_rev" onclick="financerBien('revente')" title="Financer : travaux puis revente">Travaux + revente</button><button class="cta blanc" id="est_loc" onclick="financerBien('location')" title="Financer : travaux puis location">Travaux + location →</button>`
     : `<button class="cta blanc" id="est_financer" onclick="financerBien()">${saisonActive() ? 'Financer en location saisonnière →' : 'Financer ce bien →'}</button>`;
   // Sur téléphone : un bouton principal et « ⋯ » pour le reste (les boutons « sec » se cachent derrière)
   const sec = h => h.replace(/<button( class="[^"]*")?/g, (m, c) => `<button class="sec${c ? ' ' + c.slice(8, -1) : ''}"`);
   const plus = '<button type="button" class="plus-barre" aria-label="Autres actions" aria-expanded="false">⋯</button>';
   el.innerHTML = rv
-    ? `<div class="sauve-ligne">${plus}<button class="cta" id="est_maj">Mettre à jour l'estimation dans « ${esc(rv.pr.nom)} »</button>${sec('<button id="est_nouveau">Nouveau projet</button>')}<span class="esp"></span>${sec(financer)}</div>
+    ? `<div class="sauve-ligne">${plus}<button class="cta${rv.pr.estimationSeule ? ' sec' : ''}" id="est_maj">Mettre à jour l'estimation dans « ${esc(rv.pr.nom)} »</button>${sec('<button id="est_nouveau">Nouveau projet</button>')}<span class="esp"></span>${rv.pr.estimationSeule ? financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"') : sec(financer)}</div>
        <div class="hint" id="est_msg">${msg || `Remplace l'estimation de${nomBien ? ` « ${esc(nomBien)} » dans` : ''} « ${esc(rv.pr.nom)} » par celle-ci. Ton financement (prix, loyers) ne change pas.`}</div>`
     : co
-    ? `<div class="sauve-ligne">${plus}<input class="sec" id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="sec cta" id="est_enreg">${contexteProjet() ? 'Enregistrer comme nouveau projet' : 'Enregistrer dans Mes projets'}</button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>
+    ? `<div class="sauve-ligne">${plus}<input class="sec" id="est_nom" placeholder="Nom du projet (facultatif)" aria-label="Nom du projet" value="${esc(nomTape)}"><button class="garder" id="est_enreg"><span class="long">${contexteProjet() ? 'Garder comme nouvelle estimation' : 'Garder l\'estimation'}</span><span class="court">Garder</span></button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>
        ${msg ? `<div class="hint" id="est_msg">${msg}</div>` : '<div class="hint" id="est_msg" hidden></div>'}`
-    : `<div class="sauve-ligne">${plus}<button class="sec cta" id="est_connexion">Se connecter pour enregistrer</button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>`;
+    : `<div class="sauve-ligne">${plus}<button class="garder" id="est_connexion" title="Connecte-toi pour garder l'estimation"><span class="long">Se connecter pour garder</span><span class="court">Garder</span></button><span class="esp"></span>${financer.replace('<button id="est_rev"', '<button class="sec" id="est_rev"')}</div>`;
   el.classList.remove('ouvert');
   el.querySelector('.plus-barre').onclick = e => { const o = el.classList.toggle('ouvert'); e.currentTarget.setAttribute('aria-expanded', String(o)); };
   const b = document.getElementById('est_enreg'); if (b) b.onclick = enregistrerEstimation;
@@ -2895,8 +2911,8 @@ function enregistrerEstimation() {
   const nom = document.getElementById('est_nom').value.trim();
   // Un projet à cette adresse existe déjà : on le dit, sans l'empêcher (c'est parfois voulu : autre façon de faire)
   const rc = rechercheCourante(), memes = rc ? PROJETS.liste.filter(x => !x.amenag && x.recherche && memeLieu(x.recherche, rc)) : [];
-  CF_APP.enregistrerEstimation(est, est.projet ? 'location' : null, nom);
-  majSauveEst('Enregistré dans <a href="#projets">Mes projets</a>. Tu peux en régler le financement dans l\'onglet Financer.'
+  CF_APP.enregistrerEstimation(est, est.projet ? 'location' : null, nom, true);   // estimation seule : pas de financement
+  majSauveEst('Gardée dans <a href="#projets">Mes biens</a>, en projet. Tu peux la financer quand tu veux.'
     + (memes.length ? ` Tu as déjà ${memes.length > 1 ? `${memes.length} projets` : 'un projet'} à cette adresse (« ${esc(memes[0].nom)} ») : pour comparer les deux façons de faire, regroupe-les dans <a href="#projets">Mes projets</a> (⋯ puis « Déplacer dans un projet »).` : ''));
 }
 function majRecentes() {
@@ -3366,7 +3382,7 @@ function sync(est, mode) {
     majSauvegarde(pr);
     return rendre();
   }
-  bar.innerHTML = `<b>${est.label}</b> · ${est.type === 'appart' ? 'appartement' : 'maison'} de ${est.surf} m²${est.meuble ? ' meublé' : ''} · prix estimé <b>${eur(est.prix)}</b> · loyer estimé <b>${eur(est.loyer)}</b> hors charges/mois${est.saison ? `, en saisonnier <b>${eur(est.saison.nuit)}</b> la nuit (${(z => occTexte(z.periode, z.occupation))(migrerSaison(est.saison))})` : ''}. <a href="#estimation">Modifier l'estimation</a>`;
+  bar.innerHTML = `<b>${esc(est.label)}</b> · ${est.surf} m² · estimé <b>${eur(est.prix)}</b> · loyer <b>${eur(est.loyer)}</b>${est.saison ? ` · ${eur(est.saison.nuit)} la nuit` : ''}`;   // une ligne : le détail est à l'étape 1
   let last = null;
   try { last = localStorage.getItem('cashflow-bien'); } catch (e) {}
   if (cle !== last) {
@@ -3405,7 +3421,7 @@ function sync(est, mode) {
     if (!flags.comptaManuel) set('compta', comptaDefaut(pj.meuble));
     sauver();
   }
-  if (est.projet) {
+  if (false) {   // le projet de travaux se voit à l'étape 2 (Travaux et loyers)
     const pj = est.projet;
     bar.innerHTML += `<br>Projet travaux : travaux <b>${eur(pj.travaux)}</b> (gamme ${GAMMES_CF[pj.gamme] || 'standard'})${pj.mobilier ? `, mobilier <b>${eur(pj.mobilier)}</b>` : ''}, valeur après travaux <b>${eur(pj.valeurApres)}</b>, loyer après travaux <b>${eur(pj.loyerApres)}</b>${pj.loyers && pj.loyers.length > 1 ? ` (${pj.loyers.map(eur).join(' + ')})` : ''} ${pj.meuble ? 'meublé' : 'vide'} hors charges/mois.`;
   }
@@ -4224,7 +4240,8 @@ function instantane(ex, recalcul) {
   }
   return {finance: etat(), resume};
 }
-function enregistrerProjet(nouveau, branche) {
+// seule : estimation gardée sans financement (« Garder l'estimation ») ; l'enregistrer depuis Financer en fait un projet complet
+function enregistrerProjet(nouveau, branche, seule) {
   const r = bienUtile && typeof rechercheCourante === 'function' ? rechercheCourante() : null;
   let ex = !nouveau && projetCourantId ? PROJETS.liste.find(x => x.id === projetCourantId) : null;
   if (ex && r && ex.recherche && !memeBien(r, ex.recherche)) ex = null;   // autre bien que le projet ouvert : nouveau projet
@@ -4237,7 +4254,7 @@ function enregistrerProjet(nouveau, branche) {
   if (ex && ex.amenag) inst.resume.amenag = ex.resume.amenag;   // aménagement d'un bien de Mon patrimoine : on garde le lien
   const meme = ex && !branche;   // nouvelle branche : même projet, autre identifiant
   const estimations = ex && (ex.estimations || (branche && ex.regroupe ? rechercheRegroupees(ex).map(x => x && x.recherche) : null));
-  const pr = {id: meme ? ex.id : nouvelId(), nom, maj: Date.now(), quand: meme ? ex.quand : new Date().toISOString(),
+  const pr = {id: meme ? ex.id : nouvelId(), nom, ...(seule ? {estimationSeule: true} : {}), maj: Date.now(), quand: meme ? ex.quand : new Date().toISOString(),
     recherche: r || (ex ? ex.recherche : null), bien: bienUtile ? cleEst(bienUtile) : ex ? ex.bien : '', finance: inst.finance, resume: inst.resume, ...(ex && ex.amenag ? {amenag: ex.amenag} : {}), ...(meme && ex.regroupe ? {regroupe: ex.regroupe, regroupeV: ex.regroupeV} : {}), ...(estimations ? {estimations} : {}),
     ...(branche && ex ? {groupe: assurerGroupe(ex), branche} : meme ? Object.fromEntries(['groupe', 'branche', 'nomAvant'].filter(k => ex[k]).map(k => [k, ex[k]])) : {}),
     ...(meme && opt && saisi ? {branche: saisi} : {})};
@@ -4306,11 +4323,11 @@ function versBien(pr) {
   });
 }
 // Depuis Estimer : Financer s'aligne sur l'estimation (et son projet de travaux), comme « Financer ce bien », puis on enregistre
-function enregistrerEstimation(est, mode, nom) {
+function enregistrerEstimation(est, mode, nom, seule) {
   figee = undefined;
   sync(est, mode);
   nomTouche = !!nom; if (nom) $('nomProjet').value = nom;
-  enregistrerProjet(true);   // toujours un nouveau projet : celui en revue se met à jour par « Mettre à jour l'estimation »
+  enregistrerProjet(true, undefined, seule);   // toujours un nouveau projet : celui en revue se met à jour par « Mettre à jour l'estimation »
 }
 // Depuis Mon patrimoine : aménager un espace d'un bien déjà à toi (sous-sol, combles…). Rien à acheter : le projet ne
 // compte que les travaux (financés par le crédit), avec le loyer et la valeur une fois aménagé. Financer n'est pas touché.
@@ -4528,7 +4545,7 @@ $('biensPlus').addEventListener('click', e => {
 $('tauxMarche').onclick = () => { flags.tauxManuel = false; set('taux', tauxConseille()); sauver(); rendre(); };
 // Les 4 étapes : toujours le même ordre ; la dernière ouverte est gardée
 function etape(n) {
-  n = Math.min(4, Math.max(1, Math.round(+n) || 1));
+  n = Math.min(4, Math.max(2, Math.round(+n) || 2));   // l'étape 1 de Simuler est l'estimation ; prix et charges en tête de l'étape 2
   const avant = CF.dataset.etape;
   CF.dataset.etape = n;
   $('save').classList.remove('ouvert'); $('plus').setAttribute('aria-expanded', 'false');
@@ -4536,6 +4553,7 @@ function etape(n) {
   $('suivant').hidden = n === 4;
   $('suivant').textContent = n === 3 ? 'Voir le résultat' : 'Étape suivante';
   try { localStorage.setItem('financer-etape', n); } catch (e) {}
+  if (window.majEtapesSim) majEtapesSim();
   if (avant !== String(n) && !CF.hidden) window.scrollTo({top: 0});
 }
 CF.querySelectorAll('#cf_etapes button').forEach(b => b.onclick = () => etape(b.dataset.etape));
@@ -4569,7 +4587,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=53fc5610"></script>
+<script src="investissements.js?v=f3d6c816"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -4956,8 +4974,16 @@ function cartePj(pr, sous, corps, boutons, br) {
     <div class="pj-bas"><span></span>
       <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
 }
+// Estimation gardée seule : le prix et le loyer, et de quoi la financer
+function carteEstimation(pr) {
+  const rc = pr.recherche || {}, r = pr.resume || {};
+  return `<article class="pj pj-est" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">Estimation · ${rc.type === '111' ? 'Maison' : 'Appart.'}${rc.surf ? ` ${rc.surf} m²` : ''}${rc.quand ? ` · ${dateP(rc.quand)}` : ''}</div></div></div>
+    <div class="pj-chiffres"><div><span>Il vaut environ</span><b>${eurP(rc.prix ?? r.prixEstime)}</b></div><div><span>Il se loue</span><b>${rc.loyer ? eurP(rc.loyer) + ' / mois' : '—'}</b></div></div>
+    <div class="pj-bas"><span></span><div class="pj-actions">${menuP(['<button data-a="estimer">Revoir l\'estimation</button>', '<button class="danger" data-a="suppr">Supprimer l\'estimation</button>'])}<button class="primaire" data-a="financer">Financer ce bien →</button></div></div></article>`;
+}
 function carteProjet(pr, br) {
   if (pr.amenag) return carteAmenagement(pr, br);
+  if (pr.estimationSeule && !br) return carteEstimation(pr);
   const r = pr.resume || {}, revente = r.scenario === 'revendre', deux = r.prixB2 != null;
   // Deux biens : pas la phrase « un seul crédit pour « A » et « B » », ni « Appartement de » pour la surface des deux additionnée
   const sous = [deux ? `${r.nbBiens > 2 ? r.nbBiens : 'Deux'} biens, un seul crédit` : r.label && r.label !== pr.nom && !br ? esc(r.label) : '', r.surf ? (deux ? `${r.surf} m² en tout` : `${r.type === 'maison' ? 'Maison' : 'Appart.'} ${r.surf} m²`) : '', usageP(r, revente), quiP(r)].filter(Boolean).join(' · ');
@@ -4977,7 +5003,7 @@ function carteProjet(pr, br) {
     deux && !pr.regroupe ? `<button data-a="estChoisir">${pr.estimations ? 'Changer les estimations' : 'Choisir les estimations'}</button>` : '',
     pr.regroupe ? '<button data-a="separer">Séparer en deux projets</button>' : '',
     br ? '' : '<button data-a="pjAjouterBien">Ajouter un bien (un seul crédit)…</button>', br ? '' : '<button data-a="pjDeplacer">Déplacer dans un projet…</button>',
-    !ficheAchat(pr) && !deux && !pr.regroupe && !(r.nbBiens > 1) ? '<button data-a="achete">J\'ai acheté ce bien → Mon patrimoine</button>' : ''].filter(Boolean);
+    !ficheAchat(pr) && !deux && !pr.regroupe && !(r.nbBiens > 1) ? '<button data-a="achete">Je l\'ai acheté → Détenus</button>' : ''].filter(Boolean);
   return cartePj(pr, sous, corps, boutons, br);
 }
 // Projet à un seul crédit : l'estimation de chacun des deux biens (choisie à la main, sinon celle des projets d'origine)
@@ -5328,18 +5354,30 @@ function filtrerProjets() {
   const rien = document.getElementById('pj_rien'); if (rien) { rien.hidden = !q || zs.some(z => !z.hidden); rien.textContent = `Aucun projet ne correspond à « ${chercheP.trim()} ».`; }
 }
 // ---------- fin des branches
+// Mes biens : « En projet » (estimations, simulations, options) et « Détenus » (Mon patrimoine). Un projet acheté
+// quitte « En projet » : sa fiche le remplace dans « Détenus » (elle garde le lien vers la simulation)
+const groupeAchete = (bs => bs.some(x => ficheAchat(x)));
+function projetsEnCours() {
+  const groupes = new Map(); PROJETS.liste.forEach(x => { const g = groupeDe(x); if (!groupes.has(g)) groupes.set(g, []); groupes.get(g).push(x); });
+  return [...groupes.values()].filter(bs => !groupeAchete(bs)).flat();
+}
+function segBiens(actif) {
+  const n1 = new Set(projetsEnCours().map(groupeDe)).size, n2 = window.INV && INV.nbDetenus ? INV.nbDetenus() : 0;
+  return `<nav class="seg-biens" aria-label="Mes biens"><a href="#projets"${actif === 'projets' ? ' aria-current="page"' : ''}>En projet <b>${n1}</b></a><a href="#investissements"${actif === 'investissements' ? ' aria-current="page"' : ''}>Détenus <b>${n2}</b></a></nav>`;
+}
+window.segBiens = segBiens;
 function afficherProjets() {
   rafraichirResumes();
-  const l = [...PROJETS.liste].sort((a, b) => (b.maj || 0) - (a.maj || 0));
+  const l = projetsEnCours().sort((a, b) => (b.maj || 0) - (a.maj || 0));
   const groupes = new Map(); l.forEach(x => { const g = groupeDe(x); if (!groupes.has(g)) groupes.set(g, []); groupes.get(g).push(x); });
   const aBranches = [...groupes.entries()].filter(([, bs]) => bs.length > 1).map(([g]) => g);
   const cartes = [...groupes.values()].map(bs => `<div class="pj-trouve" data-cherche="${esc(texteProjet(bs))}">${bs.length > 1 ? carteGroupe(bs.sort((a, b) => String(a.quand || '').localeCompare(String(b.quand || '')))) : carteProjet(bs[0])}</div>`);
   const menuOuvert = (document.querySelector('#pj details.pj-menu[open]') || {closest: () => null}).closest('[data-id]');   // gardé ouvert si la liste se redessine (synchro du compte)
   const idMenu = menuOuvert && menuOuvert.dataset.id;
-  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes projets</h1></div><div class="actions">${aBranches.length ? `<button data-a="toutPlier">${aBranches.every(g => DEPLIES.has(g)) ? 'Tout replier' : 'Tout déplier'}</button>` : ''}<button class="primaire" data-a="nouveau">+ Nouveau projet</button></div></div>`
+  document.getElementById('pj').innerHTML = `<div class="invhead"><div class="titre-discret"><h1>Mes biens</h1></div><div class="actions">${aBranches.length ? `<button data-a="toutPlier">${aBranches.every(g => DEPLIES.has(g)) ? 'Tout replier' : 'Tout déplier'}</button>` : ''}<button class="primaire" data-a="nouveau">+ Nouvelle simulation</button></div></div>${segBiens('projets')}`
     + (l.length > 2 ? `<div class="pj-cherche"><input id="pj_cherche" type="search" placeholder="Chercher un projet : nom, option, adresse, ville" aria-label="Chercher un projet" value="${esc(chercheP)}"></div>` : '')
     + (l.length ? `<div class="pj-liste">${cartes.join('')}</div><p class="aide" id="pj_rien" hidden></p>`
-      : `<div class="vide"><h2>Aucun projet pour l'instant</h2><p>Estime un bien dans l'onglet « Estimer », simule son financement dans « Financer », puis clique sur « Enregistrer dans mes projets » en bas de la page. Il apparaît ici, et tu peux le rouvrir pour en modifier l'estimation ou le financement.</p>
+      : `<div class="vide"><h2>Aucun bien en projet</h2><p>Dans « Simuler », estime un bien puis garde l'estimation, ou finance-le et enregistre-le à l'étape « Le résultat ». Il apparaît ici, et tu peux le rouvrir pour en modifier l'estimation ou le financement.</p>
         <div class="boutons centre"><button class="primaire" data-a="nouveau">Estimer un bien</button></div></div>`);
   if (idMenu) { const m = document.querySelector(`#pj [data-id="${CSS.escape(idMenu)}"] details.pj-menu`); if (m) m.open = true; }
   filtrerProjets();
@@ -5349,6 +5387,7 @@ document.addEventListener('click', e => document.querySelectorAll('#pj details.p
 const majProjets = () => { if (!document.getElementById('projets').hidden) afficherProjets(); };
 // Rouvre un projet : son financement dans Financer, ou sa recherche dans Estimer
 function ouvrirProjet(id, vers) {
+  { const x = PROJETS.liste.find(y => y.id === id); if (x && !x.estimationSeule && typeof voirFinance === 'function') voirFinance(true); }   // un projet financé : ses étapes de financement
   const pr = PROJETS.liste.find(x => x.id === id); if (!pr) return;
   fixerProjet(id);
   CF_APP.restaurer(pr.finance, pr.bien);
@@ -5499,6 +5538,24 @@ function verifierOnglet() {
   // Connexion depuis l'écran d'arrivée vierge : Mon patrimoine ; en plein travail (estimation lancée, Financer…), on y reste
   else if (COMPTE.user && arriveeParDefaut && !aNavigue) { arriveeParDefaut = false; if (t === 'estimation' && !state.lance) showTab('investissements', false); }
 }
+// Deux onglets : « Simuler » (estimation, puis financement en étapes) et « Mes biens » (en projet, détenus)
+const GROUPE = {estimation: 'simuler', cashflow: 'simuler', investissements: 'biens', projets: 'biens'};
+const dernierOnglet = {simuler: 'estimation', biens: null};
+// Les étapes 2 à 4 n'apparaissent qu'une fois le financement demandé : une estimation seule reste une estimation
+let financeVue = (() => { try { return localStorage.getItem('simuler-finance') === '1'; } catch (e) { return false; } })();
+function voirFinance(oui) { financeVue = oui; try { localStorage.setItem('simuler-finance', oui ? '1' : '0'); } catch (e) {} majEtapesSim(); }
+function majEtapesSim() {
+  const t = document.body.dataset.onglet, tete = document.getElementById('simTete'); if (!tete) return;
+  tete.hidden = GROUPE[t] !== 'simuler' || !financeVue;
+  const n = t === 'estimation' ? 1 : Math.max(2, +(document.getElementById('cf').dataset.etape) || 2);
+  tete.querySelectorAll('button[data-e]').forEach(b => { if (+b.dataset.e === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+}
+window.majEtapesSim = majEtapesSim;
+document.querySelectorAll('#simEtapes button[data-e]').forEach(b => b.onclick = () => {
+  const k = +b.dataset.e; aNavigue = true;
+  if (k === 1) showTab('estimation');
+  else { if (document.body.dataset.onglet !== 'cashflow') showTab('cashflow'); CF_APP.etape(k); }
+});
 function showTab(t, maj = true, mode = null, sous = null) {
   if (PRIVES.includes(t) && COMPTE.pret && !COMPTE.user && COMPTE.actif()) { t = 'estimation'; sous = null; }
   const cash = t === 'cashflow';
@@ -5507,7 +5564,10 @@ function showTab(t, maj = true, mode = null, sous = null) {
   document.getElementById('invest').hidden = t !== 'investissements';
   document.getElementById('projets').hidden = t !== 'projets';
   document.body.dataset.onglet = t;   // la barre du haut s'aligne sur la colonne de « Mon patrimoine »
-  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.groupe === GROUPE[t])));
+  dernierOnglet[GROUPE[t]] = t;
+  if (t === 'cashflow' && !financeVue) voirFinance(true);
+  majEtapesSim();
   if (maj && location.hash !== '#' + t && !(sous && location.hash.startsWith('#' + t + '/'))) history.replaceState(null, '', '#' + t);
   if (cash) window.CF_APP && CF_APP.sync(estimationCourante(), mode);
   if (t === 'investissements' && window.INV) INV.afficher(sous);
@@ -5515,7 +5575,12 @@ function showTab(t, maj = true, mode = null, sous = null) {
   else if (t === 'estimation') { majTeteEst(); setTimeout(() => map.invalidateSize(), 0); }
   window.scrollTo(0, 0);
 }
-document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => { aNavigue = true; showTab(b.dataset.tab); });
+// Un onglet déjà ouvert reste où il est ; sinon on retrouve la dernière vue de cet onglet
+document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => {
+  aNavigue = true; const g = b.dataset.groupe, t = document.body.dataset.onglet;
+  if (GROUPE[t] === g) return showTab(t);
+  showTab(g === 'simuler' ? dernierOnglet.simuler : dernierOnglet.biens || (window.INV && INV.nbDetenus && INV.nbDetenus() ? 'investissements' : PROJETS.liste.length ? 'projets' : 'investissements'));
+});
 const ONGLETS = ['estimation', 'cashflow', 'investissements', 'projets'];
 function lireHash() {
   const [t, sous] = location.hash.slice(1).split('/');

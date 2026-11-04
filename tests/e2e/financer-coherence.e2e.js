@@ -11,7 +11,7 @@ test.after(async () => { assert.deepEqual(journal.erreurs, [], 'erreurs JavaScri
 // Tapé puis validé (comme en quittant le champ), même dans une section repliée
 const taper = (id, v) => page.evaluate(([id, v]) => { const e = document.getElementById('cf_' + id); e.value = v; e.dispatchEvent(new Event('input', {bubbles: true})); e.dispatchEvent(new Event('change', {bubbles: true})); }, [id, String(v)]);
 const valeur = id => page.locator('#cf_' + id).inputValue();
-const message = () => page.locator('#cf .hint.corr').allInnerTexts();
+const message = () => page.locator('#cf .hint.corr').allTextContents();   // aussi dans une section repliée
 
 test('bornes : vacance, apport, taux, durée du crédit (vide ou nulle) ramenés dans leurs limites, avec un message', async () => {
   await taper('vacance', 15);

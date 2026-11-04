@@ -20,7 +20,7 @@ const debordements = () => page.evaluate(() => {
   }
   return res;
 });
-const onglet = async (t) => { await page.click(`.tabs [data-tab="${t}"]`); await page.waitForFunction(t => document.body.dataset.onglet === t, t); await page.waitForTimeout(150); };
+const onglet = async (t) => { await page.evaluate(t => { aNavigue = true; showTab(t); }, t); await page.waitForFunction(t => document.body.dataset.onglet === t, t); await page.waitForTimeout(150); };
 const boite = sel => page.locator(sel).first().evaluate(e => { const r = e.getBoundingClientRect(); return {haut: r.top, bas: r.bottom, gauche: r.left, droite: r.right, h: r.height, l: r.width}; });
 
 test('Estimer et Financer sur téléphone : rien ne dépasse, barres du bas basses, toutes les étapes visibles', async () => {
@@ -33,7 +33,7 @@ test('Estimer et Financer sur téléphone : rien ne dépasse, barres du bas bass
     await page.evaluate(n => CF_APP.etape(n), n);
     assert.deepEqual(await debordements(), [], 'étape ' + n);
     for (const k of [1, 2, 3, 4]) {
-      const b = await boite(`#cf_etapes [data-etape="${k}"]`);
+      const b = await boite(`#simEtapes [data-e="${k}"]`);
       assert.ok(b.droite <= 390 && b.gauche >= 0, `étape ${k} visible quand l'étape ${n} est ouverte`);
     }
   }
@@ -86,22 +86,22 @@ test('menus ⋯ et « Dossier de financement » sur téléphone : panneau en bas
 
 test('Mon patrimoine sur téléphone : liste et fiche sans rien qui dépasse', async () => {
   await onglet('investissements');
-  await page.click('#inv [data-a="ajout"]');
+  await cliquer(page, '#inv [data-a="ajout"]');
   await page.waitForSelector('#inv_titre');
   await saisir(page, '#inv [data-p="nom"]', 'Studio Test');
   await saisir(page, '#inv [data-p="valeur"]', 200);
   await saisir(page, '#inv [data-p="location.loyer"]', 800);
-  await page.click('#inv [data-a="ajoutPret"]');
+  await cliquer(page, '#inv [data-a="ajoutPret"]');
   await saisir(page, '#inv [data-p="prets.0.montant"]', 150000); await saisir(page, '#inv [data-p="prets.0.taux"]', 3); await saisir(page, '#inv [data-p="prets.0.duree"]', 240);
   assert.deepEqual(await debordements(), [], 'fiche');
-  await page.click('#inv a.retour');
+  await cliquer(page, '#inv a.retour');
   await page.waitForSelector('#inv .invhead');
   assert.deepEqual(await debordements(), [], 'liste');
 });
 
 test('Financer, le calendrier : les libellés du différé ne se chevauchent jamais, rien ne dépasse (360, 390 px et ordinateur)', async () => {
   await onglet('cashflow');
-  await cliquer(page, '#cf_etapes button[data-etape="2"]');
+  await cliquer(page, '#simEtapes button[data-e="2"]');
   if (!await page.evaluate(() => document.getElementById('cf_boxProjet').open)) await cliquer(page, '#cf_travauxSeg button[data-v="1"]');
   await saisir(page, '#cf_travaux', 30000); await saisir(page, '#cf_debutTravaux', 1); await saisir(page, '#cf_dureeTravaux', 2);
   const differe = n => page.evaluate(n => { const d = document.getElementById('cf_differe'); d.value = n; d.dispatchEvent(new Event('input', {bubbles: true})); }, n);
@@ -123,7 +123,7 @@ test('Financer, le calendrier : les libellés du différé ne se chevauchent jam
 
 test('Financer, le calendrier : un segment étroit n\'a jamais son libellé coupé, il passe sous la frise ; le trait de la mensualité pleine va jusqu\'au bout', async () => {
   await onglet('cashflow');
-  await cliquer(page, '#cf_etapes button[data-etape="2"]');
+  await cliquer(page, '#simEtapes button[data-e="2"]');
   if (!await page.evaluate(() => document.getElementById('cf_boxProjet').open)) await cliquer(page, '#cf_travauxSeg button[data-v="1"]');
   await saisir(page, '#cf_travaux', 30000);
   const champ = (id, n) => page.evaluate(([id, n]) => { const d = document.getElementById(id); d.value = n; d.dispatchEvent(new Event('input', {bubbles: true})); }, [id, n]);

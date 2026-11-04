@@ -939,10 +939,10 @@ const ICONE_SCI = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" strok
 
 function vueListe() {
   if (filtre !== 'tout' && filtre !== 'np' && !scis.some(x => x.id === filtre)) filtre = 'tout';
-  let h = `<div class="invhead"><div class="titre-discret"><h1>Mon patrimoine</h1>${boutonDiscret()}${pastilleCompte()}</div><div class="actions">
+  let h = `<div class="invhead"><div class="titre-discret"><h1>Mes biens</h1>${boutonDiscret()}${pastilleCompte()}</div><div class="actions">
 
       <button data-a="ajoutSci">+ Créer une SCI</button>
-      <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>`;
+      <button class="primaire" data-a="ajout">+ Ajouter un bien</button></div></div>${typeof segBiens === 'function' ? segBiens('investissements') : ''}`;
   if (biens.length || scis.length) {
     const actifs = detenus(), vendus = biens.filter(b => b.vendu);
     const montres = actifs.filter(b => !enProjet(b));   // espace pas encore aménagé : seulement dans Mes projets (et la fiche de son bien)
@@ -959,7 +959,7 @@ function vueListe() {
     const choix = [['tout', 'Tous'], ['np', 'Nom propre'], ...scis.map(x => [x.id, x.nom])].filter(([f]) => f === 'tout' || n(f));
     const visibles = montres.filter(b => filtre === 'tout' || (filtre === 'np' ? b.structure !== 'sci' : b.sciId === filtre && b.structure === 'sci'));
     const filtres = choix.length > 2 ? `<div class="filtres">${choix.map(([f, l]) => `<button data-a="filtre" data-f="${esc(f)}" class="${f === filtre ? 'on' : ''}">${esc(l)} <span>${n(f)}</span></button>`).join('')}</div>` : '';
-    h += pli('biens', 'Mes biens', montres.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
+    h += pli('biens', 'Biens détenus', montres.length, filtres + (visibles.length ? `<div class="liste">${listeBiens(visibles)}</div>` : '<div class="aide">Aucun bien ici pour l\'instant.</div>'));
     if (vendus.length) h += pli('vendus', 'Biens vendus', vendus.length, `<div class="liste">${vendus.map(carteVendue).join('')}</div>`);
     h += arbreHTML();
   } else if (COMPTE.user && !compteCharge) {
@@ -1101,15 +1101,31 @@ function comptaHTML(b) {
 const comptaSciAide = x => (n => n ? `Compté dans les charges ${n > 1 ? `de ses ${n} biens qui ont choisi « Oui, comptable de la SCI », à parts égales` : 'de son bien qui a choisi « Oui, comptable de la SCI »'}.` : 'Pour le compter, choisis « Oui, comptable de la SCI » dans les charges de ses biens.')(avecComptaSci(x).filter(y => !y.vendu).length);
 const section = (titre, corps, large = false) => `<section class="bloc${large ? ' large' : ''}"><h3>${titre}</h3>${corps}</section>`;
 
+// ---------- Fiche en cinq sous-onglets : Résumé, Crédit, Location, Vente, Documents
+// Les chiffres du haut restent sur chacun ; chaque section va dans le sous-onglet de son sujet (d'après son titre)
+const ONGLETS_FICHE = [['resume', 'Résumé'], ['credit', 'Crédit'], ['location', 'Location'], ['vente', 'Vente'], ['docs', 'Documents']];
+const ongletDeSection = t => /^Crédit/.test(t) ? 'credit' : /^(Location|Charges|Revenus)/.test(t) ? 'location' : /^(Notes|Plans)/.test(t) ? 'docs' : 'resume';
+let ongletFiche = 'resume', ficheVue = null;
+function sousOngletsFiche() {
+  const kpis = racine.querySelector('#inv_kpis'); if (!kpis) return;
+  const nav = document.createElement('nav'); nav.className = 'sous-fiche'; nav.setAttribute('aria-label', 'Parties de la fiche');
+  nav.innerHTML = ONGLETS_FICHE.map(([k, l]) => `<button type="button" data-a="ongletFiche" data-ong="${k}"${k === ongletFiche ? ' aria-current="true"' : ''}>${l}</button>`).join('');
+  kpis.after(nav);
+  racine.querySelectorAll('.fiche-detail section.bloc').forEach(x => { x.dataset.ong = ongletDeSection(((x.querySelector('h3') || {}).textContent || '').trim()); });
+  const pied = racine.querySelector('.pied'); if (pied) pied.dataset.ong = 'resume';
+  racine.querySelectorAll('[data-ong]:not(button)').forEach(x => { x.hidden = x.dataset.ong !== ongletFiche; });
+  const v = racine.querySelector('#inv_vente'); if (v) v.hidden = ongletFiche !== 'vente';
+}
 function vueDetail(b) {
+  if (ficheVue !== b.id) { ficheVue = b.id; ongletFiche = venteOuverte.has(b.id) ? 'vente' : 'resume'; }
   const est = typeof estimationCourante === 'function' ? estimationCourante() : null;
   const opt = (o) => o;
-  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes biens</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type].l}</span></div>
       <div><h1 id="inv_titre">${esc(b.nom)}</h1><div class="adr" id="inv_sous">${esc([b.adresse, detenteur(b)].filter(Boolean).join(' · '))}</div></div><div class="dethead-actions">${b.vendu ? '' : `<button data-a="vente" title="Ce que la vente te laisserait aujourd'hui, après impôts">${venteOuverte.has(b.id) ? 'Masquer la vente' : 'Simuler la vente →'}</button>`}</div></div>
     ${b.vendu ? venduHTML(b) : ''}${lienHTML(b)}
     <div id="inv_kpis"></div>
-    ${venteOuverte.has(b.id) && !b.vendu ? venteHTML(b) : ''}
+    ${ongletFiche === 'vente' && !b.vendu ? venteHTML(b) : ongletFiche === 'vente' ? '<div class="aide">Vente enregistrée : le détail est en haut de la fiche.</div>' : ''}
     <div class="fiche-detail">
     <div class="blocs">
     ${enProjet(b) ? amenagHTML(b) : ''}
@@ -1168,6 +1184,7 @@ function vueDetail(b) {
     </div>
     <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
+  sousOngletsFiche();
   majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b); majDetache(b); majAmenag(b);
 }
 // Caractéristiques utilisées par l'estimation (les mêmes que « Détails du bien » dans l'onglet Estimer)
@@ -1521,7 +1538,7 @@ function venduHTML(b) {
 function vueSci(x) {
   const sesBiens = detenus().filter(b => b.structure === 'sci' && b.sciId === x.id), t = totaux(sesBiens);
   const totalParts = somme(x.associes, a => a.parts);
-  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mon patrimoine</a>${boutonDiscret()}${pastilleCompte()}</div>
+  let h = `<div class="titre-discret"><a class="retour" href="#investissements">← Mes biens</a>${boutonDiscret()}${pastilleCompte()}</div>
     <div class="dethead"><div class="vignette grand sciv">${ICONE_SCI}<span>SCI ${REGIMES[x.regime]}</span></div>
       <div><h1 id="inv_titre">${esc(x.nom)}</h1><div class="adr" id="inv_sous">${esc(['SCI ' + REGIMES[x.regime], x.siren ? 'SIREN ' + x.siren : '', x.siege].filter(Boolean).join(' · '))}</div></div></div>
     ${kpisTotaux(t)}
@@ -2009,8 +2026,9 @@ racine.addEventListener('click', async e => {
     if (b.geo) reprendre({label: b.geo.label, lat: b.geo.lat, lon: b.geo.lon, type: TYPE_DVF[b.type], surf: b.surface, since: 'auto', criteres: criteresEffectifs(b)});
     else { document.getElementById('addr').value = b.adresse; document.getElementById('surf').value = b.surface; document.getElementById('go').click(); }
   }
-  if (a === 'vente') {
-    if (venteOuverte.has(b.id)) venteOuverte.delete(b.id); else { venteOuverte.add(b.id); b.vente = b.vente || {}; }
+  if (a === 'ongletFiche') { ongletFiche = t.dataset.ong; if (ongletFiche === 'vente') { venteOuverte.add(b.id); b.vente = b.vente || {}; } else venteOuverte.delete(b.id); return vueDetail(b); }
+  if (a === 'vente') {   // « Simuler la vente » : le sous-onglet Vente
+    if (venteOuverte.has(b.id)) { venteOuverte.delete(b.id); ongletFiche = 'resume'; } else { venteOuverte.add(b.id); b.vente = b.vente || {}; ongletFiche = 'vente'; }
     vueDetail(b);
     if (venteOuverte.has(b.id)) racine.querySelector('#inv_vente').scrollIntoView({behavior: 'smooth', block: 'start'});
     return;
@@ -2254,7 +2272,7 @@ biens = biensLocaux(); scis = scisLocales(); normaliser();
 try { if (!localStorage.getItem(CLE) && biens.length) { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } } catch (e) {}
 // « J'ai acheté » dans Mes projets : la fiche faite depuis le projet, ouverte (son identifiant est gardé dans le projet)
 function ajouterBien(o) { const b = nouveauBien({...o, id: uid()}); biens.push(b); normaliser(); sauver(b); location.hash = '#investissements/' + b.id; return b.id; }
-window.INV = {ajouterBien, bien: id => { const b = biens.find(x => x.id === id); return b ? {id: b.id, nom: b.nom} : null; }, estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon, place) => estimerDependance(lat, lon, place), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); },
+window.INV = {ajouterBien, nbDetenus: () => detenus().length, bien: id => { const b = biens.find(x => x.id === id); return b ? {id: b.id, nom: b.nom} : null; }, estimerSurface: p => moteur.estimer(p), estimerGarage: (lat, lon, place) => estimerDependance(lat, lon, place), marquerSupprime: id => marquerSupprime(id), scis: () => scis.map(x => ({id: x.id, nom: x.nom, regime: x.regime})), afficher: id => { afficher(id); window.scrollTo(0, 0); }, sauverCompte: () => { if (COMPTE.user) sauver(); },
   // Avant la déconnexion : envoyer tout de suite ce qui attendait son tour (sinon perdu, l'envoi trouverait le compte fermé)
   vider: async () => { clearTimeout(minuteur); if (enAttente) await envoyer(); }};
 COMPTE.init();

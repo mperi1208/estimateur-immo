@@ -19,7 +19,7 @@ test('lecture du compte en panne à la connexion : message d\'attente, puis le c
   await page.evaluate(() => localStorage.setItem('mes-investissements', JSON.stringify([{id: 'g1', nom: 'Bien invité', type: 'appart', achat: {}, location: {statut: 'vide'}, chargesAn: {}, prets: [], docs: []}])));
   await page.reload(); await page.waitForFunction(() => window.INV && COMPTE.pret);
   await seConnecter(page, 'a@b.fr', 'secret123', false);
-  await page.click('.tabs [data-tab="investissements"]');
+  await page.evaluate(() => { aNavigue = true; showTab('investissements'); });
   await page.waitForSelector('#inv .attente-compte');
   const noms = () => page.locator('#inv a.bien .infos > b').allInnerTexts();
   assert.deepEqual(await noms(), [], 'le bien de l\'appareil (invité) n\'est pas montré dans le compte');
