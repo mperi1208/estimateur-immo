@@ -357,16 +357,17 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-detail .pj-opt-act{justify-content:flex-start;padding-top:4px}
 .invwrap .pj-detail .pj-opt-act > button[data-a="financer"]{background:var(--ink);border-color:var(--ink);color:#fff}
 /* Ce qui ne change pas d'une option à l'autre : une ligne */
-.invwrap .pj-commun{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.invwrap .pj-commun .pj-etiq{flex-basis:100%;margin:0}
+.invwrap .pj-commun{display:grid;gap:4px;margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.invwrap .pj-commun .pj-etiq{margin:0 0 2px}
+.invwrap .pj-commun > span:not(.pj-etiq){display:block}
 .invwrap .pj-commun b{color:var(--ink);font-weight:700}
-.invwrap .pj-commun .pj-lien{all:unset;cursor:pointer;color:var(--accent);font-weight:700;margin-left:6px}
+.invwrap .pj-commun .pj-lien{all:unset;cursor:pointer;color:var(--accent);font-weight:700;margin-left:8px;white-space:nowrap;display:inline-block}
 .invwrap .pj-commun .pj-lien:hover{text-decoration:underline}
 .invwrap .pj-groupe .pj-gr-bas{gap:8px;flex-wrap:wrap;justify-content:flex-start}
 .invwrap .pj-opts thead th small{display:block;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em}
 .invwrap .pj-opts tr.pj-ouvrir td{border-top:0;padding-top:4px}
 .invwrap .pj-opts tr.pj-ouvrir button{font-size:13px}
-body.discret #pj :is(.pj-l-val, .pj-commun span){filter:blur(7px);user-select:none}
+body.discret #pj :is(.pj-l-val, .pj-commun > span:not(.pj-etiq)){filter:blur(7px);user-select:none}
 .invwrap .pj-groupe .chevron{display:inline-block;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);margin:0 4px 1px}
 .invwrap .pj-groupe:not(.replie) .chevron{transform:rotate(45deg);margin-bottom:4px}
 .invwrap .pj-plier-zone{cursor:pointer}
