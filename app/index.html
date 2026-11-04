@@ -718,6 +718,12 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 .cpt-photo{display:flex;gap:14px;align-items:center;margin:6px 0 14px}
 .cpt-photo img,.cpt-photo .cpt-initiale{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:0 0 auto}
 .cpt-photo .cpt-initiale{display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:26px}
+.cadre-zone{display:grid;place-items:center;margin:12px 0}
+#cpt_cadre{width:240px;height:240px;border-radius:50%;background:var(--bg);touch-action:none;cursor:grab;box-shadow:0 0 0 1px var(--line)}
+#cpt_cadre:active{cursor:grabbing}
+#cpt_cadre:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.cadre-zoom{display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:700}
+#compteDlg .cadre-zoom input{flex:1;padding:0;border:0;background:none;accent-color:var(--accent)}
 #compteDlg .cpt-photo .cpt-bouton{display:inline-block;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-weight:600;margin:0 8px 0 0;text-transform:none;letter-spacing:normal;font-size:14px;color:var(--ink)}
 .cpt-photo .cpt-bouton:hover{border-color:var(--ink)}
 .tabs .compte button{height:34px;padding:0 14px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
@@ -3177,8 +3183,8 @@ function ouvrirCompte(mode = 'connexion') {
     const msg = t => { body.querySelector('#cpt_photoMsg').textContent = t; };
     body.querySelector('#cpt_fichier').onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
-      msg('Envoi de la photo…');
-      try { await changerPhoto(f); ouvrirCompte(); } catch (err) { msg(err.message === 'illisible' ? 'Photo illisible : choisis une image JPEG ou PNG.' : 'Envoi impossible : ' + erreurCompte(err)); }
+      let img; try { img = await lireImage(f); } catch (err) { msg('Photo illisible : choisis une image JPEG ou PNG.'); return; }
+      cadrerPhoto(body, img);
     };
     const r = body.querySelector('#cpt_retirer');
     if (r) r.onclick = async () => { msg('Suppression…'); try { await retirerPhoto(); ouvrirCompte(); } catch (err) { msg('Suppression impossible : ' + erreurCompte(err)); } };
@@ -3253,17 +3259,62 @@ async function chargerPhoto() {
   }
   afficherPhoto();
 }
-// Carré au centre de l'image, 256 px, JPEG : quelques dizaines de Ko
-async function photoCarree(f, cote = 256) {
-  let img; try { img = await createImageBitmap(f); } catch (e) { throw new Error('illisible'); }
-  const c = Math.min(img.width, img.height), cv = Object.assign(document.createElement('canvas'), {width: cote, height: cote});
-  cv.getContext('2d').drawImage(img, (img.width - c) / 2, (img.height - c) / 2, c, c, 0, 0, cote, cote);
+async function lireImage(f) {
+  try { return await createImageBitmap(f); } catch (e) { throw new Error('illisible'); }
+}
+// Cadrage : la photo se déplace dans le rond (doigt, souris, flèches) et se zoome (curseur, molette, pincement)
+function cadrerPhoto(body, img) {
+  const V = 240, s0 = V / Math.min(img.width, img.height);
+  let z = 1, x = (V - img.width * s0) / 2, y = (V - img.height * s0) / 2;
+  body.innerHTML = `<h2>Cadrer ta photo</h2>
+    <p class="hint">Fais glisser la photo pour la placer dans le rond, et zoome si besoin.</p>
+    <div class="cadre-zone"><canvas id="cpt_cadre" width="${V * 2}" height="${V * 2}" tabindex="0" aria-label="Photo à cadrer : flèches pour déplacer, + et − pour zoomer"></canvas></div>
+    <div class="cadre-zoom"><span aria-hidden="true">−</span><input type="range" id="cpt_zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></div>
+    <button class="cta" id="cpt_valider">Enregistrer la photo</button>
+    <button type="button" class="lien" id="cpt_annuler">Annuler</button>
+    <div class="msg" id="cpt_cadreMsg" role="status"></div>`;
+  const cv = body.querySelector('#cpt_cadre'), cx = cv.getContext('2d'), zoom = body.querySelector('#cpt_zoom');
+  const borner = () => { const s = s0 * z; x = Math.min(0, Math.max(V - img.width * s, x)); y = Math.min(0, Math.max(V - img.height * s, y)); };
+  const dessiner = () => { borner(); const s = s0 * z; cx.clearRect(0, 0, cv.width, cv.height); cx.drawImage(img, x * 2, y * 2, img.width * s * 2, img.height * s * 2); };
+  // Zoom autour d'un point du cadre (le centre par défaut) : ce point reste sous le doigt
+  const zoomer = (nz, px = V / 2, py = V / 2) => { nz = Math.min(4, Math.max(1, nz)); const k = nz / z; x = px - (px - x) * k; y = py - (py - y) * k; z = nz; zoom.value = z; dessiner(); };
+  const pts = new Map(); let ecart = 0;
+  const local = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * V / r.width, (e.clientY - r.top) * V / r.height]; };
+  const distance = () => { const [a, b] = [...pts.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+  cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); if (pts.size === 2) ecart = distance(); };
+  cv.onpointermove = e => {
+    if (!pts.has(e.pointerId)) return;
+    const av = pts.get(e.pointerId), p = local(e); pts.set(e.pointerId, p);
+    if (pts.size === 1) { x += p[0] - av[0]; y += p[1] - av[1]; dessiner(); }
+    else if (pts.size === 2) { const d = distance(), [a, b] = [...pts.values()]; if (ecart) zoomer(z * d / ecart, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); ecart = d; }
+  };
+  cv.onpointerup = cv.onpointercancel = e => { pts.delete(e.pointerId); ecart = 0; };
+  cv.onwheel = e => { e.preventDefault(); const [px, py] = local(e); zoomer(z * Math.exp(-e.deltaY / 400), px, py); };
+  cv.onkeydown = e => {
+    const d = {ArrowLeft: [8, 0], ArrowRight: [-8, 0], ArrowUp: [0, 8], ArrowDown: [0, -8]}[e.key];
+    if (d) { e.preventDefault(); x += d[0]; y += d[1]; dessiner(); }
+    else if (e.key === '+' || e.key === '=') zoomer(z * 1.1); else if (e.key === '-') zoomer(z / 1.1);
+  };
+  zoom.oninput = () => zoomer(+zoom.value);
+  body.querySelector('#cpt_annuler').onclick = () => ouvrirCompte();
+  body.querySelector('#cpt_valider').onclick = async ev => {
+    const s = s0 * z, el = body.querySelector('#cpt_cadreMsg');
+    ev.target.disabled = true; el.classList.remove('err'); el.textContent = 'Envoi de la photo…';
+    try { await changerPhoto(await recadrer(img, -x / s, -y / s, V / s)); ouvrirCompte(); }
+    catch (err) { ev.target.disabled = false; el.classList.add('err'); el.textContent = 'Envoi impossible : ' + erreurCompte(err); }
+  };
+  dessiner(); cv.focus();
+}
+// Le carré cadré, 256 px, JPEG : quelques dizaines de Ko
+async function recadrer(img, sx, sy, c, cote = 256) {
+  const cv = Object.assign(document.createElement('canvas'), {width: cote, height: cote});
+  cv.getContext('2d').drawImage(img, sx, sy, c, c, 0, 0, cote, cote);
   const blob = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.85));
   if (!blob) throw new Error('illisible');
   return blob;
 }
-async function changerPhoto(f) {
-  const blob = await photoCarree(f), st = COMPTE.client.storage.from('immo-docs');
+async function changerPhoto(blob) {
+  const st = COMPTE.client.storage.from('immo-docs');
   await st.remove([PHOTO()]);
   const {error} = await st.upload(PHOTO(), blob, {contentType: 'image/jpeg', upsert: false});
   if (error) throw error;
