@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="color-scheme" content="only light">
 <meta name="theme-color" content="#101828">
 <title>Patrimoniu</title>
@@ -22,6 +22,7 @@
   --pos:#0b6e4f;--neg:#d92d20;--grid:#e6e9ee;
 }
 *{box-sizing:border-box}
+html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 aside{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:20px}
 h1{font-size:20px;margin:0 0 2px}
@@ -3059,6 +3060,8 @@ function nouvelleRecherche() {
   window.scrollTo(0, 0); addr.focus();
 }
 document.getElementById('nouvelleBtn').onclick = nouvelleRecherche;
+// iPhone : pas de zoom de la page (il restait de travers) ; la carte et le cadrage de la photo gardent leur zoom
+['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => { if (!e.target.closest || !e.target.closest('#map, .leaflet-container, #cpt_cadre')) e.preventDefault(); }, {passive: false}));
 ['addr', 'surf'].forEach(id => document.getElementById(id).addEventListener('input', () => majNouvelle()));
 document.getElementById('type').addEventListener('click', () => setTimeout(() => majNouvelle()));
 document.getElementById('recentesBtn').onclick = () => {
