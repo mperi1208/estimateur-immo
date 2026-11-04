@@ -63,7 +63,7 @@ test('« J\'ai acheté » l\'option avec travaux : la fiche porte le nom du proj
   await carte.locator('[data-a="achete"]').click();
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && document.getElementById('inv_titre'));
   assert.equal(await page.locator('#inv_titre').innerText(), 'T2 Lyon', 'sans « · Version de départ »');
-  assert.match(await page.locator('#inv_kpis').innerText(), /en travaux · \d+ k€ après/);
+  assert.match(await page.locator('#inv_kpis').innerText(), /en travaux · \d+\sk€ après/);
   const c = await attendreCompte(x => (x.biens || []).some(b => b.nom === 'T2 Lyon'), 'fiche dans le compte');
   const b = c.biens.find(x => x.nom === 'T2 Lyon');
   assert.ok(b.valeurApres && b.valeurApres.valeur > b.valeur, 'valeur après travaux prévue, au-dessus de la valeur pendant le chantier');

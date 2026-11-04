@@ -72,7 +72,7 @@ test('Mon patrimoine : un bien avec achat, crédit, loyer et charges ; chiffres 
   const crd = nombre(await kpi('Restant dû')) * 1000;
   assert.ok(crd > 135000 && crd < 145000, `restant dû ${crd}`);
   assert.equal(nombre(await kpi('Cash-flow')), Math.round(800 - 900 / 12 - M));   // loyer − charges − mensualité
-  assert.match(await page.locator('#inv_kpis').innerText(), new RegExp(Math.round(M) + ' €/mois'));
+  assert.match(await page.locator('#inv_kpis').innerText(), new RegExp(Math.round(M) + '\\s€/mois'));
   assert.equal(nombre(await kpi('Loyers')), 800);                                  // le rendement a laissé la place aux loyers
   assert.doesNotMatch(await page.locator('#inv').innerText(), /Rendement/i);
   const resume = await page.locator('[data-resume="0"]').innerText();
@@ -88,7 +88,7 @@ test('liste : totaux du patrimoine (valeur, restant dû, net, loyers, cash-flow)
   await cliquer(page, '#inv a.retour');
   await page.waitForSelector('#inv .invhead .kpis, #inv .invhead ~ .kpis');
   const t = await page.locator('#inv .kpis').first().innerText();
-  assert.match(t, /Biens\s*\n\s*1/i); assert.match(t, /Valeur\s*\n\s*200 k€/i); assert.match(t, /Loyers\s*\n\s*800 €/i);
+  assert.match(t, /Biens\s*\n\s*1/i); assert.match(t, /Valeur\s*\n\s*200\sk€/i); assert.match(t, /Loyers\s*\n\s*800\s€/i);
   const net = nombre(t.match(/Patrimoine net\s*\n\s*([^\n]+)/i)[1]), du = nombre(t.match(/Restant dû\s*\n\s*([^\n]+)/i)[1]);
   assert.ok(Math.abs(net + du - 200) < 1.5, `net ${net} + restant dû ${du} = valeur`);
 });
@@ -128,7 +128,7 @@ test('garage sorti en bien à part : sa valeur et sa part du prix quittent le bi
   await ouvrirFiche('Studio Test');
   await cliquer(page, '#inv [data-a="detacheOuvrir"][data-m="separer"]');
   await champ('detache.valeur', 15000);
-  assert.match(await page.locator('#inv_detacheRes').innerText(), /Studio Test ensuite\s*185\s000 €/i);
+  assert.match(await page.locator('#inv_detacheRes').innerText(), /Studio Test ensuite\s*185\s000\s€/i);
   await cliquer(page, '#inv [data-a="detacher"]');
   await page.waitForFunction(() => /^Garage · Studio Test$/.test((document.getElementById('inv_titre') || {}).textContent));
   assert.match(await page.locator('#inv .lie-a').innerText(), /Associé à Studio Test/);
@@ -140,7 +140,7 @@ test('garage sorti en bien à part : sa valeur et sa part du prix quittent le bi
   await cliquer(page, '#inv a.retour');
   await page.waitForSelector('#inv .invhead');
   const t = await page.locator('#inv .kpis').first().innerText();
-  assert.match(t, /Valeur\s*\n\s*200 k€/i);                         // 185 000 + 15 000 : le patrimoine total ne change pas
+  assert.match(t, /Valeur\s*\n\s*200\sk€/i);                         // 185 000 + 15 000 : le patrimoine total ne change pas
   assert.equal(await page.locator('#inv .groupe-bien .bien-lie', {hasText: 'Garage · Studio Test'}).count(), 1);   // rangé sous son bien
 });
 
@@ -165,13 +165,13 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   await champ('amenag.nuit', 80);
   await page.waitForFunction(() => /À la nuitée/i.test(document.getElementById('inv_amenagRes').innerText));
   const res2 = await page.locator('#inv_amenagRes').innerText();
-  assert.match(res2, /80 € × 219 nuits/); assert.match(res2, /42\s000 €/);
+  assert.match(res2, /80\s€ × 219 nuits/); assert.match(res2, /42\s000\s€/);
   await champ('amenag.periode', 'ete');                              // loué seulement l'été : 80 % des 122 jours
-  await page.waitForFunction(() => /80 € × 98 nuits par an \(80 % d'occupation l'été\)/.test(document.getElementById('inv_amenagRes').innerText));
+  await page.waitForFunction(() => /80\s€ × 98 nuits par an \(80 % d'occupation l'été\)/.test(document.getElementById('inv_amenagRes').innerText));
   await champ('amenag.remplissage', 90);                             // taux sur la période, saisi
-  await page.waitForFunction(() => /80 € × 110 nuits/.test(document.getElementById('inv_amenagRes').innerText));
+  await page.waitForFunction(() => /80\s€ × 110 nuits/.test(document.getElementById('inv_amenagRes').innerText));
   await champ('amenag.periode', 'annee');
-  await page.waitForFunction(() => /80 € × 219 nuits/.test(document.getElementById('inv_amenagRes').innerText));
+  await page.waitForFunction(() => /80\s€ × 219 nuits/.test(document.getElementById('inv_amenagRes').innerText));
   // Totaux : tant que ce n'est pas fait, l'espace ne compte pas comme un bien de plus
   await cliquer(page, '#inv [data-a="amenagProjet"]');
   await page.waitForFunction(() => /Ajouté dans/.test(document.getElementById('inv_amenagMsg').innerText));
@@ -186,7 +186,7 @@ test('espace à aménager : estimé une fois aménagé (moteur de l\'onglet Esti
   const carte = page.locator('#pj .pj', {hasText: 'Sous-sol · Studio Test'});
   await carte.waitFor();
   const txt = await carte.innerText();                              // la carte dans Mes projets : travaux saisis, recettes à la nuitée
-  assert.match(txt, /saisonnier/i); assert.match(txt, /42\s000 €/); assert.match(txt, /Il te (reste|manque) par mois/i); assert.doesNotMatch(txt, /la nuit, 60 % d'occupation/);   // carte simple : le détail est dans Financer
+  assert.match(txt, /saisonnier/i); assert.match(txt, /42\s000\s€/); assert.match(txt, /Il te (reste|manque) par mois/i); assert.doesNotMatch(txt, /la nuit, 60 % d'occupation/);   // carte simple : le détail est dans Financer
   await carte.locator('.pj-menu summary').click();                // actions rares derrière « ⋯ »
   await carte.locator('[data-a="fiche"]').click();                 // « Voir la fiche » ramène dans Mon patrimoine
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements' && /^Sous-sol/.test((document.getElementById('inv_titre') || {}).textContent));
@@ -207,7 +207,7 @@ test('location saisonnière dans une fiche : recettes à la nuitée, frais, cash
   await champ('location.statut', 'saisonnier');
   await page.waitForSelector('#inv [data-p="location.nuit"]');
   await champ('location.nuit', 80); await champ('location.nuitsAn', 200); await champ('location.fraisSaison', 25);
-  assert.match(await page.locator('#inv_revTotal').innerText(), /1\s333 € par mois en moyenne \(80 € × 200 nuits ÷ 12\)/);
+  assert.match(await page.locator('#inv_revTotal').innerText(), /1\s333\s€ par mois en moyenne \(80\s€ × 200 nuits ÷ 12\)/);
   assert.equal(nombre(await kpi('Cash-flow')), 1000);              // 16 000 € de recettes − 25 % de frais, sur 12 mois
 });
 
@@ -216,9 +216,9 @@ test('simuler la vente : le détail s\'additionne, puis vente enregistrée (hors
   await cliquer(page, '#inv [data-a="vente"]');
   await champ('vente.prix', 230000);
   await cliquer(page, '#inv [data-a="venteAgence"][data-v="0"]');     // sans agence : montant fixe en euros, 600 € par défaut
-  await page.waitForFunction(() => /−600 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
+  await page.waitForFunction(() => /−600\s€/.test(document.querySelector('#inv_venteRes .calc').innerText));
   await champ('vente.fraisFixe', 450);
-  await page.waitForFunction(() => /−450 €/.test(document.querySelector('#inv_venteRes .calc').innerText));
+  await page.waitForFunction(() => /−450\s€/.test(document.querySelector('#inv_venteRes .calc').innerText));
   await cliquer(page, '#inv [data-a="venteAgence"][data-v="1"]');
   await page.waitForSelector('#inv_vente_frais');
   await champ('vente.frais', 5);
@@ -235,7 +235,7 @@ test('simuler la vente : le détail s\'additionne, puis vente enregistrée (hors
   assert.equal(await page.locator('#inv details[data-pli="vendus"] a.bien', {hasText: 'Studio Test'}).count(), 1);
   assert.doesNotMatch(await page.locator('#inv details[data-pli="biens"]').innerText(), /^Studio Test$/m);
   const t = await page.locator('#inv .kpis').first().innerText();
-  assert.doesNotMatch(t, /Restant dû\s*\n\s*1\d\d k€/i);          // le crédit du bien vendu ne compte plus
+  assert.doesNotMatch(t, /Restant dû\s*\n\s*1\d\d\sk€/i);          // le crédit du bien vendu ne compte plus
   assert.equal((await attendreCompte(() => bienDuCompte('Studio Test').vendu)).biens.find(b => b.nom === 'Studio Test').vendu.prix, 230000);
   await page.locator('#inv details[data-pli="vendus"] a.bien', {hasText: 'Studio Test'}).click();
   await cliquer(page, '#inv [data-a="venteAnnuler"]');
@@ -285,7 +285,7 @@ test('comptable de la SCI : honoraires saisis sur la SCI, comptés dans les char
   await page.waitForSelector('#inv [data-p="chargesAn.compta"]', {state: 'detached'});
   assert.match(await page.locator('#inv').innerText(), /Part de ce bien : 1\s200\s€\/an, honoraires saisis dans la fiche de SCI Famille/i);
   assert.equal(await page.locator('#inv [data-p="chargesAn.compta"]').count(), 0);   // plus de montant à saisir pour ce bien
-  assert.equal(nombre(await kpi('Cash-flow')), avant - 100);                        // 1 200 €/an = 100 €/mois en moins
+  assert.equal(nombre(await kpi('Cash-flow')), avant - 100);                        // 1 200\s€/an = 100 €/mois en moins
   await attendreCompte(() => bienDuCompte('Parking Test').chargesAn.comptaSci === '1');
   await bouton('Non, montant pour ce bien').click();
   await page.waitForSelector('#inv [data-p="chargesAn.compta"]');
@@ -298,14 +298,14 @@ test('crédit progressif et différé : boutons visibles, mensualité actuelle q
   await champ('prets.1.montant', 101058); await champ('prets.1.taux', 3.7); await champ('prets.1.duree', 300); await champ('prets.1.debut', mois(-5));
   const resume = () => page.locator('[data-resume="1"]').innerText();
   const bouton = (cible, l) => page.locator(`#inv [data-a="segChoix"][data-cible="${cible}"]`, {hasText: l});
-  assert.match(await resume(), /Mensualité\s*\n\s*517 €/i);                               // constante : calculée
+  assert.match(await resume(), /Mensualité\s*\n\s*517\s€/i);                               // constante : calculée
   assert.equal(await bouton('inv_prets_1_progressif', 'Progressive').isVisible(), true);
   await bouton('inv_prets_1_progressif', 'Progressive').click();
   await page.waitForSelector('#inv [data-p="prets.1.hausse"]');
   assert.match(await resume(), /saisis ta mensualité actuelle/i);
   await champ('prets.1.mensualite', 497);
   let r = await resume();
-  assert.match(r, /Mensualité\s*\n\s*497 €/i);
+  assert.match(r, /Mensualité\s*\n\s*497\s€/i);
   assert.match(r, /Mensualité progressive : \+0,\d\d % par an \(calculée/i);
   assert.match(r, /Fin du prêt\s*\n\s*[^\n]+ \d{4}/i);
   await attendreCompte(() => (p => p && p.progressif === '1' && p.mensualite === 497 && p.mensuLe === mois(0))(bienDuCompte('Studio Test').prets[1]));
@@ -314,8 +314,8 @@ test('crédit progressif et différé : boutons visibles, mensualité actuelle q
   await champ('prets.1.differe', 12);                                                       // fini dans 6 mois
   r = await resume();
   assert.match(r, /Différé partiel jusqu'en/i);
-  assert.match(r, /Mensualité\s*\n\s*312 €/i);                                            // intérêts seuls : 101 058 × 3,7 % / 12
-  assert.match(r, /Restant dû\s*\n\s*101\s058 €/i);
+  assert.match(r, /Mensualité\s*\n\s*312\s€/i);                                            // intérêts seuls : 101 058 × 3,7 % / 12
+  assert.match(r, /Restant dû\s*\n\s*101\s058\s€/i);
   await bouton('inv_prets_1_typeDiff', 'Sans différé').click();
   await page.waitForSelector('#inv [data-p="prets.1.differe"]', {state: 'detached'});
   await page.locator('#inv [data-a="supprPret"][data-i="1"]').click();
@@ -336,7 +336,7 @@ test('pause du crédit et durée allongée : mensualité, fin du prêt et tablea
   await champ('prets.1.pauses.0.debut', mois(-1));
   let r = await resume();
   assert.match(r, /Pause jusqu'en [^\n]+ : rien à payer/i);
-  assert.match(r, /Mensualité \(en pause\)\s*\n\s*0 €/i);
+  assert.match(r, /Mensualité \(en pause\)\s*\n\s*0\s€/i);
   assert.match(r, /prêt rallongé de 6 mois/i);
   assert.notEqual(await fin(), finAvant);
   await attendreCompte(() => (p => p && p.pauses && p.pauses[0].mois === 6 && p.pauses[0].debut === mois(-1))(bienDuCompte('Studio Test').prets[1]));
@@ -443,7 +443,7 @@ test('rachat de crédit : simulation modifiable (taux, durée, frais, renégocia
   await bouton('inv_prets_0_rachat_mode', 'renégociation').click();
   await page.waitForSelector('#inv [data-p="prets.0.rachat.avenant"]');
   assert.equal(await page.locator('#inv [data-p="prets.0.rachat.ira"]').count(), 0);
-  assert.match(await res(), /Frais d'avenant[^\n]*\n?\s*—\s*\n?\s*600 €/i);
+  assert.match(await res(), /Frais d'avenant[^\n]*\n?\s*—\s*\n?\s*600\s€/i);
   await bouton('inv_prets_0_rachat_finance', 'Ajoutés').click();
   await page.waitForFunction(() => /Frais ajoutés au nouveau prêt/i.test(document.querySelector('[data-rachat="0"]').innerText));
   await attendreCompte(() => (r => r && r.ouvert && r.taux === 2 && r.duree === 120 && r.mode === 'reneg' && r.finance === '1')(bienDuCompte('Studio Test').prets[0].rachat));
@@ -743,14 +743,14 @@ test('logement de la famille : à part du cash-flow locatif (tuiles, carte), pui
   await cliquer(page, '#inv [data-a="ajout"]');
   await page.waitForSelector('#inv_titre');
   await champ('nom', 'Maison Famille'); await champ('valeur', 300); await champ('location.statut', 'rp'); await champ('chargesAn.tf', 1200);
-  await page.waitForFunction(() => /Coût\s*\n\s*100 €/i.test(document.getElementById('inv_kpis').innerText));                                     // taxe foncière ÷ 12, pas un cash-flow
+  await page.waitForFunction(() => /Coût\s*\n\s*100\s€/i.test(document.getElementById('inv_kpis').innerText));                                     // taxe foncière ÷ 12, pas un cash-flow
   await cliquer(page, '#inv a.retour'); await page.waitForSelector('#inv .invhead');   // la liste, pas les tuiles de la fiche
   await page.waitForFunction(() => /Logement famille/i.test(document.querySelector('#inv .kpis.six').innerText));
   const t = await page.locator('#inv .kpis.six').innerText();
   assert.equal(nombre(t.match(/Cash-flow locatif\s*\n\s*([^\n]+)/i)[1]), avant);   // les investissements ne bougent pas
   assert.equal(nombre(t.match(/Logement famille\s*\n\s*([^\n]+)/i)[1]), 100);
   assert.equal(nombre(t.match(/total\s+([^\n]+)/i)[1]), avant - 100);
-  assert.match(await carteBien('Maison Famille').innerText(), /Coût\s*\n\s*100 €\/mois/i);
+  assert.match(await carteBien('Maison Famille').innerText(), /Coût\s*\n\s*100\s€\/mois/i);
   await ouvrirFiche('Maison Famille');
   await cliquer(page, '#inv [data-a="supprimer"]');
   await page.waitForSelector('#inv .invhead');                                          // la liste, pas les tuiles de la fiche
@@ -799,18 +799,18 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   };
   assert.deepEqual(await carte.locator('.pj-l-nom').allTextContents(), ['Division', 'Garage']);
   assert.doesNotMatch(await carte.innerText(), /meilleure/i);
-  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73 €[\s\S]*il reste, par mois/);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73\s€[\s\S]*il reste, par mois/);
   assert.equal(await carte.locator('.pj-detail').count(), 1, 'une seule option ouverte à la fois');
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'options dans le compte');
   // Ce qui est commun (le crédit) en une ligne ; le tableau sur demande (« Comparer les chiffres ») : ce qu'elles donnent et ce qui change
-  assert.match(await carte.locator('.pj-commun').innerText(), /crédit[\s\S]*apport 20\s000 €/i);
+  assert.match(await carte.locator('.pj-commun').innerText(), /crédit[\s\S]*apport 20\s000\s€/i);
   assert.equal(await carte.locator('.pj-opts').count(), 0, 'tableau fermé au départ');
   await carte.locator('[data-a="tableau"]').click();
   await carte.locator('.pj-opts').waitFor();
   assert.deepEqual(await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents(), ['Division', 'Garage']);
   const rangee = k => carte.locator('.pj-opts tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
-  assert.match(await rangee('Par mois').innerText(), /−453 €\s+\+73 €/);
-  assert.match(await rangee('Prix').innerText(), /200\s000 €\s+120\s000 €/);
+  assert.match(await rangee('Par mois').innerText(), /−453\s€\s+\+73\s€/);
+  assert.match(await rangee('Prix').innerText(), /200\s000\s€\s+120\s000\s€/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
   // Dossier de financement du projet : les options comparées puis celle que l'utilisateur choisit en détail, 3 pages ;
   // ou une option seule choisie dans le menu du bouton ; ou dans le menu ⋯ de l'option. Jamais de « meilleure » imposée
@@ -850,7 +850,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   const cmp = carte.locator('.pj-compare');
   assert.match(await cmp.innerText(), /« Garage » te laisse le plus par mois/i);
   const ligne = k => cmp.locator('tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
-  assert.match(await ligne('Prix du projet').innerText(), /200\s000 €\s+120\s000 €\s+80\s000 € de mieux/i);
+  assert.match(await ligne('Prix du projet').innerText(), /200\s000\s€\s+120\s000\s€\s+80\s000\s€ de mieux/i);
   for (const k of ['Mensualité', 'Loyers par mois', 'Charges par mois', 'Par mois', 'Rendement brut', 'Patrimoine dans \\d+ ans', 'Coût du crédit']) assert.equal(await ligne(k).count(), 1, k);
   // « Modifier » une option : Financer l'ouvre sous son nom, l'enregistrement la met à jour (pas un autre projet)
   const nDiv = await page.evaluate(() => PROJETS.liste.find(x => x.branche === 'Division').id);
@@ -877,7 +877,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.equal(await carte.locator('.pj-opt-act').count(), 0);
   assert.match(await carte.locator('.pj-sous').innerText(), /2 options$/);
   assert.equal(await carte.locator('button.pj-ligne').count(), 2);
-  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73 €[\s\S]*il reste, par mois/);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73\s€[\s\S]*il reste, par mois/);
   assert.doesNotMatch(await carte.innerText(), /meilleure/i);
   assert.ok(!(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-deplies') || '[]'))).length, 'replié gardé');
   await page.click('#pj .actions [data-a="toutPlier"]');

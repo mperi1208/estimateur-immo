@@ -114,7 +114,7 @@ test('Travaux + revente : scénario « Revendre », bilan de l\'opération', asy
 
 test('Financer : prix d\'équilibre sur une seule ligne, sans champ à remplir', async () => {
   await saisir(page, '#cf_prix', 400000);
-  await page.waitForFunction(() => /Prix max pour être à 0 € de cash-flow|reste négatif|reste positif/.test(document.getElementById('cf_cibleRes').innerText));
+  await page.waitForFunction(() => /Prix max pour être à 0\s€ de cash-flow|reste négatif|reste positif/.test(document.getElementById('cf_cibleRes').innerText));
   assert.equal(await page.locator('#cf_cible input, #cf_cible button').count(), 0);
 });
 
@@ -131,13 +131,13 @@ test('Financer : deux biens, un seul crédit (prix, notaire et prêt sur le tota
   await saisir(page, '#cf_biensPlus [data-i="0"] [data-k="prix"]', 100000); await saisir(page, '#cf_loyersPlus [data-i="0"] [data-k="loyer"]', 500);
   await page.waitForFunction(() => /Deux biens :/.test(document.getElementById('cf_alerts').innerText));
   const al = await page.locator('#cf_alerts').innerText();
-  assert.match(al, /250\s000 € au total/);
-  assert.match(al, /1\s200 € de loyers par mois/);
+  assert.match(al, /250\s000\s€ au total/);
+  assert.match(al, /1\s200\s€ de loyers par mois/);
   const pret = nombre((await page.locator('#cf_tiles').innerText()).match(/prêt de ([^,]+)/i)[1]);
   assert.ok(pret - pretSeul > 100000 && pret - pretSeul < 112000, `prêt ${pret} pour ${pretSeul} avec un seul bien`);   // 2e prix, son notaire et sa garantie
   // prix d'équilibre : celui du projet entier (recalculé 150 ms après la saisie : on attend qu'il ait suivi le 2e bien)
-  await page.waitForFunction(() => { const t = document.getElementById('cf_cibleRes').innerText, m = t.match(/cash-flow :\s*([\d\s\u202f]+) €/); return /reste négatif|reste positif/i.test(t) || (m && +m[1].replace(/\D/g, '') > 100000); }).catch(() => {});
-  { const m = (await page.locator('#cf_cibleRes').innerText()).match(/cash-flow :\s*([\d\s\u202f]+) €/); if (m) assert.ok(nombre(m[1]) > 100000, `prix d'équilibre ${m[1]} sans le 2e bien`); }
+  await page.waitForFunction(() => { const t = document.getElementById('cf_cibleRes').innerText, m = t.match(/cash-flow :\s*([\d\s\u202f]+)\s€/); return /reste négatif|reste positif/i.test(t) || (m && +m[1].replace(/\D/g, '') > 100000); }).catch(() => {});
+  { const m = (await page.locator('#cf_cibleRes').innerText()).match(/cash-flow :\s*([\d\s\u202f]+)\s€/); if (m) assert.ok(nombre(m[1]) > 100000, `prix d'équilibre ${m[1]} sans le 2e bien`); }
   // Chaque bien a sa taxe foncière et sa copro, dans sa carte
   assert.equal(await page.locator('#cf_bien1 #cf_tf').count(), 1);
   const charges = async () => nombre((await page.locator('#cf_simple').innerText()).match(/Charges[^\n]*\n?\s*−\s*([^\n]+)/i)[1]);
@@ -212,7 +212,7 @@ test('location saisonnière dans Estimer : recettes à la nuitée, frais, compar
   await page.fill('#s_occupation', '50'); await page.dispatchEvent('#s_occupation', 'change');
   assert.equal(await page.locator('#s_periode').inputValue(), 'ete');              // le taux saisi porte sur la période choisie
   const txt = await page.locator('#saisonRes').innerText();
-  assert.match(txt, /90 € × 61 nuits/); assert.match(txt, /5\s490 €\/an/);
+  assert.match(txt, /90\s€ × 61 nuits/); assert.match(txt, /5\s490\s€\/an/);
   assert.match(await page.locator('#synth').innerText(), /Location saisonnière/i);
 });
 
@@ -228,7 +228,7 @@ test('saisonnier → Financer : à la nuitée, meublé forcé, recettes et fisca
   await saisir(page, '#cf_occupation', 50);
   assert.match(await page.locator('#cf_saisonHint').innerText(), /31 nuits par an/);   // 62 jours × 50 %
   assert.equal(await valeur('meuble'), '1'); assert.equal(await page.locator('#cf_meuble').isDisabled(), true);
-  assert.match(await page.locator('#cf_alerts').innerText(), /Location saisonnière : 90 € la nuit/);
+  assert.match(await page.locator('#cf_alerts').innerText(), /Location saisonnière : 90\s€ la nuit/);
   await cliquer(page, '#cf_boxImpots summary');
   await page.waitForFunction(() => /Meublé de tourisme non classé/.test(document.getElementById('cf_alerts').innerText), null, {timeout: 3000});
   await cliquer(page, '#cf_locSeg button[data-v="mois"]');
@@ -248,7 +248,7 @@ test('aménager une surface en plus (logement à part) : chaque logement estimé
   await page.waitForFunction(() => state.projet && state.projet.loyers, null, {timeout: 30000});
   const pj = await page.evaluate(() => state.projet);
   assert.equal(pj.loyers.length, 2); assert.ok(pj.loyers[1] > 0 && pj.loyers[1] < pj.loyers[0]);
-  assert.equal(pj.travaux, Math.round((30 * 1500 + 11000 + 3000) / 500) * 500);   // sous-sol 1 500 €/m², cuisine et compteurs, architecte
+  assert.equal(pj.travaux, Math.round((30 * 1500 + 11000 + 3000) / 500) * 500);   // sous-sol 1 500\s€/m², cuisine et compteurs, architecte
   // Coût total saisi à la main : il remplace l'estimation, sans relancer l'estimation des logements
   await page.fill('#w_total', '50000'); await page.dispatchEvent('#w_total', 'change');
   await page.waitForFunction(() => state.projet && state.projet.travaux === 50000);
@@ -345,27 +345,27 @@ test('Financer en 4 étapes : loyers par période (avant, pendant, après travau
   assert.equal(await page.inputValue(p1), ''); assert.equal(await page.locator(p1).getAttribute('placeholder'), 'pas loué');
   assert.equal(await page.locator('#cf_loyers [data-herit="l1:pendant"]').isVisible(), false);
   await saisir(page, p1, 600);
-  assert.match(await tot('Pendant'), /600 €/);
+  assert.match(await tot('Pendant'), /600\s€/);
   await cliquer(page, '#cf_loyers [data-herit="l1:pendant"]');
   assert.equal(await page.inputValue(p1), ''); assert.doesNotMatch(await tot('Pendant'), /600/);
   // Projet où le bien reste loué pendant le chantier (fait depuis Estimer) : la case montre le loyer d'avant, en gris
   await page.evaluate(() => { const c = document.getElementById('cf_loueChantier'); c.checked = true; c.dispatchEvent(new Event('input', {bubbles: true})); });
   assert.equal(await page.inputValue(p1), '750'); assert.equal(await page.locator(p1).evaluate(e => e.classList.contains('herite')), true);
-  assert.match(await tot('Pendant'), /750 €/);
-  assert.match(await page.locator('#cf_totApres').innerText(), /1\s000 €/);
+  assert.match(await tot('Pendant'), /750\s€/);
+  assert.match(await page.locator('#cf_totApres').innerText(), /1\s000\s€/);
   assert.match(await page.locator('#cf_calendrier').innerText(), /Différé du crédit : mois 1 à 36/);
   // Un logement loué à part : une ligne de plus, loué à la fin du chantier
   await cliquer(page, '#cf_ajoutL2');
   await saisir(page, '#cf_loyer2', 400);
   assert.equal(+await valeur('debutLoyer2'), 28);
-  assert.match(await page.locator('#cf_totApres').innerText(), /1\s400 €/);
+  assert.match(await page.locator('#cf_totApres').innerText(), /1\s400\s€/);
   // Le logement à part avant les travaux : pas loué par défaut, loué 300 € si on le tape, de nouveau pas loué si on vide la case
   const l2a = '#cf_loyers [data-per="l2:avant"]';
   assert.equal(await page.inputValue(l2a), '');
   await saisir(page, l2a, 300);
-  assert.match(await tot('Avant'), /1\s050 €/);
+  assert.match(await tot('Avant'), /1\s050\s€/);
   await saisir(page, l2a, '');
-  assert.match(await tot('Avant'), /^750 €/);
+  assert.match(await tot('Avant'), /^750\s€/);
   assert.equal(await page.locator('#cf_loyers [data-herit="l2:avant"]').isVisible(), true);    // vidée à la main : « comme avant » reste proposé
   await cliquer(page, '#cf_loyers [data-herit="l2:avant"]');
   // À la nuitée pour le logement à part seulement : le bien garde son loyer au mois
