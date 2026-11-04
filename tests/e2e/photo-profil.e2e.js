@@ -1,0 +1,36 @@
+// Photo de profil : ajoutée depuis la fenêtre du compte, recadrée en carré, affichée dans la barre du haut, retirée ;
+// rangée dans le stockage de Patrimoniu (immo-docs), pas dans le profil Supabase commun aux autres sites (pari-ldc)
+const test = require('node:test');
+const assert = require('node:assert');
+const zlib = require('zlib');
+const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase} = require('./banc');
+
+// Une vraie image PNG de 40 × 20 (rectangulaire : le recadrage en carré se voit)
+function png(l, h) {
+  const crc = b => { let c, t = []; for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } let x = 0xffffffff; for (const o of b) x = t[(x ^ o) & 255] ^ (x >>> 8); return (x ^ 0xffffffff) >>> 0; };
+  const bloc = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(l, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const lignes = Buffer.concat([...Array(h)].map(() => Buffer.concat([Buffer.from([0]), Buffer.alloc(l * 3, 120)])));
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), bloc('IHDR', ihdr), bloc('IDAT', zlib.deflateSync(lignes)), bloc('IEND', Buffer.alloc(0))]);
+}
+
+test('photo de profil : ajoutée, carrée, dans la barre du haut, retirée ; dans le stockage de Patrimoniu seulement', async () => {
+  const nav = await lancerNavigateur(), {page, journal} = await appareil(nav, nouvelleBase());
+  try {
+    await ouvrir(page); await seConnecter(page);
+    await page.evaluate(() => { window.__majProfil = 0; const a = COMPTE.client.auth.updateUser; COMPTE.client.auth.updateUser = (...x) => { window.__majProfil++; return a(...x); }; });
+    await page.click('#compteStatut');
+    assert.match(await page.locator('#compteBody').innerText(), /Ajouter une photo/);
+    await page.setInputFiles('#cpt_fichier', {name: 'moi.png', mimeType: 'image/png', buffer: png(40, 20)});
+    await page.waitForSelector('#cpt_photo');
+    const taille = await page.evaluate(() => new Promise(ok => { const i = new Image(); i.onload = () => ok([i.naturalWidth, i.naturalHeight]); i.src = document.getElementById('cpt_photo').src; }));
+    assert.deepEqual(taille, [256, 256], 'recadrée en carré de 256 px');
+    assert.equal(await page.locator('.tabs #compteStatut img.avatar').count(), 1, 'dans la barre du haut');
+    assert.deepEqual(await page.evaluate(() => [...window.__fichiers.keys()]), [await page.evaluate(() => COMPTE.user.id + '/profil/photo.jpg')]);
+    assert.equal(await page.evaluate(() => window.__majProfil), 0, 'le profil Supabase commun aux autres sites n\'est pas touché');
+    await page.click('#cpt_retirer');
+    await page.waitForSelector('#compteBody .cpt-initiale');
+    assert.equal(await page.locator('.tabs #compteStatut img.avatar').count(), 0);
+    assert.deepEqual(journal.erreurs, []);
+  } finally { await nav.close(); }
+});

@@ -65,9 +65,12 @@ const FAUX_SUPABASE = `(() => {
       select: () => ({eq: (k, v) => ({maybeSingle: async () => api('lire', {user_id: v})})}),
       upsert: async ligne => api('ecrire', ligne),
     }),
+    // Fichiers envoyés gardés dans la page ; la photo de profil absente répond « introuvable », comme Supabase
     storage: {from: () => ({
-      upload: async () => ({error: null}), remove: async () => ({error: null}),
-      createSignedUrl: async () => ({data: {signedUrl: 'data:text/plain,document'}, error: null}),
+      upload: async (cle, blob) => { (window.__fichiers ||= new Map()).set(cle, URL.createObjectURL(blob)); return {error: null}; },
+      remove: async cles => { cles.forEach(c => (window.__fichiers ||= new Map()).delete(c)); return {error: null}; },
+      createSignedUrl: async cle => (window.__fichiers || new Map()).has(cle) ? {data: {signedUrl: window.__fichiers.get(cle)}, error: null}
+        : cle.includes('/profil/') ? {data: null, error: {message: 'Object not found'}} : {data: {signedUrl: 'data:text/plain,document'}, error: null},
     })},
   })};
 })();`;
