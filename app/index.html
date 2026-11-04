@@ -363,6 +363,14 @@ details.plus{margin-top:12px;border-style:dashed}
 .invwrap .pj-commun b{color:var(--ink);font-weight:700}
 .invwrap .pj-commun .pj-lien{all:unset;cursor:pointer;color:var(--accent);font-weight:700;margin-left:8px;white-space:nowrap;display:inline-block}
 .invwrap .pj-commun .pj-lien:hover{text-decoration:underline}
+.invwrap .pj.pj-seul{padding:2px 12px;gap:0}
+.invwrap button.pj-ligne{width:100%}
+.invwrap button.pj-ligne .chevron{display:inline-block;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted)}
+.invwrap .pj-seul button.pj-seul-l{grid-template-columns:minmax(0,1fr) auto 14px;border-top:0;padding:12px 4px}
+.invwrap .pj-seul button.pj-seul-l .pj-l-sous{grid-column:1/3}
+.invwrap .pj-seul button.pj-seul-l .chevron{grid-column:3}
+.invwrap .pj-seul .pj-l-sous > span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.invwrap .pj-seul-corps{padding:4px 4px 12px;border-top:1px solid var(--line)}
 .invwrap .pj-groupe .pj-gr-bas{gap:8px;flex-wrap:wrap;justify-content:flex-start}
 .invwrap .pj-opts thead th small{display:block;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em}
 .invwrap .pj-opts tr.pj-ouvrir td{border-top:0;padding-top:4px}
@@ -749,11 +757,11 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 .tabs .compte .statut span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tabs .compte .statut.connecte{color:#7cd4ae}
 .tabs .compte .statut.par-photo{display:none!important}
-.tabs button.tabs-photo{all:unset;box-sizing:border-box;flex:0 0 44px!important;width:44px!important;min-width:44px;height:44px!important;padding:0!important;border-radius:50%;overflow:hidden;cursor:pointer;background:#1d2738;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 2px rgba(124,212,174,.25);transition:box-shadow .15s}
+.tabs .compte button.tabs-photo{all:unset;box-sizing:border-box;flex:0 0 44px!important;width:44px!important;min-width:44px;height:44px!important;padding:0!important;border-radius:50%;overflow:hidden;cursor:pointer;background:#1d2738;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 2px rgba(124,212,174,.25);transition:box-shadow .15s}
 .tabs .tabs-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.tabs button.tabs-photo:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 0 0 2px #7cd4ae}
-.tabs button.tabs-photo:focus-visible{box-shadow:0 0 0 2px #fff}
-@media (max-width:520px){.tabs button.tabs-photo{flex-basis:40px!important;width:40px!important;min-width:40px;height:40px!important}}
+.tabs .compte button.tabs-photo:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 0 0 2px #7cd4ae}
+.tabs .compte button.tabs-photo:focus-visible{box-shadow:0 0 0 2px #fff}
+@media (max-width:520px){.tabs .compte button.tabs-photo{flex-basis:40px!important;width:40px!important;min-width:40px;height:40px!important;margin-right:4px}}
 .cpt-photo{display:flex;gap:14px;align-items:center;margin:6px 0 14px}
 .cpt-photo img,.cpt-photo .cpt-initiale{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:0 0 auto}
 .cpt-photo .cpt-initiale{display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:26px}
@@ -4806,32 +4814,39 @@ function estimationCourante() {
 // donne des points ; le total fait la note. Un gros projet à peine rentable reste plus risqué qu'un petit qui s'autofinance.
 // r : résumé d'un projet (ou du calcul de Financer), f : ses réglages (durée des travaux, 2e loyer)
 function risqueProjet(r, f = {}) {
+  // Chaque critère donne des points en continu (pas par paliers) : deux projets proches n'ont plus forcément la même note,
+  // et un projet qui laisse de l'argent chaque mois en regagne un peu
   r = r || {};
-  const pts = [], ajoute = (n, txt) => { if (n > 0) pts.push([n, txt]); };
+  const pts = [], ajoute = (n, txt) => { if (n) pts.push([n, txt]); };
+  const borne = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
   const prix = +r.prix || 0, travaux = +r.travaux || 0, cout = prix + travaux, revente = r.scenario === 'revendre';
-  ajoute(cout < 100000 ? 0 : cout < 200000 ? 1 : cout < 400000 ? 2 : cout < 700000 ? 3 : 4, `${eurP(cout)} en jeu`);
+  // L'argent en jeu : de 80 000 € (0) à 1,2 M€ (4), sur une échelle logarithmique
+  if (cout > 0) ajoute(borne(Math.log(cout / 80000) / Math.log(15)) * 4, `${eurP(cout)} en jeu`);
   if (revente) {
-    const b = +r.benefice || 0;
-    ajoute(b < 0 ? 3 : b < cout * 0.1 ? 2 : b < cout * 0.2 ? 1 : 0, b < 0 ? 'perte prévue à la revente' : 'marge de revente faible');
-    ajoute(2, 'dépend du prix de revente');
+    const b = +r.benefice || 0, marge = cout > 0 ? b / cout : 0;
+    ajoute(b < 0 ? 3 + borne(-marge / 0.1) : borne((0.25 - marge) / 0.25) * 3, b < 0 ? 'perte prévue à la revente' : 'marge de revente faible');
+    ajoute(1.5, 'dépend du prix de revente');
   } else {
     const cf = +r.cfMois || 0, loyer = r.mois ? +r.mois.loyer || 0 : (+r.loyer || 0) + (+r.loyer2 || 0) + (+r.loyerB2 || 0), m = +r.mensualite || 0;
-    ajoute(cf >= 0 ? 0 : cf > -200 ? 1 : cf > -500 ? 2 : 3, cf < 0 ? `il manque ${eurP(-cf)} par mois` : '');
-    if (m > 0) { const c = loyer / m; ajoute(c >= 1.2 ? 0 : c >= 1 ? 1 : c >= 0.8 ? 2 : c >= 0.6 ? 3 : 4, `les loyers couvrent ${Math.round(c * 100)} % de la mensualité`); }
+    // Ce qu'il manque chaque mois (jusqu'à 3 points à −600 €) ; ce qui reste fait baisser la note (jusqu'à −1,5 à +300 €)
+    ajoute(cf < 0 ? borne(-cf / 200, 0, 3) : -borne(cf / 200, 0, 1.5), cf < 0 ? `il manque ${eurP(-cf)} par mois` : '');
+    if (m > 0) { const c = loyer / m; ajoute(borne((1.3 - c) / 0.7) * 4, `les loyers couvrent ${Math.round(c * 100)} % de la mensualité`); }
   }
   if (travaux > 0) {
     // Aménagement d'un bien déjà à soi (pas de prix d'achat) : on juge les travaux sur leur montant
-    if (prix > 0) { const t = travaux / prix; ajoute(t < 0.15 ? 1 : t < 0.4 ? 2 : 3, `travaux : ${Math.round(t * 100)} % du prix`); }
-    else ajoute(travaux < 20000 ? 1 : travaux < 60000 ? 2 : 3, `travaux de ${eurP(travaux)}`);
-    ajoute((+f.dureeTravaux || 0) > 6 ? 1 : 0, `chantier de ${+f.dureeTravaux} mois`);
-    ajoute(+f.loyer2 > 0 ? 1 : 0, 'plusieurs logements à créer');
+    if (prix > 0) { const t = travaux / prix; ajoute(borne(t / 0.5) * 3, `travaux : ${Math.round(t * 100)} % du prix`); }
+    else ajoute(borne(travaux / 80000) * 3, `travaux de ${eurP(travaux)}`);
+    const d = +f.dureeTravaux || 0;
+    if (d > 6) ajoute(borne((d - 6) / 12) * 1.5, `chantier de ${d} mois`);
+    if (+f.loyer2 > 0) ajoute(1, 'plusieurs logements à créer');
   }
   const ap = cout > 0 ? (+r.apport || 0) / cout : 1;
-  ajoute(ap >= 0.2 ? 0 : ap >= 0.1 ? 1 : 2, ap < 0.1 ? 'peu ou pas d\'apport' : 'apport limité');
-  ajoute(r.saison ? 1 : 0, 'recettes à la nuitée, variables');
+  ajoute(borne((0.25 - ap) / 0.25) * 2, ap < 0.1 ? 'peu ou pas d\'apport' : 'apport limité');
+  if (r.saison) ajoute(1, 'recettes à la nuitée, variables');
   const total = pts.reduce((t, [n]) => t + n, 0);
-  const note = total <= 2 ? 1 : total <= 5 ? 2 : total <= 8 ? 3 : total <= 11 ? 4 : 5;
-  return {note, total, raisons: pts.sort((a, b) => b[0] - a[0]).map(([, t]) => t).filter(Boolean)};
+  const note = total < 1 ? 1 : total < 3.5 ? 2 : total < 6.5 ? 3 : total < 10.5 ? 4 : 5;
+  // Les raisons : seulement ce qui pèse vraiment (au moins un demi-point), du plus lourd au plus léger
+  return {note, total, raisons: pts.filter(([n]) => n >= 0.5).sort((a, b) => b[0] - a[0]).map(([, t]) => t).filter(Boolean)};
 }
 const NOMS_RISQUE = ['', 'faible', 'modéré', 'moyen', 'élevé', 'très élevé'];
 // Cinq barres : autant de remplies que la note, du vert (1) au rouge (5) ; le détail au survol et pour les lecteurs d'écran
@@ -5172,10 +5187,14 @@ function cartePj(pr, sous, corps, boutons, br) {
   if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
   // Supprimer : rangé en dernier dans « ⋯ » (comme pour une option), pas une croix à côté du nom qu'on toucherait par erreur
   boutons.push('<button class="danger" data-a="suppr">Supprimer le projet</button>');
-  return `<article class="pj" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">${sous}</div>${chipAchete(pr)}</div>${barresRisque(risqueDe(pr))}</div>
-    ${corps}
+  // Fin par défaut : une ligne (nom, ce qu'il donne, risque) ; touchée, elle déplie les chiffres et les boutons
+  const ouvert = SEULS_OUVERTS ? !DEPLIES.has(pr.id) : DEPLIES.has(pr.id), {v, lib} = valeurOption(pr);
+  return `<article class="pj pj-seul${ouvert ? '' : ' replie'}" data-id="${esc(pr.id)}"><button type="button" class="pj-ligne pj-seul-l" data-a="pjPlier" aria-expanded="${ouvert}">
+    <span class="pj-l-nom">${esc(pr.nom)}</span><b class="pj-l-val ${signeP(v)}">${montantP(v)}</b>
+    <span class="pj-l-sous">${barresRisque(risqueDe(pr))}<span>${lib}${sous ? ' · ' + sous : ''}</span></span><span class="chevron" aria-hidden="true"></span></button>
+    ${ouvert ? `<div class="pj-seul-corps">${chipAchete(pr)}${corps}
     <div class="pj-bas"><span></span>
-      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></article>`;
+      <div class="pj-actions">${menuP(boutons)}<button data-a="recap" title="Télécharger le dossier de financement en PDF, deux pages pour la banque">Dossier de financement</button><button class="primaire" data-a="financer">Modifier le financement</button></div></div></div>` : ''}</article>`;
 }
 // Estimation gardée seule : le prix et le loyer, et de quoi la financer
 function carteEstimation(pr) {
@@ -5299,6 +5318,8 @@ function boutonsBranche(pr, br) {
 const DEPLIES = (() => { try { return new Set(JSON.parse(localStorage.getItem('projets-deplies') || '[]')); } catch (e) { return new Set(); } })();
 const garderDeplies = () => { try { localStorage.setItem('projets-deplies', JSON.stringify([...DEPLIES])); } catch (e) {} };
 const deplier = (g, oui = true) => { if (oui) DEPLIES.add(g); else DEPLIES.delete(g); garderDeplies(); };
+// Réglage de l'appareil : projets à une option dépliés par défaut (DEPLIES garde alors ceux qu'on a repliés)
+const SEULS_OUVERTS = (() => { try { return localStorage.getItem('projets-seuls-ouverts') === '1'; } catch (e) { return false; } })();
 // « Revoir l'estimation » d'un bien du projet (le n-ième), prise dans la première option qui en a une
 function boutonEstimation(bs, n) {
   if (n == null) return '';
@@ -5626,6 +5647,7 @@ document.getElementById('pj').addEventListener('click', e => {
     const gs = [...new Set(PROJETS.liste.map(groupeDe))].filter(g => PROJETS.liste.filter(x => groupeDe(x) === g).length > 1), tout = gs.every(g => DEPLIES.has(g));
     gs.forEach(g => { if (tout) DEPLIES.delete(g); else DEPLIES.add(g); }); garderDeplies(); afficherProjets();
   }
+  else if (t.dataset.a === 'pjPlier') { deplier(id, !DEPLIES.has(id)); afficherProjets(); }
   else if (t.dataset.a === 'tableau') { if (TABLEAU.has(groupe)) TABLEAU.delete(groupe); else TABLEAU.add(groupe); afficherProjets(); }
   else if (t.dataset.a === 'optVoir') {   // replié : déplie le projet sur cette option ; déplié : ouvre ou referme son détail
     if (!DEPLIES.has(groupe)) { deplier(groupe, true); OPTION_OUVERTE.set(groupe, id); }

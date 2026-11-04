@@ -96,7 +96,7 @@ const lancerNavigateur = () => chromium.launch(process.env.PW_CANAL ? {channel: 
 
 // Un « appareil » : un contexte de navigateur avec son propre stockage, branché sur la base simulée
 // mobile : écran de téléphone (390 × 844, tactile), comme un iPhone récent
-async function appareil(nav, base, {reseau = {}, mobile = false} = {}) {
+async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = false} = {}) {
   const ecran = mobile ? {viewport: {width: +process.env.LARGEUR || 390, height: 844}, isMobile: true, hasTouch: true, deviceScaleFactor: +process.env.ECHELLE || 2} : {viewport: {width: 1280, height: 900}};
   const ctx = await nav.newContext({...ecran, locale: 'fr-FR', timezoneId: 'Europe/Paris'});
   const journal = {erreurs: [], requetes: {dvf: 0, loyers: 0, geo: 0}};
@@ -136,6 +136,9 @@ async function appareil(nav, base, {reseau = {}, mobile = false} = {}) {
     }
     return route.fulfill({status: 404, body: 'réseau coupé dans les tests : ' + url.host});
   });
+  // Les projets à une option sont fins et pliés par défaut ; les tests travaillent sur leurs boutons, donc dépliés
+  // (sauf cartesPliees : le test qui vérifie le pliage)
+  if (!cartesPliees) await ctx.addInitScript(() => { try { localStorage.setItem('projets-seuls-ouverts', '1'); } catch (e) {} });
   const page = await ctx.newPage();
   page.on('pageerror', e => journal.erreurs.push(e.message));
   page.on('dialog', d => d.accept());   // confirm() de l'appli : on accepte

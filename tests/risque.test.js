@@ -50,8 +50,25 @@ test('cinq barres, autant de remplies que la note, et le détail lisible', () =>
 });
 
 test('aménagement d\'un bien déjà à soi (pas de prix d\'achat) : noté sur le montant des travaux, pas « 100 % du prix »', () => {
-  const r = risqueProjet({prix: 0, travaux: 10000, apport: 0, mensualite: 68, cfMois: 157, mois: {loyer: 1200}});
+  const r = risqueProjet({prix: 0, travaux: 30000, apport: 0, mensualite: 200, cfMois: 157, mois: {loyer: 1200}});
   assert.ok(r.note >= 1 && r.note <= 2, `note ${r.note}`);
-  assert.ok(r.raisons.some(t => /travaux de 10\s000\s€/.test(t)));
+  assert.ok(r.raisons.some(t => /travaux de 30\s000\s€/.test(t)));
   assert.ok(!r.raisons.some(t => /% du prix/.test(t)));
+});
+
+test('la note s\'étale : du petit projet qui s\'autofinance au gros projet à crédit total, toutes les notes de 1 à 5 existent', () => {
+  const base = {apport: 0, mois: {loyer: 0}};
+  const notes = [
+    risqueProjet({prix: 60000, apport: 20000, mensualite: 250, cfMois: 250, mois: {loyer: 600}}),
+    risqueProjet({prix: 150000, apport: 30000, mensualite: 700, cfMois: 60, mois: {loyer: 900}}),
+    risqueProjet({prix: 220000, apport: 10000, mensualite: 1100, cfMois: -150, mois: {loyer: 1050}}),
+    risqueProjet({prix: 300000, travaux: 60000, apport: 0, mensualite: 1800, cfMois: -350, mois: {loyer: 1450}}, {dureeTravaux: 6}),
+    risqueProjet({...base, prix: 600000, travaux: 200000, mensualite: 4000, cfMois: -1500, mois: {loyer: 2500}}, {dureeTravaux: 12}),
+  ].map(x => x.note);
+  assert.deepEqual(notes, [1, 2, 3, 4, 5]);
+});
+
+test('deux projets proches mais pas identiques n\'ont plus toujours la même note : un cash-flow positif fait baisser le risque', () => {
+  const p = {prix: 180000, apport: 20000, mensualite: 900};
+  assert.ok(risqueProjet({...p, cfMois: 250, mois: {loyer: 1300}}).total < risqueProjet({...p, cfMois: -50, mois: {loyer: 1000}}).total - 1);
 });
