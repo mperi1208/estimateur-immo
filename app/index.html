@@ -735,7 +735,8 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 /* Jamais de défilement de côté : un élément trop large ne décale plus toute la page (clip garde la barre d'onglets collante) */
 html,body{overflow-x:clip;max-width:100%}
 .tabs{position:sticky;top:0;z-index:1100;display:flex;align-items:center;gap:4px;height:calc(56px + env(safe-area-inset-top));padding:env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));min-width:0;background:var(--ink);border-bottom:0;color:#fff}
-.tabs .brand{display:flex;align-items:center;font-weight:800;font-size:19px;margin-right:16px}
+.tabs .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;margin-right:16px}
+.tabs .brand .logo{width:30px;height:30px;flex:0 0 auto;color:#fff}
 .tabs button{border:0;background:none;color:#c9d2de;font:inherit;font-weight:600;padding:0 14px;height:40px;border-radius:10px;cursor:pointer}
 .tabs button:hover{color:#fff}
 .tabs button[aria-selected="true"]{color:#fff;background:rgba(255,255,255,.12);font-weight:700}
@@ -747,11 +748,11 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 .tabs .compte .statut span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tabs .compte .statut.connecte{color:#7cd4ae}
 .tabs .compte .statut.par-photo{display:none!important}
-.tabs button.tabs-photo{all:unset;box-sizing:border-box;flex:0 0 44px!important;width:44px!important;min-width:44px;height:44px!important;padding:0!important;margin-right:12px;border-radius:12px;overflow:hidden;cursor:pointer;background:#1d2738;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 2px rgba(124,212,174,.25);transition:box-shadow .15s}
+.tabs button.tabs-photo{all:unset;box-sizing:border-box;flex:0 0 44px!important;width:44px!important;min-width:44px;height:44px!important;padding:0!important;border-radius:50%;overflow:hidden;cursor:pointer;background:#1d2738;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 2px rgba(124,212,174,.25);transition:box-shadow .15s}
 .tabs .tabs-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .tabs button.tabs-photo:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 0 0 2px #7cd4ae}
 .tabs button.tabs-photo:focus-visible{box-shadow:0 0 0 2px #fff}
-@media (max-width:520px){.tabs button.tabs-photo{flex-basis:40px!important;width:40px!important;min-width:40px;height:40px!important;border-radius:12px;margin-right:8px}}
+@media (max-width:520px){.tabs button.tabs-photo{flex-basis:40px!important;width:40px!important;min-width:40px;height:40px!important}}
 .cpt-photo{display:flex;gap:14px;align-items:center;margin:6px 0 14px}
 .cpt-photo img,.cpt-photo .cpt-initiale{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:0 0 auto}
 .cpt-photo .cpt-initiale{display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:26px}
@@ -767,7 +768,7 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 .tabs .compte button.sortir{background:none;border:1px solid #475467;color:#fff}
 @media (max-width:420px){.tabs{gap:0;padding-left:8px;padding-right:8px}.tabs button{font-size:12.5px!important;padding:0 3px!important}.tabs .compte{padding-left:4px}.tabs .compte button{padding:0 9px!important;font-size:12px!important;height:30px}}
 @media (max-width:360px){.tabs button{font-size:11.5px!important}.tabs .compte button{padding:0 7px!important;font-size:11px!important}}
-@media (max-width:520px){.tabs .brand{display:none}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte .statut.connecte{display:flex;padding:0 6px}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
+@media (max-width:520px){.tabs .brand{font-size:0;gap:0;margin-right:6px}.tabs .brand .logo{width:28px;height:28px}.tabs button{flex:1;padding:0 4px;white-space:nowrap;font-size:14px}.tabs .compte{flex:0 0 auto;gap:0}.tabs .compte .statut{display:none}.tabs .compte .statut.connecte{display:flex;padding:0 6px}.tabs .compte button{flex:0 0 auto;padding:0 10px;font-size:13px}}
 /* Onglets et compte au même endroit sur tous les onglets : alignés sur la colonne centrale (1040 px) */
 /* Un seul bord gauche pour tout : barre du haut, Simuler, Financer et Mes biens sur la même colonne de 1200 px */
 @media (min-width:801px){.tabs{padding-left:max(24px, calc((100% - 1200px) / 2 + 24px));padding-right:max(24px, calc((100% - 1200px) / 2 + 24px))}}
@@ -1215,10 +1216,10 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 </head>
 <body>
 <nav class="tabs" role="tablist">
-  <button type="button" class="tabs-photo" id="tabsPhoto" hidden aria-label="Ton compte"><img alt=""></button><span class="brand">Patrimoniu</span>
+  <span class="brand"><svg class="logo" viewBox="0 0 120 120" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M36 64V94H84V58" stroke-width="8"/><path d="M24 70L52 44L66 56L94 30M78 30H94V46" stroke-width="9"/></g></svg>Patrimoniu</span>
   <button role="tab" data-tab="estimation" data-groupe="simuler" aria-selected="true">Simuler</button>
   <button role="tab" data-tab="investissements" data-groupe="biens" data-prive aria-selected="false">Mes biens</button>
-  <div class="compte"><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog"><span class="long">Se connecter</span><span class="court">Connexion</span></button></div>
+  <div class="compte"><button type="button" class="tabs-photo" id="tabsPhoto" hidden aria-label="Ton compte"><img alt=""></button><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog"><span class="long">Se connecter</span><span class="court">Connexion</span></button></div>
 </nav>
 <div class="sim-tete" id="simTete" hidden><nav class="cf-etapes" id="simEtapes" aria-label="Étapes de la simulation">
   <button data-e="1"><i>1</i>Le bien</button><button data-e="2"><i>2</i>Travaux et loyers</button><button data-e="3"><i>3</i>Le crédit</button><button data-e="4"><i>4</i>Le résultat</button>
@@ -3320,7 +3321,7 @@ async function seDeconnecter() {
 // Les règles du stockage permettent d'ajouter et de supprimer (pas de remplacer) : changer, c'est supprimer puis ajouter.
 const PHOTO = () => `${COMPTE.user.id}/profil/photo.jpg`;
 let photoProfil = null;   // adresse d'affichage (lien signé), ou null
-// La photo se met à gauche de « Patrimoniu », en carré arrondi comme l'icône de l'appli ; elle remplace alors le compte à droite
+// La photo, en grand, à droite de la barre du haut (à la place de l'icône du compte) ; le logo de l'appli est à gauche de « Patrimoniu »
 function afficherPhoto() {
   const bt = document.getElementById('tabsPhoto'), st = document.getElementById('compteStatut'); if (!bt) return;
   const oui = !!(photoProfil && COMPTE.user);

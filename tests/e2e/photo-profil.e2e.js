@@ -35,7 +35,7 @@ test('photo de profil : ajoutée, carrée, dans la barre du haut, retirée ; dan
     const [l, h, rouge, bleu] = await page.evaluate(() => new Promise(ok => { const i = new Image(); i.onload = () => { const c = Object.assign(document.createElement('canvas'), {width: i.naturalWidth, height: i.naturalHeight}), x = c.getContext('2d'); x.drawImage(i, 0, 0); const d = x.getImageData(c.width - 20, c.height / 2, 1, 1).data; ok([i.naturalWidth, i.naturalHeight, d[0], d[2]]); }; i.src = document.getElementById('cpt_photo').src; }));
     assert.deepEqual([l, h], [256, 256], 'carré de 256 px');
     assert.ok(rouge > 150 && bleu < 100, `cadrée sur la moitié gauche (rouge ${rouge}, bleu ${bleu})`);
-    assert.ok(await page.locator('.tabs #tabsPhoto img').isVisible(), 'dans la barre du haut, à gauche de Patrimoniu');
+    assert.ok(await page.locator('.tabs #tabsPhoto img').isVisible(), 'en grand, à droite de la barre du haut');
     assert.deepEqual(await page.evaluate(() => [...window.__fichiers.keys()]), [await page.evaluate(() => COMPTE.user.id + '/profil/photo.jpg')]);
     assert.equal(await page.evaluate(() => window.__majProfil), 0, 'le profil Supabase commun aux autres sites n\'est pas touché');
     // Annuler le cadrage d'une nouvelle photo garde l'ancienne
