@@ -36,7 +36,7 @@ test('trois branches : le meilleur et son avance sur le 2e', () => {
   assert.deepEqual([ligne(l, 'Par mois').gagnant, ligne(l, 'Par mois').ecart], [2, 120]);
   assert.deepEqual([ligne(l, 'Prix du projet').gagnant, ligne(l, 'Prix du projet').ecart], [1, 10000]);
   assert.equal(ligne(l, 'Loyers par mois').gagnant, null);               // B et C à égalité en tête
-  assert.match(verdictComparaison(['A', 'B', 'C'], [A, B, C]), /« C » te laisse le plus par mois : <b>120 €<\/b> de plus que « B »/);
+  assert.match(verdictComparaison(['A', 'B', 'C'], [A, B, C]), /« C » te laisse le plus par mois : <b>120\s€<\/b> de plus que « B »/);
 });
 
 test('patrimoine : pas de gagnant si les durées diffèrent ; travaux cachés si aucun', () => {
@@ -51,7 +51,7 @@ test('achat-revente contre location : chacun ses chiffres, pas de verdict', () =
   assert.deepEqual(ligne(l, 'Bénéfice à la revente').v, [null, 25000]);
   assert.equal(ligne(l, 'Par mois').v[1], null);
   assert.equal(verdictComparaison(['A', 'R'], [A, R]), '');
-  assert.match(verdictComparaison(['R1', 'R2'], [R, {...R, benefice: 10000}]), /« R1 » te rapporte le plus à la revente : <b>15\s000 €<\/b> de plus que « R2 »/);
+  assert.match(verdictComparaison(['R1', 'R2'], [R, {...R, benefice: 10000}]), /« R1 » te rapporte le plus à la revente : <b>15\s000\s€<\/b> de plus que « R2 »/);
   assert.match(verdictComparaison(['A', 'B'], [A, {...B, cfMois: -250}]), /« A » et « B » te laissent autant par mois/);
 });
 

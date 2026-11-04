@@ -17,6 +17,9 @@ test('nouvelle recherche : tout est remis à zéro, et une nouvelle estimation p
     assert.equal(e.adr, ''); assert.equal(e.surf, '50'); assert.equal(e.lat, null); assert.equal(e.travaux, 0);
     assert.notEqual(e.etat, 'renover'); assert.notEqual(e.dpe, 'F');
     assert.match(e.crit, /bien moyen/); assert.match(e.out, /Renseigne l'adresse/); assert.ok(e.bouton, 'le bouton se cache');
+    // Sans adresse mais avec des détails réglés : il y a quelque chose à effacer, le bouton revient
+    await page.evaluate(() => { const f = field('etat'); f.value = 'renover'; f.dispatchEvent(new Event('input')); f.dispatchEvent(new Event('change')); });
+    await page.waitForSelector('#nouvelleBtn:not([hidden])');
     const r = await estimer(page, {surf: 30});
     assert.equal(r.surf, 30, 'une nouvelle estimation repart de zéro');
     assert.deepEqual(journal.erreurs, []);

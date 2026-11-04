@@ -5,7 +5,7 @@
 if (typeof MOTEUR !== 'undefined' && MOTEUR) return;
 const T = window.CF_APP.taux;   // taux du marché, historique, surprime SCI (onglet Financer)
 const racine = document.getElementById('inv');
-const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
+const eur = n => (n < 0 ? '−' : '') + fmt(Math.abs(n)) + ' €';
 const kEur = n => (n < 0 ? '−' : '') + fmtK(Math.abs(n));
 const pct = n => (n < 0 ? '−' : '') + Math.abs(n * 100).toFixed(1).replace('.', ',') + ' %';
 const somme = (l, f) => l.reduce((t, x) => t + (f(x) || 0), 0);
@@ -737,10 +737,10 @@ function majAuto(b) {
   else if (e.terrain) {
     h = `<div class="auto-res${a_jour ? '' : ' perime'}">
       <div class="auto-chiffres"><div><span>Valeur estimée</span><b>${kEur(e.prix)}</b><small>${kEur(e.lo)} – ${kEur(e.hi)}</small></div>
-        <div><span>Prix au m²</span><b>${e.ppm >= 10 ? fmt(e.ppm) : e.ppm.toFixed(2).replace('.', ',')} €</b><small>médiane des ventes ${NATURES[b.nature] ? 'de terrains « ' + NATURES[b.nature].toLowerCase() + ' »' : ''}</small></div>
+        <div><span>Prix au m²</span><b>${e.ppm >= 10 ? fmt(e.ppm) : e.ppm.toFixed(2).replace('.', ',')} €</b><small>médiane des ventes ${NATURES[b.nature] ? 'de terrains « ' + NATURES[b.nature].toLowerCase() + ' »' : ''}</small></div>
 </div>
       ${mini([['Fiabilité', esc(e.fiabilite.replace(/^Fiabilité /, ''))], ['Ventes comparées', `${e.ventes} à moins de ${dist(e.rayon)}`], ['Période', e.periode], ['Estimé le', new Date(e.le).toLocaleDateString('fr-FR')]], 'petit')}
-      <div class="aide">${e.ecartees ? `${e.ecartees} vente${e.ecartees > 1 ? 's' : ''} au-dessus de ${fmt(e.seuil)} €/m² écartée${e.ecartees > 1 ? 's' : ''} (parcelles achetées pour construire). ` : ''}À confirmer par un notaire ou une agence : accès, vue, viabilisation et zonage comptent beaucoup.</div>
+      <div class="aide">${e.ecartees ? `${e.ecartees} vente${e.ecartees > 1 ? 's' : ''} au-dessus de ${fmt(e.seuil)} €/m² écartée${e.ecartees > 1 ? 's' : ''} (parcelles achetées pour construire). ` : ''}À confirmer par un notaire ou une agence : accès, vue, viabilisation et zonage comptent beaucoup.</div>
       ${b.valeurManuelle ? `<button data-a="valeurAuto">Utiliser cette valeur (${kEur(e.prix)})</button>` : ''}
     </div>
     ${!a_jour ? '<div class="aide">Surface ou nature modifiée depuis cette estimation : clique sur « Estimer ce bien » pour la mettre à jour.</div>' : ''}`;
@@ -1412,7 +1412,7 @@ function planAmenag(b) {
   const m2 = a.m2 > 0 ? a.m2 : null, coutM2 = AMENAG[t].m2;
   const decote = a.decote != null && a.decote !== '' ? Math.max(0, Math.min(80, +a.decote)) : AMENAG[t].decote, d = decote / 100;
   const saison = a.meuble === 'nuit', meuble = a.meuble === '1' || saison, duree = a.duree > 0 ? Math.round(a.duree) : 5;
-  const postes = m2 ? [[`Aménagement : ${fmt(coutM2)} €/m² × ${fmt(m2)} m²`, m2 * coutM2], ['Cuisine, entrée séparée, compteurs', COUT_LOT[zoneDe(p)] / 2], ['Architecte, déclaration en mairie', 3000]] : [];
+  const postes = m2 ? [[`Aménagement : ${fmt(coutM2)} €/m² × ${fmt(m2)} m²`, m2 * coutM2], ['Cuisine, entrée séparée, compteurs', COUT_LOT[zoneDe(p)] / 2], ['Architecte, déclaration en mairie', 3000]] : [];
   // Coût total saisi (devis, budget) : il remplace l'estimation au m² et comprend tout, mobilier compris
   const suggere = m2 ? Math.round(somme(postes, x => x[1]) / 500) * 500 : null, mobSuggere = meuble && m2 ? budgetMobilier(m2, 'standard') : 0;
   const saisi = a.total > 0, travaux = saisi ? a.total : suggere, mobilier = saisi ? 0 : mobSuggere;
@@ -1877,7 +1877,7 @@ function majCalculs(b) {
   else if (rt) rt.innerHTML = b.type !== 'terrain' && LISTES[b.location.statut] ? (l => l.length ? `${l.length} ${b.location.statut === 'lots' ? 'loyer' : 'chambre'}${l.length > 1 ? 's' : ''} : <b>${eur(loyerLogement(b))}</b> par mois au total${(a => a.length ? ` (dont ${a.map(x => `${eur(x.loyer || 0)} à partir de ${libMois(normMois(x.debut))}`).join(', ')})` : '')(l.filter(x => !commence(x)))}, ${eur(c.loyersAn)} sur les 12 prochains mois après vacance.` : '')(lignesLoyer(b))
     : c.loyersAn ? `Revenus : <b>${eur(c.loyersAn)}</b> par an, soit ${eur(c.loyersAn / 12)} par mois.` : '';
   const prixBien = (b.achat.prix || 0) + (b.achat.mode === 'construction' ? b.achat.construction || 0 : 0);
-  if (q('#inv_cout')) q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
+  if (q('#inv_cout')) q('#inv_cout').innerHTML = c.cout ? `Coût total : <b>${eur(c.cout)}</b>${b.surface && prixBien && b.type !== 'terrain' ? ` · ${fmt(prixBien / b.surface)} €/m² ${b.achat.mode === 'construction' ? 'terrain et construction' : 'à l\'achat'}` : ''}` : '';
   b.prets.forEach((p, i) => {
     const r = racine.querySelector(`[data-resume="${i}"]`), s = racine.querySelector(`[data-rachat="${i}"]`), al = racine.querySelector(`[data-allonge="${i}"]`);
     const tableau = r && r.querySelector('details.amort[open]');   // tableau ouvert : il le reste

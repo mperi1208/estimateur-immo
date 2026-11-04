@@ -51,5 +51,5 @@ test('bilan : en gros en tête, deux barres à la même échelle, détail du loy
   assert.ok(h.indexOf('bs-total') < h.indexOf('bs-barres') && h.indexOf('bs-barres') < h.indexOf('bs-lignes'), 'chiffre, barres, puis lignes');
   assert.match(h, /bs-loyer" style="width:37\.4%/); assert.match(h, /bs-credit" style="width:92\.6%/); assert.match(h, /bs-charges" style="width:7\.4%/);
   assert.match(texte(h), /Loyer encaissé 682 € moins ½ mois vide par an \+ 654 €/);
-  assert.equal(detailVacance(800, 0), ''); assert.equal(detailVacance(800, 1.5), '800 € moins 1,5 mois vide par an');
+  assert.equal(detailVacance(800, 0), ''); assert.equal(detailVacance(800, 1.5), '800 € moins 1,5 mois vide par an');
 });
