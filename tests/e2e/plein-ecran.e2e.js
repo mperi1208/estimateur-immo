@@ -19,8 +19,8 @@ test('ordinateur : le bouton passe en plein écran et en sort, le choix est rete
   assert.ok(await btn.isVisible(), 'bouton visible sur ordinateur');
   assert.equal(await btn.getAttribute('aria-label'), 'Plein écran');
   await btn.click();
-  await page.waitForFunction(() => !!document.fullscreenElement);
-  assert.ok(await page.evaluate(() => document.body.classList.contains('plein-ecran')));
+  // fullscreenElement est posé avant l'évènement fullscreenchange (Chrome) : on attend la barre mise à jour
+  await page.waitForFunction(() => !!document.fullscreenElement && document.body.classList.contains('plein-ecran'));
   assert.equal(await btn.getAttribute('aria-label'), 'Quitter le plein écran');
   assert.equal(await page.evaluate(() => localStorage.getItem('plein-ecran')), '1');
 
@@ -32,7 +32,7 @@ test('ordinateur : le bouton passe en plein écran et en sort, le choix est rete
 
   // On en sort avec le bouton : la visite suivante reste en fenêtre
   await page.locator('#pleinEcranBtn').click();
-  await page.waitForFunction(() => !document.fullscreenElement);
+  await page.waitForFunction(() => !document.fullscreenElement && !document.body.classList.contains('plein-ecran'));
   assert.equal(await page.evaluate(() => localStorage.getItem('plein-ecran')), '0');
   await ouvrir(page);
   await page.mouse.click(640, 500);
