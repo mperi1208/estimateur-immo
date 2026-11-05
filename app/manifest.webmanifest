@@ -1,14 +1,17 @@
 {
+  "id": "./index.html",
   "name": "Patrimoniu",
   "short_name": "Patrimoniu",
-  "start_url": "./index.html#estimation",
+  "description": "Estimer, financer et suivre ses biens immobiliers",
+  "lang": "fr",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f5f2",
-  "theme_color": "#f6f5f2",
+  "background_color": "#eef1f4",
+  "theme_color": "#101828",
   "icons": [
-    {"src": "icone-192.png", "sizes": "192x192", "type": "image/png"},
-    {"src": "icone-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
     {"src": "logo.svg", "sizes": "any", "type": "image/svg+xml"}
   ]
 }
