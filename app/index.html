@@ -786,10 +786,40 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 #compteDlg .cpt-photo .cpt-bouton{display:inline-block;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-weight:600;margin:0 8px 0 0;text-transform:none;letter-spacing:normal;font-size:14px;color:var(--ink)}
 .cpt-photo .cpt-bouton:hover{border-color:var(--ink)}
 .cpt-titre{font-size:15px;margin:16px 0 2px}
+#compteDlg .cpt-profil{display:flex;align-items:center;gap:12px;width:100%;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:inherit;text-align:left;padding:10px 12px;cursor:pointer;margin:4px 0 0}
+#compteDlg .cpt-profil:hover{border-color:var(--ink)}
+.cpt-profil .pastille{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;flex:0 0 auto;object-fit:cover}
+/* Écran des profils, plein écran */
+body.ecran-profils{overflow:hidden}
+.profils-ecran{position:fixed;inset:0;z-index:100000;background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:56px 16px 32px;overflow:auto;box-sizing:border-box}
+.profils-ecran[hidden]{display:none}
+.pe-centre{text-align:center;width:100%;max-width:820px;margin:auto}
+.pe-centre h1{font-size:clamp(26px,5vw,44px);font-weight:700;margin:0 0 clamp(24px,5vw,44px)}
+.pe-grille{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(18px,4vw,40px)}
+.pe-grille .profil-tuile{width:clamp(104px,26vw,160px);gap:12px;font-size:clamp(15px,2.6vw,19px);font-weight:500;color:var(--muted);position:relative}
+.pe-grille .profil-tuile:hover,.pe-grille .profil-tuile:focus-visible{color:var(--ink);outline:none}
+.pe-grille .profil-tuile .pastille{width:clamp(104px,26vw,160px);height:clamp(104px,26vw,160px);border-radius:16px;font-size:clamp(44px,10vw,68px);border:4px solid transparent;transition:border-color .15s}
+.pe-grille .profil-tuile:hover .pastille,.pe-grille .profil-tuile:focus-visible .pastille,.pe-grille .profil-tuile[aria-current] .pastille{border-color:var(--ink)}
+.pe-grille .profil-tuile .pastille.plus{border:3px dashed var(--line);font-size:clamp(40px,8vw,56px)}
+.pe-grille.gerer .profil-tuile[data-pid] .pastille{opacity:.6}
+.pe-grille.gerer .profil-tuile[data-pid]::after{content:'✎';position:absolute;top:0;left:0;right:0;height:clamp(104px,26vw,160px);display:grid;place-items:center;font-size:clamp(28px,6vw,40px);color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);pointer-events:none}
+.pe-form{margin:clamp(24px,5vw,36px) auto 0;max-width:340px;display:flex;flex-direction:column;gap:12px}
+.pe-form input{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:inherit;font-size:17px;text-align:center}
+.pe-actions{display:flex;gap:10px;justify-content:center}
+.pe-actions button,.pe-suppr{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:none;color:var(--ink)}
+.pe-actions .pe-ok{background:var(--accent);border-color:var(--accent);color:#fff}
+.pe-suppr{border:0;color:var(--bad);text-decoration:underline;padding:4px}
+.pe-suppr[hidden]{display:none}
+.profils-ecran .msg{margin-top:12px;font-size:14px;min-height:1em}.profils-ecran .msg.err{color:var(--bad)}
+.pe-gerer{margin-top:clamp(28px,6vw,48px);border:1px solid var(--muted);background:none;color:var(--muted);padding:10px 24px;font:inherit;font-size:13px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:6px}
+.pe-gerer:hover{color:var(--ink);border-color:var(--ink)}
+.pe-fermer{position:absolute;top:14px;right:14px;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;padding:8px}
+.pe-fermer[hidden]{display:none}
 .profils{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 10px}
 .profil-tuile{display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;color:var(--ink);cursor:pointer;padding:4px;width:72px;font-size:13px;font-weight:600;margin:0}
 .profil-tuile>span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.profil-tuile .pastille{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:20px;font-weight:800;border:3px solid transparent}
+.profil-tuile .pastille{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:20px;font-weight:800;border:3px solid transparent;box-sizing:border-box}
+.profil-tuile img.pastille{object-fit:cover;padding:0}
 .profil-tuile[aria-current] .pastille{border-color:var(--ink)}
 .profil-tuile .pastille.plus{background:none;color:var(--muted);border:2px dashed var(--line)}
 .cpt-ligne{display:flex;gap:8px;margin:0 0 8px}.cpt-ligne input{flex:1;min-width:0}
@@ -1263,6 +1293,21 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 <div class="sim-tete" id="simTete" hidden><nav class="cf-etapes" id="simEtapes" aria-label="Étapes de la simulation">
   <button data-e="1"><i>1</i>Le bien</button><button data-e="2"><i>2</i>Travaux et loyers</button><button data-e="3"><i>3</i>Le crédit</button><button data-e="4"><i>4</i>Le résultat</button>
 </nav></div>
+<!-- Choix du profil, en plein écran (comme Netflix) : à la connexion d'un appareil qui n'a pas encore de profil, ou depuis « Changer de profil » -->
+<div id="profilsEcran" class="profils-ecran" hidden role="dialog" aria-modal="true" aria-labelledby="pe_titre">
+  <button type="button" class="pe-fermer" id="pe_fermer" aria-label="Fermer">✕</button>
+  <div class="pe-centre">
+    <h1 id="pe_titre">Qui utilise Patrimoniu ?</h1>
+    <div class="pe-grille" id="pe_grille"></div>
+    <form id="pe_form" class="pe-form" hidden novalidate>
+      <input id="pe_nom" maxlength="40" placeholder="Prénom" aria-label="Prénom du profil" autocomplete="off">
+      <div class="pe-actions"><button type="submit" class="pe-ok" id="pe_ok">Enregistrer</button><button type="button" id="pe_annuler">Annuler</button></div>
+      <button type="button" class="pe-suppr" id="pe_suppr" hidden>Supprimer ce profil</button>
+    </form>
+    <div class="msg" id="pe_msg" role="status"></div>
+    <button type="button" class="pe-gerer" id="pe_gerer">Gérer les profils</button>
+  </div>
+</div>
 <dialog id="compteDlg" aria-label="Compte">
   <form method="dialog" class="fermer"><button aria-label="Fermer">✕</button></form>
   <div id="compteBody"></div>
@@ -3234,12 +3279,12 @@ const COMPTE = {
       if (this.vise !== id) return;
       let choix = null; try { choix = localStorage.getItem('profil-' + id); } catch (e) {}
       if (choix === '' || this.membres.some(m => m.id === choix)) this.profil = choix;
-      else if (this.membres.length) this.profil = await choisirProfil();
+      else if (this.membres.length) { this.profil = (await ecranProfils({connexion: true})) || ''; try { localStorage.setItem('profil-' + id, this.profil); } catch (e) {} }
       if (this.vise !== id) return;
     }
     this.user = u; majBoutonCompte(); this.ecouteurs.forEach(f => f(u));
   },
-  async chargerProfils(u = this.user) {
+  async chargerProfils(u = {id: this.vise}) {
     try {
       const [m, t] = await Promise.all([this.client.from('immo_membres').select('id,nom,couleur,cree').eq('user_id', u.id),
         this.client.from('immo_profils').select('nom').eq('user_id', u.id).maybeSingle()]);
@@ -3262,23 +3307,24 @@ const COMPTE = {
   async ajouterProfil(nom) {
     const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const couleur = COULEURS_PROFIL[(this.membres.length + 1) % COULEURS_PROFIL.length];
-    const {error} = await this.client.from('immo_membres').insert({user_id: this.user.id, id, nom, couleur});
+    const {error} = await this.client.from('immo_membres').insert({user_id: this.vise, id, nom, couleur});
     if (error) throw error;
     await this.chargerProfils();
     return id;
   },
   async renommerProfil(id, nom) {
-    const q = id ? this.client.from('immo_membres').update({nom}).eq('user_id', this.user.id).eq('id', id)
-      : this.client.from('immo_profils').update({nom}).eq('user_id', this.user.id);
+    const q = id ? this.client.from('immo_membres').update({nom}).eq('user_id', this.vise).eq('id', id)
+      : this.client.from('immo_profils').update({nom}).eq('user_id', this.vise);
     const {error} = await q; if (error) throw error;
     await this.chargerProfils(); majBoutonCompte();
   },
   async supprimerProfil(id) {
     if (!id) return;
     if (this.profil === id) await this.changerProfil('');
-    const {error} = await this.client.from('immo_membres').delete().eq('user_id', this.user.id).eq('id', id);
+    const {error} = await this.client.from('immo_membres').delete().eq('user_id', this.vise).eq('id', id);
     if (error) throw error;
-    try { await this.client.storage.from('immo-docs').remove([`${this.user.id}/profil/${id}.jpg`]); } catch (e) {}
+    try { await this.client.storage.from('immo-docs').remove([`${this.vise}/profil/${id}.jpg`]); } catch (e) {}
+    photosProfils.delete(id);
     await this.chargerProfils(); majBoutonCompte();
   },
   async lire() {
@@ -3304,20 +3350,76 @@ const COMPTE = {
 const COULEURS_PROFIL = ['#2f6fdb', '#d9534f', '#2e9d6a', '#e08a1e', '#8a5cd1', '#1e9bb0'];
 const couleurProfil = id => id ? ((COMPTE.membres.find(m => m.id === id) || {}).couleur || COULEURS_PROFIL[1]) : COULEURS_PROFIL[0];
 // Tuile d'un profil : pastille (initiale sur sa couleur) et prénom
+// Photo de chaque profil (lien signé, ou null s'il n'en a pas), gardée pour la session ; à défaut, l'initiale sur sa couleur
+const photosProfils = new Map();
+const cheminPhoto = (uid, id) => `${uid}/profil/${id ? id + '.jpg' : 'photo.jpg'}`;
+const pastilleProfil = id => photosProfils.get(id) ? `<img class="pastille" src="${esc(photosProfils.get(id))}" alt="">`
+  : `<span class="pastille" style="background:${esc(couleurProfil(id))}" aria-hidden="true">${esc((COMPTE.nomProfil(id)[0] || '?').toUpperCase())}</span>`;
 const tuileProfil = (id, actuel) => `<button type="button" class="profil-tuile" data-pid="${esc(id)}"${actuel ? ' aria-current="true"' : ''}>
-  <span class="pastille" style="background:${esc(couleurProfil(id))}" aria-hidden="true">${esc((COMPTE.nomProfil(id)[0] || '?').toUpperCase())}</span><span>${esc(COMPTE.nomProfil(id))}</span></button>`;
-// À la connexion, quand le compte a plusieurs profils et que cet appareil n'en a pas encore choisi un
-function choisirProfil() {
+  ${pastilleProfil(id)}<span>${esc(COMPTE.nomProfil(id))}</span></button>`;
+// Photos pas encore connues : demandées, puis mises dans les tuiles déjà affichées
+async function completerPhotos(racine, uid) {
+  await Promise.all([...racine.querySelectorAll('.profil-tuile[data-pid], #cpt_profils')].map(async b => {
+    const id = b.dataset.pid ?? COMPTE.profil;
+    if (photosProfils.has(id)) return;
+    let url = null;
+    try { const {data, error} = await COMPTE.client.storage.from('immo-docs').createSignedUrl(cheminPhoto(uid, id), 3600); if (!error && data && data.signedUrl) url = data.signedUrl; } catch (e) {}
+    photosProfils.set(id, url);
+    if (url && b.isConnected) b.querySelector('.pastille').outerHTML = pastilleProfil(id);
+  }));
+}
+// Écran des profils. connexion : à la connexion d'un appareil sans profil retenu (il faut en choisir un, pas de ✕).
+// Rend l'id du profil choisi, ou null si l'écran est fermé sans choisir.
+function ecranProfils({connexion = false} = {}) {
   return new Promise(ok => {
-    const dlg = document.getElementById('compteDlg'), body = document.getElementById('compteBody');
-    let fini = false;
-    const finir = id => { if (fini) return; fini = true; dlg.removeEventListener('close', ferme); if (dlg.open) dlg.close(); ok(id); };
-    const ferme = () => { if (!dlg.open) finir(''); };   // fermée sans choisir : le titulaire (pas la fermeture de la connexion, juste avant)
-    body.innerHTML = `<h2>Qui utilise Patrimoniu ?</h2><p class="hint">Chaque profil a ses propres biens et projets. Tu pourras changer de profil depuis ton compte.</p>
-      <div class="profils">${['', ...COMPTE.membres.map(m => m.id)].map(id => tuileProfil(id)).join('')}</div>`;
-    body.querySelectorAll('[data-pid]').forEach(b => b.onclick = () => { try { localStorage.setItem('profil-' + COMPTE.vise, b.dataset.pid); } catch (e) {} finir(b.dataset.pid); });
-    dlg.addEventListener('close', ferme);
-    if (!dlg.open) dlg.showModal();
+    const ec = document.getElementById('profilsEcran'), grille = ec.querySelector('#pe_grille'), form = ec.querySelector('#pe_form');
+    const nomEl = ec.querySelector('#pe_nom'), msgEl = ec.querySelector('#pe_msg'), gerer = ec.querySelector('#pe_gerer'), suppr = ec.querySelector('#pe_suppr');
+    let modeGerer = false, edite = null;   // edite : id du profil modifié, 'nouveau' pour un ajout, null sinon
+    const msg = (t, err) => { msgEl.textContent = t || ''; msgEl.classList.toggle('err', !!err); };
+    const finir = id => { ec.hidden = true; document.body.classList.remove('ecran-profils'); document.removeEventListener('keydown', clavier); ok(id); };
+    const clavier = e => { if (e.key === 'Escape' && !connexion) { e.preventDefault(); finir(null); } };
+    function afficher() {
+      const ids = ['', ...COMPTE.membres.map(m => m.id)];
+      ec.querySelector('#pe_titre').textContent = modeGerer ? 'Gérer les profils' : 'Qui utilise Patrimoniu ?';
+      grille.classList.toggle('gerer', modeGerer);
+      grille.innerHTML = ids.map(id => tuileProfil(id, !connexion && !modeGerer && id === COMPTE.profil)).join('')
+        + `<button type="button" class="profil-tuile" data-ajout><span class="pastille plus" aria-hidden="true">+</span><span>Ajouter</span></button>`;
+      completerPhotos(grille, COMPTE.vise);
+      grille.querySelectorAll('[data-pid]').forEach(b => b.onclick = () => {
+        if (!modeGerer) return finir(b.dataset.pid);
+        editer(b.dataset.pid);
+      });
+      grille.querySelector('[data-ajout]').onclick = () => editer('nouveau');
+      form.hidden = edite === null;
+      gerer.textContent = modeGerer ? 'Terminé' : 'Gérer les profils';
+      ec.querySelector('#pe_fermer').hidden = connexion;
+    }
+    function editer(id) {
+      edite = id; msg('');
+      nomEl.value = id === 'nouveau' ? '' : COMPTE.nomProfil(id);
+      ec.querySelector('#pe_ok').textContent = id === 'nouveau' ? 'Créer le profil' : 'Enregistrer';
+      suppr.hidden = id === 'nouveau' || id === '';
+      afficher(); nomEl.focus();
+    }
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const nom = nomEl.value.trim().slice(0, 40); if (!nom) return msg('Entre un prénom.', true);
+      try {
+        msg(edite === 'nouveau' ? 'Création du profil…' : 'Enregistrement…');
+        if (edite === 'nouveau') await COMPTE.ajouterProfil(nom); else await COMPTE.renommerProfil(edite, nom);
+        edite = null; msg(''); afficher();
+      } catch (err) { msg((edite === 'nouveau' ? 'Création impossible : ' : 'Impossible de renommer : ') + erreurCompte(err), true); }
+    };
+    ec.querySelector('#pe_annuler').onclick = () => { edite = null; msg(''); afficher(); };
+    suppr.onclick = async () => {
+      if (!confirm(`Supprimer le profil « ${COMPTE.nomProfil(edite)} » avec ses biens et ses projets ? C'est définitif.`)) return;
+      try { await COMPTE.supprimerProfil(edite); edite = null; msg(''); afficher(); } catch (err) { msg('Suppression impossible : ' + erreurCompte(err), true); }
+    };
+    gerer.onclick = () => { modeGerer = !modeGerer; edite = null; msg(''); afficher(); };
+    ec.querySelector('#pe_fermer').onclick = () => finir(null);
+    document.addEventListener('keydown', clavier);
+    const dlg = document.getElementById('compteDlg'); if (dlg.open) dlg.close();
+    afficher(); ec.hidden = false; document.body.classList.add('ecran-profils');
   });
 }
 function majBoutonCompte() {
@@ -3395,37 +3497,10 @@ function ouvrirCompte(mode = 'connexion') {
         <div><label class="cpt-bouton" for="cpt_fichier">${photoProfil ? 'Changer la photo' : 'Ajouter une photo'}</label><input type="file" id="cpt_fichier" accept="image/*" hidden>
           ${photoProfil ? '<button type="button" class="lien" id="cpt_retirer">Retirer</button>' : ''}<div class="hint" id="cpt_photoMsg" role="status"></div></div></div>
       <p class="hint">Connecté avec <b>${esc(COMPTE.user.email)}</b>. Tes biens et tes projets sont enregistrés dans ton compte : tu les retrouves sur tous tes appareils.</p>
-      <h3 class="cpt-titre">Profils</h3>
-      <p class="hint">Plusieurs personnes sur le même compte : chaque profil a ses propres biens et projets.</p>
-      <div class="profils">${['', ...COMPTE.membres.map(m => m.id)].map(id => tuileProfil(id, id === COMPTE.profil)).join('')}
-        <button type="button" class="profil-tuile" id="cpt_plus"><span class="pastille plus" aria-hidden="true">+</span><span>Ajouter</span></button></div>
-      <form id="cpt_nouveau" class="cpt-ligne" hidden><input id="cpt_nomProfil" maxlength="40" placeholder="Prénom" aria-label="Prénom du nouveau profil" required><button type="submit">Ajouter</button></form>
-      <div class="cpt-liens"><button type="button" class="lien" id="cpt_renommer">Renommer « ${esc(COMPTE.nomProfil())} »</button>
-        ${COMPTE.profil ? `<button type="button" class="lien" id="cpt_suppr">Supprimer ce profil</button>` : ''}</div>
-      <form id="cpt_renom" class="cpt-ligne" hidden><input id="cpt_nomRenom" maxlength="40" aria-label="Nouveau nom du profil" required><button type="submit">Renommer</button></form>
-      <div class="msg" id="cpt_profilMsg" role="status"></div>
+      <button type="button" class="cpt-profil" id="cpt_profils">${pastilleProfil(COMPTE.profil)}<span><b>${esc(COMPTE.nomProfil())}</b><br><span class="hint">${COMPTE.membres.length ? 'Changer de profil' : 'Ajouter des profils (famille)'}</span></span></button>
       <button class="cta" id="cpt_out">Se déconnecter</button>`;
-    const msgP = (t, err) => { const el = body.querySelector('#cpt_profilMsg'); el.textContent = t; el.classList.toggle('err', !!err); };
-    body.querySelectorAll('.profils [data-pid]').forEach(b => b.onclick = async () => { await COMPTE.changerProfil(b.dataset.pid); ouvrirCompte(); });
-    body.querySelector('#cpt_plus').onclick = () => { const f = body.querySelector('#cpt_nouveau'); f.hidden = false; f.querySelector('input').focus(); };
-    body.querySelector('#cpt_nouveau').onsubmit = async e => {
-      e.preventDefault();
-      const nom = body.querySelector('#cpt_nomProfil').value.trim(); if (!nom) return;
-      msgP('Création du profil…');
-      try { const id = await COMPTE.ajouterProfil(nom); await COMPTE.changerProfil(id); ouvrirCompte(); }
-      catch (err) { msgP('Création impossible : ' + erreurCompte(err), true); }
-    };
-    body.querySelector('#cpt_renommer').onclick = () => { const f = body.querySelector('#cpt_renom'), i = f.querySelector('input'); f.hidden = false; i.value = COMPTE.nomProfil(); i.select(); };
-    body.querySelector('#cpt_renom').onsubmit = async e => {
-      e.preventDefault();
-      const nom = body.querySelector('#cpt_nomRenom').value.trim(); if (!nom) return;
-      try { await COMPTE.renommerProfil(COMPTE.profil, nom); ouvrirCompte(); } catch (err) { msgP('Impossible de renommer : ' + erreurCompte(err), true); }
-    };
-    const sp = body.querySelector('#cpt_suppr');
-    if (sp) sp.onclick = async () => {
-      if (!confirm(`Supprimer le profil « ${COMPTE.nomProfil()} » avec ses biens et ses projets ? C'est définitif.`)) return;
-      try { await COMPTE.supprimerProfil(COMPTE.profil); ouvrirCompte(); } catch (err) { msgP('Suppression impossible : ' + erreurCompte(err), true); }
-    };
+    completerPhotos(body, COMPTE.user.id);
+    body.querySelector('#cpt_profils').onclick = async () => { const id = await ecranProfils(); if (id !== null) await COMPTE.changerProfil(id); };
     body.querySelector('#cpt_out').onclick = async () => { await seDeconnecter(); dlg.close(); };
     const msg = t => { body.querySelector('#cpt_photoMsg').textContent = t; };
     body.querySelector('#cpt_fichier').onchange = async e => {
@@ -3488,7 +3563,7 @@ async function seDeconnecter() {
 // ---------- Photo de profil ----------
 // Rangée dans le dossier privé du compte (même stockage que les plans et documents), recadrée en carré de 256 px.
 // Les règles du stockage permettent d'ajouter et de supprimer (pas de remplacer) : changer, c'est supprimer puis ajouter.
-const PHOTO = () => `${COMPTE.user.id}/profil/${COMPTE.profil ? COMPTE.profil + '.jpg' : 'photo.jpg'}`;   // une photo par profil
+const PHOTO = () => cheminPhoto(COMPTE.user.id, COMPTE.profil);   // une photo par profil
 let photoProfil = null;   // adresse d'affichage (lien signé), ou null
 // La photo, en grand, à droite de la barre du haut (à la place de l'icône du compte) ; le logo de l'appli est à gauche de « Patrimoniu »
 function afficherPhoto() {
@@ -3503,6 +3578,7 @@ async function chargerPhoto() {
   photoProfil = null;
   if (COMPTE.user && COMPTE.client) {
     try { const {data, error} = await COMPTE.client.storage.from('immo-docs').createSignedUrl(PHOTO(), 3600); if (!error && data && data.signedUrl) photoProfil = data.signedUrl; } catch (e) {}
+    photosProfils.set(COMPTE.profil, photoProfil);
   }
   afficherPhoto();
 }
@@ -3570,9 +3646,10 @@ async function changerPhoto(blob) {
 async function retirerPhoto() {
   const {error} = await COMPTE.client.storage.from('immo-docs').remove([PHOTO()]);
   if (error) throw error;
-  photoProfil = null; afficherPhoto();
+  photoProfil = null; photosProfils.set(COMPTE.profil, null); afficherPhoto();
 }
 COMPTE.surChangement(u => { if (u) chargerPhoto(); else { photoProfil = null; afficherPhoto(); } });
+COMPTE.surChangement(u => { if (!u && !COMPTE.vise) photosProfils.clear(); });   // déconnexion (pas un simple changement de profil)
 // Invité : ouvre la connexion. Connecté : déconnecte directement.
 document.getElementById('compteBtn').onclick = () => COMPTE.user && COMPTE.client ? seDeconnecter() : ouvrirCompte();
 document.getElementById('compteStatut').onclick = () => ouvrirCompte();
