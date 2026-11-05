@@ -1165,7 +1165,7 @@ function vueDetail(b) {
     ${TYPE_DVF[b.type] || b.type === 'terrain' || b.type === 'parking' ? '<button class="primaire estimer" data-a="estimerAuto" id="inv_estimer">Estimer ce bien</button>' : ''}
     <div class="valeur"><h4>Estimation</h4><div id="inv_auto"></div>
       <div class="grille">${champ(b, 'valeur', 'Valeur du bien (€)', {step: 1000})}${champ(b, 'valeurLe', 'Valeur au', {type: 'month'})}</div>
-      ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans l'onglet Estimer →</button></div>` : ''}</div>`}`)}
+      ${TYPE_DVF[b.type] ? `<div class="boutons"><button data-a="estimer"${estimable(b) ? '' : ' disabled title="Renseigne l\'adresse et la surface"'}>Voir le détail dans Simuler →</button></div>` : ''}</div>`}`)}
     ${ANNEXE_POUR.includes(b.type) && !b.vendu ? annexeHTML(b) : ''}
     ${lieSimple(b) ? lieSimpleHTML(b) : `${section('Achat', `${repriseAchatHTML(b)}<div class="grille">
       ${champ(b, 'achat.mode', 'Acquisition', {options: {existant: 'Achat d\'un bien', construction: 'Terrain + construction'}, large: true})}
@@ -1476,7 +1476,7 @@ function amenagHTML(b) {
     </div>
     <div class="boutons"><button class="primaire" data-a="amenagEstimer"${cours || !p || !q.m2 ? ' disabled' : ''}>${cours ? 'Estimation en cours…' : !q.m2 ? 'Estimer (surface à remplir)' : q.e ? 'Estimer à nouveau' : 'Estimer une fois aménagé'}</button></div>
     <div id="inv_amenagRes"></div>
-    ${q.e ? `<div class="boutons"><button class="primaire" data-a="amenagProjet">${a.projet && typeof PROJETS !== 'undefined' && PROJETS.liste.some(x => x.id === a.projet) ? 'Mettre à jour dans Mes projets' : 'Ajouter à Mes projets'}</button><button data-a="amenagOnglet">Voir le détail dans l'onglet Estimer →</button><button data-a="amenagFait">Travaux terminés</button></div>
+    ${q.e ? `<div class="boutons"><button class="primaire" data-a="amenagProjet">${a.projet && typeof PROJETS !== 'undefined' && PROJETS.liste.some(x => x.id === a.projet) ? 'Mettre à jour dans Mes biens' : 'Ajouter à Mes biens'}</button><button data-a="amenagOnglet">Voir le détail dans Simuler →</button><button data-a="amenagFait">Travaux terminés</button></div>
     <div class="aide" id="inv_amenagMsg"></div>` : ''}
     <div class="aide">Une pièce habitable doit avoir 2,20 m sous plafond et une fenêtre sur l'extérieur. Changement de destination : déclaration préalable ou permis ; prévoir le traitement de l'humidité en sous-sol.</div>`, true);
 }
@@ -1530,8 +1530,8 @@ function amenagVersProjet(b) {
   b.amenag.projet = id; sauver(b);
   // Boutons et message hors du bloc recalculé : quitter un champ le redessine, le clic ne doit pas tomber sur un bouton remplacé
   const m = racine.querySelector('#inv_amenagMsg'), btn = racine.querySelector('[data-a="amenagProjet"]');
-  if (m) m.innerHTML = `${deja ? 'Mis à jour' : 'Ajouté'} dans <a href="#projets">Mes projets</a> : financement des travaux à régler dans l'onglet Financer.`;
-  if (btn) btn.textContent = 'Mettre à jour dans Mes projets';
+  if (m) m.innerHTML = `${deja ? 'Mis à jour' : 'Ajouté'} dans <a href="#projets">Mes biens</a> : financement des travaux à régler dans Simuler.`;
+  if (btn) btn.textContent = 'Mettre à jour dans Mes biens';
 }
 // Bandeaux en haut de la fiche : bien associé à un autre, et vente enregistrée
 function lienHTML(b) {

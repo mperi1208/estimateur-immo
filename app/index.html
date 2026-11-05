@@ -63,6 +63,7 @@ h1{font-size:20px;margin:0 0 2px}
   #cf_save:not(.ouvert) #cf_saveForm>:not(#cf_enreg):not(#cf_saveMsg){display:none}
   #cf:not([data-etape="4"]) #cf_save:not(.ouvert) #cf_saveForm{display:none}
   #cf_save:not(.ouvert) #cf_enreg{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #cf_enreg .long{display:none}
 }
 .sauveEst .hint a{color:#7CD4AE}
 /* Estimer rouvert depuis un projet : même en-tête que Financer (projet › option, les 4 étapes) */
@@ -730,6 +731,9 @@ body.discret #invest :is(.chiffres-lie b, .chiffres-arbre b, .annexe-n b, .kpi .
 #estim .w-av tr.tot td{border-top:2px solid var(--ink);border-bottom:0;font-weight:800}
 #estim .w-av tr.tot td.ap{color:var(--accent)}
 #estim .w-scroll{overflow-x:auto}
+/* Téléphone : les 4 colonnes (valeur et loyer, aujourd'hui et après) tiennent dans la largeur, sans colonne cachée */
+@media (max-width:600px){#estim .w-av{font-size:13px;border-spacing:3px 0;margin:6px -3px 0}#estim .w-av th,#estim .w-av td{padding:6px 5px}
+  #estim .w-av th{font-size:12px}#estim .w-av thead tr + tr th{font-size:11px}}
 #estim .w-bas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
 #estim .w-cout{border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 #estim .w-cout h3,#estim .w-av-t{margin:0 0 6px;font-size:15px;font-weight:800}
@@ -1479,10 +1483,10 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 <div class="cf-barre" id="cf_save"><div class="cf-barre-in">
   <div class="resume-barre" id="cf_resumeBarre" aria-live="polite"></div>
   <div id="cf_saveForm">
-    <input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer dans mes projets</button><button id="cf_enregBranche" hidden>Nouvelle option</button><button id="cf_enregNouveau" hidden>Nouveau projet</button>
+    <input id="cf_nomProjet" placeholder="Nom du projet" aria-label="Nom du projet"><button class="cta" id="cf_enreg">Enregistrer<span class="long"> dans Mes biens</span></button><button id="cf_enregBranche" hidden>Nouvelle option</button><button id="cf_enregNouveau" hidden>Nouveau projet</button>
     <div id="cf_saveMsg" role="status"></div>
   </div>
-  <div id="cf_saveInvite" hidden><span class="invite">Connecte-toi pour enregistrer ce projet dans « Mes projets ».</span><button class="cta" id="cf_connexion">Se connecter</button></div>
+  <div id="cf_saveInvite" hidden><span class="invite">Connecte-toi pour enregistrer ce projet dans « Mes biens ».</span><button class="cta" id="cf_connexion">Se connecter</button></div>
   <button type="button" class="plus-barre" id="cf_plus" aria-expanded="false"><span id="cf_plusLib">Enregistrer</span><span class="chev" aria-hidden="true"></span></button><button id="cf_suivant">Étape suivante</button>
 </div></div>
 <div class="tip cftip" id="cf_tip"></div>
@@ -3212,7 +3216,7 @@ const COMPTE = {
 function majBoutonCompte() {
   const b = document.getElementById('compteBtn'), st = document.getElementById('compteStatut');
   st.classList.toggle('connecte', !!COMPTE.user);
-  st.title = COMPTE.user ? 'Mon compte (déconnexion)' : 'Mode invité : connecte-toi pour retrouver Mon patrimoine et Mes projets';
+  st.title = COMPTE.user ? 'Mon compte (déconnexion)' : 'Mode invité : connecte-toi pour retrouver Mes biens';
   document.body.classList.toggle('connecte', !!COMPTE.user || !COMPTE.actif());   // sans compte : seuls Estimer et Financer
   if (window.CF_APP && CF_APP.majCompte) CF_APP.majCompte();
   if (typeof verifierOnglet === 'function') verifierOnglet();
@@ -3297,7 +3301,7 @@ function ouvrirCompte(mode = 'connexion') {
   } else {
     const titres = {connexion: 'Se connecter', creer: 'Créer un compte', oubli: 'Mot de passe oublié', nouveau: 'Nouveau mot de passe'};
     body.innerHTML = `<h2>${titres[mode]}</h2>
-      ${mode === 'connexion' || mode === 'creer' ? `<p class="hint">Tu es en <b>mode invité</b> : tu peux estimer un bien et simuler son financement. Avec un compte, tu retrouves aussi <b>Mon patrimoine</b> et <b>Mes projets</b>, sur tous tes appareils.</p>
+      ${mode === 'connexion' || mode === 'creer' ? `<p class="hint">Tu es en <b>mode invité</b> : tu peux estimer un bien et simuler son financement. Avec un compte, tu retrouves aussi <b>Mes biens</b> (en projet et détenus), sur tous tes appareils.</p>
       <div class="seg"><button type="button" data-m="connexion"${mode === 'connexion' ? ' class="on"' : ''}>Se connecter</button><button type="button" data-m="creer"${mode === 'creer' ? ' class="on"' : ''}>Créer un compte</button></div>` : ''}
       <form id="cpt_form" novalidate>
         ${mode !== 'nouveau' ? '<label for="cpt_mail">E-mail</label><input id="cpt_mail" type="email" autocomplete="email" required>' : ''}
@@ -3442,11 +3446,11 @@ document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter'
 // (hors du module Financer : Mes projets s'en sert aussi)
 // Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
 function margeNego(prix, max, quoi, f, sansPrix) {   // sansPrix : le prix est déjà affiché juste au-dessus
-  const d = max - prix, pct = prix > 0 ? Math.round(Math.abs(d) / prix * 100) : 0;
-  const marge = Math.abs(d) < 100 ? 'pile au prix actuel'
-    : d > 0 ? `<b class="up">${f(d)} de marge</b> (tu peux monter jusqu'à +${pct} %)`
-    : `<b class="down">il faut négocier ${f(-d)}</b> (−${pct} %)`;
-  return `${sansPrix ? '' : `<span>Prix actuel : <b>${f(prix)}</b></span>`}<span>Prix max pour être à 0 € de ${quoi} : <b>${f(max)}</b></span><span>${marge}</span>`;
+  const d = max - prix, pct = prix > 0 ? Math.round(Math.abs(d) / prix * 100) : 0, rev = quoi === 'bénéfice';
+  const phrase = Math.abs(d) < 100 ? (rev ? 'Au prix actuel, la revente ne gagne ni ne perd rien' : 'Au prix actuel, tu n\'as rien à sortir chaque mois, pile')
+    : d > 0 ? `Jusqu'à <b>${f(max)}</b>, ${rev ? 'la revente reste gagnante' : 'tu n\'as rien à sortir chaque mois'} : <b class="up">${f(d)} de marge</b> (+${pct} %)`
+    : `Pour ${rev ? 'ne rien perdre à la revente' : 'n\'avoir rien à sortir chaque mois'}, il faudrait l'acheter <b>${f(max)}</b>, soit <b class="down">${f(-d)} de moins</b> (−${pct} %)`;
+  return `${sansPrix ? '' : `<span>Prix actuel : <b>${f(prix)}</b></span>`}<span>${phrase}</span>`;
 }
 (() => {
 // ---------- Taux de marché (série Observatoire Crédit Logement / CSA : taux moyens accordés) ----------
@@ -4409,8 +4413,10 @@ function programmerCible() { clearTimeout(tCible); tCible = setTimeout(majCible,
 // Une seule ligne : le prix du projet (tous les biens) qui met le cash-flow (ou le bénéfice de la revente) à 0
 function majCible() {
   const p = simuler().p, quoi = p.projet === 'revente' ? 'bénéfice' : 'cash-flow', r = prixCible(0), autres = p.prix - p.prix1;
-  $('cibleRes').innerHTML = r.impossible ? `Le ${quoi} reste négatif même à très bas prix.`
-    : r.sansLimite ? `Le ${quoi} reste positif jusqu'à ${eur(r.prix + autres)} au moins.`
+  // Location avec travaux : le prix d'achat seul n'y suffit pas (ce sont les travaux et le différé qui pèsent), la ligne est cachée
+  $('cible').hidden = p.projet !== 'revente' && p.travaux > 0;
+  $('cibleRes').innerHTML = r.impossible ? (quoi === 'bénéfice' ? 'Même à très bas prix, la revente reste perdante.' : 'Même à très bas prix, il te manquerait de l\'argent chaque mois.')
+    : r.sansLimite ? (quoi === 'bénéfice' ? `La revente reste gagnante jusqu'à ${eur(r.prix + autres)} au moins.` : `Tu n'as rien à sortir chaque mois jusqu'à ${eur(r.prix + autres)} au moins.`)
     : `${margeNego(p.prix, r.prix + autres, quoi, eur)}`;
 }
 
@@ -4428,7 +4434,7 @@ function majSauvegarde(pr) {
   if (!nomTouche) $('nomProjet').value = pr ? (opt ? nomBranche(pr) : pr.nom) : bienUtile ? bienUtile.label : '';
   $('nomProjet').placeholder = opt ? 'Nom de l\'option' : 'Nom du projet'; $('nomProjet').setAttribute('aria-label', $('nomProjet').placeholder);
   // Le bouton dit ce qu'il fait : il met à jour ce qui est ouvert (le projet, ou son option), sinon il crée un projet
-  $('enreg').textContent = pr ? (opt ? `Mettre à jour l'option « ${nomBranche(pr)} »` : `Mettre à jour « ${pr.nom} »`) : autreBien ? 'Enregistrer comme nouveau projet' : 'Enregistrer dans mes projets';
+  $('enreg').innerHTML = pr ? esc(opt ? `Mettre à jour l'option « ${nomBranche(pr)} »` : `Mettre à jour « ${pr.nom} »`) : autreBien ? 'Enregistrer<span class="long"> comme nouveau projet</span>' : 'Enregistrer<span class="long"> dans Mes biens</span>';
   $('enregNouveau').hidden = !pr;
   $('enregBranche').hidden = !pr || !!pr.amenag;
   $('saveMsg').textContent = '';
@@ -4483,7 +4489,7 @@ function enregistrerProjet(nouveau, branche, seule) {
   fixerProjet(pr.id);
   nomTouche = false; autreBien = false;
   majSauvegarde(pr); majFil();
-  $('saveMsg').innerHTML = branche ? `Option « ${esc(branche)} » ajoutée au projet dans <a href="#projets">Mes projets</a>.` : `Enregistré dans <a href="#projets">Mes projets</a>.`;
+  $('saveMsg').innerHTML = branche ? `Option « ${esc(branche)} » ajoutée au projet dans <a href="#projets">Mes biens</a>.` : `Enregistré dans <a href="#projets">Mes biens</a>.`;
 }
 // Recalcule le résumé d'un projet enregistré avec ses réglages, sans toucher à ce que montre Financer
 function recalculer(v, ex) { return avecReglages(v, () => instantane(ex, true).resume); }
@@ -4807,7 +4813,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=ca497c85"></script>
+<script src="investissements.js?v=2378f7f1"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -5229,7 +5235,7 @@ function carteProjet(pr, br) {
     : r.prixEstime == null || (ecartEst != null && Math.abs(r.prixEstime - r.prix) < 100) ? ''
     : `estimé ${eurP(r.prixEstime)}${ecartEst != null ? `, ${Math.abs(Math.round(ecartEst * 100)) || '< 1'} % ${ecartEst > 0 ? 'au-dessus' : 'au-dessous'} du prix du projet` : ''}`;
   // Prix d'équilibre (cash-flow à 0), comparable au prix du projet : le 1er bien cherché plus les autres ; les anciens projets enregistrés avec un autre cash-flow visé n'ont pas ce chiffre
-  const equilibre = r.prixCible != null && !r.visee ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP, true) : `Prix du projet pour être à 0 € de ${revente ? 'bénéfice' : 'cash-flow'} : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
+  const equilibre = r.prixCible != null && !r.visee && (revente || !(r.travaux > 0)) ? `<div class="pj-note pj-nego">${r.prix ? margeNego(r.prix, r.prixCible + (r.prixB2 || 0), revente ? 'bénéfice' : 'cash-flow', eurP, true) : `${revente ? 'Pour ne rien perdre à la revente' : 'Pour n\'avoir rien à sortir chaque mois'}, prix du projet : ${eurP(r.prixCible + (r.prixB2 || 0))}`}</div>` : '';
   const corps = chiffresPro(cases) + (totalC(r) ? `<div class="pj-note pj-total">${totalC(r)}</div>` : '') + (estime ? `<div class="pj-note">${estime[0].toUpperCase() + estime.slice(1)}</div>` : '') + equilibre;
   const boutons = [pr.recherche ? '<button data-a="estimer">Revoir l\'estimation</button>' : '',
     ...rechercheRegroupees(pr).map((x, i) => x ? `<button data-a="estimerN" data-n="${i}">Estimation de « ${esc(x.nom)} »</button>` : ''),
@@ -5463,7 +5469,7 @@ function analyseBranches(bs) {
     const fixe = diff.every(d => egal(d.v));
     biens.push({nom, fixe, n, details: fixe ? diff.filter(d => d.v[0] != null && d.v[0] !== 0 && d.v[0] !== '').map(d => ({k: d.k, v: d.fmt(d.v[0])})) : []});
     // Ce qui ne bouge pas pour ce bien (même s'il change ailleurs) : une ligne en haut
-    const l = diff.filter(d => egal(d.v) && d.v[0] != null && d.v[0] !== 0 && !['Surface', 'Taxe foncière', 'Copro'].includes(d.k)).map(d => `${d.k === 'Prix' ? 'acheté' : d.k.toLowerCase()} ${d.fmt(d.v[0])}`);
+    const l = diff.filter(d => egal(d.v) && d.v[0] != null && d.v[0] !== 0 && !['Surface', 'Taxe foncière', 'Copro'].includes(d.k)).map(d => `${d.k.toLowerCase()} ${d.fmt(d.v[0])}`);
     if (fixe || l.length) fixes.push({t: nom, d: l.join(' · ') || '—', n});
     if (!fixe) varient.push({nom, diff: diff.filter(d => !egal(d.v))});
   };

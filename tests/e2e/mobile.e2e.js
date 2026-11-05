@@ -2,7 +2,7 @@
 // un projet déplié se voit en entier ; menus ⋯ en bas de l'écran ; barres du bas basses
 const test = require('node:test');
 const assert = require('node:assert');
-const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, cliquer} = require('./banc');
+const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase, estimer, saisir, cliquer, travaux} = require('./banc');
 
 let nav, page, journal;
 test.before(async () => { nav = await lancerNavigateur(); ({page, journal} = await appareil(nav, nouvelleBase(), {mobile: true})); await ouvrir(page); });
@@ -39,8 +39,21 @@ test('Estimer et Financer sur téléphone : rien ne dépasse, barres du bas bass
   }
 });
 
+test('Estimer avec travaux sur téléphone : le tableau « Aujourd\'hui et après » tient dans l\'écran, sans colonne cachée', async () => {
+  await estimer(page, {surf: 48, details: {etat: 'renover', dpe: 'F'}});
+  await travaux(page, 'renover');
+  const t = await page.locator('#estim .w-scroll').first().evaluate(e => ({vu: e.clientWidth, tout: e.scrollWidth}));
+  assert.ok(t.tout <= t.vu, `tableau de ${t.tout} px dans ${t.vu} px : le loyer après travaux est caché`);
+  assert.match(await page.locator('#estim .w-av').first().innerText(), /Après travaux/);
+});
+
 test('Mes projets sur téléphone : un projet à deux options déplié se voit en entier', async () => {
   await seConnecter(page);   // on travaillait dans Financer : on y reste
+  // Bouton d'enregistrement de la barre du bas : court, jamais coupé (« Enregistrer », le reste sur ordinateur)
+  await page.evaluate(() => { aNavigue = true; showTab('cashflow'); CF_APP.etape(4); });
+  const enr = await page.locator('#cf_enreg').evaluate(e => ({t: e.innerText.trim(), vu: e.clientWidth, tout: e.scrollWidth}));
+  assert.ok(enr.tout <= enr.vu, `« ${enr.t} » coupé`);
+  assert.equal(enr.t, 'Enregistrer');
   await page.evaluate(() => { window.prompt = (m, d) => d; });
   await estimer(page, {surf: 45, details: {etat: 'bon', dpe: '?'}});
   await page.click('#est_financer');

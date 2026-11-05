@@ -34,6 +34,7 @@ test('créer son compte depuis Financer : on y reste, et le compte se charge mal
 test('enregistrer le projet, puis une option sans travaux', async () => {
   await page.evaluate(() => CF_APP.etape(4));
   assert.match(await page.locator('#cf_risque').innerText(), /Risque [1-5]\/5/, 'note de risque à côté du résultat');
+  assert.equal(await page.locator('#cf_cible').isVisible(), false, 'location avec travaux : pas de « prix pour n\'avoir rien à sortir »');
   await page.fill('#cf_nomProjet', 'T2 Lyon'); await cliquer(page, '#cf_enreg');
   await attendreCompte(c => (c.projets || []).some(x => x.nom === 'T2 Lyon'), 'projet enregistré dans le compte');
   await page.evaluate(() => { document.getElementById('cf_boxProjet').open = false; });

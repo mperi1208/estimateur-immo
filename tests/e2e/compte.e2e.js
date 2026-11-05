@@ -561,7 +561,7 @@ test('projet en cours : en haut d\'Estimer et de Financer, gardé au rechargemen
   // quitter le projet : plus de fil d'Ariane, Enregistrer créera un nouveau projet
   await page.click('#cf_quitter');
   assert.equal(await page.locator('#cf_fil').isHidden(), true);
-  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer dans mes projets');
+  assert.equal(await page.locator('#cf_enreg').innerText(), 'Enregistrer dans Mes biens');
   assert.equal(await page.evaluate(() => projetCourantId), null);
   await page.evaluate(() => { aNavigue = true; showTab('estimation'); });
   assert.equal(await page.locator('#est_tete').isHidden(), true);

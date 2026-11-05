@@ -77,9 +77,9 @@ test('projet : le 2e appart et le crédit restent fixes (une fois), seules les d
     estimations: [{label: 'Route de San Gaetano 20600 Bastia'}, null]});
   const a = analyseBranches([br('a', 'Garage', {loyer: 1200}, {travaux: 30000, valeurApres: 350000}), br('b', 'Division', {loyer: 1100}, {travaux: 25000, valeurApres: 308000})]);
   const t = a.fixes.map(f => texte(`${f.t} · ${f.d}`)).join(' | ');
-  assert.match(t, /n\*2 San Gaetano · acheté 150\s000 € · loyer 1\s300 €\/mois/);
+  assert.match(t, /n\*2 San Gaetano · prix 150\s000 € · loyer 1\s300 €\/mois/);
   assert.match(t, /Crédit commun · apport 30\s000 € · taux 3,6 % · durée 25 ans · différé 12 mois · détenu par SCI à l'IS « SCOPA »/);
-  assert.match(t, /N\*1 San Gaetano · acheté 150\s000 € · location meublée \|/);   // ce qui ne change pas pour le 1er : son prix, pas son loyer
+  assert.match(t, /N\*1 San Gaetano · prix 150\s000 € · location meublée \|/);   // ce qui ne change pas pour le 1er : son prix, pas son loyer
   assert.deepEqual(a.biens.map(b => [b.nom, b.fixe]), [['N*1 San Gaetano', false], ['n*2 San Gaetano', true]]);
   assert.deepEqual(a.fixes.map(f => f.n), [0, 1, undefined]);   // le rang du bien, pour « Revoir l'estimation »
   assert.deepEqual(a.biens[1].details.map(d => texte(d.k + ' ' + d.v)), ['Prix 150 000 €', 'Loyer 1 300 €/mois', 'Surface 45 m²', 'Taxe foncière 600 €']);   // le détail du bien fixe (clic dans l'arbre)
