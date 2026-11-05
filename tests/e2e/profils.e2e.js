@@ -33,14 +33,26 @@ test('deux profils sur un compte : biens séparés, et un autre appareil choisit
   // Sans autre profil, le nom du profil n'apparaît pas dans la barre du haut
   assert.equal(await page.locator('#compteNom').innerText(), '');
 
-  // Fenêtre du compte : « Ajouter » un profil, qui devient le profil en cours, vide
-  await page.click('#compteStatut');
-  await page.click('#cpt_plus');
-  await page.fill('#cpt_nomProfil', 'Papa');
-  await page.click('#cpt_nouveau button[type=submit]');
-  await page.waitForFunction(() => COMPTE.profil && COMPTE.nomProfil() === 'Papa' && document.querySelector('#compteBody [aria-current] ') !== null);
-  assert.equal(await page.locator('#compteBody [aria-current] span:last-child').innerText(), 'Papa');
-  await page.keyboard.press('Escape');
+  // Fenêtre du compte → « Ajouter des profils » : l'écran des profils, en plein écran
+  const ecran = (p = page) => p.locator('#profilsEcran');
+  const tuile = (id, p = page) => p.locator(`#pe_grille [data-pid="${id}"]`);
+  await page.evaluate(() => ouvrirCompte());
+  await page.click('#cpt_profils');
+  await ecran().waitFor();
+  assert.equal(await page.evaluate(() => document.getElementById('compteDlg').open), false, 'la fenêtre du compte laisse la place à l\'écran');
+  assert.equal(await page.locator('#pe_titre').innerText(), 'Qui utilise Patrimoniu ?');
+  const box = await ecran().boundingBox(), vue = page.viewportSize();
+  assert.ok(box.width === vue.width && box.height === vue.height, 'plein écran');
+  // « + Ajouter un profil » : Papa apparaît, puis on le choisit
+  await page.click('#pe_grille [data-ajout]');
+  await page.fill('#pe_nom', 'Papa');
+  await page.click('#pe_ok');
+  await page.waitForFunction(() => COMPTE.membres.some(m => m.nom === 'Papa'));
+  const pid = await page.evaluate(() => COMPTE.membres[0].id);
+  assert.equal(await tuile(pid).locator('span').last().innerText(), 'Papa');
+  await tuile(pid).click();
+  await ecran().waitFor({state: 'hidden'});
+  await page.waitForFunction(id => COMPTE.profil === id && COMPTE.user, pid);
   assert.equal(await page.locator('#compteNom').innerText(), 'Papa');
   await page.waitForFunction(() => document.querySelector('#inv .etat-compte') && /Enregistré/.test(document.querySelector('#inv .etat-compte').title));
   assert.deepEqual(await nomsBiens(page), [], 'le nouveau profil ne voit pas les biens du titulaire');
@@ -50,41 +62,60 @@ test('deux profils sur un compte : biens séparés, et un autre appareil choisit
   assert.deepEqual(membre('Papa').biens.map(b => b.nom), ['Appart de Papa']);
   assert.deepEqual(titulaire().biens.map(b => b.nom), ['Maison de Marc'], 'le titulaire garde seulement ses biens');
 
-  // Retour au titulaire : ses biens, pas ceux de Papa
-  await page.click('#compteStatut');
-  await page.click('#compteBody .profils [data-pid=""]');
+  // Retour au titulaire (« Changer de profil »), puis Échap ferme l'écran sans rien changer
+  await page.evaluate(() => ouvrirCompte());
+  assert.match(await page.locator('#cpt_profils').innerText(), /Papa[\s\S]*Changer de profil/);
+  await page.click('#cpt_profils');
+  assert.equal(await tuile(pid).getAttribute('aria-current'), 'true');
+  await tuile('').click();
   await page.waitForFunction(() => COMPTE.profil === '' && [...document.querySelectorAll('#inv a.bien .infos > b')].some(e => e.textContent === 'Maison de Marc'));
   assert.deepEqual(await nomsBiens(page), ['Maison de Marc']);
   assert.equal(await page.locator('#compteNom').innerText(), 'Moi');
+  await page.evaluate(() => ouvrirCompte()); await page.click('#cpt_profils');
+  await page.keyboard.press('Escape');
+  await ecran().waitFor({state: 'hidden'});
+  assert.equal(await page.evaluate(() => COMPTE.profil), '');
+  // Photo du titulaire : sur sa grande tuile ; Papa, sans photo, garde son initiale
+  await page.evaluate(async () => { const c = Object.assign(document.createElement('canvas'), {width: 8, height: 8}); await changerPhoto(await new Promise(ok => c.toBlob(ok, 'image/jpeg'))); });
+  await page.evaluate(() => ouvrirCompte()); await page.click('#cpt_profils');
+  await page.waitForSelector('#pe_grille [data-pid=""] img.pastille');
+  assert.equal(await tuile(pid).locator('img').count(), 0);
   await page.keyboard.press('Escape');
 
-  // Un autre appareil : à la connexion, « Qui utilise Patrimoniu ? » ; il choisit Papa
-  const b = await appareil(nav, base);
+  // Un autre appareil (téléphone) : à la connexion, l'écran « Qui utilise Patrimoniu ? », sans ✕ ; il choisit Papa
+  const b = await appareil(nav, base, {mobile: true});
   await ouvrir(b.page);
   await b.page.evaluate(({EMAIL, MDP}) => COMPTE.client.auth.signInWithPassword({email: EMAIL, password: MDP}), {EMAIL, MDP});
-  await b.page.waitForSelector('#compteBody .profils [data-pid]');
-  assert.match(await b.page.locator('#compteBody h2').innerText(), /Qui utilise Patrimoniu/);
-  const pid = await b.page.evaluate(() => COMPTE.membres[0].id);
-  await b.page.click(`#compteBody .profils [data-pid="${pid}"]`);
+  await ecran(b.page).waitFor();
+  assert.equal(await b.page.locator('#pe_fermer').isVisible(), false);
+  const tailles = await b.page.locator('#pe_grille .pastille').evaluateAll(l => l.map(e => e.getBoundingClientRect().width));
+  assert.ok(tailles.every(w => w >= 100), 'gros profils sur téléphone : ' + tailles);
+  await tuile(pid, b.page).click();
   await b.page.waitForFunction(() => [...document.querySelectorAll('#inv a.bien .infos > b')].some(e => e.textContent === 'Appart de Papa'));
   assert.deepEqual(await nomsBiens(b.page), ['Appart de Papa']);
   // Rechargé : même profil, sans redemander
   await ouvrir(b.page);
   await b.page.waitForFunction(() => COMPTE.user && [...document.querySelectorAll('#inv a.bien .infos > b')].some(e => e.textContent === 'Appart de Papa'));
-  assert.equal(await b.page.evaluate(() => document.getElementById('compteDlg').open), false);
+  assert.equal(await ecran(b.page).isVisible(), false);
 
-  // Renommer puis supprimer le profil depuis le 1er appareil
-  await page.click('#compteStatut');
-  await page.click(`#compteBody .profils [data-pid="${pid}"]`);
-  await page.waitForFunction(id => COMPTE.profil === id, pid);
-  await page.click('#cpt_renommer');
-  await page.fill('#cpt_nomRenom', 'Papa Jean');
-  await page.click('#cpt_renom button[type=submit]');
-  await page.waitForFunction(() => COMPTE.nomProfil() === 'Papa Jean');
+  // « Gérer les profils » : renommer puis supprimer Papa depuis le 1er appareil
+  await page.evaluate(() => ouvrirCompte()); await page.click('#cpt_profils');
+  await page.click('#pe_gerer');
+  assert.equal(await page.locator('#pe_titre').innerText(), 'Gérer les profils');
+  await tuile(pid).click();
+  assert.equal(await page.inputValue('#pe_nom'), 'Papa');
+  await page.fill('#pe_nom', 'Papa Jean');
+  await page.click('#pe_ok');
+  await page.waitForFunction(() => COMPTE.nomProfil(COMPTE.membres[0].id) === 'Papa Jean');
   assert.equal(base.membres[0].nom, 'Papa Jean');
-  await page.click('#cpt_suppr');   // confirm() accepté par le banc
-  await page.waitForFunction(() => COMPTE.profil === '' && COMPTE.membres.length === 0);
+  assert.equal(await tuile(pid).locator('span').last().innerText(), 'Papa Jean');
+  await tuile(pid).click();
+  await page.click('#pe_suppr');   // confirm() accepté par le banc
+  await page.waitForFunction(() => COMPTE.membres.length === 0);
   assert.equal(base.membres.length, 0);
+  assert.equal(await tuile(pid).count(), 0);
+  await page.click('#pe_fermer');
+  assert.equal(await page.evaluate(() => COMPTE.profil), '');
   assert.deepEqual(titulaire().biens.map(b => b.nom), ['Maison de Marc']);
 
   assert.deepEqual(journal.erreurs, []); assert.deepEqual(b.journal.erreurs, []);
