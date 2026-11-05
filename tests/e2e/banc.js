@@ -61,10 +61,21 @@ const FAUX_SUPABASE = `(() => {
       async resetPasswordForEmail() { return {error: null}; },
       async updateUser() { return {data: {}, error: null}; },
     },
-    from: () => ({
-      select: () => ({eq: (k, v) => ({maybeSingle: async () => api('lire', {user_id: v})})}),
-      upsert: async ligne => api('ecrire', ligne),
-    }),
+    // Requête construite comme avec supabase-js (select / insert / update / delete / upsert, puis filtres eq), envoyée au banc
+    from: table => {
+      const q = {table, op: 'select', filtres: {}, un: false};
+      const b = {
+        select(c) { if (q.op === 'select') q.cols = c; return b; },
+        eq(k, v) { q.filtres[k] = v; return b; },
+        insert(v) { q.op = 'insert'; q.valeurs = v; return b; },
+        update(v) { q.op = 'update'; q.valeurs = v; return b; },
+        upsert(v) { q.op = 'upsert'; q.valeurs = v; return b; },
+        delete() { q.op = 'delete'; return b; },
+        maybeSingle() { q.un = true; return b; },
+        then(ok, ko) { return api('requete', q).then(ok, ko); },
+      };
+      return b;
+    },
     // Fichiers envoyés gardés dans la page ; la photo de profil absente répond « introuvable », comme Supabase
     storage: {from: () => ({
       upload: async (cle, blob) => { (window.__fichiers ||= new Map()).set(cle, URL.createObjectURL(blob)); return {error: null}; },
@@ -77,7 +88,28 @@ const FAUX_SUPABASE = `(() => {
 
 // Base simulée : partagée par les pages d'un même banc (deux « appareils » sur le même compte)
 function nouvelleBase() {
-  return {comptes: new Map(), lignes: new Map(), ecritures: 0};
+  return {comptes: new Map(), lignes: new Map(), noms: new Map(), membres: [], ecritures: 0};
+}
+// immo_profils : une ligne par compte (crédits dans base.lignes, nom du titulaire dans base.noms) ;
+// immo_membres : les autres profils du compte, chacun avec ses crédits
+function requete(base, {table, op, filtres, valeurs, un}) {
+  const uid = filtres.user_id ?? (valeurs && valeurs.user_id);
+  if (table === 'immo_profils') {
+    if (op === 'select') {
+      const d = base.lignes.has(uid) || base.noms.has(uid) ? {credits: base.lignes.has(uid) ? JSON.parse(base.lignes.get(uid)) : [], nom: base.noms.get(uid) ?? null} : null;
+      return {data: un ? d : d ? [d] : [], error: null};
+    }
+    if (op === 'upsert') { base.lignes.set(uid, JSON.stringify(valeurs.credits)); base.ecritures++; return {data: null, error: null}; }
+    if (op === 'update') { if ('nom' in valeurs && base.lignes.has(uid)) base.noms.set(uid, valeurs.nom); return {data: null, error: null}; }
+  }
+  if (table === 'immo_membres') {
+    const ok = m => Object.entries(filtres).every(([k, v]) => m[k] === v);
+    if (op === 'select') { const l = base.membres.filter(ok).map(m => ({...m, credits: m.credits == null ? null : JSON.parse(m.credits)})); return {data: un ? l[0] || null : l, error: null}; }
+    if (op === 'insert') { base.membres.push({...valeurs, credits: null, cree: new Date().toISOString()}); return {data: null, error: null}; }
+    if (op === 'update') { base.membres.filter(ok).forEach(m => Object.assign(m, valeurs, 'credits' in valeurs ? {credits: JSON.stringify(valeurs.credits)} : {})); return {data: null, error: null}; }
+    if (op === 'delete') { base.membres = base.membres.filter(m => !ok(m)); return {data: null, error: null}; }
+  }
+  return {data: null, error: {message: `opération inconnue ${op} sur ${table}`}};
 }
 function repondreBase(base, op, corps) {
   if (op === 'creer' || op === 'connexion') {
@@ -86,8 +118,7 @@ function repondreBase(base, op, corps) {
     if (!u || u.mdp !== corps.password) return {error: {message: 'Invalid login credentials'}};
     return {user: {id: u.id, email: u.email}};
   }
-  if (op === 'lire') return {data: base.lignes.has(corps.user_id) ? {credits: JSON.parse(base.lignes.get(corps.user_id))} : null, error: null};
-  if (op === 'ecrire') { base.lignes.set(corps.user_id, JSON.stringify(corps.credits)); base.ecritures++; return {error: null}; }
+  if (op === 'requete') return requete(base, corps);
   return {error: {message: 'opération inconnue ' + op}};
 }
 
