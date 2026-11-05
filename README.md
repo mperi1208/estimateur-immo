@@ -19,6 +19,7 @@ Mise en place, une fois, dans le projet Supabase :
 1. **SQL Editor** : lancer [`supabase.sql`](supabase.sql) (table `immo_profils`, chaque compte limité à sa propre ligne).
 2. **Authentication → URL Configuration → Redirect URLs** : ajouter `https://mperi1208.github.io/estimateur-immo/**` (liens de confirmation et de mot de passe oublié).
 3. **SQL Editor** : lancer [`supabase-docs.sql`](supabase-docs.sql) (stockage privé `immo-docs` pour les plans et documents, chaque compte limité à son dossier).
+4. **SQL Editor** : lancer [`supabase-profils.sql`](supabase-profils.sql) (profils d'un même compte, comme Netflix : chaque personne de la famille a ses biens et ses projets).
 
 ## Tests
 

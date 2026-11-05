@@ -785,6 +785,17 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 #compteDlg .cadre-zoom input{flex:1;padding:0;border:0;background:none;accent-color:var(--accent)}
 #compteDlg .cpt-photo .cpt-bouton{display:inline-block;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-weight:600;margin:0 8px 0 0;text-transform:none;letter-spacing:normal;font-size:14px;color:var(--ink)}
 .cpt-photo .cpt-bouton:hover{border-color:var(--ink)}
+.cpt-titre{font-size:15px;margin:16px 0 2px}
+.profils{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 10px}
+.profil-tuile{display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;color:var(--ink);cursor:pointer;padding:4px;width:72px;font-size:13px;font-weight:600;margin:0}
+.profil-tuile>span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profil-tuile .pastille{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:20px;font-weight:800;border:3px solid transparent}
+.profil-tuile[aria-current] .pastille{border-color:var(--ink)}
+.profil-tuile .pastille.plus{background:none;color:var(--muted);border:2px dashed var(--line)}
+.cpt-ligne{display:flex;gap:8px;margin:0 0 8px}.cpt-ligne input{flex:1;min-width:0}
+.cpt-liens{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 10px}
+#compteDlg .cpt-liens .lien{margin-top:0}
+#compteDlg .cpt-ligne button{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-weight:600;padding:0 14px;cursor:pointer}
 .tabs .compte button{height:34px;padding:0 14px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
 .tabs .compte button.sortir{background:none;border:1px solid #475467;color:#fff}
 @media (max-width:420px){.tabs{gap:0;padding-left:8px;padding-right:8px}.tabs button{font-size:12.5px!important;padding:0 3px!important}.tabs .compte{padding-left:4px}.tabs .compte button{padding:0 9px!important;font-size:12px!important;height:30px}}
@@ -3181,6 +3192,9 @@ let debounce;
 const SUPABASE = {url: 'https://cudbzrwznyqvzejhmxzi.supabase.co', cle: 'sb_publishable_XV57k_8mZLJu9pyy56gGIw_55hMHDOn'};
 const COMPTE = {
   client: null, user: null, ecouteurs: [], pret: false,
+  // Profils (comme Netflix) : un seul compte, plusieurs personnes, chacune avec ses biens et ses projets.
+  // profil '' : le titulaire (sa ligne dans immo_profils) ; sinon l'id d'un profil de la table immo_membres
+  profil: '', membres: [], nomTitulaire: '', vise: undefined,
   actif: () => !!(SUPABASE.url && SUPABASE.cle),
   surChangement(f) { this.ecouteurs.push(f); },
   async init() {
@@ -3195,24 +3209,110 @@ const COMPTE = {
       this.client = window.supabase.createClient(SUPABASE.url, SUPABASE.cle);
       this.client.auth.onAuthStateChange((ev, session) => {
         if (ev === 'PASSWORD_RECOVERY') setTimeout(() => ouvrirCompte('nouveau'));
-        const u = session ? session.user : null;
-        if ((u && u.id) !== (this.user && this.user.id)) { this.user = u; majBoutonCompte(); this.ecouteurs.forEach(f => f(u)); }
+        // hors de l'écouteur : supabase-js bloque les requêtes lancées depuis celui-ci
+        setTimeout(() => this.entrer(session ? session.user : null));
       });
       const {data} = await this.client.auth.getSession();
-      if (data.session && !this.user) { this.user = data.session.user; this.ecouteurs.forEach(f => f(this.user)); }
+      if (data.session) await this.entrer(data.session.user);
     } catch (e) { console.warn('Compte :', e.message); }
     this.pret = true; majBoutonCompte();
   },
+  // Arrivée d'un compte (ou départ : u nul) : ses profils sont lus, et le profil de cet appareil choisi, avant de prévenir la page
+  async entrer(u) {
+    const id = u ? u.id : null;
+    if (id === this.vise) return;
+    this.vise = id; this.profil = ''; this.membres = []; this.nomTitulaire = '';
+    if (u) {
+      await this.chargerProfils(u);
+      if (this.vise !== id) return;
+      let choix = null; try { choix = localStorage.getItem('profil-' + id); } catch (e) {}
+      if (choix === '' || this.membres.some(m => m.id === choix)) this.profil = choix;
+      else if (this.membres.length) this.profil = await choisirProfil();
+      if (this.vise !== id) return;
+    }
+    this.user = u; majBoutonCompte(); this.ecouteurs.forEach(f => f(u));
+  },
+  async chargerProfils(u = this.user) {
+    try {
+      const [m, t] = await Promise.all([this.client.from('immo_membres').select('id,nom,couleur,cree').eq('user_id', u.id),
+        this.client.from('immo_profils').select('nom').eq('user_id', u.id).maybeSingle()]);
+      if (m.error) throw m.error;
+      this.membres = (m.data || []).sort((a, b) => String(a.cree).localeCompare(String(b.cree)));
+      this.nomTitulaire = (t.data && t.data.nom) || '';
+    } catch (e) { console.warn('Profils :', e.message); this.membres = []; }
+  },
+  nomProfil(id = this.profil) { const m = this.membres.find(x => x.id === id); return id ? (m ? m.nom : '') : this.nomTitulaire || 'Moi'; },
+  // Passer à un autre profil : ce qui attend part d'abord dans le profil quitté, puis la page repart comme à une
+  // déconnexion suivie d'une connexion (rien d'un profil ne se mélange à l'autre)
+  async changerProfil(id) {
+    const u = this.user;
+    if (!u || id === this.profil) return;
+    try { if (window.INV && INV.vider) await INV.vider(); } catch (e) { console.warn('Enregistrement avant changement de profil :', e); }
+    this.ecouteurs.forEach(f => f(null));
+    this.profil = id; try { localStorage.setItem('profil-' + u.id, id); } catch (e) {}
+    majBoutonCompte(); this.ecouteurs.forEach(f => f(u));
+  },
+  async ajouterProfil(nom) {
+    const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const couleur = COULEURS_PROFIL[(this.membres.length + 1) % COULEURS_PROFIL.length];
+    const {error} = await this.client.from('immo_membres').insert({user_id: this.user.id, id, nom, couleur});
+    if (error) throw error;
+    await this.chargerProfils();
+    return id;
+  },
+  async renommerProfil(id, nom) {
+    const q = id ? this.client.from('immo_membres').update({nom}).eq('user_id', this.user.id).eq('id', id)
+      : this.client.from('immo_profils').update({nom}).eq('user_id', this.user.id);
+    const {error} = await q; if (error) throw error;
+    await this.chargerProfils(); majBoutonCompte();
+  },
+  async supprimerProfil(id) {
+    if (!id) return;
+    if (this.profil === id) await this.changerProfil('');
+    const {error} = await this.client.from('immo_membres').delete().eq('user_id', this.user.id).eq('id', id);
+    if (error) throw error;
+    try { await this.client.storage.from('immo-docs').remove([`${this.user.id}/profil/${id}.jpg`]); } catch (e) {}
+    await this.chargerProfils(); majBoutonCompte();
+  },
   async lire() {
+    if (this.profil) {
+      const {data, error} = await this.client.from('immo_membres').select('credits').eq('user_id', this.user.id).eq('id', this.profil).maybeSingle();
+      if (error) throw error;
+      return data ? data.credits : null;
+    }
     const {data, error} = await this.client.from('immo_profils').select('credits').eq('user_id', this.user.id).maybeSingle();
     if (error) throw error;
     return data ? data.credits : null;
   },
   async ecrire(credits) {
+    if (this.profil) {
+      const {error} = await this.client.from('immo_membres').update({credits, maj: new Date().toISOString()}).eq('user_id', this.user.id).eq('id', this.profil);
+      if (error) throw error;
+      return;
+    }
     const {error} = await this.client.from('immo_profils').upsert({user_id: this.user.id, credits, maj: new Date().toISOString()});
     if (error) throw error;
   },
 };
+const COULEURS_PROFIL = ['#2f6fdb', '#d9534f', '#2e9d6a', '#e08a1e', '#8a5cd1', '#1e9bb0'];
+const couleurProfil = id => id ? ((COMPTE.membres.find(m => m.id === id) || {}).couleur || COULEURS_PROFIL[1]) : COULEURS_PROFIL[0];
+// Tuile d'un profil : pastille (initiale sur sa couleur) et prénom
+const tuileProfil = (id, actuel) => `<button type="button" class="profil-tuile" data-pid="${esc(id)}"${actuel ? ' aria-current="true"' : ''}>
+  <span class="pastille" style="background:${esc(couleurProfil(id))}" aria-hidden="true">${esc((COMPTE.nomProfil(id)[0] || '?').toUpperCase())}</span><span>${esc(COMPTE.nomProfil(id))}</span></button>`;
+// À la connexion, quand le compte a plusieurs profils et que cet appareil n'en a pas encore choisi un
+function choisirProfil() {
+  return new Promise(ok => {
+    const dlg = document.getElementById('compteDlg'), body = document.getElementById('compteBody');
+    let fini = false;
+    const finir = id => { if (fini) return; fini = true; dlg.removeEventListener('close', ferme); if (dlg.open) dlg.close(); ok(id); };
+    const ferme = () => { if (!dlg.open) finir(''); };   // fermée sans choisir : le titulaire (pas la fermeture de la connexion, juste avant)
+    body.innerHTML = `<h2>Qui utilise Patrimoniu ?</h2><p class="hint">Chaque profil a ses propres biens et projets. Tu pourras changer de profil depuis ton compte.</p>
+      <div class="profils">${['', ...COMPTE.membres.map(m => m.id)].map(id => tuileProfil(id)).join('')}</div>`;
+    body.querySelectorAll('[data-pid]').forEach(b => b.onclick = () => { try { localStorage.setItem('profil-' + COMPTE.vise, b.dataset.pid); } catch (e) {} finir(b.dataset.pid); });
+    dlg.addEventListener('close', ferme);
+    if (!dlg.open) dlg.showModal();
+  });
+}
 function majBoutonCompte() {
   const b = document.getElementById('compteBtn'), st = document.getElementById('compteStatut');
   st.classList.toggle('connecte', !!COMPTE.user);
@@ -3221,7 +3321,7 @@ function majBoutonCompte() {
   if (window.CF_APP && CF_APP.majCompte) CF_APP.majCompte();
   if (typeof verifierOnglet === 'function') verifierOnglet();
   if (typeof majSauveEst === 'function') majSauveEst();
-  document.getElementById('compteNom').textContent = COMPTE.user ? '' : 'Invité';
+  document.getElementById('compteNom').textContent = COMPTE.user ? (COMPTE.membres.length ? COMPTE.nomProfil() : '') : 'Invité';
   b.hidden = !!COMPTE.user;   // connecté : la déconnexion se fait en cliquant sur l'icône du compte
 }
 // Messages de Supabase traduits
@@ -3282,13 +3382,43 @@ function ouvrirCompte(mode = 'connexion') {
   } else if (!COMPTE.client) {
     body.innerHTML = '<h2>Compte</h2><p class="hint">Le service de comptes est injoignable pour le moment. Tu restes en mode invité : tout est enregistré sur cet appareil.</p>';
   } else if (COMPTE.user && mode !== 'nouveau') {
-    const initiale = esc((COMPTE.user.email || '?')[0].toUpperCase());
+    const initiale = esc(((COMPTE.membres.length ? COMPTE.nomProfil() : COMPTE.user.email) || '?')[0].toUpperCase());
     body.innerHTML = `<h2>Ton compte</h2>
       <div class="cpt-photo">${photoProfil ? `<img id="cpt_photo" src="${esc(photoProfil)}" alt="Ta photo de profil">` : `<span class="cpt-initiale" aria-hidden="true">${initiale}</span>`}
         <div><label class="cpt-bouton" for="cpt_fichier">${photoProfil ? 'Changer la photo' : 'Ajouter une photo'}</label><input type="file" id="cpt_fichier" accept="image/*" hidden>
           ${photoProfil ? '<button type="button" class="lien" id="cpt_retirer">Retirer</button>' : ''}<div class="hint" id="cpt_photoMsg" role="status"></div></div></div>
       <p class="hint">Connecté avec <b>${esc(COMPTE.user.email)}</b>. Tes biens et tes projets sont enregistrés dans ton compte : tu les retrouves sur tous tes appareils.</p>
+      <h3 class="cpt-titre">Profils</h3>
+      <p class="hint">Plusieurs personnes sur le même compte : chaque profil a ses propres biens et projets.</p>
+      <div class="profils">${['', ...COMPTE.membres.map(m => m.id)].map(id => tuileProfil(id, id === COMPTE.profil)).join('')}
+        <button type="button" class="profil-tuile" id="cpt_plus"><span class="pastille plus" aria-hidden="true">+</span><span>Ajouter</span></button></div>
+      <form id="cpt_nouveau" class="cpt-ligne" hidden><input id="cpt_nomProfil" maxlength="40" placeholder="Prénom" aria-label="Prénom du nouveau profil" required><button type="submit">Ajouter</button></form>
+      <div class="cpt-liens"><button type="button" class="lien" id="cpt_renommer">Renommer « ${esc(COMPTE.nomProfil())} »</button>
+        ${COMPTE.profil ? `<button type="button" class="lien" id="cpt_suppr">Supprimer ce profil</button>` : ''}</div>
+      <form id="cpt_renom" class="cpt-ligne" hidden><input id="cpt_nomRenom" maxlength="40" aria-label="Nouveau nom du profil" required><button type="submit">Renommer</button></form>
+      <div class="msg" id="cpt_profilMsg" role="status"></div>
       <button class="cta" id="cpt_out">Se déconnecter</button>`;
+    const msgP = (t, err) => { const el = body.querySelector('#cpt_profilMsg'); el.textContent = t; el.classList.toggle('err', !!err); };
+    body.querySelectorAll('.profils [data-pid]').forEach(b => b.onclick = async () => { await COMPTE.changerProfil(b.dataset.pid); ouvrirCompte(); });
+    body.querySelector('#cpt_plus').onclick = () => { const f = body.querySelector('#cpt_nouveau'); f.hidden = false; f.querySelector('input').focus(); };
+    body.querySelector('#cpt_nouveau').onsubmit = async e => {
+      e.preventDefault();
+      const nom = body.querySelector('#cpt_nomProfil').value.trim(); if (!nom) return;
+      msgP('Création du profil…');
+      try { const id = await COMPTE.ajouterProfil(nom); await COMPTE.changerProfil(id); ouvrirCompte(); }
+      catch (err) { msgP('Création impossible : ' + erreurCompte(err), true); }
+    };
+    body.querySelector('#cpt_renommer').onclick = () => { const f = body.querySelector('#cpt_renom'), i = f.querySelector('input'); f.hidden = false; i.value = COMPTE.nomProfil(); i.select(); };
+    body.querySelector('#cpt_renom').onsubmit = async e => {
+      e.preventDefault();
+      const nom = body.querySelector('#cpt_nomRenom').value.trim(); if (!nom) return;
+      try { await COMPTE.renommerProfil(COMPTE.profil, nom); ouvrirCompte(); } catch (err) { msgP('Impossible de renommer : ' + erreurCompte(err), true); }
+    };
+    const sp = body.querySelector('#cpt_suppr');
+    if (sp) sp.onclick = async () => {
+      if (!confirm(`Supprimer le profil « ${COMPTE.nomProfil()} » avec ses biens et ses projets ? C'est définitif.`)) return;
+      try { await COMPTE.supprimerProfil(COMPTE.profil); ouvrirCompte(); } catch (err) { msgP('Suppression impossible : ' + erreurCompte(err), true); }
+    };
     body.querySelector('#cpt_out').onclick = async () => { await seDeconnecter(); dlg.close(); };
     const msg = t => { body.querySelector('#cpt_photoMsg').textContent = t; };
     body.querySelector('#cpt_fichier').onchange = async e => {
@@ -3351,7 +3481,7 @@ async function seDeconnecter() {
 // ---------- Photo de profil ----------
 // Rangée dans le dossier privé du compte (même stockage que les plans et documents), recadrée en carré de 256 px.
 // Les règles du stockage permettent d'ajouter et de supprimer (pas de remplacer) : changer, c'est supprimer puis ajouter.
-const PHOTO = () => `${COMPTE.user.id}/profil/photo.jpg`;
+const PHOTO = () => `${COMPTE.user.id}/profil/${COMPTE.profil ? COMPTE.profil + '.jpg' : 'photo.jpg'}`;   // une photo par profil
 let photoProfil = null;   // adresse d'affichage (lien signé), ou null
 // La photo, en grand, à droite de la barre du haut (à la place de l'icône du compte) ; le logo de l'appli est à gauche de « Patrimoniu »
 function afficherPhoto() {

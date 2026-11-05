@@ -14,7 +14,8 @@ test('lecture du compte en panne à la connexion : message d\'attente, puis le c
   base.lignes.set('u1', JSON.stringify({version: 2, biens: [{id: 'b1', nom: 'Bien du compte', type: 'appart', maj: 1, achat: {}, location: {statut: 'vide', loyer: 700}, chargesAn: {}, prets: [], docs: []}], scis: [], supprimes: {}, projets: [], recherches: []}));
   const {page, ctx, journal} = await appareil(nav, base);
   let panne = true;
-  await ctx.route('**/__db/lire', r => panne ? r.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: null, error: {message: 'Failed to fetch'}})}) : r.fallback());
+  // en panne : la lecture des biens et projets du compte (requête des crédits)
+  await ctx.route('**/__db/requete', r => panne && (r.request().postDataJSON() || {}).cols === 'credits' ? r.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({data: null, error: {message: 'Failed to fetch'}})}) : r.fallback());
   await ouvrir(page);
   await page.evaluate(() => localStorage.setItem('mes-investissements', JSON.stringify([{id: 'g1', nom: 'Bien invité', type: 'appart', achat: {}, location: {statut: 'vide'}, chargesAn: {}, prets: [], docs: []}])));
   await page.reload(); await page.waitForFunction(() => window.INV && COMPTE.pret);
