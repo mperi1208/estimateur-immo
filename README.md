@@ -12,14 +12,13 @@ Tout tourne dans le navigateur : ouvrir `app/index.html`, ou la version en ligne
 
 ## Comptes
 
-Les comptes passent par [Supabase](https://supabase.com), dans le même projet que [pari-ldc](https://github.com/mperi1208/pari-ldc) : un compte du pari sert aussi ici. L'adresse du projet et sa clé publique sont dans `const SUPABASE` (`app/index.html`) ; cette clé est faite pour être publique, ce sont les règles de la base qui protègent les données.
+Les comptes passent par [Supabase](https://supabase.com), dans un projet dédié à Patrimoniu (« patrimoniu », séparé de pari-ldc depuis novembre 2026). L'adresse du projet et sa clé publique sont dans `const SUPABASE` (`app/index.html`) ; cette clé est faite pour être publique, ce sont les règles de la base qui protègent les données.
 
 Mise en place, une fois, dans le projet Supabase :
 
 1. **SQL Editor** : lancer [`supabase.sql`](supabase.sql) (table `immo_profils`, chaque compte limité à sa propre ligne).
-2. **SQL Editor** : lancer [`supabase-partage-pari-ldc.sql`](supabase-partage-pari-ldc.sql), pour que les comptes créés depuis l'estimateur ne deviennent pas joueurs du pari.
-3. **Authentication → URL Configuration → Redirect URLs** : ajouter `https://mperi1208.github.io/estimateur-immo/**` (liens de confirmation et de mot de passe oublié).
-4. **SQL Editor** : lancer [`supabase-docs.sql`](supabase-docs.sql) (stockage privé `immo-docs` pour les plans et documents, chaque compte limité à son dossier).
+2. **Authentication → URL Configuration → Redirect URLs** : ajouter `https://mperi1208.github.io/estimateur-immo/**` (liens de confirmation et de mot de passe oublié).
+3. **SQL Editor** : lancer [`supabase-docs.sql`](supabase-docs.sql) (stockage privé `immo-docs` pour les plans et documents, chaque compte limité à son dossier).
 
 ## Tests
 
