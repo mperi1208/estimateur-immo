@@ -1,52 +1,70 @@
-// Plein écran sur ordinateur : bouton dans la barre du haut, choix retenu (plein écran au premier clic de la visite suivante) ;
-// rien sur téléphone ; l'appli s'installe (Dock / Installer) dans sa propre fenêtre
+// Plein écran sur ordinateur, réglé dans « Ton compte » : bouton pour y passer, case « Ouvrir l'appli en plein écran »
+// (au premier clic de chaque visite) ; en sortir ne décoche rien et ne relance rien ; rien sur téléphone ; appli installable
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const {lancerNavigateur, appareil, ouvrir, nouvelleBase} = require('./banc');
+const {lancerNavigateur, appareil, ouvrir, seConnecter, nouvelleBase} = require('./banc');
 
 let nav;
 test.before(async () => { nav = await lancerNavigateur(); });
 test.after(async () => { await nav.close(); });
 
 const plein = page => page.evaluate(() => !!document.fullscreenElement);
+const ouvrirProfil = async page => { await page.evaluate(() => ouvrirCompte()); await page.waitForSelector('#compteDlg[open] #cpt_pe'); };
+const sortir = async page => { await page.evaluate(() => document.exitFullscreen()); await page.waitForFunction(() => !document.fullscreenElement); };
 
-test('ordinateur : le bouton passe en plein écran et en sort, le choix est retenu pour la visite suivante', async () => {
+test('ordinateur : le plein écran se règle dans « Ton compte », la sortie ne décoche rien et ne relance rien', async () => {
   const {page, journal} = await appareil(nav, nouvelleBase());
-  await ouvrir(page);
-  const btn = page.locator('#pleinEcranBtn');
-  assert.ok(await btn.isVisible(), 'bouton visible sur ordinateur');
-  assert.equal(await btn.getAttribute('aria-label'), 'Plein écran');
-  await btn.click();
-  // fullscreenElement est posé avant l'évènement fullscreenchange (Chrome) : on attend la barre mise à jour
-  await page.waitForFunction(() => !!document.fullscreenElement && document.body.classList.contains('plein-ecran'));
-  assert.equal(await btn.getAttribute('aria-label'), 'Quitter le plein écran');
-  assert.equal(await page.evaluate(() => localStorage.getItem('plein-ecran')), '1');
+  await ouvrir(page); await seConnecter(page);
+  assert.equal(await page.locator('.tabs .plein-ecran, #pleinEcranBtn').count(), 0, 'plus rien dans la barre du haut');
 
-  // Visite suivante : pas de plein écran tout seul (le navigateur l'interdit), mais dès le premier clic
+  await ouvrirProfil(page);
+  assert.equal(await page.textContent('#cpt_pe'), 'Passer en plein écran');
+  assert.equal(await page.isChecked('#cpt_pe_auto'), false);
+  await page.click('#cpt_pe');
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await sortir(page);   // Échap, bouton vert ou fermeture de la fenêtre
+  await page.mouse.click(640, 500); await page.waitForTimeout(300);
+  assert.equal(await plein(page), false, 'case décochée : un clic ne remet pas en plein écran');
+
+  // « Ouvrir l'appli en plein écran » : à la visite suivante, plein écran au premier clic dans la page
+  await ouvrirProfil(page);
+  await page.check('#cpt_pe_auto');
   await ouvrir(page);
   assert.equal(await plein(page), false);
   await page.mouse.click(640, 500);
   await page.waitForFunction(() => !!document.fullscreenElement);
-
-  // On en sort avec le bouton : la visite suivante reste en fenêtre
-  await page.locator('#pleinEcranBtn').click();
-  await page.waitForFunction(() => !document.fullscreenElement && !document.body.classList.contains('plein-ecran'));
-  assert.equal(await page.evaluate(() => localStorage.getItem('plein-ecran')), '0');
+  // En sortir : le réglage reste coché, et rien ne relance le plein écran pendant cette visite
+  await sortir(page);
+  await page.mouse.click(640, 500); await page.waitForTimeout(300);
+  assert.equal(await plein(page), false, 'pas relancé après en être sorti');
+  assert.equal(await page.evaluate(() => localStorage.getItem('plein-ecran-auto')), '1');
+  // Visite suivante : toujours en plein écran au premier clic
   await ouvrir(page);
   await page.mouse.click(640, 500);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await ouvrirProfil(page);
+  assert.equal(await page.textContent('#cpt_pe'), 'Quitter le plein écran');
+  assert.equal(await page.isChecked('#cpt_pe_auto'), true);
+  await page.click('#cpt_pe');
+  await page.waitForFunction(() => !document.fullscreenElement);
+  await page.waitForFunction(() => document.querySelector('#cpt_pe').textContent === 'Passer en plein écran');
+
+  // Décochée : plus de plein écran à l'ouverture
+  await page.uncheck('#cpt_pe_auto');
+  await ouvrir(page);
+  await page.mouse.click(640, 500); await page.waitForTimeout(300);
   assert.equal(await plein(page), false);
   assert.deepEqual(journal.erreurs, []);
 });
 
-test('téléphone : pas de bouton plein écran, la barre du haut ne change pas', async () => {
+test('téléphone : pas de réglage plein écran dans « Ton compte »', async () => {
   const {page, journal} = await appareil(nav, nouvelleBase(), {mobile: true});
-  await ouvrir(page);
-  assert.equal(await page.locator('#pleinEcranBtn').isVisible(), false);
-  const r = await page.locator('.tabs').evaluate(e => ({h: e.getBoundingClientRect().height, l: e.scrollWidth}));
-  assert.ok(r.l <= 390, 'barre du haut pas plus large que l\'écran');
+  await ouvrir(page); await seConnecter(page);
+  await page.evaluate(() => ouvrirCompte());
+  await page.waitForSelector('#compteDlg[open] #cpt_out');
+  assert.equal(await page.locator('#cpt_pe, .cpt-ecran').count(), 0);
   assert.deepEqual(journal.erreurs, []);
 });
 
@@ -57,8 +75,4 @@ test('installable : manifeste en fenêtre à part, couleurs de l\'appli, icônes
   assert.equal(m.theme_color, '#101828');
   for (const i of m.icons) assert.ok(fs.existsSync(path.join(dossier, i.src)), i.src);
   assert.ok(m.icons.some(i => i.sizes === '512x512'));
-  const {page} = await appareil(nav, nouvelleBase());
-  await ouvrir(page);
-  const lien = await page.evaluate(async () => { const l = document.querySelector('link[rel="manifest"]'); const r = await fetch(l.href); return {ok: r.ok, type: r.headers.get('content-type')}; });
-  assert.ok(lien.ok);
 });

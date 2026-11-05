@@ -827,13 +827,12 @@ body.ecran-profils{overflow:hidden}
 #compteDlg .cpt-liens .lien{margin-top:0}
 #compteDlg .cpt-ligne button{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-weight:600;padding:0 14px;cursor:pointer}
 .tabs .compte button{height:34px;padding:0 14px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:600;white-space:nowrap}
-/* Plein écran (ordinateur seulement) : petite icône discrète, pas la pastille verte des boutons du compte */
-.tabs .compte button.plein-ecran{display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0!important;border-radius:10px;background:none;color:#c9d2de}
-.tabs .compte button.plein-ecran:hover{color:#fff;background:rgba(255,255,255,.12)}
-.tabs .compte button.plein-ecran[hidden]{display:none}
-.tabs .plein-ecran .pe-fermer,body.plein-ecran .tabs .plein-ecran .pe-ouvrir{display:none}
-body.plein-ecran .tabs .plein-ecran .pe-fermer{display:inline}
-@media (max-width:800px),(hover:none),(pointer:coarse){.tabs .compte button.plein-ecran{display:none!important}}
+/* Plein écran, dans « Ton compte » (ordinateur seulement) */
+#compteDlg .cpt-ecran{margin:12px 0 4px;padding:12px;border:1px solid var(--line);border-radius:12px}
+#compteDlg .cpt-ecran .cpt-ecran-l{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#compteDlg .cpt-ecran button{height:34px;padding:0 14px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+#compteDlg .cpt-ecran label.cpt-auto{display:flex;align-items:center;gap:8px;margin:10px 0 2px;font-size:14px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer}
+#compteDlg .cpt-ecran label.cpt-auto input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
 .tabs .compte button.sortir{background:none;border:1px solid #475467;color:#fff}
 @media (max-width:420px){.tabs{gap:0;padding-left:8px;padding-right:8px}.tabs button{font-size:12.5px!important;padding:0 3px!important}.tabs .compte{padding-left:4px}.tabs .compte button{padding:0 9px!important;font-size:12px!important;height:30px}}
 @media (max-width:360px){.tabs button{font-size:11.5px!important}.tabs .compte button{padding:0 7px!important;font-size:11px!important}}
@@ -1288,7 +1287,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <span class="brand"><svg class="logo" viewBox="0 0 120 120" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M36 64V94H84V58" stroke-width="8"/><path d="M24 70L52 44L66 56L94 30M78 30H94V46" stroke-width="9"/></g></svg>Patrimoniu</span>
   <button role="tab" data-tab="estimation" data-groupe="simuler" aria-selected="true">Simuler</button>
   <button role="tab" data-tab="investissements" data-groupe="biens" data-prive aria-selected="false">Mes biens</button>
-  <div class="compte"><button type="button" class="plein-ecran" id="pleinEcranBtn" hidden aria-label="Plein écran" title="Plein écran"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path class="pe-ouvrir" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path class="pe-fermer" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="tabs-photo" id="tabsPhoto" hidden aria-label="Ton compte"><img alt=""></button><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog"><span class="long">Se connecter</span><span class="court">Connexion</span></button></div>
+  <div class="compte"><button type="button" class="tabs-photo" id="tabsPhoto" hidden aria-label="Ton compte"><img alt=""></button><span class="statut" id="compteStatut" role="button" tabindex="0"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span id="compteNom">Invité</span></span><button id="compteBtn" aria-haspopup="dialog"><span class="long">Se connecter</span><span class="court">Connexion</span></button></div>
 </nav>
 <div class="sim-tete" id="simTete" hidden><nav class="cf-etapes" id="simEtapes" aria-label="Étapes de la simulation">
   <button data-e="1"><i>1</i>Le bien</button><button data-e="2"><i>2</i>Travaux et loyers</button><button data-e="3"><i>3</i>Le crédit</button><button data-e="4"><i>4</i>Le résultat</button>
@@ -3551,6 +3550,7 @@ function ouvrirCompte(mode = 'connexion') {
       btn.disabled = false;
     };
   }
+  if (!body.querySelector('form') && typeof PLEIN_ECRAN !== 'undefined') PLEIN_ECRAN.bloc(body);
   majVersion();
   if (!dlg.open) dlg.showModal();
   const champ = body.querySelector('input'); if (champ) champ.focus();
@@ -6028,33 +6028,52 @@ function showTab(t, maj = true, mode = null, sous = null) {
   else if (t === 'estimation') { majTeteEst(); setTimeout(() => map.invalidateSize(), 0); }
   window.scrollTo(0, 0);
 }
-// Plein écran sur ordinateur : un site ne peut pas s'y mettre seul à l'ouverture (le navigateur exige un clic).
-// Bouton dans la barre du haut ; si on l'a laissé en plein écran, on y repasse au premier clic de la visite suivante.
-(function pleinEcran() {
-  const btn = document.getElementById('pleinEcranBtn'), d = document, el = d.documentElement;
-  const dispo = d.fullscreenEnabled || d.webkitFullscreenEnabled;
-  const ordi = matchMedia('(hover:hover) and (pointer:fine)').matches;
-  if (!btn || !dispo || !ordi || MOTEUR) return;
+// Plein écran sur ordinateur, réglé dans « Ton compte ». Un site ne peut pas s'y mettre seul à l'ouverture (le navigateur exige
+// un clic) : avec « Ouvrir en plein écran », on y passe au premier clic dans la page. Le réglage ne change que par sa case :
+// sortir du plein écran (Échap, bouton vert, fermeture de la fenêtre) ne l'efface pas et ne relance rien pendant la visite.
+// Appli installée (Dock) : la fenêtre est en plus agrandie à tout l'écran à l'ouverture et à la sortie du plein écran.
+const PLEIN_ECRAN = (function () {
+  const d = document, el = d.documentElement;
+  const dispo = !!(d.fullscreenEnabled || d.webkitFullscreenEnabled) && matchMedia('(hover:hover) and (pointer:fine)').matches && !MOTEUR;
+  const installee = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const actif = () => !!(d.fullscreenElement || d.webkitFullscreenElement);
-  const lire = () => { try { return localStorage.getItem('plein-ecran') === '1'; } catch (e) { return false; } };
-  const ecrire = v => { try { localStorage.setItem('plein-ecran', v ? '1' : '0'); } catch (e) {} };
-  const entrer = () => { const r = el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen && el.webkitRequestFullscreen(); if (r && r.catch) r.catch(() => {}); };
-  const sortir = () => { const r = d.exitFullscreen ? d.exitFullscreen() : d.webkitExitFullscreen && d.webkitExitFullscreen(); if (r && r.catch) r.catch(() => {}); };
-  const maj = () => { const a = actif(); d.body.classList.toggle('plein-ecran', a); btn.setAttribute('aria-label', a ? 'Quitter le plein écran' : 'Plein écran'); btn.title = btn.getAttribute('aria-label'); };
-  btn.hidden = false;
-  btn.onclick = () => { if (actif()) { ecrire(false); sortir(); } else { ecrire(true); entrer(); } };
-  // Quitté avec Échap ou le bouton vert du Mac : on ne le remet plus tout seul
-  const change = () => { maj(); if (!actif()) ecrire(false); };
-  d.addEventListener('fullscreenchange', change); d.addEventListener('webkitfullscreenchange', change);
-  if (lire()) {
-    const auto = e => {
-      if (e.type === 'keydown' && (e.key === 'Escape' || e.metaKey || e.ctrlKey || e.altKey)) return;   // pas un geste qui compte pour le navigateur
-      d.removeEventListener('pointerdown', auto, true); d.removeEventListener('keydown', auto, true);
-      if (!actif() && lire() && !(e.target && e.target.closest && e.target.closest('#pleinEcranBtn'))) entrer();
-    };
-    d.addEventListener('pointerdown', auto, true); d.addEventListener('keydown', auto, true);
+  const auto = () => { try { return localStorage.getItem('plein-ecran-auto') === '1'; } catch (e) { return false; } };
+  const entrer = () => { try { const r = el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen && el.webkitRequestFullscreen(); if (r && r.catch) r.catch(() => {}); } catch (e) {} };
+  const sortir = () => { try { const r = d.exitFullscreen ? d.exitFullscreen() : d.webkitExitFullscreen && d.webkitExitFullscreen(); if (r && r.catch) r.catch(() => {}); } catch (e) {} };
+  const agrandir = () => { if (!installee()) return; try { window.moveTo(0, 0); window.resizeTo(screen.availWidth, screen.availHeight); } catch (e) {} };
+  let ecouteurs = [];
+  const majBouton = () => ecouteurs.forEach(f => f(actif()));
+  const change = () => { if (!actif() && auto()) agrandir(); majBouton(); };
+  if (dispo) {
+    try { localStorage.removeItem('plein-ecran'); } catch (e) {}   // ancien réglage (effacé à chaque sortie du plein écran)
+    d.addEventListener('fullscreenchange', change); d.addEventListener('webkitfullscreenchange', change);
+    if (auto()) {
+      agrandir();
+      // Une seule fois par visite, sur un vrai clic dans la page (pas dans la fenêtre du compte, d'où on règle tout ça)
+      const premier = e => {
+        if (e.type === 'keydown' && (e.key === 'Escape' || e.metaKey || e.ctrlKey || e.altKey)) return;
+        if (e.target && e.target.closest && e.target.closest('dialog')) return;
+        d.removeEventListener('pointerdown', premier, true); d.removeEventListener('keydown', premier, true);
+        if (!actif() && auto()) entrer();
+      };
+      d.addEventListener('pointerdown', premier, true); d.addEventListener('keydown', premier, true);
+    }
   }
-  maj();
+  // Bloc « Plein écran » ajouté à la fenêtre du compte
+  function bloc(conteneur) {
+    if (!dispo) return;
+    const div = d.createElement('div'); div.className = 'cpt-ecran';
+    div.innerHTML = `<div class="cpt-ecran-l"><b>Plein écran</b><button type="button" id="cpt_pe"></button></div>
+      <label class="cpt-auto"><input type="checkbox" id="cpt_pe_auto"${auto() ? ' checked' : ''}> Ouvrir l'appli en plein écran</label>
+      <div class="hint">Au premier clic dans l'appli (les navigateurs ne permettent pas plus tôt). Échap pour en sortir.</div>`;
+    const avant = conteneur.querySelector('#cpt_out'); conteneur.insertBefore(div, avant);   // au-dessus de « Se déconnecter »
+    const btn = div.querySelector('#cpt_pe');
+    const maj = a => { btn.textContent = a ? 'Quitter le plein écran' : 'Passer en plein écran'; };
+    ecouteurs = [maj]; maj(actif());
+    btn.onclick = () => { if (actif()) sortir(); else { d.getElementById('compteDlg').close(); entrer(); } };
+    div.querySelector('#cpt_pe_auto').onchange = e => { try { localStorage.setItem('plein-ecran-auto', e.target.checked ? '1' : '0'); } catch (err) {} };
+  }
+  return {bloc, actif};
 })();
 // Un onglet déjà ouvert reste où il est ; sinon on retrouve la dernière vue de cet onglet
 document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => {
