@@ -1,5 +1,5 @@
 // Photo de profil : ajoutée depuis la fenêtre du compte, cadrée à la main (glisser, zoomer), affichée dans la barre du haut, retirée ;
-// rangée dans le stockage de Patrimoniu (immo-docs), pas dans le profil Supabase commun aux autres sites (pari-ldc)
+// rangée dans le stockage de Patrimoniu (immo-docs)
 const test = require('node:test');
 const assert = require('node:assert');
 const zlib = require('zlib');
