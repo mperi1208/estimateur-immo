@@ -239,6 +239,12 @@ function partComptaSci(b) {
   const x = b.chargesAn.comptaSci && sciDe(b); if (!x) return null;
   return (x.compta || 0) / Math.max(1, avecComptaSci(x, b).length);
 }
+// CFE de la SCI : un seul avis pour la société, partagé à parts égales entre les biens de la SCI qui le choisissent
+const avecCfeSci = (x, b) => biens.filter(y => y.structure === 'sci' && y.sciId === x.id && y.chargesAn && y.chargesAn.cfeSci && (!y.vendu || y === b));
+function partCfeSci(b) {
+  const x = b.chargesAn.cfeSci && sciDe(b); if (!x) return null;
+  return (x.cfe || 0) / Math.max(1, avecCfeSci(x, b).length);
+}
 // Loué, mais pas encore de loyer encaissé (travaux, bail qui commence plus tard) : on ne dit pas « Loué »
 const A_VENIR = {vide: 'Location vide à venir', meuble: 'Location meublée à venir', colocation: 'Colocation à venir', lots: 'Loyers à venir', saisonnier: 'Location saisonnière à venir'};
 const statutLib = b => b.amenag && !b.amenag.fait ? 'À aménager' : b.type !== 'terrain' && A_VENIR[b.location.statut] && !(loyerActuel(b) > 0) ? A_VENIR[b.location.statut] : b.location.statut === 'avec' ? (p => p ? 'Avec ' + p.nom : '')(principalDe(b)) : (b.type === 'terrain' ? STATUTS_TERRAIN : STATUTS)[b.location.statut] || '';
@@ -272,7 +278,8 @@ function calculs(b) {
   const loyersAn = terrain ? revenusTerrain(b) : !loue ? 0 : lignes ? somme(lignes, x => (x.loyer || 0) * moisDeLoyer(x.debut)) * vac : loyerLogement(b) * moisDeLoyer(debutBailFutur(b)) * vac;
   const loyerMois = terrain ? loyersAn / 12 : loue ? loyerActuel(b) : 0;
   const c = b.chargesAn, compta = c.comptaSci ? partComptaSci(b) ?? (c.compta || 0) : c.compta || 0;
-  const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + compta + (c.cfe || 0) + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
+  const cfe = c.cfeSci ? partCfeSci(b) ?? (c.cfe || 0) : c.cfe || 0;
+  const chargesAn = (c.tf || 0) + (c.copro || 0) + (c.pno || 0) + compta + cfe + (c.autres || 0) + loyersAn * ((c.gestion || 0) + (c.entretien || 0)) / 100
     + (b.location.statut === 'saisonnier' && !terrain ? loyersAn * (b.location.fraisSaison || 0) / 100 : 0);   // plateforme, conciergerie, ménage
   const creditAn = somme(actifs, x => (x.e.paye12 + x.e.assur * x.e.payes) * x.k);
   const a = b.achat, cout = (a.prix || 0) + (a.mode === 'construction' ? a.construction || 0 : 0) + (a.notaire || 0) + (a.agence || 0) + (a.travaux || 0) + (a.mobilier || 0) + (a.frais || 0);
@@ -304,7 +311,7 @@ function depuisCredit(c) {
 }
 function nouvelleSci(o = {}) {
   return {id: uid(), nom: 'Nouvelle SCI', regime: 'ir', siren: '', creation: '', capital: null, siege: '', cloture: '31/12',
-    associes: [], banque: '', comptable: '', compta: null, notes: '', ...o};
+    associes: [], banque: '', comptable: '', compta: null, cfe: null, notes: '', ...o};
 }
 const scisLocales = () => { try { const v = JSON.parse(localStorage.getItem(CLE_SCI) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
 // Anciennes fiches (« SCI à l'IR / à l'IS » + nom libre) : rattachées à une vraie fiche SCI
@@ -1108,6 +1115,16 @@ function comptaHTML(b) {
     : `Renseigne les honoraires du comptable dans la fiche de ${esc(x.nom)} (« Partenaires »).`);
 }
 const comptaSciAide = x => (n => n ? `Compté dans les charges ${n > 1 ? `de ses ${n} biens qui ont choisi « Oui, comptable de la SCI », à parts égales` : 'de son bien qui a choisi « Oui, comptable de la SCI »'}.` : 'Pour le compter, choisis « Oui, comptable de la SCI » dans les charges de ses biens.')(avecComptaSci(x).filter(y => !y.vendu).length);
+// Case « CFE » d'un bien : un montant pour ce bien, ou, s'il est dans une SCI, sa part de la CFE de la SCI
+function cfeHTML(b) {
+  const x = sciDe(b), choix = aide => champ(b, 'chargesAn.cfeSci', 'CFE : inclure ce bien dans la CFE de la SCI ?', {options: [['', 'Non, montant pour ce bien'], ['1', 'Oui, CFE de la SCI']], boutons: true, large: true, aide});
+  if (!x) return champ(b, 'chargesAn.cfe', 'CFE (€)', {step: 50});
+  if (!b.chargesAn.cfeSci) return choix() + champ(b, 'chargesAn.cfe', 'CFE (€)', {step: 50});
+  const n = avecCfeSci(x, b).length;
+  return choix(x.cfe ? `Part de ce bien : <b>${eur(partCfeSci(b))}/an</b>${n > 1 ? ` (${eur(x.cfe)} partagés entre ${n} biens)` : ''}, CFE saisie dans la fiche de ${esc(x.nom)}.`
+    : `Renseigne la CFE dans la fiche de ${esc(x.nom)} (« Partenaires »).`);
+}
+const cfeSciAide = x => (n => n ? `Comptée dans les charges ${n > 1 ? `de ses ${n} biens qui ont choisi « Oui, CFE de la SCI », à parts égales` : 'de son bien qui a choisi « Oui, CFE de la SCI »'}.` : 'Pour la compter, choisis « Oui, CFE de la SCI » dans les charges de ses biens.')(avecCfeSci(x).filter(y => !y.vendu).length);
 const section = (titre, corps, large = false) => `<section class="bloc${large ? ' large' : ''}"><h3>${titre}</h3>${corps}</section>`;
 
 // ---------- Fiche en cinq sous-onglets : Résumé, Crédit, Location, Vente, Documents
@@ -1182,7 +1199,7 @@ function vueDetail(b) {
       ${champ(b, 'chargesAn.tf', 'Taxe foncière (€)', {step: 50})}${champ(b, 'chargesAn.copro', 'Copropriété non récupérable (€)', {step: 50})}
       ${champ(b, 'chargesAn.pno', 'Assurance PNO (€)', {step: 10})}${champ(b, 'chargesAn.gestion', 'Gestion (% des loyers)', {step: 0.5})}
       ${champ(b, 'chargesAn.entretien', 'Entretien (% des loyers)', {step: 0.5})}${comptaHTML(b)}
-      ${champ(b, 'chargesAn.cfe', 'CFE (€)', {step: 50})}${champ(b, 'chargesAn.autres', 'Autres (€)', {step: 50})}
+      ${cfeHTML(b)}${champ(b, 'chargesAn.autres', 'Autres (€)', {step: 50})}
     </div>`)}`}
     ${section('Notes', champ(b, 'notes', '', {zone: true, ph: 'Travaux à prévoir, contacts, échéances…'}))}
     ${section('Plans et documents', `<div class="docs" id="inv_docs"></div>
@@ -1565,7 +1582,7 @@ function vueSci(x) {
       <button data-a="ajoutAssocie">+ Ajouter un associé</button>`)}
     ${section('Biens de la SCI', `${sesBiens.length ? `<div class="liste">${sesBiens.map((b, i) => enProjet(b) ? '' : carte(b, t.cs[i])).join('')}</div>` : '<div class="aide">Aucun bien rattaché. Dans la fiche d\'un bien, choisis cette SCI dans « Détenu par », ou ajoute-en un ici.</div>'}
       <button data-a="ajoutBienSci">+ Ajouter un bien à cette SCI</button>`, true)}
-    ${section('Partenaires', `<div class="grille">${champ(x, 'banque', 'Banque', {type: 'text'})}${champ(x, 'comptable', 'Expert-comptable', {type: 'text'})}${champ(x, 'compta', 'Honoraires du comptable (€/an)', {step: 50, aide: comptaSciAide(x)})}</div>`)}
+    ${section('Partenaires', `<div class="grille">${champ(x, 'banque', 'Banque', {type: 'text'})}${champ(x, 'comptable', 'Expert-comptable', {type: 'text'})}${champ(x, 'compta', 'Honoraires du comptable (€/an)', {step: 50, aide: comptaSciAide(x)})}${champ(x, 'cfe', 'CFE (€/an)', {step: 10, aide: cfeSciAide(x)})}</div>`)}
     ${section('Notes', champ(x, 'notes', '', {zone: true, ph: 'Assemblées générales, comptes courants d\'associés, échéances…'}))}
     </div>
     <div class="pied"><button class="danger" data-a="supprSci">Supprimer cette SCI</button></div>`;
@@ -2267,7 +2284,7 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part|rachat\.mode|rachat\.finance|pauses\.\d+\.(type|suite))$/.test(chemin) || chemin === 'chargesAn.comptaSci') return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part|rachat\.mode|rachat\.finance|pauses\.\d+\.(type|suite))$/.test(chemin) || chemin === 'chargesAn.comptaSci' || chemin === 'chargesAn.cfeSci') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature', 'place'].includes(chemin)) majAuto(b);
