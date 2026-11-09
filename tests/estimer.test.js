@@ -12,7 +12,7 @@ const ctx = vm.createContext({
 });
 vm.runInContext([
   bloc(idx, 'const API =', 'const SOURCES'),
-  bloc(idx, 'const DPE =', 'const getJSON'),
+  bloc(idx, 'const DPE =', '// Appels aux API publiques'),
   bloc(idx, 'function toSale', 'const PERIODES_AUTO'),
   bloc(idx, 'function indiceLocal', 'async function ventesPourIndice'),
   bloc(idx, 'function quantile', 'let layer'),

@@ -127,7 +127,7 @@ const lancerNavigateur = () => chromium.launch(process.env.PW_CANAL ? {channel: 
 
 // Un « appareil » : un contexte de navigateur avec son propre stockage, branché sur la base simulée
 // mobile : écran de téléphone (390 × 844, tactile), comme un iPhone récent
-async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = false} = {}) {
+async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = false, delaiApi = 0} = {}) {
   const ecran = mobile ? {viewport: {width: +process.env.LARGEUR || 390, height: 844}, isMobile: true, hasTouch: true, deviceScaleFactor: +process.env.ECHELLE || 2} : {viewport: {width: 1280, height: 900}};
   const ctx = await nav.newContext({...ecran, locale: 'fr-FR', timezoneId: 'Europe/Paris'});
   const journal = {erreurs: [], requetes: {dvf: 0, loyers: 0, geo: 0}};
@@ -152,6 +152,7 @@ async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = 
     if (url.host === 'apidf-preprod.cerema.fr') {
       journal.requetes.dvf++;
       if (reseau.dvfEnPanne) return route.fulfill({status: 503, body: 'indisponible'});
+      if (reseau.dvfMuet) return;   // l'API ne répond jamais : la requête reste en suspens
       return ok(ventesDvf(url));
     }
     if (url.host === 'tabular-api.data.gouv.fr') {
@@ -169,6 +170,7 @@ async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = 
   });
   // Les projets à une option sont fins et pliés par défaut ; les tests travaillent sur leurs boutons, donc dépliés
   // (sauf cartesPliees : le test qui vérifie le pliage)
+  if (delaiApi) await ctx.addInitScript(d => { window.__delaiApi = d; }, delaiApi);
   if (!cartesPliees) await ctx.addInitScript(() => { try { localStorage.setItem('projets-seuls-ouverts', '1'); } catch (e) {} });
   const page = await ctx.newPage();
   page.on('pageerror', e => journal.erreurs.push(e.message));
