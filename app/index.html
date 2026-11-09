@@ -1719,7 +1719,26 @@ const fmtDate = s => new Date(s).toLocaleDateString('fr-FR', {month: 'short', ye
 const state = {type: '121', lat: null, lon: null, run: 0, zone: 'autre', lance: false, adresse: null};
 const cache = new Map();
 
-const getJSON = url => fetch(url.replace(/^http:/, 'https:')).then(r => { if (!r.ok) throw new Error('API ' + r.status); return r.json(); });
+// Appels aux API publiques (DVF du Cerema, géocodage, loyers) : sans délai maximal, une API qui ne répond
+// plus laissait la recherche « tourner » sans fin (et la promesse bloquée restait en cache). Chaque essai est
+// donc coupé au bout de DELAI_API ; un délai dépassé, une coupure réseau ou une erreur serveur (5xx, 429)
+// est retenté une fois avant d'abandonner avec un message clair.
+const DELAI_API = window.__delaiApi || 25000, ESSAIS_API = 2;   // __delaiApi : raccourci dans les tests
+async function getJSON(url, essai = 1) {
+  const ctl = new AbortController(), minuteur = setTimeout(() => ctl.abort(), DELAI_API);
+  let err;
+  try {
+    const r = await fetch(url.replace(/^http:/, 'https:'), {signal: ctl.signal});
+    if (r.ok) return await r.json();
+    err = new Error('erreur ' + r.status);
+    err.retenter = r.status >= 500 || r.status === 429;
+  } catch (e) {
+    err = new Error(e.name === 'AbortError' ? `pas de réponse en ${DELAI_API / 1000} s` : 'connexion impossible');
+    err.retenter = true;
+  } finally { clearTimeout(minuteur); }
+  if (err.retenter && essai < ESSAIS_API) { await new Promise(ok => setTimeout(ok, 1500)); return getJSON(url, essai + 1); }
+  throw err;
+}
 
 // Toutes les pages d'une requête (plafonnées pour rester raisonnable)
 async function fetchPages(url, maxPages = 4) {
@@ -1873,7 +1892,7 @@ async function estimerGarage() {
   out.innerHTML = '<div class="empty">Recherche des garages, box et places vendus seuls autour…</div>';
   let r;
   try { r = await INV.estimerGarage(state.lat, state.lon, state.place || 'box'); }
-  catch (e) { r = {erreur: `L'API DVF ne répond pas (${e.message}). Réessaie dans un instant.`}; }
+  catch (e) { if (run === state.run) erreurDVF(out, e); return; }
   if (run !== state.run) return;
   if (r.erreur) { out.innerHTML = `<div class="empty">${esc(r.erreur)}</div>`; return; }
   circle = L.circle([state.lat, state.lon], {radius: r.rayon, color: '#2f6fde', weight: 1, fillOpacity: .04}).addTo(map);
@@ -1890,6 +1909,11 @@ async function estimerGarage() {
       <div class="hint">Clique une ligne pour la voir sur la carte. Données DVF (Cerema), ventes d'une seule dépendance.</div></details>`;
   out.querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = () => { const c = r.comps[+tr.dataset.k]; map.setView([c.lat, c.lon], Math.max(map.getZoom(), 16)); markers[+tr.dataset.k].openPopup(); });
 }
+// Message quand l'API DVF ne répond pas, avec un bouton pour relancer la même recherche
+function erreurDVF(out, e) {
+  out.innerHTML = `<div class="empty">Le service public des ventes immobilières (DVF, Cerema) ne répond pas pour l'instant (${esc(e.message)}). Ce n'est pas lié à ton bien : réessaie dans quelques instants.<div style="margin-top:10px"><button type="button" class="recentes-btn" id="reessayerDVF">Réessayer</button></div></div>`;
+  document.getElementById('reessayerDVF').onclick = () => estimate();
+}
 async function estimate() {
   if (state.lat == null || !state.lance) return;   // rien avant le premier clic sur « Rechercher »
   if (modeGarage()) return estimerGarage();
@@ -1905,7 +1929,7 @@ async function estimate() {
   for (const [i, w] of periodes.entries()) {
     periode = w;
     try { res = await chercherVentes(run, type, surf, an - w, kx, ky, out, periodes.length > 1 ? ` sur ${w} ans` : ''); }
-    catch (e) { if (run === state.run) out.innerHTML = `<div class="empty">L'API DVF ne répond pas (${e.message}). Réessaie dans un instant.</div>`; return; }
+    catch (e) { if (run === state.run) erreurDVF(out, e); return; }
     if (!res) return;
     const proches = res.usable.filter(s => s.d <= RAYON_OK[type]).length;
     if (proches >= TARGET || i === periodes.length - 1) break;
@@ -2863,7 +2887,7 @@ map.on('click', e => setPoint(e.latlng.lat, e.latlng.lng, map.getZoom()));
 // --- Recherche d'adresse (Géoplateforme IGN) ---
 const addr = document.getElementById('addr'), sugg = document.getElementById('sugg');
 let timer, geoRun = 0;
-const geocode = async q => (await (await fetch('https://data.geopf.fr/geocodage/search?limit=8&q=' + encodeURIComponent(q))).json()).features;
+const geocode = async q => (await getJSON('https://data.geopf.fr/geocodage/search?limit=8&q=' + encodeURIComponent(q))).features;
 // Trouve l'adresse tapée ; true si un seul résultat clair (sinon on propose les adresses possibles)
 async function localiser(q, lancerApres) {
   clearTimeout(timer); sugg.hidden = true; geoRun++;

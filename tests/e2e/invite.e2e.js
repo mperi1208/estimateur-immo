@@ -196,6 +196,22 @@ test('service des ventes en panne : message clair, pas de plantage', async () =>
   } finally { await nav2.close(); }
 });
 
+test('service des ventes muet : la recherche s\'arrête avec un message et « Réessayer » relance', async () => {
+  const nav2 = await lancerNavigateur();
+  try {
+    const reseau = {dvfMuet: true};
+    const {page: p, journal: j} = await appareil(nav2, nouvelleBase(), {reseau, delaiApi: 1500});
+    await ouvrir(p, '#estimation');
+    await p.fill('#addr', 'rue de la République Lyon'); await p.fill('#surf', '50'); await p.click('#go');
+    await p.waitForFunction(() => /pas de réponse en 1\.5 s/.test(document.getElementById('out').innerText), null, {timeout: 20000});
+    assert.ok(j.requetes.dvf >= 2);                       // un nouvel essai avant d'abandonner
+    reseau.dvfMuet = false;
+    await p.click('#reessayerDVF');
+    await p.waitForFunction(() => /Il vaut environ/i.test(document.getElementById('out').innerText), null, {timeout: 20000});
+    assert.deepEqual(j.erreurs, []);
+  } finally { await nav2.close(); }
+});
+
 test('location saisonnière dans Estimer : recettes à la nuitée, frais, comparaison au meublé', async () => {
   const e = await estimer(page, {surf: 40, details: {etat: 'bon', dpe: '?'}});   // le bien des tests précédents était « à rénover »
   await page.click('#louer button[data-v="saison"]');
