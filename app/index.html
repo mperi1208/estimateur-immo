@@ -6023,7 +6023,18 @@ function majEtapesSim() {
 window.majEtapesSim = majEtapesSim;
 document.querySelectorAll('#simEtapes button[data-e]').forEach(b => b.onclick = () => {
   const k = +b.dataset.e; aNavigue = true;
-  if (k === 1) showTab('estimation');
+  if (k === 1) {
+    // Projet ouvert depuis Mes biens (« Modifier le financement ») : « Le bien » montre son estimation, pas la dernière
+    // recherche faite à l'écran. Une fois rechargée, elle est « en revue » : y revenir garde ce qu'on y a changé.
+    // Le financement en cours n'est pas touché (pas de restaurer)
+    const pr = projetCourantId && PROJETS.liste.find(x => x.id === projetCourantId);
+    const rc = rechercheCourante(), pareil = (a, b) => JSON.stringify([a.cle, +a.surf, a.since, a.criteres, a.travaux]) === JSON.stringify([b.cle, +b.surf, b.since, b.criteres, b.travaux]);
+    const charger = pr && pr.recherche && !(rc && (estRevue && estRevue.id === pr.id && estRevue.n == null || pareil(rc, pr.recherche)));
+    if (pr && pr.recherche) fixerRevue({id: pr.id});
+    showTab('estimation');
+    if (charger) { reprendre(pr.recherche); setTimeout(() => map.invalidateSize(), 60); }
+    else if (pr && pr.recherche) majSauveEst();
+  }
   else { if (document.body.dataset.onglet !== 'cashflow') showTab('cashflow'); CF_APP.etape(k); }
 });
 function showTab(t, maj = true, mode = null, sous = null) {
