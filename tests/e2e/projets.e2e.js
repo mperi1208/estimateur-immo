@@ -73,3 +73,30 @@ test('« J\'ai acheté » une division : la fiche a les deux logements, chacun l
   assert.equal(await v('lots.0.debut'), mois, 'loyer à partir du mois 7 (chantier de 6 mois)');
   assert.doesNotMatch(await page.locator('#inv').innerText(), /jusqu'au début des travaux/, 'chantier dès l\'achat : pas de loyer d\'avant travaux');
 });
+
+test('« Modifier le financement » puis « Le bien » : l\'estimation du projet revient, pas la dernière recherche', async () => {
+  await page.evaluate(() => { window.prompt = (m, d) => d; quitterProjet(); });
+  await estimer(page, {surf: 45});
+  await page.click('#est_financer'); await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  await saisir(page, '#cf_prix', 210000);
+  await page.fill('#cf_nomProjet', 'Mercà'); await cliquer(page, '#cf_enreg');
+  await page.waitForFunction(() => PROJETS.liste.some(x => x.nom === 'Mercà'));
+  // Une autre estimation ensuite (une maison de 90 m²), hors du projet
+  await page.evaluate(() => quitterProjet());
+  await estimer(page, {surf: 90, type: '111'});
+  await page.evaluate(() => { aNavigue = true; showTab('projets'); });
+  await page.locator('#pj article.pj', {hasText: 'Mercà'}).locator('[data-a="financer"]').first().click();
+  await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow');
+  assert.equal(+await page.inputValue('#cf_prix'), 210000);
+  await cliquer(page, '#simEtapes button[data-e="1"]');
+  await page.waitForFunction(() => document.body.dataset.onglet === 'estimation' && state.base && state.base.surf === 45 && state.type === '121' && state.loyerHC, null, {timeout: 20000});
+  assert.equal(await page.inputValue('#surf'), '45');
+  assert.match(await page.locator('#est_tete').innerText(), /Mercà/);
+  await page.waitForFunction(() => /Mettre à jour l'estimation dans « Mercà »/.test(document.getElementById('sauveEst').innerText));
+  // Retour au financement : le prix tapé est gardé
+  await cliquer(page, '#simEtapes button[data-e="2"]');
+  assert.equal(+await page.inputValue('#cf_prix'), 210000);
+  // « Le bien » à nouveau : ce qu'on y a changé reste (pas rechargé une 2e fois)
+  await cliquer(page, '#simEtapes button[data-e="1"]');
+  assert.equal(await page.inputValue('#surf'), '45');
+});
