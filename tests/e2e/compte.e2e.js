@@ -963,6 +963,15 @@ test('« J\'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (p
   assert.ok(Math.abs(b.prets[0].montant - total) / total < 0.02, `prêt ${b.prets[0].montant} pour ${total}`);
   assert.equal(b.prets[0].duree, pr.finance.duree * 12); assert.equal(b.prets[0].taux, pr.finance.taux);
   assert.equal(+await page.inputValue('#inv [data-p="achat.prix"]'), Math.round(pr.finance.prix));
+  // Les charges du projet suivent : vacance, comptable, CFE du meublé, régime fiscal, frais et charges de la nuitée
+  const v = await page.evaluate(pr => {
+    const m = CF_APP.versBien({...pr, finance: {...pr.finance, meuble: '1', compta: 600, cfe: 250, vacance: 1, regime: 'micro', ouverts: {...pr.finance.ouverts, impots: true}}});
+    const n = CF_APP.versBien({...pr, finance: {...pr.finance, locMode: 'nuit', nuitSur: '1', nuit: 90, periode: 'annee', occupation: 60, sejour: 3, menage: 40, plateforme: 15, conciergerie: 0, chargesSaison: 150, compta: 600, cfe: 250}});
+    return {m: {vac: m.location.vacance, compta: m.chargesAn.compta, cfe: m.chargesAn.cfe, regime: m.location.regime}, n: {statut: n.location.statut, frais: n.location.fraisSaison, autres: n.chargesAn.autres, cfe: n.chargesAn.cfe}};
+  }, pr);
+  assert.deepEqual(v.m, {vac: 1, compta: 600, cfe: 250, regime: 'micro'});
+  assert.equal(v.n.statut, 'saisonnier'); assert.ok(v.n.frais > 15, `frais de la nuitée ${v.n.frais} %`);
+  assert.equal(v.n.autres, 1800); assert.equal(v.n.cfe, 250);
   // La fiche ramène au projet (dans Financer)
   await cliquer(page, '#inv [data-a="voirProjet"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow' && /Estimation 52 m²/.test(document.getElementById('cf_fil').innerText));

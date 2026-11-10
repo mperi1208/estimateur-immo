@@ -4765,13 +4765,20 @@ function versBien(pr) {
       ...(travaux && p.valeurApres > 0 ? {valeurApres: {valeur: Math.round(p.valeurApres), le: auMois(p.finT)}} : {}),
       achat: {date: auj, prix: Math.round(p.prix), notaire: Math.round(s.fraisNotaire) || null, travaux: p.travaux > 0 ? Math.round(p.travaux) : null, mobilier: p.mobilier > 0 ? Math.round(p.mobilier) : null,
         frais: Math.round((p.dossier || 0) + (s.fraisGarantie || 0)) || null},
-      location: p.saison && !p.nuitL2 ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(s.saison.nuits), fraisSaison: null}
-        : lots ? {statut: 'lots', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0}
+      // Mêmes hypothèses que le projet : vacance, frais de la nuitée (plateforme, conciergerie, ménage), régime du meublé
+      location: {...(p.saison && !p.nuitL2 ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(s.saison.nuits),
+          fraisSaison: Math.round(s.saison.pctFrais * 10) / 10 || null}
+        : lots ? {statut: 'lots', loyer: null, charges: null, locataire: '', debutBail: '', vacance: p.vacance || 0}
         // Un seul loyer : celui d'avant travaux s'il est loué en attendant, sinon celui d'après, qui commence à la fin du chantier
         : {statut: p.meuble === '1' ? 'meuble' : 'vide', loyer: Math.round(loueAvant ? p.loyerAvant : p.loyer), charges: null, locataire: '',
-          debutBail: apresTravaux && p.debutLoc > 0 ? auMois(p.debutLoc) : '', vacance: 0},
+          debutBail: apresTravaux && p.debutLoc > 0 ? auMois(p.debutLoc) : '', vacance: p.vacance || 0}),
+        ...(s.meuble && s.st === 'np' && p.avecImpots ? {regime: /micro/.test(s.regime) ? 'micro' : ''} : {})},
       ...(lots ? {lots} : {}),
-      chargesAn: {tf: p.tf, copro: p.copro, pno: p.pno, gestion: p.gestion || null, entretien: p.entretien || null, compta: null, cfe: null, autres: null},
+      // Comptable et CFE comme dans le projet ; dans une SCI déjà créée, le comptable est celui de la SCI (sa fiche le partage
+      // entre ses biens). Nuitée : les charges du logement à ta charge (énergie, internet…) vont dans « Autres ».
+      chargesAn: {tf: p.tf, copro: p.copro, pno: p.pno, gestion: p.gestion || null, entretien: p.entretien || null,
+        compta: p.compta || null, cfe: s.meuble && p.cfe ? p.cfe : null, autres: s.saison && !p.nuitL2 && p.chargesSaison ? Math.round(p.chargesSaison * 12) : null,
+        ...(sci && (mesScis().find(x => x.id === sci) || {}).compta > 0 ? {comptaSci: '1'} : {})},
       prets: s.pret > 0 ? [{id: 'pr' + Date.now().toString(36), banque: '', montant: Math.round(s.pret), taux: p.taux, duree: Math.round(p.duree * 12), debut: ym(mois), offre: auj,
         assurance: Math.round(s.ech.assM * 100) / 100 || null, mensualite: null, progressif: '', hausse: null, mensuLe: '',
         typeDiff: p.differe > 0 ? p.typeDiff : '', differe: p.differe > 0 ? p.differe : null, crd: null, mois: null, crdLe: ''}] : [],
@@ -5044,7 +5051,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=3e0726ad"></script>
+<script src="investissements.js?v=d676bfc6"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {

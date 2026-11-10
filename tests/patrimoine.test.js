@@ -186,6 +186,31 @@ test('vente en SCI à l\'IS : amortissements plafonnés au coût du bâti et des
   ctx.setScis([]);
 });
 
+// Loi de finances 2025 (art. 150 VB du CGI) : en location meublée au réel, les amortissements de l'immeuble réduisent le prix d'achat
+test('vente LMNP au réel : amortissements de l\'immeuble ajoutés à la plus-value, travaux amortis non déduits', () => {
+  const meuble = (o = {}) => aVendre({location: {statut: 'meuble', loyer: 900, ...o.location}, achat: {mode: 'existant', date: dans(-120), prix: 200000, notaire: 15000, travaux: 40000}, ...(o.vente ? {vente: o.vente} : {})});
+  const vide = simulerVente(aVendre({achat: {mode: 'existant', date: dans(-120), prix: 200000, notaire: 15000, travaux: 40000}}));
+  const r = simulerVente(meuble());
+  assert.equal(r.lmnp, 'reel'); assert.equal(r.reintegre, true);       // non choisi : réel
+  assert.equal(r.amortAuto, Math.round(200000 * 0.85 * 10 / 30));      // bâti seul, 10 ans sur 30, sans mobilier ni travaux
+  assert.equal(r.travaux, 30000);                                      // travaux déjà amortis : forfait 15 % seulement
+  assert.equal(r.pv, 300000 - (200000 + 15000 + 30000 - r.amortAuto));
+  assert.ok(r.impots > vide.impots);
+  assert.equal(vide.travaux, 40000);                                   // location vide : factures toujours déduites
+  // Montant relevé par le comptable prioritaire
+  assert.equal(simulerVente(meuble({vente: {frais: 0, amort: 50000}})).pv, 300000 - (245000 - 50000));
+  // Micro-BIC et résidences étudiants/seniors : pas de réintégration
+  const micro = simulerVente(meuble({location: {regime: 'micro'}}));
+  assert.equal(micro.amort, 0); assert.equal(micro.pv, vide.pv);
+  const res = simulerVente(meuble({location: {regime: 'residence'}}));
+  assert.equal(res.amort, 0); assert.equal(res.pv, 300000 - 245000);
+  // Vente avant le 15 février 2025 : ancienne règle
+  const avant = simulerVente(meuble({vente: {frais: 0, mois: '2024-12'}}));
+  assert.equal(avant.reintegre, false); assert.equal(avant.amort, 0);
+  // Résidence principale : jamais concernée
+  assert.equal(simulerVente(aVendre({location: {statut: 'rp', regime: 'micro'}})).lmnp, null);
+});
+
 // ---------- Espace à aménager (sous-sol, combles…) ----------
 const maison = () => nouveauBien({id: 'M', nom: 'Maison', type: 'maison', adresse: '1 route, 20166 Porticcio', surface: 110, valeur: 600000, chargesAn: sansCharges, location: {statut: 'secondaire'}});
 test('espace à aménager : associé, sans valeur, hors du nombre de biens', () => {

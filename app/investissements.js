@@ -1617,6 +1617,20 @@ function surtaxePV(pv) {
   return 0;
 }
 const anneesEntre = (de, a) => de && a ? Math.floor(ecartMois(de, a) / 12) : null;
+// Amortissement du bâti seul (≈ 85 % du prix d'un bien acheté ; toute la construction pour une maison construite) sur 30 ans,
+// compté jusqu'au mois de la vente, jamais plus que son coût
+function amortBati(a, mois) {
+  const construit = a.mode === 'construction', n = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : anneesEntre(a.date, mois);
+  return n != null ? Math.round((construit ? a.construction || 0 : (a.prix || 0) * 0.85) * Math.min(Math.max(0, n), 30) / 30) : 0;
+}
+// Régime de la location meublée d'un bien en nom propre : micro-BIC, réel (LMNP) ou réel dans une résidence étudiants, seniors,
+// EHPAD (pas de réintégration). Non choisi : le réel, le plus courant et le plus prudent pour la vente. null si pas meublé.
+const LMNP_DEPUIS = '2025-02';   // ventes à partir du 15 février 2025
+const REGIMES_MEUBLE = {micro: 'Micro-BIC', reel: 'Réel (LMNP)', residence: 'Réel, résidence étudiants ou seniors'};
+function regimeMeuble(b) {
+  const l = b.location || {}, choisi = REGIMES_MEUBLE[l.regime] ? l.regime : null;
+  return ['meuble', 'saisonnier', 'colocation'].includes(l.statut) || (choisi && ['vacant', 'travaux'].includes(l.statut)) ? choisi || 'reel' : null;
+}
 function simulerVente(b) {
   const v = b.vente || {}, a = b.achat, sci = sciDe(b), regime = sci ? sci.regime : 'np';
   const mois = v.mois || moisCourant(), prix = v.prix ?? b.valeur ?? 0, frais = v.agence === false ? v.fraisFixe ?? FRAIS_SANS_AGENCE : prix * (v.frais ?? 4) / 100;
@@ -1636,8 +1650,7 @@ function simulerVente(b) {
     // Amortissement : le bâti seulement (≈ 85 % du prix d'un bien acheté ; toute la construction pour une maison construite) sur 30 ans,
     // les travaux sur 15 ans (comme dans Financer) ; jamais plus que leur coût, même détenus plus longtemps
     const ansAmort = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : annees;
-    const amortAuto = ansAmort != null ? Math.round((construit ? a.construction || 0 : (a.prix || 0) * 0.85) * Math.min(Math.max(0, ansAmort), 30) / 30
-      + (a.travaux || 0) * Math.min(Math.max(0, ansAmort), 15) / 15) : 0;
+    const amortAuto = ansAmort != null ? amortBati(a, mois) + Math.round((a.travaux || 0) * Math.min(Math.max(0, ansAmort), 15) / 15) : 0;
     r.amort = v.amort ?? amortAuto; r.amortAuto = amortAuto;
     r.vnc = Math.max(0, acquisition - r.amort);
     r.pv = prix - frais - r.vnc;
@@ -1656,9 +1669,19 @@ function simulerVente(b) {
     const acq = (a.prix || 0) + (construit ? a.construction || 0 : 0);
     const ansForfait = construit ? anneesEntre(a.finTravaux || a.debutTravaux, mois) : annees;
     const fraisAchat = v.fraisAchat ?? Math.max(fraisAcquisition(a), 0.075 * (a.prix || 0));
-    const travaux = v.travaux ?? (ansForfait != null && ansForfait >= 5 ? Math.max(a.travaux || 0, 0.15 * acq) : (a.travaux || 0));
+    // Location meublée au réel (LMNP) : depuis les ventes du 15 février 2025 (loi de finances 2025, art. 150 VB du CGI), le prix
+    // d'acquisition est diminué des amortissements de l'immeuble déduits des loyers, sauf résidences étudiants, seniors, EHPAD.
+    // Le mobilier n'est pas un immeuble : son amortissement ne compte pas. Les travaux déjà déduits ou amortis ne s'ajoutent
+    // pas au prix (et leur amortissement n'est pas retranché) : reste le forfait de 15 % après 5 ans.
+    r.lmnp = regime === 'np' ? regimeMeuble(b) : null;
+    const reel = r.lmnp === 'reel' || r.lmnp === 'residence';
+    r.reintegre = r.lmnp === 'reel' && mois >= LMNP_DEPUIS;
+    const forfait = ansForfait != null && ansForfait >= 5 ? 0.15 * acq : 0;
+    const travaux = v.travaux ?? (reel ? forfait : Math.max(a.travaux || 0, forfait));
+    r.amortAuto = r.reintegre ? amortBati(a, mois) : 0;
+    r.amort = r.reintegre ? v.amort ?? r.amortAuto : 0;
     r.fraisAchat = fraisAchat; r.travaux = travaux; r.rp = rp; r.construit = construit;
-    r.pv = prix - frais - (acq + fraisAchat + travaux);
+    r.pv = prix - frais - (acq + fraisAchat + travaux - r.amort);
     const pvPart = Math.max(0, r.pv) * k;
     // Abattements : la part de plus-value du terrain compte depuis l'achat du terrain, celle de la maison depuis le début des travaux
     const tranches = construit && (a.construction || 0) > 0
@@ -1700,8 +1723,11 @@ function venteHTML(b) {
       ${champ(b, 'vente.ira', 'Indemnités du crédit (€)', {step: 100, ph: 'calculées', aide: 'Remboursement anticipé (IRA)'})}
       ${regime === 'is' ? `${champ(b, 'vente.amort', 'Amortissements déjà déduits (€)', {step: 1000, ph: 'estimés', aide: 'Voir le bilan de la SCI'})}
         ${champ(b, 'vente.parts', 'Tes parts dans la SCI (%)', {step: 1, ph: '100'})}`
-        : `${champ(b, 'vente.fraisAchat', 'Frais d\'achat à déduire (€)', {step: 100, ph: 'réels ou 7,5 %'})}
-        ${champ(b, 'vente.travaux', 'Travaux à déduire (€)', {step: 500, ph: 'factures ou 15 %'})}
+        : `${(lm => lm ? champ(b, 'location.regime', 'Impôts sur les loyers meublés', {options: Object.entries(REGIMES_MEUBLE).map(([k, l]) => [k === 'reel' ? '' : k, l]), boutons: true, large: true,
+            aide: lm === 'micro' ? 'Micro-BIC : pas d\'amortissement, la plus-value se calcule comme pour une location vide.' : lm === 'residence' ? 'Résidence étudiants, seniors ou EHPAD : les amortissements ne sont pas réintégrés à la vente.' : 'Au réel, les amortissements de l\'immeuble déduits des loyers sont ajoutés à la plus-value (ventes depuis le 15 février 2025).'})
+          + (lm === 'reel' ? champ(b, 'vente.amort', 'Amortissements de l\'immeuble déduits (€)', {step: 1000, ph: 'estimés', aide: 'Total déduit depuis le début, sans le mobilier : sur tes liasses fiscales ou auprès de ton comptable'}) : '') : '')(regimeMeuble(b))}
+        ${champ(b, 'vente.fraisAchat', 'Frais d\'achat à déduire (€)', {step: 100, ph: 'réels ou 7,5 %'})}
+        ${champ(b, 'vente.travaux', 'Travaux à déduire (€)', {step: 500, ph: ['reel', 'residence'].includes(regimeMeuble(b)) ? 'forfait 15 % après 5 ans' : 'factures ou 15 %'})}
         ${regime === 'ir' ? champ(b, 'vente.parts', 'Tes parts dans la SCI (%)', {step: 1, ph: '100'}) : ''}`}
     </div>
     ${regime === 'is' ? `<div class="seg mini vente-sortie"><button data-a="venteSortir" data-v="0" class="${v.sortir ? '' : 'on'}">Garder l'argent dans la SCI</button><button data-a="venteSortir" data-v="1" class="${v.sortir ? 'on' : ''}">Le sortir (dividendes)</button></div>` : ''}
@@ -1734,8 +1760,8 @@ function majVente(b) {
       ${ligne(`Prélèvements sociaux (17,2 %, abattement ${String(Math.round(r.abPS * 1000) / 10).replace('.', ',')} %)`, moins(r.ps))}
       ${r.surtaxe ? ligne('Surtaxe (plus-value de plus de 50 000 €)', moins(r.surtaxe)) : ''}`}
       ${ligne('<b>Ce qui te revient</b>', eur(r.pourToi), signe(r.pourToi))}</div>
-      ${mini([['Plus-value brute', eur(r.pv)], ['Frais d\'achat déduits', eur(r.fraisAchat)], ['Travaux déduits', eur(r.travaux)], ['Maison : détention', r.construit && r.anneesMaison != null ? r.anneesMaison + ' ans depuis le début des travaux' : null], ['Exonération totale', r.annees != null && !r.rp ? (n => n >= 30 ? 'atteinte' : 'dans ' + (30 - n) + ' ans')(r.construit && r.anneesMaison != null ? Math.min(r.annees, r.anneesMaison) : r.annees) : null]], 'petit')}
-      <div class="aide">${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}${r.construit ? 'Maison construite : prix d\'achat = terrain + construction ; la plus-value du terrain compte depuis son achat, celle de la maison depuis le début des travaux. ' : ''}Frais d'achat : notaire et agence (pas les frais bancaires), ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention${r.construit ? ' (comptés depuis la fin de la construction)' : ''}.</div>`;
+      ${mini([['Plus-value brute', eur(r.pv)], ['Frais d\'achat déduits', eur(r.fraisAchat)], ['Travaux déduits', eur(r.travaux)], ['Amortissements réintégrés', r.reintegre ? eur(r.amort) + (b.vente && b.vente.amort != null ? '' : ' (estimés)') : null], ['Maison : détention', r.construit && r.anneesMaison != null ? r.anneesMaison + ' ans depuis le début des travaux' : null], ['Exonération totale', r.annees != null && !r.rp ? (n => n >= 30 ? 'atteinte' : 'dans ' + (30 - n) + ' ans')(r.construit && r.anneesMaison != null ? Math.min(r.annees, r.anneesMaison) : r.annees) : null]], 'petit')}
+      <div class="aide">${r.reintegre ? 'Location meublée au réel (LMNP) : depuis le 15 février 2025, le prix d\'achat est diminué des amortissements de l\'immeuble déduits des loyers (pas ceux du mobilier), ce qui augmente la plus-value. Les travaux déjà déduits ou amortis ne s\'ajoutent pas au prix d\'achat ; le forfait de 15 % reste possible après 5 ans. À valider avec ton comptable. ' : r.lmnp === 'reel' ? 'Vente avant le 15 février 2025 : les amortissements de la location meublée ne sont pas réintégrés. ' : ''}${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}${r.construit ? 'Maison construite : prix d\'achat = terrain + construction ; la plus-value du terrain compte depuis son achat, celle de la maison depuis le début des travaux. ' : ''}Frais d'achat : notaire et agence (pas les frais bancaires), ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention${r.construit ? ' (comptés depuis la fin de la construction)' : ''}.</div>`;
   }
   if (r.manqueAchat) h += `<div class="warnbox">${b.achat.mode === 'construction' ? 'Renseigne le prix et la date d\'achat du terrain, le coût et le début de la construction' : 'Renseigne le prix et la date d\'achat'} (bloc Achat) : sans eux, la plus-value et les abattements sont faux.</div>`;
   el.innerHTML = h;
@@ -2284,7 +2310,7 @@ racine.addEventListener('change', async e => {
     return ['amenag.ou', 'amenag.m2', 'amenag.meuble', 'amenag.total', 'amenag.periode'].includes(chemin) ? vueDetail(b) : majAmenag(b);
   }
   // Ce qui change la forme de la fiche : on la reconstruit ; sinon seulement les chiffres
-  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part|rachat\.mode|rachat\.finance|pauses\.\d+\.(type|suite))$/.test(chemin) || chemin === 'chargesAn.comptaSci' || chemin === 'chargesAn.cfeSci') return vueDetail(b);
+  if (['type', 'location.statut', 'adresse', 'surface', 'nature', 'place', 'achat.mode'].includes(chemin) && (chemin !== 'surface' || b.type === 'terrain') || /^prets\.\d+\.(banque|progressif|typeDiff|partage\.\d+\.part|rachat\.mode|rachat\.finance|pauses\.\d+\.(type|suite))$/.test(chemin) || chemin === 'chargesAn.comptaSci' || chemin === 'chargesAn.cfeSci' || chemin === 'location.regime') return vueDetail(b);
   if (chemin === 'nom') racine.querySelector('#inv_titre').textContent = b.nom;
   // Caractéristiques changées : l'estimation est signalée comme à refaire (sans la relancer)
   if (chemin.startsWith('criteres.') || ['surface', 'annee', 'valeur', 'pieces', 'nature', 'place'].includes(chemin)) majAuto(b);
