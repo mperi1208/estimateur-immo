@@ -117,6 +117,12 @@ test('deux profils sur un compte : biens séparés, et un autre appareil choisit
   await page.click('#pe_fermer');
   assert.equal(await page.evaluate(() => COMPTE.profil), '');
   assert.deepEqual(titulaire().biens.map(b => b.nom), ['Maison de Marc']);
+  // L'autre appareil, resté sur Papa, enregistre : il est prévenu que le profil n'existe plus (plus d'échec silencieux)
+  await b.page.evaluate(() => { location.hash = '#investissements'; });
+  await cliquer(b.page, '#inv [data-a="ajout"]'); await b.page.waitForSelector('#inv_titre');
+  await saisir(b.page, '#inv [data-p="nom"]', 'Studio orphelin');
+  await b.page.waitForFunction(() => /n'existe plus/.test(document.querySelector('#inv .etat-compte').title));
+  assert.deepEqual(titulaire().biens.map(b => b.nom), ['Maison de Marc'], 'rien d\'écrit ailleurs');
 
   assert.deepEqual(journal.erreurs, []); assert.deepEqual(b.journal.erreurs, []);
 });

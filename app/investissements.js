@@ -1676,7 +1676,9 @@ function simulerVente(b) {
     r.lmnp = regime === 'np' ? regimeMeuble(b) : null;
     const reel = r.lmnp === 'reel' || r.lmnp === 'residence';
     r.reintegre = r.lmnp === 'reel' && mois >= LMNP_DEPUIS;
-    const forfait = ansForfait != null && ansForfait >= 5 ? 0.15 * acq : 0;
+    // Forfait de 15 % : immeubles bâtis seulement (pas un terrain) ; surtaxe : pas sur un terrain à bâtir (art. 1609 nonies G)
+    const terrain = b.type === 'terrain';
+    const forfait = !terrain && ansForfait != null && ansForfait >= 5 ? 0.15 * acq : 0;
     const travaux = v.travaux ?? (reel ? forfait : Math.max(a.travaux || 0, forfait));
     r.amortAuto = r.reintegre ? amortBati(a, mois) : 0;
     r.amort = r.reintegre ? v.amort ?? r.amortAuto : 0;
@@ -1697,7 +1699,7 @@ function simulerVente(b) {
     // Vente de 15 000 € ou moins (garage, place de parking…) : plus-value exonérée (seuil apprécié sur la part vendue)
     r.petite = !rp && prix * partBien <= 15000 && prix > 0;
     if (rp || r.petite) { r.ir = 0; r.ps = 0; baseSurtaxe = 0; }
-    r.surtaxe = rp ? 0 : surtaxePV(baseSurtaxe);
+    r.surtaxe = rp || (terrain && b.nature === 'constructible') ? 0 : surtaxePV(baseSurtaxe);
     r.impots = r.ir + r.ps + r.surtaxe;
     r.pourToi = r.liquide * k - r.impots;
   }
@@ -1761,7 +1763,7 @@ function majVente(b) {
       ${r.surtaxe ? ligne('Surtaxe (plus-value de plus de 50 000 €)', moins(r.surtaxe)) : ''}`}
       ${ligne('<b>Ce qui te revient</b>', eur(r.pourToi), signe(r.pourToi))}</div>
       ${mini([['Plus-value brute', eur(r.pv)], ['Frais d\'achat déduits', eur(r.fraisAchat)], ['Travaux déduits', eur(r.travaux)], ['Amortissements réintégrés', r.reintegre ? eur(r.amort) + (b.vente && b.vente.amort != null ? '' : ' (estimés)') : null], ['Maison : détention', r.construit && r.anneesMaison != null ? r.anneesMaison + ' ans depuis le début des travaux' : null], ['Exonération totale', r.annees != null && !r.rp ? (n => n >= 30 ? 'atteinte' : 'dans ' + (30 - n) + ' ans')(r.construit && r.anneesMaison != null ? Math.min(r.annees, r.anneesMaison) : r.annees) : null]], 'petit')}
-      <div class="aide">${r.reintegre ? 'Location meublée au réel (LMNP) : depuis le 15 février 2025, le prix d\'achat est diminué des amortissements de l\'immeuble déduits des loyers (pas ceux du mobilier), ce qui augmente la plus-value. Les travaux déjà déduits ou amortis ne s\'ajoutent pas au prix d\'achat ; le forfait de 15 % reste possible après 5 ans. À valider avec ton comptable. ' : r.lmnp === 'reel' ? 'Vente avant le 15 février 2025 : les amortissements de la location meublée ne sont pas réintégrés. ' : ''}${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}${r.construit ? 'Maison construite : prix d\'achat = terrain + construction ; la plus-value du terrain compte depuis son achat, celle de la maison depuis le début des travaux. ' : ''}Frais d'achat : notaire et agence (pas les frais bancaires), ou forfait de 7,5 % ; travaux : factures, ou forfait de 15 % après 5 ans de détention${r.construit ? ' (comptés depuis la fin de la construction)' : ''}.</div>`;
+      <div class="aide">${r.reintegre ? 'Location meublée au réel (LMNP) : depuis le 15 février 2025, le prix d\'achat est diminué des amortissements de l\'immeuble déduits des loyers (pas ceux du mobilier), ce qui augmente la plus-value. Les travaux déjà déduits ou amortis ne s\'ajoutent pas au prix d\'achat ; le forfait de 15 % reste possible après 5 ans. À valider avec ton comptable. ' : r.lmnp === 'reel' ? 'Vente avant le 15 février 2025 : les amortissements de la location meublée ne sont pas réintégrés. ' : ''}${r.regime === 'ir' ? 'SCI à l\'IR : la plus-value est imposée chez chaque associé selon ses parts ; l\'argent peut ensuite sortir de la SCI sans nouvel impôt. ' : ''}${r.construit ? 'Maison construite : prix d\'achat = terrain + construction ; la plus-value du terrain compte depuis son achat, celle de la maison depuis le début des travaux. ' : ''}Frais d'achat : notaire et agence (pas les frais bancaires), ou forfait de 7,5 % ; travaux : factures${b.type === 'terrain' ? ' (pas de forfait de 15 % pour un terrain' + (b.nature === 'constructible' ? ', ni de surtaxe pour un terrain à bâtir)' : ')') : `, ou forfait de 15 % après 5 ans de détention${r.construit ? ' (comptés depuis la fin de la construction)' : ''}`}.</div>`;
   }
   if (r.manqueAchat) h += `<div class="warnbox">${b.achat.mode === 'construction' ? 'Renseigne le prix et la date d\'achat du terrain, le coût et le début de la construction' : 'Renseigne le prix et la date d\'achat'} (bloc Achat) : sans eux, la plus-value et les abattements sont faux.</div>`;
   el.innerHTML = h;
@@ -2273,7 +2275,10 @@ racine.addEventListener('change', async e => {
     if (/^prets\.\d+\.debut$/.test(chemin) && a.date && ecartMois(v, a.date) > 2) dire(`1re échéance avant l'achat (${libMois(a.date)}) : normal seulement pour un rachat de crédit.`);
   }
   // Prix et valeur tapés en milliers (« 819 ») : compris comme 819 000 €
-  if (['valeur', 'achat.prix'].includes(chemin) && v > 0 && v < 2000) { v *= 1000; t.value = v; }
+  // (logement ou immeuble seulement : un garage, une place ou un terrain peut valoir moins de 2 000 €), et on le dit
+  if (['valeur', 'achat.prix'].includes(chemin) && v > 0 && v < 2000 && ['appart', 'maison', 'immeuble', 'local'].includes(b.type)) {
+    v *= 1000; t.value = v; dire(`Compris comme ${eur(v)} (montant tapé en milliers). Sinon, corrige-le.`);
+  }
   ecrire(b, chemin, v);
   if (chemin === 'type') {
     const terrain = v === 'terrain', st = b.location.statut;

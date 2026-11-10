@@ -83,3 +83,14 @@ test('vente datée dans le futur : simulée, mais pas enregistrée (le bien rest
   assert.match(await page.evaluate(() => window.__alerte), /dans le futur/);
   assert.equal(await page.locator('#inv [data-a="venteAnnuler"]').count(), 0, 'pas enregistrée');
 });
+
+test('montant en milliers : « 819 » devient 819 000 € pour un logement (et on le dit), 1 500 € reste 1 500 € pour un parking', async () => {
+  await page.evaluate(() => { location.hash = '#investissements'; });
+  await cliquer(page, '#inv [data-a="ajout"]'); await page.waitForSelector('#inv [data-p="achat.prix"]', {state: 'attached'});
+  await taper('achat.prix', 819);
+  assert.equal(await valeur('achat.prix'), '819000'); assert.match(await message(), /Compris comme 819\s000\s€/);
+  await page.evaluate(() => { const e = document.querySelector('#inv [data-p="type"]'); e.value = 'parking'; e.dispatchEvent(new Event('change', {bubbles: true})); });
+  await page.waitForSelector('#inv [data-p="achat.prix"]', {state: 'attached'});
+  await taper('achat.prix', 1500);
+  assert.equal(await valeur('achat.prix'), '1500'); assert.equal(await message(), '');
+});

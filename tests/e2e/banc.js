@@ -65,7 +65,7 @@ const FAUX_SUPABASE = `(() => {
     from: table => {
       const q = {table, op: 'select', filtres: {}, un: false};
       const b = {
-        select(c) { if (q.op === 'select') q.cols = c; return b; },
+        select(c) { q.cols = c; return b; },   // après update : renvoie les lignes touchées
         eq(k, v) { q.filtres[k] = v; return b; },
         insert(v) { q.op = 'insert'; q.valeurs = v; return b; },
         update(v) { q.op = 'update'; q.valeurs = v; return b; },
@@ -92,7 +92,7 @@ function nouvelleBase() {
 }
 // immo_profils : une ligne par compte (crédits dans base.lignes, nom du titulaire dans base.noms) ;
 // immo_membres : les autres profils du compte, chacun avec ses crédits
-function requete(base, {table, op, filtres, valeurs, un}) {
+function requete(base, {table, op, filtres, valeurs, un, cols}) {
   const uid = filtres.user_id ?? (valeurs && valeurs.user_id);
   if (table === 'immo_profils') {
     if (op === 'select') {
@@ -106,7 +106,7 @@ function requete(base, {table, op, filtres, valeurs, un}) {
     const ok = m => Object.entries(filtres).every(([k, v]) => m[k] === v);
     if (op === 'select') { const l = base.membres.filter(ok).map(m => ({...m, credits: m.credits == null ? null : JSON.parse(m.credits)})); return {data: un ? l[0] || null : l, error: null}; }
     if (op === 'insert') { base.membres.push({...valeurs, credits: null, cree: new Date().toISOString()}); return {data: null, error: null}; }
-    if (op === 'update') { base.membres.filter(ok).forEach(m => Object.assign(m, valeurs, 'credits' in valeurs ? {credits: JSON.stringify(valeurs.credits)} : {})); return {data: null, error: null}; }
+    if (op === 'update') { const l = base.membres.filter(ok); l.forEach(m => Object.assign(m, valeurs, 'credits' in valeurs ? {credits: JSON.stringify(valeurs.credits)} : {})); return {data: cols ? l.map(m => ({id: m.id})) : null, error: null}; }
     if (op === 'delete') { base.membres = base.membres.filter(m => !ok(m)); return {data: null, error: null}; }
   }
   return {data: null, error: {message: `opération inconnue ${op} sur ${table}`}};

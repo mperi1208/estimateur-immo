@@ -211,6 +211,14 @@ test('vente LMNP au réel : amortissements de l\'immeuble ajoutés à la plus-va
   assert.equal(simulerVente(aVendre({location: {statut: 'rp', regime: 'micro'}})).lmnp, null);
 });
 
+test('vente d\'un terrain : pas de forfait travaux de 15 % ; terrain à bâtir sans surtaxe, autre terrain avec', () => {
+  const terrain = nature => simulerVente(aVendre({type: 'terrain', nature, valeur: 500000, location: {statut: 'libre'}, achat: {mode: 'existant', date: dans(-120), prix: 200000, notaire: 15000}}));
+  const t = terrain('constructible');
+  assert.equal(t.travaux, 0); assert.equal(t.pv, 500000 - 215000); assert.equal(t.surtaxe, 0);
+  const pre = terrain('agricole');
+  assert.equal(pre.travaux, 0); assert.ok(pre.surtaxe > 0);
+});
+
 // ---------- Espace à aménager (sous-sol, combles…) ----------
 const maison = () => nouveauBien({id: 'M', nom: 'Maison', type: 'maison', adresse: '1 route, 20166 Porticcio', surface: 110, valeur: 600000, chargesAn: sansCharges, location: {statut: 'secondaire'}});
 test('espace à aménager : associé, sans valeur, hors du nombre de biens', () => {
