@@ -790,6 +790,9 @@ body:not(.connecte) .tabs [data-prive]{display:none}
 #compteDlg .cpt-profil{display:flex;align-items:center;gap:12px;width:100%;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:inherit;text-align:left;padding:10px 12px;cursor:pointer;margin:4px 0 0}
 #compteDlg .cpt-profil:hover{border-color:var(--ink)}
 .cpt-profil .pastille{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;flex:0 0 auto;object-fit:cover}
+.invwrap .pj-auteur{display:inline-flex;vertical-align:middle;margin-right:8px;flex:0 0 auto}
+.invwrap .pj-auteur .pastille{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800;object-fit:cover;text-transform:uppercase;letter-spacing:0}
+.invwrap .pj-perso{display:inline;font-size:13px;margin-right:6px;vertical-align:middle}
 /* Écran des profils, plein écran */
 body.ecran-profils{overflow:hidden}
 .profils-ecran{position:fixed;inset:0;z-index:100000;background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:56px 16px 32px;overflow:auto;box-sizing:border-box}
@@ -3296,7 +3299,7 @@ const COMPTE = {
   async entrer(u) {
     const id = u ? u.id : null;
     if (id === this.vise) return;
-    this.vise = id; this.profil = ''; this.membres = []; this.nomTitulaire = '';
+    this.vise = id; this.profil = ''; this.membres = []; this.nomTitulaire = ''; this.cachesFamille = null;
     if (u) {
       await this.chargerProfils(u);
       if (this.vise !== id) return;
@@ -3324,7 +3327,7 @@ const COMPTE = {
     if (!u || id === this.profil) return;
     try { if (window.INV && INV.vider) await INV.vider(); } catch (e) { console.warn('Enregistrement avant changement de profil :', e); }
     this.ecouteurs.forEach(f => f(null));
-    this.profil = id; try { localStorage.setItem('profil-' + u.id, id); } catch (e) {}
+    this.profil = id; this.cachesFamille = null; try { localStorage.setItem('profil-' + u.id, id); } catch (e) {}
     majBoutonCompte(); this.ecouteurs.forEach(f => f(u));
   },
   async ajouterProfil(nom) {
@@ -3344,41 +3347,112 @@ const COMPTE = {
   async supprimerProfil(id) {
     if (!id) return;
     if (this.profil === id) await this.changerProfil('');
-    // Documents de ses biens (plans, photos…) : supprimés avec le profil, sinon ils resteraient stockés sans être visibles
-    let cles = [];
-    try {
-      const {data} = await this.client.from('immo_membres').select('credits').eq('user_id', this.vise).eq('id', id).maybeSingle();
-      const c = data && data.credits, biens = Array.isArray(c) ? c : c && Array.isArray(c.biens) ? c.biens : [];
-      cles = biens.flatMap(b => (b && Array.isArray(b.docs) ? b.docs : []).map(d => d && d.cle)).filter(k => typeof k === 'string' && k.startsWith(this.vise + '/'));
-    } catch (e) {}
+    // Ce qu'il gardait pour lui disparaît, avec les documents de ces biens (sinon stockés sans plus être visibles)
+    const cles = await this.oublierPerso(id) || [];
     const {error} = await this.client.from('immo_membres').delete().eq('user_id', this.vise).eq('id', id);
     if (error) throw error;
     try { await this.client.storage.from('immo-docs').remove([`${this.vise}/profil/${id}.jpg`, ...cles]); } catch (e) {}
     photosProfils.delete(id);
     await this.chargerProfils(); majBoutonCompte();
   },
-  async lire() {
-    if (this.profil) {
-      const {data, error} = await this.client.from('immo_membres').select('credits').eq('user_id', this.user.id).eq('id', this.profil).maybeSingle();
+  // Biens, SCI et projets de la famille : tous dans la ligne du titulaire (immo_profils), chacun avec son auteur
+  // (id du profil, '' pour le titulaire). Partagés avec tous les profils, sauf ceux marqués « perso » (rien que pour
+  // leur auteur). Les recherches récentes restent à chaque profil (recherchesPar). Ce que ce profil ne voit pas est
+  // gardé à part (cachesFamille) et remis à chaque enregistrement.
+  cachesFamille: null,
+  async lireFamille() {
+    const [t, m] = await Promise.all([this.client.from('immo_profils').select('credits').eq('user_id', this.user.id).maybeSingle(),
+      this.client.from('immo_membres').select('id,credits').eq('user_id', this.user.id)]);
+    if (t.error) throw t.error;
+    let fam = t.data ? t.data.credits : null;
+    // Anciens profils qui avaient leurs biens à eux (avant le partage) : versés une fois dans la famille, partagés
+    const aVerser = m.error || Array.isArray(fam) ? [] : (m.data || []).filter(x => familleVide(x.credits) === false);
+    if (aVerser.length) {
+      fam = versionFamille(fam);
+      for (const x of aVerser) verserDansFamille(fam, x.credits, x.id);
+      const {error} = await this.client.from('immo_profils').upsert({user_id: this.user.id, credits: fam, maj: new Date().toISOString()});
       if (error) throw error;
-      return data ? data.credits : null;
+      for (const x of aVerser) await this.client.from('immo_membres').update({credits: {version: 3, verse: Date.now()}, maj: new Date().toISOString()}).eq('user_id', this.user.id).eq('id', x.id);
     }
-    const {data, error} = await this.client.from('immo_profils').select('credits').eq('user_id', this.user.id).maybeSingle();
-    if (error) throw error;
-    return data ? data.credits : null;
+    return fam;
+  },
+  async lire() {
+    const fam = await this.lireFamille();
+    if (!fam || Array.isArray(fam)) { this.cachesFamille = {listes: {}, recherchesPar: {}}; return this.profil ? null : fam; }   // très ancien format : celui du titulaire
+    const {visible, caches} = partFamille(versionFamille(fam), this.profil);
+    this.cachesFamille = caches;
+    return visible;
   },
   async ecrire(credits) {
-    if (this.profil) {
-      // Profil supprimé depuis un autre appareil : la mise à jour ne touche aucune ligne, on le dit au lieu de se taire
-      const {data, error} = await this.client.from('immo_membres').update({credits, maj: new Date().toISOString()}).eq('user_id', this.user.id).eq('id', this.profil).select('id');
-      if (error) throw error;
-      if (!data || !data.length) throw new Error('ce profil n\'existe plus (supprimé depuis un autre appareil). Change de profil dans « Ton compte ».');
-      return;
-    }
-    const {error} = await this.client.from('immo_profils').upsert({user_id: this.user.id, credits, maj: new Date().toISOString()});
+    if (!this.cachesFamille) await this.lire();
+    const credits3 = remettreFamille(credits, this.cachesFamille, this.profil);
+    const {error} = await this.client.from('immo_profils').upsert({user_id: this.user.id, credits: credits3, maj: new Date().toISOString()});
     if (error) throw error;
   },
+  // Un profil supprimé : ce qu'il gardait pour lui disparaît, ce qu'il partageait reste à la famille
+  async oublierPerso(id) {
+    const fam = await this.lireFamille();
+    if (!fam || Array.isArray(fam)) return;
+    const f = versionFamille(fam), sup = f.supprimes || (f.supprimes = {});
+    const cles = [];
+    for (const k of LISTES_FAMILLE) f[k] = (f[k] || []).filter(x => {
+      const out = x && x.perso && (x.auteur || '') === id;
+      if (out) { sup[x.id] = Date.now(); for (const d of Array.isArray(x.docs) ? x.docs : []) if (d && typeof d.cle === 'string' && d.cle.startsWith(this.user.id + '/')) cles.push(d.cle); }
+      return !out;
+    });
+    if (f.recherchesPar) delete f.recherchesPar[id];
+    const {error} = await this.client.from('immo_profils').upsert({user_id: this.user.id, credits: f, maj: new Date().toISOString()});
+    if (error) throw error;
+    return cles;
+  },
 };
+// ---------- Famille : ce qui est partagé entre les profils
+const LISTES_FAMILLE = ['biens', 'scis', 'projets'];
+// true : rien dedans (ou déjà versé), false : des biens, projets ou recherches à verser
+function familleVide(c) {
+  if (!c || Array.isArray(c) || c.verse) return true;
+  return ![...LISTES_FAMILLE, 'recherches'].some(k => Array.isArray(c[k]) && c[k].length);
+}
+// Version 3 : chaque entrée a son auteur, les recherches sont rangées par profil
+function versionFamille(fam) {
+  const f = fam && !Array.isArray(fam) ? {...fam} : {version: 3, biens: [], scis: [], projets: [], supprimes: {}};
+  for (const k of LISTES_FAMILLE) f[k] = (Array.isArray(f[k]) ? f[k] : []).filter(x => x && x.id).map(x => x.auteur == null ? {...x, auteur: ''} : x);
+  f.recherchesPar = {...(f.recherchesPar || {})};
+  if (Array.isArray(f.recherches)) { if (!f.recherchesPar['']) f.recherchesPar[''] = f.recherches; delete f.recherches; }
+  f.version = 3;
+  return f;
+}
+function verserDansFamille(f, c, id) {
+  for (const k of LISTES_FAMILLE) {
+    const ids = new Set(f[k].map(x => x.id));
+    for (const x of Array.isArray(c[k]) ? c[k] : []) if (x && x.id && !ids.has(x.id)) f[k].push({...x, auteur: x.auteur ?? id});
+  }
+  f.supprimes = {...(c.supprimes || {}), ...(f.supprimes || {})};
+  if (Array.isArray(c.recherches) && c.recherches.length) f.recherchesPar[id] = [...(f.recherchesPar[id] || []), ...c.recherches];
+}
+const voitEntree = (x, profil) => !x.perso || (x.auteur || '') === profil;
+// Ce que voit un profil (au format habituel du compte) et ce qui lui est caché
+function partFamille(f, profil) {
+  const visible = {...f}, caches = {listes: {}, recherchesPar: {...f.recherchesPar}};
+  for (const k of LISTES_FAMILLE) { visible[k] = f[k].filter(x => voitEntree(x, profil)); caches.listes[k] = f[k].filter(x => !voitEntree(x, profil)); }
+  delete visible.recherchesPar;
+  visible.recherches = f.recherchesPar[profil] || [];
+  return {visible, caches};
+}
+// Ce qui part dans la ligne de la famille : ce que voit ce profil (les nouveautés à son nom) et ce qui lui était caché
+function remettreFamille(c, caches, profil) {
+  if (!c || Array.isArray(c)) return c;
+  const out = {...c, version: 3}, sup = c.supprimes || {};
+  for (const k of LISTES_FAMILLE) {
+    const l = Array.isArray(c[k]) ? c[k] : [];
+    l.forEach(x => { if (x && x.auteur == null) x.auteur = profil; });
+    const ids = new Set(l.map(x => x && x.id));
+    out[k] = [...l, ...((caches.listes || {})[k] || []).filter(x => !ids.has(x.id) && !sup[x.id])];
+  }
+  out.recherchesPar = {...(caches.recherchesPar || {}), [profil]: Array.isArray(c.recherches) ? c.recherches : []};
+  delete out.recherches;
+  return out;
+}
 const COULEURS_PROFIL = ['#2f6fdb', '#d9534f', '#2e9d6a', '#e08a1e', '#8a5cd1', '#1e9bb0'];
 const couleurProfil = id => id ? ((COMPTE.membres.find(m => m.id === id) || {}).couleur || COULEURS_PROFIL[1]) : COULEURS_PROFIL[0];
 // Tuile d'un profil : pastille (initiale sur sa couleur) et prénom
@@ -3391,7 +3465,7 @@ const tuileProfil = (id, actuel) => `<button type="button" class="profil-tuile" 
   ${pastilleProfil(id)}<span>${esc(COMPTE.nomProfil(id))}</span></button>`;
 // Photos pas encore connues : demandées, puis mises dans les tuiles déjà affichées
 async function completerPhotos(racine, uid) {
-  await Promise.all([...racine.querySelectorAll('.profil-tuile[data-pid], #cpt_profils')].map(async b => {
+  await Promise.all([...racine.querySelectorAll('.profil-tuile[data-pid], .pj-auteur[data-pid], #cpt_profils')].map(async b => {
     const id = b.dataset.pid ?? COMPTE.profil;
     if (photosProfils.has(id)) return;
     let url = null;
@@ -3444,7 +3518,7 @@ function ecranProfils({connexion = false} = {}) {
     };
     ec.querySelector('#pe_annuler').onclick = () => { edite = null; msg(''); afficher(); };
     suppr.onclick = async () => {
-      if (!confirm(`Supprimer le profil « ${COMPTE.nomProfil(edite)} » avec ses biens et ses projets ? C'est définitif.`)) return;
+      if (!confirm(`Supprimer le profil « ${COMPTE.nomProfil(edite)} » ? Ce qu'il partageait reste à la famille ; ce qu'il gardait rien que pour lui est supprimé. C'est définitif.`)) return;
       try { await COMPTE.supprimerProfil(edite); edite = null; msg(''); afficher(); } catch (err) { msg('Suppression impossible : ' + erreurCompte(err), true); }
     };
     gerer.onclick = () => { modeGerer = !modeGerer; edite = null; msg(''); afficher(); };
@@ -5088,7 +5162,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=f8535376"></script>
+<script src="investissements.js?v=2edb7ee8"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -5469,6 +5543,12 @@ document.addEventListener('toggle', e => {
   const l = d.querySelector('.pj-menu-l'), haut = (document.querySelector('.tabs') || {getBoundingClientRect: () => ({bottom: 0})}).getBoundingClientRect().bottom;
   if (l && l.getBoundingClientRect().top < haut + 8) d.classList.add('vers-bas');
 }, true);
+// Famille (plusieurs profils) : la photo de qui a fait le projet, et un cadenas s'il le garde rien que pour lui
+const enFamille = () => !!(COMPTE.user && COMPTE.membres.length);
+const auteurP = pr => enFamille() ? `<span class="pj-auteur" data-pid="${esc(pr.auteur || '')}" title="${esc((pr.auteur ?? COMPTE.profil) === COMPTE.profil ? 'Toi' : 'Fait par ' + COMPTE.nomProfil(pr.auteur || ''))}">${pastilleProfil(pr.auteur ?? COMPTE.profil)}</span>${pr.perso ? '<span class="pj-perso" title="Rien que pour toi : la famille ne le voit pas">🔒</span>' : ''}` : '';
+// « Rien que pour moi » / « Partager avec la famille » (seul l'auteur peut cacher un projet aux autres)
+const boutonPerso = pr => !enFamille() ? '' : pr.perso ? '<button data-a="perso">Partager avec la famille</button>'
+  : (pr.auteur ?? COMPTE.profil) === COMPTE.profil ? '<button data-a="perso">Rien que pour moi (cacher à la famille)</button>' : '';
 const menuP = boutons => boutons.length ? `<details class="pj-menu"><summary aria-label="Autres actions" title="Autres actions">⋯</summary><div class="pj-menu-l">${boutons.join('')}</div></details>` : '';
 // Projet acheté : sa fiche dans Mon patrimoine (tant qu'elle existe)
 const ficheAchat = pr => pr.achete && window.INV && INV.bien && INV.bien(pr.achete.bien) ? pr.achete : null;
@@ -5478,12 +5558,12 @@ function cartePj(pr, sous, corps, boutons, br) {
   if (br) boutons.unshift('<button data-a="recap">Dossier de financement de cette option</button>');
   if (br) return `<div class="pj-opt-act" data-id="${esc(pr.id)}">${chipAchete(pr)}${menuP(boutons)}<button data-a="financer">Ouvrir</button></div>`;
   // Supprimer : rangé en dernier dans « ⋯ » (comme pour une option), pas une croix à côté du nom qu'on toucherait par erreur
-  boutons.push('<button class="danger" data-a="suppr">Supprimer le projet</button>');
+  boutons.push(boutonPerso(pr), '<button class="danger" data-a="suppr">Supprimer le projet</button>'); boutons = boutons.filter(Boolean);
   // Fin par défaut : une ligne (nom, ce qu'il donne, risque) ; touchée, elle déplie les chiffres et les boutons
   const ouvert = SEULS_OUVERTS ? !DEPLIES.has(pr.id) : DEPLIES.has(pr.id), {v} = valeurOption(pr);
   const rev0 = (pr.resume || {}).scenario === 'revendre';
   return `<article class="pj pj-seul${ouvert ? '' : ' replie'}" data-id="${esc(pr.id)}"><button type="button" class="pj-ligne pj-seul-l" data-a="pjPlier" aria-expanded="${ouvert}">
-    <span class="pj-l-nom">${esc(pr.nom)}</span><b class="pj-l-val ${signeP(v)}">${valeurP(v, rev0)}</b>
+    <span class="pj-l-nom">${auteurP(pr)}${esc(pr.nom)}</span><b class="pj-l-val ${signeP(v)}">${valeurP(v, rev0)}</b>
     <span class="pj-l-sous">${barresRisque(risqueDe(pr))}${pastillesP(pr.resume || {}, pr.amenag)}</span><span class="chevron" aria-hidden="true"></span></button>
     ${ouvert ? `<div class="pj-seul-corps">${sous ? `<div class="pj-sous">${sous}</div>` : ''}${chipAchete(pr)}${corps}
     <div class="pj-bas"><span></span>
@@ -5492,9 +5572,9 @@ function cartePj(pr, sous, corps, boutons, br) {
 // Estimation gardée seule : le prix et le loyer, et de quoi la financer
 function carteEstimation(pr) {
   const rc = pr.recherche || {}, r = pr.resume || {};
-  return `<article class="pj pj-est" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${esc(pr.nom)}</h3><div class="pj-sous">Estimation · ${rc.type === '111' ? 'Maison' : 'Appart.'}${rc.surf ? ` ${rc.surf} m²` : ''}${rc.quand ? ` · ${dateP(rc.quand)}` : ''}</div></div></div>
+  return `<article class="pj pj-est" data-id="${esc(pr.id)}"><div class="pj-tete"><div><h3>${auteurP(pr)}${esc(pr.nom)}</h3><div class="pj-sous">Estimation · ${rc.type === '111' ? 'Maison' : 'Appart.'}${rc.surf ? ` ${rc.surf} m²` : ''}${rc.quand ? ` · ${dateP(rc.quand)}` : ''}</div></div></div>
     <div class="pj-chiffres"><div><span>Il vaut environ</span><b>${eurP(rc.prix ?? r.prixEstime)}</b></div><div><span>Il se loue</span><b>${rc.loyer ? eurP(rc.loyer) + ' / mois' : '—'}</b></div></div>
-    <div class="pj-bas"><span></span><div class="pj-actions">${menuP(['<button data-a="estimer">Revoir l\'estimation</button>', '<button class="danger" data-a="suppr">Supprimer l\'estimation</button>'])}<button class="primaire" data-a="financer">Financer ce bien →</button></div></div></article>`;
+    <div class="pj-bas"><span></span><div class="pj-actions">${menuP(['<button data-a="estimer">Revoir l\'estimation</button>', boutonPerso(pr), '<button class="danger" data-a="suppr">Supprimer l\'estimation</button>'].filter(Boolean))}<button class="primaire" data-a="financer">Financer ce bien →</button></div></div></article>`;
 }
 function carteProjet(pr, br) {
   if (pr.amenag) return carteAmenagement(pr, br);
@@ -5693,7 +5773,7 @@ function communProjet(bs, a) {
 function carteRepliee(bs, g) {
   const a = analyseBranches(bs);
   return `<article class="pj pj-groupe replie" data-groupe="${esc(g)}"><button class="pj-plier" data-a="plier" aria-expanded="false">
-    <span class="pj-r-g"><b class="pj-r-nom">${esc(bs[0].nom)}</b><span class="pj-sous">${[a.adresse ? esc(a.adresse) : '', `${bs.length} options`].filter(Boolean).join(' · ')}</span></span>
+    <span class="pj-r-g"><b class="pj-r-nom">${auteurP(bs[0])}${esc(bs[0].nom)}</b><span class="pj-sous">${[a.adresse ? esc(a.adresse) : '', `${bs.length} options`].filter(Boolean).join(' · ')}</span></span>
     <span class="chevron" aria-hidden="true"></span></button>
     <div class="pj-lignes">${bs.map((x, i) => ligneOption(x, i, false)).join('')}</div></article>`;
 }
@@ -5716,9 +5796,9 @@ function carteGroupe(bs) {
   const base = bs.find(x => x.id === ouv && !x.amenag) || bs.find(x => !x.amenag);
   const sousNoms = bs.map(x => x.amenag ? 'aménagement' : usageP(x.resume || {}, (x.resume || {}).scenario === 'revendre'));
   const cmp = cmpOuvert ? `<div class="pj-compare">${tableComparaison(bs.map(x => ({nom: nomBranche(x), resume: x.resume})), {sous: sousNoms})}</div>` : '';
-  return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
+  return `<article class="pj pj-groupe" data-groupe="${esc(g)}"><div class="pj-tete"><div class="pj-plier-zone" data-a="plier" role="button" tabindex="0" aria-expanded="true" title="Replier"><h3>${auteurP(bs[0])}${esc(bs[0].nom)} <span class="chevron" aria-hidden="true"></span></h3>
     ${sous ? `<div class="pj-sous">${sous}</div>` : ''}</div>
-    <div class="pj-gr-actions">${menuDossier(bs)}${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', '<button class="danger" data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
+    <div class="pj-gr-actions">${menuDossier(bs)}${menuP(['<button data-a="grRenommer">Renommer le projet</button>', '<button data-a="grDefaire">Défaire le regroupement</button>', boutonPerso(bs[0]), '<button class="danger" data-a="supprGroupe">Supprimer le projet et ses options</button>'])}</div></div>
     ${communProjet(bs, a)}
     <div class="pj-lignes">${bs.map((x, i) => ligneOption(x, i, x.id === ouv) + (x.id === ouv ? detailOption(x, a) : '')).join('')}</div>
     <div class="pj-gr-bas">${base ? `<button data-a="brNouvelle" data-id="${esc(base.id)}">+ Nouvelle option</button>` : ''}<button data-a="tableau" aria-expanded="${tab}">${tab ? 'Masquer le tableau' : 'Comparer les chiffres'}</button></div>
@@ -5861,7 +5941,7 @@ function filtrerProjets() {
   const rien = document.getElementById('pj_rien'); if (rien) { rien.hidden = !q || zs.some(z => !z.hidden); rien.textContent = `Aucun projet ne correspond à « ${chercheP.trim()} ».`; }
 }
 // ---------- fin des branches
-// Mes biens : « En projet » (estimations, simulations, options) et « Détenus » (Mon patrimoine). Un projet acheté
+// Mes biens : « Détenus » (Mon patrimoine) puis « En projet » (estimations, simulations, options). Un projet acheté
 // quitte « En projet » : sa fiche le remplace dans « Détenus » (elle garde le lien vers la simulation)
 const groupeAchete = (bs => bs.some(x => ficheAchat(x)));
 function projetsEnCours() {
@@ -5870,7 +5950,7 @@ function projetsEnCours() {
 }
 function segBiens(actif) {
   const n1 = new Set(projetsEnCours().map(groupeDe)).size, n2 = window.INV && INV.nbDetenus ? INV.nbDetenus() : 0;
-  return `<nav class="seg-biens" aria-label="Mes biens"><a href="#projets"${actif === 'projets' ? ' aria-current="page"' : ''}>En projet <b>${n1}</b></a><a href="#investissements"${actif === 'investissements' ? ' aria-current="page"' : ''}>Détenus <b>${n2}</b></a></nav>`;
+  return `<nav class="seg-biens" aria-label="Mes biens"><a href="#investissements"${actif === 'investissements' ? ' aria-current="page"' : ''}>Détenus <b>${n2}</b></a><a href="#projets"${actif === 'projets' ? ' aria-current="page"' : ''}>En projet <b>${n1}</b></a></nav>`;
 }
 window.segBiens = segBiens;
 function afficherProjets() {
@@ -5888,6 +5968,7 @@ function afficherProjets() {
         <div class="boutons centre"><button class="primaire" data-a="nouveau">Estimer un bien</button></div></div>`);
   if (idMenu) { const m = document.querySelector(`#pj [data-id="${CSS.escape(idMenu)}"] details.pj-menu`); if (m) m.open = true; }
   filtrerProjets();
+  if (enFamille()) completerPhotos(document.getElementById('pj'), COMPTE.user.id);
 }
 // Un seul menu « ⋯ » ouvert à la fois, refermé par un clic ailleurs
 document.addEventListener('click', e => document.querySelectorAll('#pj details.pj-menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
@@ -5964,6 +6045,14 @@ document.getElementById('pj').addEventListener('click', e => {
     if (n) { l.forEach(x => { x.nom = n; x.maj = Date.now(); }); PROJETS.enregistrer(); }
   }
   else if (t.dataset.a === 'grDefaire' && confirm('Défaire le regroupement ? Chaque option redevient un projet à part, avec son nom d\'avant.')) { membres().forEach(sortirBranche); comparees.delete(groupe); PROJETS.enregistrer(); }
+  else if (t.dataset.a === 'perso') {   // tout le projet (toutes ses options) : rien que pour moi, ou partagé avec la famille
+    const pr = PROJETS.liste.find(x => x.id === id) || membres()[0];
+    if (pr) {
+      const perso = !pr.perso, l = PROJETS.liste.filter(x => groupeDe(x) === groupeDe(pr)), t0 = Date.now();
+      l.forEach(x => { if (x.auteur == null) x.auteur = COMPTE.profil; x.perso = perso || undefined; if (!perso) delete x.perso; x.maj = t0; });
+      PROJETS.enregistrer();
+    }
+  }
   else if (t.dataset.a === 'supprGroupe') {
     const l = membres();
     if (confirm(`Supprimer « ${l[0].nom} » et ses ${l.length} options ?`)) { retirerProjets(l.map(x => x.id)); PROJETS.enregistrer(); }

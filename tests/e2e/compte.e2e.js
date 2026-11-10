@@ -49,7 +49,7 @@ test('connexion : Mon patrimoine et Mes projets apparaissent, arrivée sur Mon p
   await page.waitForFunction(() => document.body.dataset.onglet === 'investissements');
   assert.equal(await page.locator('.tabs [data-tab="investissements"]').innerText(), 'Mes biens');   // en projet et détenus
   assert.equal(await page.locator('.tabs [data-tab="investissements"]').isVisible(), true);
-  assert.match(await page.locator('#inv .seg-biens').innerText(), /En projet\s*0\s*Détenus\s*0/);
+  assert.match(await page.locator('#inv .seg-biens').innerText(), /Détenus\s*0\s*En projet\s*0/);
   await page.waitForSelector('#inv .vide');
   const c = await attendreCompte(c => Array.isArray(c.biens), 'compte créé au premier passage');
   assert.deepEqual(c.biens, []);

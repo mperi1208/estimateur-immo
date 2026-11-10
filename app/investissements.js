@@ -1058,10 +1058,14 @@ function creditCommun(b) {
   const noms = [...ids].map(id => (biens.find(y => y.id === id) || {}).nom).filter(Boolean);
   return noms.length ? 'Crédit commun avec ' + noms.join(', ') : '';
 }
+// Famille (plusieurs profils) : tout est partagé, sauf ce que son auteur garde rien que pour lui
+const familleActive = () => !!(COMPTE.user && COMPTE.membres && COMPTE.membres.length);
+const boutonPersoBien = b => !familleActive() ? '' : b.perso ? '<button data-a="perso">🔒 Rien que pour toi · partager avec la famille</button>'
+  : (b.auteur ?? COMPTE.profil) === COMPTE.profil ? '<button data-a="perso">Rien que pour moi (cacher à la famille)</button>' : '';
 function carte(b, c) {
   const k = partDe(b), x = n => n * k, pr = principalDe(b);
   const tags = [pr ? 'Associé à ' + pr.nom : '', k < 1 ? `Part : ${Math.round(k * 100)} %` : '', b.pieces ? (b.type === 'maison' ? b.pieces + ' pièces' : 'T' + b.pieces) : '', b.surface ? fmt(b.surface) + ' m²' : '',
-    b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b), creditCommun(b)].filter(Boolean);
+    b.type === 'terrain' && b.nature ? NATURES[b.nature] : '', sciDe(b) ? sciDe(b).nom : '', statutLib(b), creditCommun(b), b.perso && familleActive() ? '🔒 Rien que pour toi' : ''].filter(Boolean);
   return `<a class="bien" href="#investissements/${encodeURIComponent(b.id)}">
     <div class="vignette" data-doc="${esc((b.docs.find(d => d.mime.startsWith('image/')) || {}).id || '')}">${icone(b.type)}<span>${TYPES[b.type] ? TYPES[b.type].l : ''}</span></div>
     <div class="infos"><b>${esc(b.nom)}</b><span class="adr">${esc(b.adresse || 'Adresse à renseigner')}</span><span class="tags">${tags.map(esc).join(' · ')}</span></div>
@@ -1211,7 +1215,7 @@ function vueDetail(b) {
       <div class="aide">${COMPTE.user ? 'Enregistrés dans ton compte (privés).' : 'Mode invité : fichiers gardés sur cet appareil seulement.'} Images et PDF, 10 Mo maximum (photos réduites automatiquement).</div>`, true)}
     </div>
     </div>
-    <div class="pied"><button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
+    <div class="pied">${boutonPersoBien(b)}<button class="danger" data-a="supprimer">Supprimer ce bien</button></div>`;
   racine.innerHTML = h;
   sousOngletsFiche();
   majCalculs(b); docsHTML(b); vignettes(); majAuto(b); initCarte(b); majVente(b); majDetache(b); majAmenag(b);
@@ -2200,6 +2204,11 @@ racine.addEventListener('click', async e => {
   if (a === 'supprDoc') {
     const d = b.docs.find(x => x.id === t.dataset.id);
     if (d && confirm(`Supprimer « ${d.nom} » ?`)) { await supprimerDoc(d); b.docs = b.docs.filter(x => x !== d); sauver(b); docsHTML(b); vignettes(); }
+  }
+  if (a === 'perso') {   // le bien et ceux qui vont avec (garage, annexe) : rien que pour moi, ou à toute la famille
+    const p = principalDe(b) || b, groupe = [p, ...associesA(p)], perso = !b.perso;
+    groupe.forEach(x => { if (x.auteur == null) x.auteur = COMPTE.profil; if (perso) x.perso = true; else delete x.perso; });
+    sauver(...groupe); return vueDetail(b);
   }
   if (a === 'supprimer' && confirm(`Supprimer « ${b.nom} » et ses documents ? C'est définitif.${b.prets.some(p => partagesDe(p).length) ? ' Son prêt commun disparaît aussi des autres biens qu\'il finance.' : ''}`)) {
     for (const d of b.docs) await supprimerDoc(d);

@@ -1,5 +1,6 @@
 -- Profils d'un même compte (comme Netflix) : le titulaire garde sa ligne dans immo_profils,
--- chaque autre profil (famille) a la sienne ici, avec ses propres biens et projets.
+-- chaque autre profil (famille) a la sienne ici. Les biens et projets sont à toute la famille : ils sont tous dans la
+-- ligne du titulaire (immo_profils.credits), chacun avec son auteur ; la colonne credits d'ici ne sert plus.
 -- À coller une fois dans Supabase → SQL Editor → Run, après supabase.sql.
 alter table public.immo_profils add column if not exists nom text;
 create table if not exists public.immo_membres (
