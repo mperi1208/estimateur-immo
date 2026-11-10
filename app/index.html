@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="only light">
 <meta name="theme-color" content="#101828">
 <title>Patrimoniu</title>
@@ -13,7 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="Patrimoniu">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<!-- Bibliothèques externes : version exacte et empreinte (integrity), le navigateur refuse un fichier modifié -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
 <style>
 :root{
   color-scheme:only light;
@@ -894,6 +895,10 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .seg{display:inline-flex;border:0;border-radius:10px;background:var(--bg);padding:3px;gap:2px;overflow:visible}
 #cf .seg button{flex:0 0 auto;min-height:38px;border:0;border-radius:8px;background:transparent;color:#344054;padding:0 14px}
 #cf .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.14)}
+/* Petit téléphone (320 px) : les choix d'un en-tête de carte passent à la ligne au lieu de dépasser */
+@media (max-width:400px){#cf .carte-tete .seg{max-width:100%}#cf .carte-tete .seg button{flex:1 1 auto;white-space:normal;padding:4px 10px;line-height:1.2}}
+/* Téléphone : champs à 16 px, sinon Safari zoome en entrant dans un champ (le zoom au pincement reste permis) */
+@media (pointer:coarse){input,select,textarea{font-size:max(16px,1em)}}
 #cf details{margin:0}
 #cf details.carte{padding:6px 22px}
 #cf details.carte > summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 0;font-weight:800;font-size:16px;list-style:none}
@@ -1551,7 +1556,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 <section id="invest" hidden><div class="invwrap" id="inv"></div></section>
 <section id="projets" hidden><div class="invwrap" id="pj"></div></section>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
 <script>
 // ---------- Bilan du mois ----------
 // Loyer, crédit, charges et ce qu'il reste chaque mois (Financer, un mois type).
@@ -1989,7 +1994,7 @@ function render(r) {
   const maxW = r.comps[0].w;
   r.comps.forEach(c => {
     markers.push(L.circleMarker([c.lat, c.lon], {radius: 3 + 5 * c.w / maxW, color: '#fff', weight: 1, fillColor: '#2f6fde', fillOpacity: .5 + .5 * c.w / maxW})
-      .bindPopup(`${fmtDate(c.date)} · ${fmt(c.surf)} m²${c.terrain ? ` · terrain ${fmt(c.terrain)} m²` : ''}${c.vefa ? ' · neuf (VEFA)' : ''}<br><b>${fmt(c.prix)} €</b> (${fmt(c.ppm)} €/m²)<br><small>Parcelle ${c.parcelle}</small>`)
+      .bindPopup(`${fmtDate(c.date)} · ${fmt(c.surf)} m²${c.terrain ? ` · terrain ${fmt(c.terrain)} m²` : ''}${c.vefa ? ' · neuf (VEFA)' : ''}<br><b>${fmt(c.prix)} €</b> (${fmt(c.ppm)} €/m²)<br><small>Parcelle ${esc(c.parcelle)}</small>`)
       .addTo(layer));
   });
   // Médiane locale par année (toutes ventes de taille comparable trouvées)
@@ -2414,7 +2419,7 @@ async function updateRent() {
     // Coupure passagère d'un service de données : deux nouveaux essais, puis un bouton
     state.rentRetry = (state.rentRetry || 0) + 1;
     if (state.rentRetry <= 2) { el.innerHTML = '<div class="empty">Le service des loyers ne répond pas, nouvel essai…</div>'; setTimeout(updateRent, 1500 * state.rentRetry); }
-    else el.innerHTML = `<div class="empty">Loyer indisponible pour le moment (${e.message}). <button class="retry" onclick="state.rentRetry = 0; updateRent()">Réessayer</button></div>`;
+    else el.innerHTML = `<div class="empty">Loyer indisponible pour le moment (${esc(e.message)}). <button class="retry" onclick="state.rentRetry = 0; updateRent()">Réessayer</button></div>`;
   }
 }
 
@@ -2691,7 +2696,7 @@ function projetSurface(el, niveau, question, z, surf) {
   const cle = JSON.stringify([state.lat, state.lon, state.type, niveau, lots.map(l => l.surfMoteur ? [l.surf, !!l.actuel, l.surfMoteur] : [l.surf, !!l.actuel]), gamme, cible, meuble, saved]);
   const calc = state.calcProjet && state.calcProjet.cle === cle ? state.calcProjet : null;
   let res = '';
-  if (calc && calc.erreur) res = `<div class="warnbox">${calc.erreur}</div>`;
+  if (calc && calc.erreur) res = `<div class="warnbox">${esc(calc.erreur)}</div>`;
   if (calc && calc.lots) {
     const valeur = calc.lots.reduce((t, l) => t + l.prix, 0), loyer = calc.lots.reduce((t, l) => t + l.loyer, 0);
     const notaire = state.prix * 0.08, coutBien = state.prix + notaire + budget, marge = valeur - coutBien;
@@ -3272,6 +3277,7 @@ const COMPTE = {
       await new Promise((ok, ko) => {
         const sc = document.createElement('script');
         sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
+        if (!window.__fauxSupabase) { sc.integrity = 'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'; sc.crossOrigin = 'anonymous'; }   // banc de test : faux client
         sc.onload = ok; sc.onerror = () => ko(new Error('service de comptes injoignable'));
         document.head.append(sc);
       });
@@ -3338,9 +3344,16 @@ const COMPTE = {
   async supprimerProfil(id) {
     if (!id) return;
     if (this.profil === id) await this.changerProfil('');
+    // Documents de ses biens (plans, photos…) : supprimés avec le profil, sinon ils resteraient stockés sans être visibles
+    let cles = [];
+    try {
+      const {data} = await this.client.from('immo_membres').select('credits').eq('user_id', this.vise).eq('id', id).maybeSingle();
+      const c = data && data.credits, biens = Array.isArray(c) ? c : c && Array.isArray(c.biens) ? c.biens : [];
+      cles = biens.flatMap(b => (b && Array.isArray(b.docs) ? b.docs : []).map(d => d && d.cle)).filter(k => typeof k === 'string' && k.startsWith(this.vise + '/'));
+    } catch (e) {}
     const {error} = await this.client.from('immo_membres').delete().eq('user_id', this.vise).eq('id', id);
     if (error) throw error;
-    try { await this.client.storage.from('immo-docs').remove([`${this.vise}/profil/${id}.jpg`]); } catch (e) {}
+    try { await this.client.storage.from('immo-docs').remove([`${this.vise}/profil/${id}.jpg`, ...cles]); } catch (e) {}
     photosProfils.delete(id);
     await this.chargerProfils(); majBoutonCompte();
   },
@@ -3492,8 +3505,20 @@ async function verifierVersion() {
   try {
     const ici = await versionChargee, lm = await enTeteDate('reload');
     if (!ici || !lm || ici === lm || sessionStorage.getItem('rechargeAuto') === lm) return;   // à jour, ou déjà tenté pour cette version
+    // En pleine saisie (champ actif, fenêtre ouverte) : pas de rechargement surprise, un bandeau propose de recharger
+    const f = document.activeElement;
+    if ((f && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) || document.querySelector('dialog[open]')) return bandeauVersion();
     sessionStorage.setItem('rechargeAuto', lm); recharger();
   } catch (e) {}
+}
+function bandeauVersion() {
+  if (document.getElementById('nouvelleVersion')) return;
+  const d = document.createElement('div');
+  d.id = 'nouvelleVersion'; d.setAttribute('role', 'status');
+  d.style.cssText = 'position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9999;background:#101828;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center;max-width:calc(100vw - 32px);font-size:14px';
+  d.innerHTML = '<span>Nouvelle version de Patrimoniu en ligne.</span><button type="button" style="border:0;border-radius:8px;padding:6px 12px;font-weight:700;background:#fff;color:#101828">Recharger</button>';
+  d.querySelector('button').onclick = recharger;
+  document.body.append(d);
 }
 setTimeout(verifierVersion, 3000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verifierVersion(); });
@@ -3674,7 +3699,12 @@ document.getElementById('compteBtn').onclick = () => COMPTE.user && COMPTE.clien
 document.getElementById('compteStatut').onclick = () => ouvrirCompte();
 document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrirCompte(); } };
 </script>
-<script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
+<script>
+// Crédits saisis à la main dans app/mes-credits.js (fichier local, jamais publié) : chargé seulement sur l'ordinateur,
+// pour ne pas demander à chaque ouverture un fichier absent du site (erreur 404)
+window.MES_CREDITS = window.MES_CREDITS || [];
+if (location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) document.write('<script src="mes-credits.js"><\/script>');
+</script>
 <script>
 // (hors du module Financer : Mes projets s'en sert aussi)
 // Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
@@ -3809,7 +3839,7 @@ function mettreSaison(sz) {
 const estOption = pr => !!(pr && pr.groupe && typeof branchesDe === 'function' && branchesDe(pr).length > 1);
 function barreProjet(pr) {
   const r = pr.resume || {};
-  return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}`;
+  return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" data-pid="${esc(pr.id)}" onclick="ouvrirProjet(this.dataset.pid, 'estimation'); return false;">Revoir l'estimation</a>` : ''}`;
 }
 // Fil d'Ariane du projet ouvert, au-dessus du bien : là tant qu'on est dans un projet, avec « Quitter le projet »
 let autreBien = false;   // l'estimation en cours n'est pas le bien du projet : l'enregistrer fera un nouveau projet
@@ -5058,7 +5088,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=3b40b6e8"></script>
+<script src="investissements.js?v=f8535376"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -5367,7 +5397,8 @@ function chargerHtml2pdf() {
   if (window.html2pdf) return Promise.resolve(window.html2pdf);
   return html2pdfPret = html2pdfPret || new Promise((ok, ko) => {
     const sc = document.createElement('script');
-    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    sc.src = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+    sc.integrity = 'sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc'; sc.crossOrigin = 'anonymous';
     sc.onload = () => window.html2pdf ? ok(window.html2pdf) : ko(new Error('html2pdf absent'));
     sc.onerror = () => { html2pdfPret = null; ko(new Error('html2pdf non chargé')); };
     document.head.appendChild(sc);

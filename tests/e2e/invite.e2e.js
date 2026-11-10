@@ -430,10 +430,15 @@ test('plus de mode Simple : un ancien réglage « simple » est effacé, Estimer
   } finally { await p.context().close(); }
 });
 
-test('nouvelle version en ligne : la page se recharge toute seule, une fois par version', async () => {
+test('nouvelle version en ligne : la page se recharge toute seule, une fois par version, sauf en pleine saisie', async () => {
   const lm = new Date(Date.now() + 3600e3).toUTCString();          // le serveur annonce une page plus récente que celle affichée
   await page.route(u => u.pathname === '/app/index.html', route => route.request().isNavigationRequest() ? route.fallback()
     : route.fulfill({status: 200, body: '', headers: {'last-modified': lm}}));
+  // En pleine saisie : pas de rechargement, un bandeau le propose
+  await page.evaluate(() => { window.marque = 1; vuVersion = 0; const c = document.createElement('input'); c.id = 'saisieEnCours'; document.body.append(c); c.focus(); return verifierVersion(); });
+  await page.waitForSelector('#nouvelleVersion');
+  assert.equal(await page.evaluate(() => window.marque), 1, 'pas rechargée pendant la saisie');
+  await page.evaluate(() => { document.getElementById('saisieEnCours').remove(); document.getElementById('nouvelleVersion').remove(); });
   await page.evaluate(() => { window.marque = 1; vuVersion = 0; verifierVersion(); });
   await page.waitForFunction(() => !window.marque);                // rechargée
   await page.waitForFunction(() => typeof COMPTE !== 'undefined' && COMPTE.pret && window.CF_APP);

@@ -799,7 +799,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   };
   assert.deepEqual(await carte.locator('.pj-l-nom').allTextContents(), ['Division', 'Garage']);
   assert.doesNotMatch(await carte.innerText(), /meilleure/i);
-  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73\s€\s*\/mois/);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+64\s€\s*\/mois/);   // taux de marché d'octobre 2026
   assert.equal(await carte.locator('.pj-detail').count(), 1, 'une seule option ouverte à la fois');
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'options dans le compte');
   // Ce qui est commun (le crédit) en une ligne ; le tableau sur demande (« Comparer les chiffres ») : ce qu'elles donnent et ce qui change
@@ -809,7 +809,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await carte.locator('.pj-opts').waitFor();
   assert.deepEqual(await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents(), ['Division', 'Garage']);
   const rangee = k => carte.locator('.pj-opts tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
-  assert.match(await rangee('Par mois').innerText(), /−453\s€\s+\+73\s€/);
+  assert.match(await rangee('Par mois').innerText(), /−\d+\s€\s+\+64\s€/);
   assert.match(await rangee('Prix').innerText(), /200\s000\s€\s+120\s000\s€/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
   // Dossier de financement du projet : les options comparées puis celle que l'utilisateur choisit en détail, 3 pages ;
@@ -877,7 +877,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.equal(await carte.locator('.pj-opt-act').count(), 0);
   assert.match(await carte.locator('.pj-sous').innerText(), /2 options$/);
   assert.equal(await carte.locator('button.pj-ligne').count(), 2);
-  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73\s€\s*\/mois/);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+64\s€\s*\/mois/);   // taux de marché d'octobre 2026
   assert.doesNotMatch(await carte.innerText(), /meilleure/i);
   assert.ok(!(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-deplies') || '[]'))).length, 'replié gardé');
   await page.click('#pj .actions [data-a="toutPlier"]');

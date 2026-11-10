@@ -141,12 +141,12 @@ async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = 
       if (!f.startsWith(RACINE) || !fs.existsSync(f)) return route.fulfill({status: 404, body: 'introuvable'});
       return route.fulfill({status: 200, contentType: TYPES_MIME[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f), headers: {'last-modified': PUBLIE}});
     }
-    if (url.host === 'cdnjs.cloudflare.com' && /leaflet/.test(url.pathname)) {
+    if (url.host === 'cdn.jsdelivr.net' && /leaflet/.test(url.pathname)) {
       const nom = path.basename(url.pathname).replace('.min', ''), f = [path.join(LEAFLET, nom), path.join(LEAFLET, 'images', nom)].find(x => fs.existsSync(x));
       return f ? ok(fs.readFileSync(f), TYPES_MIME[path.extname(f)]) : route.fulfill({status: 404, body: ''});
     }
     // Récap banque en PDF : la bibliothèque du CDN, prise dans node_modules
-    if (url.host === 'cdnjs.cloudflare.com' && /html2pdf/.test(url.pathname)) return ok(fs.readFileSync(require.resolve('html2pdf.js/dist/html2pdf.bundle.min.js')), 'text/javascript');
+    if (url.host === 'cdn.jsdelivr.net' && /html2pdf/.test(url.pathname)) return ok(fs.readFileSync(require.resolve('html2pdf.js/dist/html2pdf.bundle.min.js')), 'text/javascript');
     if (/tile\.openstreetmap\.org$/.test(url.host)) return ok(PNG_VIDE, 'image/png');
     if (url.host === 'cdn.jsdelivr.net' && /supabase/.test(url.pathname)) return ok(FAUX_SUPABASE, 'text/javascript');
     if (url.host === 'apidf-preprod.cerema.fr') {
@@ -171,6 +171,7 @@ async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = 
   // Les projets à une option sont fins et pliés par défaut ; les tests travaillent sur leurs boutons, donc dépliés
   // (sauf cartesPliees : le test qui vérifie le pliage)
   if (delaiApi) await ctx.addInitScript(d => { window.__delaiApi = d; }, delaiApi);
+  await ctx.addInitScript(() => { window.__fauxSupabase = true; });   // le faux client n'a pas l'empreinte du vrai
   if (!cartesPliees) await ctx.addInitScript(() => { try { localStorage.setItem('projets-seuls-ouverts', '1'); } catch (e) {} });
   const page = await ctx.newPage();
   page.on('pageerror', e => journal.erreurs.push(e.message));

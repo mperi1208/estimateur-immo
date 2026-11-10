@@ -364,8 +364,10 @@ function biensLocaux() {
 }
 // Chaque bien / SCI modifié reçoit l'heure du changement (maj) : quand plusieurs pages ou appareils écrivent dans
 // le compte, on garde pour chacun la version la plus récente au lieu d'écraser tout le compte
+// Horloge d'un appareil en retard : l'heure donnée dépasse toujours la plus récente déjà connue (venue d'un autre appareil),
+// sinon une modification faite ici après avoir reçu la sienne passerait pour plus ancienne et serait perdue
 function sauver(...modifies) {
-  const t = Date.now();
+  const t = Math.max(Date.now(), ...biens.map(x => x.maj || 0), ...scis.map(x => x.maj || 0)) + (modifies.length ? 1 : 0);
   modifies.forEach(o => { if (o) o.maj = t; });
   if (!COMPTE.user) { try { localStorage.setItem(CLE, JSON.stringify(biens)); localStorage.setItem(CLE_SCI, JSON.stringify(scis)); } catch (e) { alert('Mémoire de l\'appareil pleine : enregistrement impossible.'); } return; }
   if (!compteCharge) return;   // compte pas encore lu : ne pas l'écraser
@@ -395,6 +397,7 @@ function enAvance(brut) {
     || Object.keys(supprimes).some(k => !(brut.supprimes || {})[k]);
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(minuteur); envoyer(); } });
+addEventListener('pagehide', () => { clearTimeout(minuteur); envoyer(); });   // onglet fermé sans passer en arrière-plan (certains navigateurs)
 // Ce qui part dans le compte : les biens et les recherches récentes de l'onglet Estimer
 // Fusion bien par bien (et SCI par SCI) : la version modifiée le plus récemment gagne ; les suppressions sont gardées 6 mois
 function fusionListes(locale, distante, sup) {

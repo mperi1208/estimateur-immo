@@ -39,6 +39,15 @@ test('Estimer et Financer sur téléphone : rien ne dépasse, barres du bas bass
   }
 });
 
+test('Financer sur un petit téléphone (320 px) : rien ne dépasse, « Travaux sur le 1er bien » compris ; zoom au pincement permis', async () => {
+  assert.doesNotMatch(await page.evaluate(() => document.querySelector('meta[name=viewport]').content), /user-scalable=no|maximum-scale/);
+  await page.setViewportSize({width: 320, height: 640});
+  try {
+    for (const n of [1, 2, 3, 4]) { await page.evaluate(n => CF_APP.etape(n), n); assert.deepEqual(await debordements(), [], 'étape ' + n); }
+    const b = await boite('#cf_travauxSeg');
+    assert.ok(b.droite <= 320, `choix des travaux jusqu'à ${b.droite} px`);
+  } finally { await page.setViewportSize({width: 390, height: 844}); }
+});
 test('Estimer avec travaux sur téléphone : le tableau « Aujourd\'hui et après » tient dans l\'écran, sans colonne cachée', async () => {
   await estimer(page, {surf: 48, details: {etat: 'renover', dpe: 'F'}});
   await travaux(page, 'renover');

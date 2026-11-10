@@ -109,10 +109,16 @@ test('deux profils sur un compte : biens séparés, et un autre appareil choisit
   await page.waitForFunction(() => COMPTE.nomProfil(COMPTE.membres[0].id) === 'Papa Jean');
   assert.equal(base.membres[0].nom, 'Papa Jean');
   assert.equal(await tuile(pid).locator('span').last().innerText(), 'Papa Jean');
+  // Un document dans un bien de Papa : supprimé du stockage avec le profil
+  const cleDoc = await page.evaluate(() => `${COMPTE.vise}/bpapa/d1-plan.pdf`);
+  const cp = JSON.parse(base.membres[0].credits); cp.biens[0].docs = [{id: 'd1', nom: 'plan.pdf', mime: 'application/pdf', cle: cleDoc}];
+  base.membres[0].credits = JSON.stringify(cp);
+  await page.evaluate(k => (window.__fichiers ||= new Map()).set(k, 'blob:x'), cleDoc);
   await tuile(pid).click();
   await page.click('#pe_suppr');   // confirm() accepté par le banc
   await page.waitForFunction(() => COMPTE.membres.length === 0);
   assert.equal(base.membres.length, 0);
+  assert.equal(await page.evaluate(k => window.__fichiers.has(k), cleDoc), false, 'document du profil supprimé');
   assert.equal(await tuile(pid).count(), 0);
   await page.click('#pe_fermer');
   assert.equal(await page.evaluate(() => COMPTE.profil), '');
