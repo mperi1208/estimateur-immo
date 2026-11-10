@@ -266,6 +266,17 @@ test('revente après 5 ans : forfait travaux de 15 % du prix quand les factures 
   const pv = 220000 * 0.95 - (150000 + 12000 + 22500);                                                   // 6 ans : 15 % de 150 000 €
   proche(apres.impot, pv * (0.19 * (1 - 0.06) + 0.172 * (1 - 0.0165)), 0.5);
 });
+test('revente avec deux biens sur le crédit : taxe foncière, copro et assurance du 2e bien comptées pendant le portage', () => {
+  const seul = revente({moisRevente: 12, tf: 800, pno: 100}), deux = revente({moisRevente: 12, tf: 800, pno: 100, biensPlus: [{prix: 50000, tf: 400, copro: 600, pno: 80}]});
+  proche(seul.chargesFixes, 900, 0.01);
+  proche(deux.chargesFixes, 900 + 400 + 600 + 80, 0.01);
+});
+test('SCI à l\'IR qui revend un bien « meublé » : pas de bascule à l\'IS (aucun loyer meublé perçu)', () => {
+  const b = revente({moisRevente: 72, struct: 'ir', meuble: '1'}, {impots: true});
+  assert.match(b.detail, /plus-value/); assert.doesNotMatch(b.detail, /IS/);
+  formulaire({loyer: 700, struct: 'ir', meuble: '1'}, {impots: true});
+  assert.equal(simuler().st, 'is');                     // en location meublée, elle passe bien à l'IS
+});
 test('revente : intérêts et capital sur la durée de l\'opération ; IRA plafonnées', () => {
   const b = revente({moisRevente: 18, differe: 6});
   proche(b.ira, Math.min(0.03 * b.crd, 6 * b.crd * 0.0339 / 12), 0.01);

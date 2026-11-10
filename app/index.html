@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="only light">
 <meta name="theme-color" content="#101828">
 <title>Patrimoniu</title>
@@ -13,7 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="Patrimoniu">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<!-- Bibliothèques externes : version exacte et empreinte (integrity), le navigateur refuse un fichier modifié -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
 <style>
 :root{
   color-scheme:only light;
@@ -897,6 +898,10 @@ button.cta{border:0;width:100%;font:inherit;cursor:pointer}
 #cf .seg{display:inline-flex;border:0;border-radius:10px;background:var(--bg);padding:3px;gap:2px;overflow:visible}
 #cf .seg button{flex:0 0 auto;min-height:38px;border:0;border-radius:8px;background:transparent;color:#344054;padding:0 14px}
 #cf .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.14)}
+/* Petit téléphone (320 px) : les choix d'un en-tête de carte passent à la ligne au lieu de dépasser */
+@media (max-width:400px){#cf .carte-tete .seg{max-width:100%}#cf .carte-tete .seg button{flex:1 1 auto;white-space:normal;padding:4px 10px;line-height:1.2}}
+/* Téléphone : champs à 16 px, sinon Safari zoome en entrant dans un champ (le zoom au pincement reste permis) */
+@media (pointer:coarse){input,select,textarea{font-size:max(16px,1em)}}
 #cf details{margin:0}
 #cf details.carte{padding:6px 22px}
 #cf details.carte > summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 0;font-weight:800;font-size:16px;list-style:none}
@@ -1528,7 +1533,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
   <details class="card"><summary>Tableau année par année</summary><div class="scroll" id="cf_table"></div></details>
   <div class="card"><h2>Sources et limites</h2>
     <ol class="srcs">
-      <li><a href="https://www.weblex.fr/chiffres-cles/indice-du-taux-moyen-des-credits-immobiliers-annee-2024" target="_blank" rel="noopener">Observatoire Crédit Logement / CSA — taux moyens accordés par durée (historique 2023-2024)</a> ; <a href="https://www.meilleurtaux.com/credit-immobilier/actualites/2026-octobre/credit-immobilier-taux-a-3-40-et-durees-record.html" target="_blank" rel="noopener">septembre 2026 : 3,40 %, 3,39 % sur 20 ans</a>.</li>
+      <li><a href="https://www.weblex.fr/chiffres-cles/indice-du-taux-moyen-des-credits-immobiliers-annee-2024" target="_blank" rel="noopener">Observatoire Crédit Logement / CSA — taux moyens accordés par durée (historique 2023-2024)</a> ; <a href="https://www.mysweetimmo.com/2026/11/06/taux-de-credit-immobilier-349-en-octobre-les-projets-fragilises-selon-credit-logement/" target="_blank" rel="noopener">octobre 2026 : 3,49 %, 3,54 % sur 20 ans</a>.</li>
       <li>Surprime SCI ≈ +0,3 point : mesurée sur deux prêts SCI réels (2023 et 2024) financés <b>sans apport</b> (110 %, frais compris) et avec un long différé, comparés aux taux moyens du même mois. Elle inclut donc l'absence d'apport : avec un apport, une SCI peut sans doute négocier un peu mieux. Cohérent avec les courtiers (+0,2 à +0,5 point).</li>
       <li><a href="https://www.dougs.fr/blog/sci-ir-ou-is/" target="_blank" rel="noopener">SCI à l'IR ou à l'IS</a> : IS 15 % jusqu'à 42 500 € puis 25 % ; amortissement du bâti ; flat tax 31,4 % en 2026 (<a href="https://www.clubpatrimoine.com/contenus/fiscalite-capital-pfu" target="_blank" rel="noopener">LFSS 2026</a>) ; revenus fonciers : prélèvements sociaux 17,2 %, déficit imputable jusqu'à 10 700 €/an.</li>
       <li><a href="https://www.cpim.fr/crl-contribution-revenus-locatifs-sci-is-2026/" target="_blank" rel="noopener">Contribution sur les revenus locatifs</a> : 2,5 % des loyers pour une SCI à l'IS, immeuble de plus de 15 ans.</li>
@@ -1554,7 +1559,7 @@ body.discret .bilan-simple :is(b, .bs-phrase){filter:blur(7px);user-select:none}
 <section id="invest" hidden><div class="invwrap" id="inv"></div></section>
 <section id="projets" hidden><div class="invwrap" id="pj"></div></section>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
 <script>
 // ---------- Bilan du mois ----------
 // Loyer, crédit, charges et ce qu'il reste chaque mois (Financer, un mois type).
@@ -1992,7 +1997,7 @@ function render(r) {
   const maxW = r.comps[0].w;
   r.comps.forEach(c => {
     markers.push(L.circleMarker([c.lat, c.lon], {radius: 3 + 5 * c.w / maxW, color: '#fff', weight: 1, fillColor: '#2f6fde', fillOpacity: .5 + .5 * c.w / maxW})
-      .bindPopup(`${fmtDate(c.date)} · ${fmt(c.surf)} m²${c.terrain ? ` · terrain ${fmt(c.terrain)} m²` : ''}${c.vefa ? ' · neuf (VEFA)' : ''}<br><b>${fmt(c.prix)} €</b> (${fmt(c.ppm)} €/m²)<br><small>Parcelle ${c.parcelle}</small>`)
+      .bindPopup(`${fmtDate(c.date)} · ${fmt(c.surf)} m²${c.terrain ? ` · terrain ${fmt(c.terrain)} m²` : ''}${c.vefa ? ' · neuf (VEFA)' : ''}<br><b>${fmt(c.prix)} €</b> (${fmt(c.ppm)} €/m²)<br><small>Parcelle ${esc(c.parcelle)}</small>`)
       .addTo(layer));
   });
   // Médiane locale par année (toutes ventes de taille comparable trouvées)
@@ -2417,7 +2422,7 @@ async function updateRent() {
     // Coupure passagère d'un service de données : deux nouveaux essais, puis un bouton
     state.rentRetry = (state.rentRetry || 0) + 1;
     if (state.rentRetry <= 2) { el.innerHTML = '<div class="empty">Le service des loyers ne répond pas, nouvel essai…</div>'; setTimeout(updateRent, 1500 * state.rentRetry); }
-    else el.innerHTML = `<div class="empty">Loyer indisponible pour le moment (${e.message}). <button class="retry" onclick="state.rentRetry = 0; updateRent()">Réessayer</button></div>`;
+    else el.innerHTML = `<div class="empty">Loyer indisponible pour le moment (${esc(e.message)}). <button class="retry" onclick="state.rentRetry = 0; updateRent()">Réessayer</button></div>`;
   }
 }
 
@@ -2694,7 +2699,7 @@ function projetSurface(el, niveau, question, z, surf) {
   const cle = JSON.stringify([state.lat, state.lon, state.type, niveau, lots.map(l => l.surfMoteur ? [l.surf, !!l.actuel, l.surfMoteur] : [l.surf, !!l.actuel]), gamme, cible, meuble, saved]);
   const calc = state.calcProjet && state.calcProjet.cle === cle ? state.calcProjet : null;
   let res = '';
-  if (calc && calc.erreur) res = `<div class="warnbox">${calc.erreur}</div>`;
+  if (calc && calc.erreur) res = `<div class="warnbox">${esc(calc.erreur)}</div>`;
   if (calc && calc.lots) {
     const valeur = calc.lots.reduce((t, l) => t + l.prix, 0), loyer = calc.lots.reduce((t, l) => t + l.loyer, 0);
     const notaire = state.prix * 0.08, coutBien = state.prix + notaire + budget, marge = valeur - coutBien;
@@ -3275,6 +3280,7 @@ const COMPTE = {
       await new Promise((ok, ko) => {
         const sc = document.createElement('script');
         sc.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js';
+        if (!window.__fauxSupabase) { sc.integrity = 'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok'; sc.crossOrigin = 'anonymous'; }   // banc de test : faux client
         sc.onload = ok; sc.onerror = () => ko(new Error('service de comptes injoignable'));
         document.head.append(sc);
       });
@@ -3341,10 +3347,11 @@ const COMPTE = {
   async supprimerProfil(id) {
     if (!id) return;
     if (this.profil === id) await this.changerProfil('');
-    await this.oublierPerso(id);
+    // Ce qu'il gardait pour lui disparaît, avec les documents de ces biens (sinon stockés sans plus être visibles)
+    const cles = await this.oublierPerso(id) || [];
     const {error} = await this.client.from('immo_membres').delete().eq('user_id', this.vise).eq('id', id);
     if (error) throw error;
-    try { await this.client.storage.from('immo-docs').remove([`${this.vise}/profil/${id}.jpg`]); } catch (e) {}
+    try { await this.client.storage.from('immo-docs').remove([`${this.vise}/profil/${id}.jpg`, ...cles]); } catch (e) {}
     photosProfils.delete(id);
     await this.chargerProfils(); majBoutonCompte();
   },
@@ -3387,10 +3394,16 @@ const COMPTE = {
     const fam = await this.lireFamille();
     if (!fam || Array.isArray(fam)) return;
     const f = versionFamille(fam), sup = f.supprimes || (f.supprimes = {});
-    for (const k of LISTES_FAMILLE) f[k] = (f[k] || []).filter(x => { const out = x && x.perso && (x.auteur || '') === id; if (out) sup[x.id] = Date.now(); return !out; });
+    const cles = [];
+    for (const k of LISTES_FAMILLE) f[k] = (f[k] || []).filter(x => {
+      const out = x && x.perso && (x.auteur || '') === id;
+      if (out) { sup[x.id] = Date.now(); for (const d of Array.isArray(x.docs) ? x.docs : []) if (d && typeof d.cle === 'string' && d.cle.startsWith(this.user.id + '/')) cles.push(d.cle); }
+      return !out;
+    });
     if (f.recherchesPar) delete f.recherchesPar[id];
     const {error} = await this.client.from('immo_profils').upsert({user_id: this.user.id, credits: f, maj: new Date().toISOString()});
     if (error) throw error;
+    return cles;
   },
 };
 // ---------- Famille : ce qui est partagé entre les profils
@@ -3566,8 +3579,20 @@ async function verifierVersion() {
   try {
     const ici = await versionChargee, lm = await enTeteDate('reload');
     if (!ici || !lm || ici === lm || sessionStorage.getItem('rechargeAuto') === lm) return;   // à jour, ou déjà tenté pour cette version
+    // En pleine saisie (champ actif, fenêtre ouverte) : pas de rechargement surprise, un bandeau propose de recharger
+    const f = document.activeElement;
+    if ((f && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) || document.querySelector('dialog[open]')) return bandeauVersion();
     sessionStorage.setItem('rechargeAuto', lm); recharger();
   } catch (e) {}
+}
+function bandeauVersion() {
+  if (document.getElementById('nouvelleVersion')) return;
+  const d = document.createElement('div');
+  d.id = 'nouvelleVersion'; d.setAttribute('role', 'status');
+  d.style.cssText = 'position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9999;background:#101828;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center;max-width:calc(100vw - 32px);font-size:14px';
+  d.innerHTML = '<span>Nouvelle version de Patrimoniu en ligne.</span><button type="button" style="border:0;border-radius:8px;padding:6px 12px;font-weight:700;background:#fff;color:#101828">Recharger</button>';
+  d.querySelector('button').onclick = recharger;
+  document.body.append(d);
 }
 setTimeout(verifierVersion, 3000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verifierVersion(); });
@@ -3748,7 +3773,12 @@ document.getElementById('compteBtn').onclick = () => COMPTE.user && COMPTE.clien
 document.getElementById('compteStatut').onclick = () => ouvrirCompte();
 document.getElementById('compteStatut').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrirCompte(); } };
 </script>
-<script src="mes-credits.js" onerror="window.MES_CREDITS = window.MES_CREDITS || []"></script>
+<script>
+// Crédits saisis à la main dans app/mes-credits.js (fichier local, jamais publié) : chargé seulement sur l'ordinateur,
+// pour ne pas demander à chaque ouverture un fichier absent du site (erreur 404)
+window.MES_CREDITS = window.MES_CREDITS || [];
+if (location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) document.write('<script src="mes-credits.js"><\/script>');
+</script>
 <script>
 // (hors du module Financer : Mes projets s'en sert aussi)
 // Prix actuel, prix maximum pour être à 0 et ce qu'il reste à négocier (ou ce qu'il faudrait obtenir)
@@ -3761,15 +3791,19 @@ function margeNego(prix, max, quoi, f, sansPrix) {   // sansPrix : le prix est d
 }
 (() => {
 // ---------- Taux de marché (série Observatoire Crédit Logement / CSA : taux moyens accordés) ----------
-// Sept. 2026 : 3,39 % sur 20 ans ; 15 et 25 ans estimés avec les écarts d'août 2026 (-0,13 / +0,08 pt).
-const TAUX_ACTUEL = {mois: 'septembre 2026', 15: 3.26, 20: 3.39, 25: 3.47};
+// Octobre 2026 (publié le 6 novembre 2026) : 3,32 % sur 15 ans, 3,54 % sur 20 ans, 3,57 % sur 25 ans, hors assurance.
+// « le » : mois de la mesure ; au-delà de 3 mois, Financer prévient que le taux de marché est peut-être dépassé.
+const TAUX_ACTUEL = {mois: 'octobre 2026', le: '2026-10', 15: 3.32, 20: 3.54, 25: 3.57};
 const HISTO = {   // mois d'offre → taux moyens par durée
+  '2026-09': {15: 3.21, 20: 3.39, 25: 3.45}, '2026-10': {15: 3.32, 20: 3.54, 25: 3.57},
   '2023-06': {15: 3.32, 20: 3.51, 25: 3.69}, '2023-07': {15: 3.52, 20: 3.73, 25: 3.89}, '2023-08': {15: 3.72, 20: 3.92, 25: 4.08},
   '2024-01': {15: 3.89, 20: 4.00, 25: 4.13}, '2024-02': {15: 3.79, 20: 3.90, 25: 3.99}, '2024-03': {15: 3.74, 20: 3.82, 25: 3.91},
 };
 const GAMMES_CF = {eco: 'économique', standard: 'standard', haut: 'haut de gamme'};
 const SURPRIME_SCI = 0.30;   // mesurée sur deux prêts SCI réels sans apport (110 %) et avec différé (voir sources)
 const MOIS_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+// Taux de marché mesuré il y a plus de 3 mois : à vérifier (l'appli n'a pas de source en direct)
+const tauxVieux = (auj = new Date()) => { const [a, m] = TAUX_ACTUEL.le.split('-').map(Number); return (auj.getFullYear() - a) * 12 + auj.getMonth() + 1 - m > 3; };
 function tauxDuree(row, mois) {
   const a = mois / 12;
   if (a <= 15) return row[15];
@@ -3879,7 +3913,7 @@ function mettreSaison(sz) {
 const estOption = pr => !!(pr && pr.groupe && typeof branchesDe === 'function' && branchesDe(pr).length > 1);
 function barreProjet(pr) {
   const r = pr.resume || {};
-  return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" onclick="ouvrirProjet('${esc(pr.id)}', 'estimation'); return false;">Revoir l'estimation</a>` : ''}`;
+  return `Projet <b>${esc(pr.nom)}</b>${estOption(pr) ? ` · option <b>${esc(nomBranche(pr))}</b>` : ''}${r.surf ? (r.nbBiens > 1 ? ` · ${r.nbBiens} biens, ${r.surf} m² en tout` : ` · ${r.type === 'maison' ? 'maison' : 'appartement'} de ${r.surf} m²`) : ''}${r.prixEstime != null ? ` · prix estimé <b>${eur(r.prixEstime)}</b>` : ''}${r.loyerEstime != null ? ` · loyer estimé <b>${eur(r.loyerEstime)}</b> hors charges/mois` : ''}. ${pr.recherche ? `<a href="#estimation" data-pid="${esc(pr.id)}" onclick="ouvrirProjet(this.dataset.pid, 'estimation'); return false;">Revoir l'estimation</a>` : ''}`;
 }
 // Fil d'Ariane du projet ouvert, au-dessus du bien : là tant qu'on est dans un projet, avec « Quitter le projet »
 let autreBien = false;   // l'estimation en cours n'est pas le bien du projet : l'enregistrer fera un nouveau projet
@@ -4130,7 +4164,8 @@ function simuler() {
   const meuble = p.meuble === '1';
   let st = p.struct;
   const notes = [];
-  if (st === 'ir' && meuble) { st = 'is'; notes.push('Location meublée dans une SCI à l\'IR : au-delà de 10 % de recettes meublées, la SCI passe d\'office à l\'IS. La simulation applique donc l\'IS.'); }
+  // Revendre : le bien n'est pas loué, donc pas de recettes meublées, la SCI reste à l'IR
+  if (st === 'ir' && meuble && p.projet !== 'revente') { st = 'is'; notes.push('Location meublée dans une SCI à l\'IR : au-delà de 10 % de recettes meublées, la SCI passe d\'office à l\'IS. La simulation applique donc l\'IS.'); }
   const fraisNotaire = p.prix * p.notaire / 100;
   const mobilier = meuble ? p.mobilier + p.mobilierB2 : 0;
   const coutHorsBanque = p.prix + fraisNotaire + p.travaux + mobilier;
@@ -4484,7 +4519,7 @@ function rendre() {
   $('bilan').hidden = !revente;
   $('fiscNote').textContent = s.st === 'is' ? 'IS 15 % jusqu\'à 42 500 € de bénéfice, 25 % au-delà ; amortissement du bâti sur 30 ans.' : '';
   const tm = tauxDuree(TAUX_ACTUEL, p.duree * 12);
-  $('tauxHint').innerHTML = `Marché (${TAUX_ACTUEL.mois}, ${p.duree} ans) : <b>${tm.toFixed(2).replace('.', ',')} %</b>${p.struct !== 'np' ? ` · en SCI, +${SURPRIME_SCI.toFixed(1).replace('.', ',')} pt : <b>${(tm + SURPRIME_SCI).toFixed(2).replace('.', ',')} %</b>` : ''}`;
+  $('tauxHint').innerHTML = `Marché (${TAUX_ACTUEL.mois}, ${p.duree} ans) : <b>${tm.toFixed(2).replace('.', ',')} %</b>${p.struct !== 'np' ? ` · en SCI, +${SURPRIME_SCI.toFixed(1).replace('.', ',')} pt : <b>${(tm + SURPRIME_SCI).toFixed(2).replace('.', ',')} %</b>` : ''}${tauxVieux() ? ` · <span class="down">mesure de plus de 3 mois, vérifie le taux auprès de ta banque</span>` : ''}`;
   etapes(s);
   if (revente) return rendreRevente(s);
 
@@ -4568,7 +4603,7 @@ function bilanRevente(s) {
   const interets = rows.reduce((t, r) => t + r.i, 0), assurance = rows.reduce((t, r) => t + r.ass, 0);
   const capital = rows.reduce((t, r) => t + r.cap, 0);
   const crd = rows.length ? rows[rows.length - 1].crd : s.pret;
-  const chargesFixes = (p.tf + p.copro + p.pno + p.compta + (s.meuble ? p.cfe : 0)) * n / 12;
+  const chargesFixes = (p.tf + p.copro + p.tfB2 + p.coproB2 + p.pno + p.pnoB2 + p.compta + (s.meuble ? p.cfe : 0)) * n / 12;   // 2e bien compris, comme en location
   const loyers = 0;   // revente d'un bien vide : un locataire en place bloquerait ou décoterait la vente
   const chargesVar = 0;
   const prixVente = s.base * Math.pow(1 + p.gPrix / 100, n / 12);
@@ -4841,13 +4876,20 @@ function versBien(pr) {
       ...(travaux && p.valeurApres > 0 ? {valeurApres: {valeur: Math.round(p.valeurApres), le: auMois(p.finT)}} : {}),
       achat: {date: auj, prix: Math.round(p.prix), notaire: Math.round(s.fraisNotaire) || null, travaux: p.travaux > 0 ? Math.round(p.travaux) : null, mobilier: p.mobilier > 0 ? Math.round(p.mobilier) : null,
         frais: Math.round((p.dossier || 0) + (s.fraisGarantie || 0)) || null},
-      location: p.saison && !p.nuitL2 ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(s.saison.nuits), fraisSaison: null}
-        : lots ? {statut: 'lots', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0}
+      // Mêmes hypothèses que le projet : vacance, frais de la nuitée (plateforme, conciergerie, ménage), régime du meublé
+      location: {...(p.saison && !p.nuitL2 ? {statut: 'saisonnier', loyer: null, charges: null, locataire: '', debutBail: '', vacance: 0, nuit: p.nuit, nuitsAn: Math.round(s.saison.nuits),
+          fraisSaison: Math.round(s.saison.pctFrais * 10) / 10 || null}
+        : lots ? {statut: 'lots', loyer: null, charges: null, locataire: '', debutBail: '', vacance: p.vacance || 0}
         // Un seul loyer : celui d'avant travaux s'il est loué en attendant, sinon celui d'après, qui commence à la fin du chantier
         : {statut: p.meuble === '1' ? 'meuble' : 'vide', loyer: Math.round(loueAvant ? p.loyerAvant : p.loyer), charges: null, locataire: '',
-          debutBail: apresTravaux && p.debutLoc > 0 ? auMois(p.debutLoc) : '', vacance: 0},
+          debutBail: apresTravaux && p.debutLoc > 0 ? auMois(p.debutLoc) : '', vacance: p.vacance || 0}),
+        ...(s.meuble && s.st === 'np' && p.avecImpots ? {regime: /micro/.test(s.regime) ? 'micro' : ''} : {})},
       ...(lots ? {lots} : {}),
-      chargesAn: {tf: p.tf, copro: p.copro, pno: p.pno, gestion: p.gestion || null, entretien: p.entretien || null, compta: null, cfe: null, autres: null},
+      // Comptable et CFE comme dans le projet ; dans une SCI déjà créée, le comptable est celui de la SCI (sa fiche le partage
+      // entre ses biens). Nuitée : les charges du logement à ta charge (énergie, internet…) vont dans « Autres ».
+      chargesAn: {tf: p.tf, copro: p.copro, pno: p.pno, gestion: p.gestion || null, entretien: p.entretien || null,
+        compta: p.compta || null, cfe: s.meuble && p.cfe ? p.cfe : null, autres: s.saison && !p.nuitL2 && p.chargesSaison ? Math.round(p.chargesSaison * 12) : null,
+        ...(sci && (mesScis().find(x => x.id === sci) || {}).compta > 0 ? {comptaSci: '1'} : {})},
       prets: s.pret > 0 ? [{id: 'pr' + Date.now().toString(36), banque: '', montant: Math.round(s.pret), taux: p.taux, duree: Math.round(p.duree * 12), debut: ym(mois), offre: auj,
         assurance: Math.round(s.ech.assM * 100) / 100 || null, mensualite: null, progressif: '', hausse: null, mensuLe: '',
         typeDiff: p.differe > 0 ? p.typeDiff : '', differe: p.differe > 0 ? p.differe : null, crd: null, mois: null, crdLe: ''}] : [],
@@ -5120,7 +5162,7 @@ $('sciExist').addEventListener('focus', majScis);
 window.CF_APP = {rendre, sync, recap, etape, majScis, majCompte, restaurer, recalculer, avecTravaux, regrouper, chargesParBien, migrerFinance, enregistrerEstimation, enregistrerAmenagement, quitter, versBien, liberer: () => { figee = undefined; }, taux: {TAUX_ACTUEL, HISTO, SURPRIME_SCI, tauxDuree}};
 })();
 </script>
-<script src="investissements.js?v=003ca345"></script>
+<script src="investissements.js?v=2edb7ee8"></script>
 <script>
 // --- Onglets : Estimation / Cash-flow ---
 function estimationCourante() {
@@ -5429,7 +5471,8 @@ function chargerHtml2pdf() {
   if (window.html2pdf) return Promise.resolve(window.html2pdf);
   return html2pdfPret = html2pdfPret || new Promise((ok, ko) => {
     const sc = document.createElement('script');
-    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    sc.src = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+    sc.integrity = 'sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc'; sc.crossOrigin = 'anonymous';
     sc.onload = () => window.html2pdf ? ok(window.html2pdf) : ko(new Error('html2pdf absent'));
     sc.onerror = () => { html2pdfPret = null; ko(new Error('html2pdf non chargé')); };
     document.head.appendChild(sc);

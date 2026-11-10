@@ -19,13 +19,24 @@ vm.runInContext([
   bloc(idx, 'const RECENTES = {', 'let memoMinuteur'),
   'function majRecentes() {}',
   bloc(idx, 'function erreurCompte', 'const dateVersion'),
-  'this.X = {nouveauBien, depuisCredit, nouvelleSci, normaliser, fusionListes, fusionnerDistant, RECENTES, erreurCompte};',
+  'var COMPTE = {}, CLE = "b", CLE_SCI = "s";',
+  bloc(inv, '// Horloge d\'un appareil en retard', 'async function envoyer'),
+  'this.X = {nouveauBien, depuisCredit, nouvelleSci, normaliser, fusionListes, fusionnerDistant, RECENTES, erreurCompte, sauver};',
   'this.etat = () => ({biens, scis, supprimes}); this.poser = (b, s, sup = {}) => { biens = b; scis = s; supprimes = sup; };',
 ].join('\n'), ctx);
-const {nouveauBien, depuisCredit, normaliser, fusionListes, fusionnerDistant, RECENTES, erreurCompte} = ctx.X;
+const {nouveauBien, depuisCredit, normaliser, fusionListes, fusionnerDistant, RECENTES, erreurCompte, sauver} = ctx.X;
 const ids = l => l.map(x => x.id);
 
 // ---------- Fusion entre appareils ----------
+test('horloge en retard : une modification faite ici passe après la version reçue d\'un autre appareil', () => {
+  const futur = Date.now() + 3600e3;                  // l'autre appareil avance d'une heure
+  const a = {id: 'a', maj: futur}, b = {id: 'b', maj: 1};
+  ctx.poser([a, b], []);
+  sauver(b);
+  assert.ok(b.maj > futur, 'plus récente que tout ce qui est connu');
+  assert.equal(fusionListes([b], [{id: 'b', maj: futur}], {})[0], b);
+  ctx.poser([], []);
+});
 test('fusion : pour chaque bien, la version modifiée le plus récemment gagne', () => {
   const ici = [{id: 'a', nom: 'A ici', maj: 200}, {id: 'b', nom: 'B ici', maj: 100}];
   const la = [{id: 'a', nom: 'A là', maj: 100}, {id: 'b', nom: 'B là', maj: 300}, {id: 'c', nom: 'C là', maj: 50}];

@@ -799,7 +799,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   };
   assert.deepEqual(await carte.locator('.pj-l-nom').allTextContents(), ['Division', 'Garage']);
   assert.doesNotMatch(await carte.innerText(), /meilleure/i);
-  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73\s€\s*\/mois/);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+64\s€\s*\/mois/);   // taux de marché d'octobre 2026
   assert.equal(await carte.locator('.pj-detail').count(), 1, 'une seule option ouverte à la fois');
   c = await attendreCompte(c => c.projets.filter(x => x.nom === 'San Gaetano' && x.groupe).length === 2, 'options dans le compte');
   // Ce qui est commun (le crédit) en une ligne ; le tableau sur demande (« Comparer les chiffres ») : ce qu'elles donnent et ce qui change
@@ -809,7 +809,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   await carte.locator('.pj-opts').waitFor();
   assert.deepEqual(await carte.locator('.pj-opts thead .pj-opt-nom').allTextContents(), ['Division', 'Garage']);
   const rangee = k => carte.locator('.pj-opts tbody tr', {has: page.locator('th', {hasText: new RegExp('^' + k + '$', 'i')})});
-  assert.match(await rangee('Par mois').innerText(), /−453\s€\s+\+73\s€/);
+  assert.match(await rangee('Par mois').innerText(), /−\d+\s€\s+\+64\s€/);
   assert.match(await rangee('Prix').innerText(), /200\s000\s€\s+120\s000\s€/);
   assert.equal(await rangee('Mensualité du crédit').count(), 1);
   // Dossier de financement du projet : les options comparées puis celle que l'utilisateur choisit en détail, 3 pages ;
@@ -877,7 +877,7 @@ test('Mes projets : options d\'un même projet (regroupées, comparées, ajouté
   assert.equal(await carte.locator('.pj-opt-act').count(), 0);
   assert.match(await carte.locator('.pj-sous').innerText(), /2 options$/);
   assert.equal(await carte.locator('button.pj-ligne').count(), 2);
-  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+73\s€\s*\/mois/);
+  assert.match(await carte.locator('button.pj-ligne', {hasText: 'Garage'}).innerText(), /\+64\s€\s*\/mois/);   // taux de marché d'octobre 2026
   assert.doesNotMatch(await carte.innerText(), /meilleure/i);
   assert.ok(!(await page.evaluate(() => JSON.parse(localStorage.getItem('projets-deplies') || '[]'))).length, 'replié gardé');
   await page.click('#pj .actions [data-a="toutPlier"]');
@@ -963,6 +963,15 @@ test('« J\'ai acheté » : la fiche de Mon patrimoine faite depuis le projet (p
   assert.ok(Math.abs(b.prets[0].montant - total) / total < 0.02, `prêt ${b.prets[0].montant} pour ${total}`);
   assert.equal(b.prets[0].duree, pr.finance.duree * 12); assert.equal(b.prets[0].taux, pr.finance.taux);
   assert.equal(+await page.inputValue('#inv [data-p="achat.prix"]'), Math.round(pr.finance.prix));
+  // Les charges du projet suivent : vacance, comptable, CFE du meublé, régime fiscal, frais et charges de la nuitée
+  const v = await page.evaluate(pr => {
+    const m = CF_APP.versBien({...pr, finance: {...pr.finance, meuble: '1', compta: 600, cfe: 250, vacance: 1, regime: 'micro', ouverts: {...pr.finance.ouverts, impots: true}}});
+    const n = CF_APP.versBien({...pr, finance: {...pr.finance, locMode: 'nuit', nuitSur: '1', nuit: 90, periode: 'annee', occupation: 60, sejour: 3, menage: 40, plateforme: 15, conciergerie: 0, chargesSaison: 150, compta: 600, cfe: 250}});
+    return {m: {vac: m.location.vacance, compta: m.chargesAn.compta, cfe: m.chargesAn.cfe, regime: m.location.regime}, n: {statut: n.location.statut, frais: n.location.fraisSaison, autres: n.chargesAn.autres, cfe: n.chargesAn.cfe}};
+  }, pr);
+  assert.deepEqual(v.m, {vac: 1, compta: 600, cfe: 250, regime: 'micro'});
+  assert.equal(v.n.statut, 'saisonnier'); assert.ok(v.n.frais > 15, `frais de la nuitée ${v.n.frais} %`);
+  assert.equal(v.n.autres, 1800); assert.equal(v.n.cfe, 250);
   // La fiche ramène au projet (dans Financer)
   await cliquer(page, '#inv [data-a="voirProjet"]');
   await page.waitForFunction(() => document.body.dataset.onglet === 'cashflow' && /Estimation 52 m²/.test(document.getElementById('cf_fil').innerText));

@@ -65,7 +65,7 @@ const FAUX_SUPABASE = `(() => {
     from: table => {
       const q = {table, op: 'select', filtres: {}, un: false};
       const b = {
-        select(c) { if (q.op === 'select') q.cols = c; return b; },
+        select(c) { q.cols = c; return b; },   // après update : renvoie les lignes touchées
         eq(k, v) { q.filtres[k] = v; return b; },
         insert(v) { q.op = 'insert'; q.valeurs = v; return b; },
         update(v) { q.op = 'update'; q.valeurs = v; return b; },
@@ -92,7 +92,7 @@ function nouvelleBase() {
 }
 // immo_profils : une ligne par compte (crédits dans base.lignes, nom du titulaire dans base.noms) ;
 // immo_membres : les autres profils du compte, chacun avec ses crédits
-function requete(base, {table, op, filtres, valeurs, un}) {
+function requete(base, {table, op, filtres, valeurs, un, cols}) {
   const uid = filtres.user_id ?? (valeurs && valeurs.user_id);
   if (table === 'immo_profils') {
     if (op === 'select') {
@@ -106,7 +106,7 @@ function requete(base, {table, op, filtres, valeurs, un}) {
     const ok = m => Object.entries(filtres).every(([k, v]) => m[k] === v);
     if (op === 'select') { const l = base.membres.filter(ok).map(m => ({...m, credits: m.credits == null ? null : JSON.parse(m.credits)})); return {data: un ? l[0] || null : l, error: null}; }
     if (op === 'insert') { base.membres.push({...valeurs, credits: null, cree: new Date().toISOString()}); return {data: null, error: null}; }
-    if (op === 'update') { base.membres.filter(ok).forEach(m => Object.assign(m, valeurs, 'credits' in valeurs ? {credits: JSON.stringify(valeurs.credits)} : {})); return {data: null, error: null}; }
+    if (op === 'update') { const l = base.membres.filter(ok); l.forEach(m => Object.assign(m, valeurs, 'credits' in valeurs ? {credits: JSON.stringify(valeurs.credits)} : {})); return {data: cols ? l.map(m => ({id: m.id})) : null, error: null}; }
     if (op === 'delete') { base.membres = base.membres.filter(m => !ok(m)); return {data: null, error: null}; }
   }
   return {data: null, error: {message: `opération inconnue ${op} sur ${table}`}};
@@ -141,12 +141,12 @@ async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = 
       if (!f.startsWith(RACINE) || !fs.existsSync(f)) return route.fulfill({status: 404, body: 'introuvable'});
       return route.fulfill({status: 200, contentType: TYPES_MIME[path.extname(f)] || 'application/octet-stream', body: fs.readFileSync(f), headers: {'last-modified': PUBLIE}});
     }
-    if (url.host === 'cdnjs.cloudflare.com' && /leaflet/.test(url.pathname)) {
+    if (url.host === 'cdn.jsdelivr.net' && /leaflet/.test(url.pathname)) {
       const nom = path.basename(url.pathname).replace('.min', ''), f = [path.join(LEAFLET, nom), path.join(LEAFLET, 'images', nom)].find(x => fs.existsSync(x));
       return f ? ok(fs.readFileSync(f), TYPES_MIME[path.extname(f)]) : route.fulfill({status: 404, body: ''});
     }
     // Récap banque en PDF : la bibliothèque du CDN, prise dans node_modules
-    if (url.host === 'cdnjs.cloudflare.com' && /html2pdf/.test(url.pathname)) return ok(fs.readFileSync(require.resolve('html2pdf.js/dist/html2pdf.bundle.min.js')), 'text/javascript');
+    if (url.host === 'cdn.jsdelivr.net' && /html2pdf/.test(url.pathname)) return ok(fs.readFileSync(require.resolve('html2pdf.js/dist/html2pdf.bundle.min.js')), 'text/javascript');
     if (/tile\.openstreetmap\.org$/.test(url.host)) return ok(PNG_VIDE, 'image/png');
     if (url.host === 'cdn.jsdelivr.net' && /supabase/.test(url.pathname)) return ok(FAUX_SUPABASE, 'text/javascript');
     if (url.host === 'apidf-preprod.cerema.fr') {
@@ -171,6 +171,7 @@ async function appareil(nav, base, {reseau = {}, mobile = false, cartesPliees = 
   // Les projets à une option sont fins et pliés par défaut ; les tests travaillent sur leurs boutons, donc dépliés
   // (sauf cartesPliees : le test qui vérifie le pliage)
   if (delaiApi) await ctx.addInitScript(d => { window.__delaiApi = d; }, delaiApi);
+  await ctx.addInitScript(() => { window.__fauxSupabase = true; });   // le faux client n'a pas l'empreinte du vrai
   if (!cartesPliees) await ctx.addInitScript(() => { try { localStorage.setItem('projets-seuls-ouverts', '1'); } catch (e) {} });
   const page = await ctx.newPage();
   page.on('pageerror', e => journal.erreurs.push(e.message));
